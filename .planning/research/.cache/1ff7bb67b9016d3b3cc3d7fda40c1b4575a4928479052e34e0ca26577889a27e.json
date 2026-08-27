@@ -1,0 +1,1 @@
+{"content":"Keep Poisson, Elo, probability normalization, scoring, and calibration as small dependency-light TypeScript domain packages. Use decimal.js only where exact decimal arithmetic matters; test deterministic formulas against fixtures.","source":"web","provider":"websearch","confidence":"MEDIUM","fetched_at":"2026-08-27T12:43:26.643Z","ttl":86400000,"kind":"web"}

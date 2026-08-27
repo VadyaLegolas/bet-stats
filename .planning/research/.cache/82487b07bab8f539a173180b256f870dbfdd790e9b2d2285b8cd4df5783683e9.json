@@ -1,0 +1,1 @@
+{"content":"Use NestJS 11, Prisma ORM 7 LTS with PostgreSQL adapter, PostgreSQL 18, Redis 8, and BullMQ 6. Prisma 7 is ESM-only and requires the new prisma-client generator with explicit output.","source":"web","provider":"websearch","confidence":"MEDIUM","fetched_at":"2026-08-27T12:43:24.918Z","ttl":86400000,"kind":"web"}

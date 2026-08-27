@@ -1,0 +1,1 @@
+{"content":"Use Node.js 24 LTS (not Current), TypeScript 5.9, pnpm 10, and Turborepo 2. Node 24 is supported through April 2028; Prisma 7 recommends Node 22 but supports Node 24.","source":"web","provider":"websearch","confidence":"MEDIUM","fetched_at":"2026-08-27T12:43:24.075Z","ttl":86400000,"kind":"web"}

@@ -1,0 +1,1 @@
+{"content":"Start with Pino JSON logs, health endpoints, BullMQ queue metrics, and OpenTelemetry API/instrumentation hooks. Avoid a heavy observability platform until operational scale justifies it.","source":"web","provider":"websearch","confidence":"MEDIUM","fetched_at":"2026-08-27T12:43:27.086Z","ttl":86400000,"kind":"web"}

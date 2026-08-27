@@ -1,0 +1,1 @@
+{"content":"Use Node built-in fetch/Undici for HTTP, BullMQ attempts/backoff for job retries, Cockatiel for circuit breaker policies, Zod for boundary validation, and Pino for structured logs.","source":"web","provider":"websearch","confidence":"MEDIUM","fetched_at":"2026-08-27T12:43:25.780Z","ttl":86400000,"kind":"web"}

@@ -1,0 +1,1 @@
+{"content":"Use Vitest for unit and package-level tests, Supertest for Nest HTTP integration, Playwright for browser E2E, and Testcontainers for real PostgreSQL/Redis integration tests.","source":"web","provider":"websearch","confidence":"MEDIUM","fetched_at":"2026-08-27T12:43:26.195Z","ttl":86400000,"kind":"web"}

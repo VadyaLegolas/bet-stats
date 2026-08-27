@@ -119,16 +119,70 @@
 
 ## Traceability
 
-Roadmap phase mappings are populated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| FOUND-01 | Phase 1 | Pending |
+| FOUND-02 | Phase 1 | Pending |
+| FOUND-03 | Phase 1 | Pending |
+| FOUND-04 | Phase 1 | Pending |
+| FOUND-05 | Phase 1 | Pending |
+| FOUND-06 | Phase 1 | Pending |
+| DATA-01 | Phase 1 | Pending |
+| DATA-02 | Phase 1 | Pending |
+| DATA-03 | Phase 1 | Pending |
+| DATA-04 | Phase 1 | Pending |
+| DATA-05 | Phase 1 | Pending |
+| DATA-06 | Phase 1 | Pending |
+| DATA-07 | Phase 1 | Pending |
+| DATA-08 | Phase 1 | Pending |
+| PIPE-01 | Phase 2 | Pending |
+| PIPE-02 | Phase 2 | Pending |
+| PIPE-03 | Phase 2 | Pending |
+| PIPE-04 | Phase 2 | Pending |
+| PIPE-05 | Phase 2 | Pending |
+| PIPE-06 | Phase 2 | Pending |
+| PIPE-07 | Phase 2 | Pending |
+| PIPE-08 | Phase 2 | Pending |
+| PRED-01 | Phase 3 | Pending |
+| PRED-02 | Phase 3 | Pending |
+| PRED-03 | Phase 3 | Pending |
+| PRED-04 | Phase 3 | Pending |
+| PRED-05 | Phase 3 | Pending |
+| PRED-06 | Phase 3 | Pending |
+| ODDS-01 | Phase 3 | Pending |
+| ODDS-02 | Phase 3 | Pending |
+| ODDS-03 | Phase 3 | Pending |
+| VALUE-01 | Phase 3 | Pending |
+| VALUE-02 | Phase 3 | Pending |
+| VALUE-03 | Phase 3 | Pending |
+| VALUE-04 | Phase 3 | Pending |
+| EVAL-01 | Phase 4 | Pending |
+| EVAL-02 | Phase 4 | Pending |
+| EVAL-03 | Phase 4 | Pending |
+| EVAL-04 | Phase 4 | Pending |
+| EVAL-05 | Phase 4 | Pending |
+| EVAL-06 | Phase 4 | Pending |
+| EVAL-07 | Phase 4 | Pending |
+| EVAL-08 | Phase 4 | Pending |
+| PROV-01 | Phase 5 | Pending |
+| PROV-02 | Phase 5 | Pending |
+| PROV-03 | Phase 5 | Pending |
+| PROV-04 | Phase 5 | Pending |
+| PROV-05 | Phase 5 | Pending |
+| PROV-06 | Phase 5 | Pending |
+| PROV-07 | Phase 5 | Pending |
+| UX-01 | Phase 6 | Pending |
+| UX-02 | Phase 6 | Pending |
+| OPS-01 | Phase 6 | Pending |
+| OPS-02 | Phase 6 | Pending |
+| OPS-03 | Phase 6 | Pending |
+| PRIV-01 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 56 total
-- Mapped to phases: 0
-- Unmapped: 56 ⚠️
+- Mapped to phases: 56
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-08-27*
-*Last updated: 2026-08-27 after initial definition*
+*Last updated: 2026-08-27 after roadmap creation*

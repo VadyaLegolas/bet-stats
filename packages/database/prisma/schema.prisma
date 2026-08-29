@@ -146,10 +146,56 @@ model Fixture {
   awayTeam     Team                    @relation("AwayTeamFixtures", fields: [awayTeamId], references: [id], onDelete: Restrict)
   externalRefs FixtureExternalRef[]
   provenance   FixtureProvenance[]
+  resultVersions ResultVersion[]
 
   // D-10: deliberately non-unique; this index finds ±36h candidates only.
   @@index([homeTeamId, awayTeamId, kickoffUtc])
   @@index([leagueId, kickoffUtc])
+}
+
+model SourceObservation {
+  id               String          @id @default(cuid())
+  provider         String
+  endpointFamily   String
+  externalIdentity String
+  requestedFrom    DateTime?
+  requestedTo      DateTime?
+  returnedFrom     DateTime?
+  returnedTo       DateTime?
+  observedAt       DateTime
+  sourceUpdatedAt  DateTime?
+  payloadHash      String
+  rawPayload       Json
+  payloadBytes     Int
+  createdAt        DateTime        @default(now())
+  resultVersions   ResultVersion[]
+
+  @@unique([provider, endpointFamily, payloadHash])
+  @@index([provider, endpointFamily, observedAt])
+  @@index([externalIdentity, observedAt])
+}
+
+model ResultVersion {
+  id                        String         @id @default(cuid())
+  fixtureId                 String
+  observationId             String
+  effectiveAt               DateTime
+  observedAt                DateTime
+  homeGoals                 Int?
+  awayGoals                 Int?
+  status                    String
+  revision                  Int
+  supersedesResultVersionId String?        @unique
+  createdAt                 DateTime       @default(now())
+  fixture                   Fixture        @relation(fields: [fixtureId], references: [id], onDelete: Restrict)
+  observation               SourceObservation @relation(fields: [observationId], references: [id], onDelete: Restrict)
+  supersedesResultVersion   ResultVersion? @relation("ResultSupersession", fields: [supersedesResultVersionId], references: [id], onDelete: Restrict)
+  supersededBy              ResultVersion? @relation("ResultSupersession")
+
+  @@unique([fixtureId, revision])
+  @@unique([fixtureId, observationId])
+  @@index([fixtureId, effectiveAt, observedAt])
+  @@index([effectiveAt, observedAt])
 }
 
 model LeagueExternalRef {

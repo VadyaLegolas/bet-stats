@@ -2,11 +2,10 @@
 gsd_state_version: 1.0
 current_phase: 2
 current_phase_name: Historical Evidence Pipeline
-status: planning
+status: "Phase 01 shipped — PR #1"
 stopped_at: Phase 01 complete, ready to plan Phase 2
-last_updated: "2026-08-29T05:21:28.413Z"
+last_updated: "2026-08-29T05:42:12.594Z"
 last_activity: 2026-08-29
-last_activity_desc: Phase 01 complete, transitioned to Phase 2
 progress:
   total_phases: 6
   completed_phases: 1
@@ -28,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-08-29)
 
 Phase: 2 — Historical Evidence Pipeline
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-08-29 — Phase 01 complete, transitioned to Phase 2
+Status: Phase 01 shipped — PR #1
+Last activity: 2026-08-29
 
 Progress: [██░░░░░░░░] 17%
 

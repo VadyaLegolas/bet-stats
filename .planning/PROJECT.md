@@ -12,7 +12,9 @@ Produce honest, reproducible probability estimates whose quality can be measured
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Shared Node/TypeScript workspace with healthy web, API, worker, PostgreSQL, and Redis foundations — Phase 1
+- ✓ Canonical Premier League fixture discovery with provenance, freshness, honest data states, and auditable reconciliation — Phase 1
+- ✓ Fail-closed eligibility policy and persistent responsible-gambling disclosure for protected analytics — Phase 1
 
 ### Active
 
@@ -67,6 +69,8 @@ Produce honest, reproducible probability estimates whose quality can be measured
 | Keep historical/training sources outside the synchronous production pipeline | Their coverage and freshness do not support live match processing | — Pending |
 | Store confidence components separately from probability and from the aggregate confidence score | Enables transparent UI explanations and later recalibration | — Pending |
 | Structure delivery as vertical MVP slices | Each phase should leave an observable, testable capability rather than an unfinished technical layer | — Pending |
+| Use append-only reconciliation decisions with optimistic concurrency | Manual identity corrections must remain auditable and must never overwrite prior evidence | ✓ Validated in Phase 1 |
+| Reserve provider budget atomically before every external call | Retries and concurrent workers must not overspend free-tier allowance or duplicate durable facts | ✓ Validated in Phase 1 |
 
 ## Evolution
 
@@ -86,4 +90,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-27 after initialization*
+*Last updated: 2026-08-29 after Phase 1*

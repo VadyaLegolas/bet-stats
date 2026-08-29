@@ -97,6 +97,16 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
         "ReconciliationCase",
         "ReconciliationCandidate",
         "ReconciliationDecision",
+        "SourceObservation",
+        "ResultVersion",
+        "StandingSnapshot",
+        "StandingSnapshotRow",
+        "SyncRun",
+        "SyncAttempt",
+        "ProviderCircuitState",
+        "ReplayPlan",
+        "EvidenceBuild",
+        "EvidenceComponent",
       ]),
     );
 
@@ -127,5 +137,20 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
       `SELECT trigger_name FROM information_schema.triggers WHERE event_object_schema = 'public' AND event_object_table = 'ReconciliationDecision';`,
     );
     expect(appendOnlyTrigger).toContain("ReconciliationDecision_append_only");
+
+    const evidenceTriggers = sql(
+      `SELECT event_object_table || ':' || trigger_name FROM information_schema.triggers WHERE event_object_schema = 'public' AND event_object_table IN ('SourceObservation','ResultVersion','StandingSnapshot','StandingSnapshotRow','SyncAttempt','ReplayPlan','EvidenceBuild','EvidenceComponent') ORDER BY 1;`,
+    );
+    expect(evidenceTriggers).toEqual(expect.arrayContaining([
+      "SourceObservation:SourceObservation_append_only",
+      "ResultVersion:ResultVersion_append_only",
+      "SyncAttempt:SyncAttempt_append_only",
+      "EvidenceComponent:EvidenceComponent_append_only",
+    ]));
+
+    const cutoffIndexes = sql(
+      `SELECT indexname FROM pg_indexes WHERE schemaname='public' AND tablename='ResultVersion' ORDER BY indexname;`,
+    ).join("\n");
+    expect(cutoffIndexes).toContain("ResultVersion_effectiveAt_observedAt_idx");
   });
 });

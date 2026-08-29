@@ -16,3 +16,18 @@ export const competitionMatchesSchema = z.object({
 }).passthrough();
 
 export type FootballDataCompetitionMatches = z.infer<typeof competitionMatchesSchema>;
+
+export const footballDataFinishedMatchSchema = footballDataMatchSchema.extend({
+  status: z.literal("FINISHED"),
+  score: z.object({
+    fullTime: z.object({
+      home: z.number().int().nonnegative(),
+      away: z.number().int().nonnegative(),
+    }),
+  }).passthrough(),
+});
+
+export const competitionResultsSchema = z.object({
+  competition: z.object({ code: z.literal("PL"), name: z.string().min(1) }).passthrough(),
+  matches: z.array(footballDataFinishedMatchSchema),
+}).passthrough();

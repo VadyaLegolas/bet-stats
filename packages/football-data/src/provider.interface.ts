@@ -54,3 +54,40 @@ export interface ResultProvider {
   fetchCompetitionResults(window: RequestedDateWindow): Promise<readonly NormalizedResult[]>;
   fetchCompletedResults(window: RequestedDateWindow): Promise<readonly NormalizedCompletedResult[]>;
 }
+
+export interface StandingsRequestCoverage {
+  competitionCode: string;
+}
+
+export interface NormalizedStandingRow {
+  position: number;
+  teamExternalId: string;
+  teamName: string;
+  playedGames: number;
+  won: number;
+  draw: number;
+  lost: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+}
+
+export interface NormalizedStandingSnapshot {
+  provider: "football-data.org";
+  competitionExternalId: string;
+  seasonExternalId: string;
+  capturedAt: string;
+  sourceUpdatedAt: string | null;
+  requestedCoverage: StandingsRequestCoverage;
+  returnedCoverage: { stage: string; type: "TOTAL"; rowCount: number };
+  rows: readonly NormalizedStandingRow[];
+  raw: Readonly<Record<string, unknown>>;
+}
+
+export type NormalizedStandingsSnapshot = NormalizedStandingSnapshot;
+
+export interface StandingsProvider {
+  fetchCompetitionStandings(coverage: StandingsRequestCoverage): Promise<NormalizedStandingSnapshot>;
+  fetchStandings(coverage: StandingsRequestCoverage): Promise<NormalizedStandingsSnapshot>;
+}

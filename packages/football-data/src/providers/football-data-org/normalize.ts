@@ -1,5 +1,5 @@
-import type { CanonicalFixtureStatus, NormalizedFixture, NormalizedResult, RequestedDateWindow, ReturnedMatchCoverage } from "../../provider.interface.js";
-import { competitionMatchesSchema, competitionResultsSchema } from "./schema.js";
+import type { CanonicalFixtureStatus, NormalizedFixture, NormalizedResult, NormalizedStandingSnapshot, RequestedDateWindow, ReturnedMatchCoverage, StandingsRequestCoverage } from "../../provider.interface.js";
+import { competitionMatchesSchema, competitionResultsSchema, competitionStandingsSchema } from "./schema.js";
 
 export class ProviderPayloadError extends Error {
   override readonly name = "ProviderPayloadError";
@@ -70,4 +70,39 @@ export function normalizeCompetitionResults(
     returnedCoverage,
     raw: match,
   }));
+}
+
+export function normalizeCompetitionStandings(
+  payload: unknown,
+  requestedCoverage: StandingsRequestCoverage,
+  capturedAt = new Date(),
+): NormalizedStandingSnapshot {
+  const parsed = competitionStandingsSchema.safeParse(payload);
+  if (!parsed.success) throw new ProviderPayloadError("Invalid football-data.org competition standings payload");
+  const standing = parsed.data.standings.find((candidate) => candidate.type === "TOTAL");
+  if (!standing) throw new ProviderPayloadError("Invalid football-data.org competition standings payload");
+
+  return {
+    provider: "football-data.org",
+    competitionExternalId: String(parsed.data.competition.id),
+    seasonExternalId: String(parsed.data.season.id),
+    capturedAt: capturedAt.toISOString(),
+    sourceUpdatedAt: parsed.data.lastUpdated ?? null,
+    requestedCoverage,
+    returnedCoverage: { stage: standing.stage, type: "TOTAL", rowCount: standing.table.length },
+    rows: standing.table.map((row) => ({
+      position: row.position,
+      teamExternalId: String(row.team.id),
+      teamName: row.team.name,
+      playedGames: row.playedGames,
+      won: row.won,
+      draw: row.draw,
+      lost: row.lost,
+      points: row.points,
+      goalsFor: row.goalsFor,
+      goalsAgainst: row.goalsAgainst,
+      goalDifference: row.goalDifference,
+    })),
+    raw: parsed.data,
+  };
 }

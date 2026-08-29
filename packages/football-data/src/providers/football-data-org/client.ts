@@ -1,5 +1,5 @@
-import type { FixtureProvider, NormalizedFixture, NormalizedResult, RequestedDateWindow, ResultProvider } from "../../provider.interface.js";
-import { normalizeCompetitionMatches, normalizeCompetitionResults, ProviderPayloadError } from "./normalize.js";
+import type { FixtureProvider, NormalizedFixture, NormalizedResult, NormalizedStandingSnapshot, RequestedDateWindow, ResultProvider, StandingsProvider, StandingsRequestCoverage } from "../../provider.interface.js";
+import { normalizeCompetitionMatches, normalizeCompetitionResults, normalizeCompetitionStandings, ProviderPayloadError } from "./normalize.js";
 
 type Fetcher = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
@@ -10,7 +10,7 @@ export interface FootballDataOrgClientOptions {
   now?: () => Date;
 }
 
-export class FootballDataOrgClient implements FixtureProvider, ResultProvider {
+export class FootballDataOrgClient implements FixtureProvider, ResultProvider, StandingsProvider {
   readonly #apiToken: string;
   readonly #fetcher: Fetcher;
   readonly #timeoutMs: number;
@@ -57,5 +57,23 @@ export class FootballDataOrgClient implements FixtureProvider, ResultProvider {
 
   fetchCompletedResults(window: RequestedDateWindow): Promise<readonly NormalizedResult[]> {
     return this.fetchCompetitionResults(window);
+  }
+
+  async fetchCompetitionStandings(coverage: StandingsRequestCoverage): Promise<NormalizedStandingSnapshot> {
+    try {
+      const response = await this.#fetcher(`https://api.football-data.org/v4/competitions/${encodeURIComponent(coverage.competitionCode)}/standings`, {
+        headers: { "X-Auth-Token": this.#apiToken },
+        signal: AbortSignal.timeout(this.#timeoutMs),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return normalizeCompetitionStandings(await response.json(), coverage, this.#now());
+    } catch (error) {
+      if (error instanceof ProviderPayloadError) throw error;
+      throw new Error("football-data.org request failed");
+    }
+  }
+
+  fetchStandings(coverage: StandingsRequestCoverage): Promise<NormalizedStandingSnapshot> {
+    return this.fetchCompetitionStandings(coverage);
   }
 }

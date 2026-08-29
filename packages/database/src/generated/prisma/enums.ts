@@ -56,3 +56,32 @@ export const ReconciliationMethod = {
 } as const
 
 export type ReconciliationMethod = (typeof ReconciliationMethod)[keyof typeof ReconciliationMethod]
+
+
+export const LedgerState = {
+  PENDING: 'PENDING',
+  RUNNING: 'RUNNING',
+  SUCCEEDED: 'SUCCEEDED',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED'
+} as const
+
+export type LedgerState = (typeof LedgerState)[keyof typeof LedgerState]
+
+
+export const CircuitState = {
+  CLOSED: 'CLOSED',
+  OPEN: 'OPEN',
+  HALF_OPEN: 'HALF_OPEN'
+} as const
+
+export type CircuitState = (typeof CircuitState)[keyof typeof CircuitState]
+
+
+export const EvidenceBuildState = {
+  BUILDING: 'BUILDING',
+  PUBLISHED: 'PUBLISHED',
+  FAILED: 'FAILED'
+} as const
+
+export type EvidenceBuildState = (typeof EvidenceBuildState)[keyof typeof EvidenceBuildState]

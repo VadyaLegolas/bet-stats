@@ -53,6 +53,56 @@ export type Player = Prisma.PlayerModel
  */
 export type Fixture = Prisma.FixtureModel
 /**
+ * Model SourceObservation
+ * 
+ */
+export type SourceObservation = Prisma.SourceObservationModel
+/**
+ * Model StandingSnapshot
+ * 
+ */
+export type StandingSnapshot = Prisma.StandingSnapshotModel
+/**
+ * Model StandingSnapshotRow
+ * 
+ */
+export type StandingSnapshotRow = Prisma.StandingSnapshotRowModel
+/**
+ * Model ReplayPlan
+ * 
+ */
+export type ReplayPlan = Prisma.ReplayPlanModel
+/**
+ * Model SyncRun
+ * 
+ */
+export type SyncRun = Prisma.SyncRunModel
+/**
+ * Model SyncAttempt
+ * 
+ */
+export type SyncAttempt = Prisma.SyncAttemptModel
+/**
+ * Model ProviderCircuitState
+ * 
+ */
+export type ProviderCircuitState = Prisma.ProviderCircuitStateModel
+/**
+ * Model EvidenceBuild
+ * 
+ */
+export type EvidenceBuild = Prisma.EvidenceBuildModel
+/**
+ * Model EvidenceComponent
+ * 
+ */
+export type EvidenceComponent = Prisma.EvidenceComponentModel
+/**
+ * Model ResultVersion
+ * 
+ */
+export type ResultVersion = Prisma.ResultVersionModel
+/**
  * Model LeagueExternalRef
  * 
  */

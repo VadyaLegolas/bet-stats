@@ -58,6 +58,16 @@ export const ModelName = {
   Team: 'Team',
   Player: 'Player',
   Fixture: 'Fixture',
+  SourceObservation: 'SourceObservation',
+  StandingSnapshot: 'StandingSnapshot',
+  StandingSnapshotRow: 'StandingSnapshotRow',
+  ReplayPlan: 'ReplayPlan',
+  SyncRun: 'SyncRun',
+  SyncAttempt: 'SyncAttempt',
+  ProviderCircuitState: 'ProviderCircuitState',
+  EvidenceBuild: 'EvidenceBuild',
+  EvidenceComponent: 'EvidenceComponent',
+  ResultVersion: 'ResultVersion',
   LeagueExternalRef: 'LeagueExternalRef',
   SeasonExternalRef: 'SeasonExternalRef',
   TeamExternalRef: 'TeamExternalRef',
@@ -175,6 +185,167 @@ export const FixtureScalarFieldEnum = {
 } as const
 
 export type FixtureScalarFieldEnum = (typeof FixtureScalarFieldEnum)[keyof typeof FixtureScalarFieldEnum]
+
+
+export const SourceObservationScalarFieldEnum = {
+  id: 'id',
+  provider: 'provider',
+  endpointFamily: 'endpointFamily',
+  externalIdentity: 'externalIdentity',
+  requestedFrom: 'requestedFrom',
+  requestedTo: 'requestedTo',
+  returnedFrom: 'returnedFrom',
+  returnedTo: 'returnedTo',
+  observedAt: 'observedAt',
+  sourceUpdatedAt: 'sourceUpdatedAt',
+  payloadHash: 'payloadHash',
+  rawPayload: 'rawPayload',
+  payloadBytes: 'payloadBytes',
+  createdAt: 'createdAt'
+} as const
+
+export type SourceObservationScalarFieldEnum = (typeof SourceObservationScalarFieldEnum)[keyof typeof SourceObservationScalarFieldEnum]
+
+
+export const StandingSnapshotScalarFieldEnum = {
+  id: 'id',
+  leagueId: 'leagueId',
+  seasonId: 'seasonId',
+  observationId: 'observationId',
+  effectiveAt: 'effectiveAt',
+  observedAt: 'observedAt',
+  isComplete: 'isComplete',
+  rowCount: 'rowCount',
+  createdAt: 'createdAt'
+} as const
+
+export type StandingSnapshotScalarFieldEnum = (typeof StandingSnapshotScalarFieldEnum)[keyof typeof StandingSnapshotScalarFieldEnum]
+
+
+export const StandingSnapshotRowScalarFieldEnum = {
+  id: 'id',
+  snapshotId: 'snapshotId',
+  teamId: 'teamId',
+  position: 'position',
+  played: 'played',
+  points: 'points',
+  goalsFor: 'goalsFor',
+  goalsAgainst: 'goalsAgainst'
+} as const
+
+export type StandingSnapshotRowScalarFieldEnum = (typeof StandingSnapshotRowScalarFieldEnum)[keyof typeof StandingSnapshotRowScalarFieldEnum]
+
+
+export const ReplayPlanScalarFieldEnum = {
+  id: 'id',
+  logicalKey: 'logicalKey',
+  revision: 'revision',
+  provider: 'provider',
+  competitionId: 'competitionId',
+  endpointFamily: 'endpointFamily',
+  windowFrom: 'windowFrom',
+  windowTo: 'windowTo',
+  previewVersion: 'previewVersion',
+  reason: 'reason',
+  actor: 'actor',
+  createdAt: 'createdAt'
+} as const
+
+export type ReplayPlanScalarFieldEnum = (typeof ReplayPlanScalarFieldEnum)[keyof typeof ReplayPlanScalarFieldEnum]
+
+
+export const SyncRunScalarFieldEnum = {
+  id: 'id',
+  logicalKey: 'logicalKey',
+  revision: 'revision',
+  provider: 'provider',
+  endpointFamily: 'endpointFamily',
+  lane: 'lane',
+  windowFrom: 'windowFrom',
+  windowTo: 'windowTo',
+  state: 'state',
+  correlationId: 'correlationId',
+  replayPlanId: 'replayPlanId',
+  terminalAt: 'terminalAt',
+  createdAt: 'createdAt'
+} as const
+
+export type SyncRunScalarFieldEnum = (typeof SyncRunScalarFieldEnum)[keyof typeof SyncRunScalarFieldEnum]
+
+
+export const SyncAttemptScalarFieldEnum = {
+  id: 'id',
+  syncRunId: 'syncRunId',
+  attemptNumber: 'attemptNumber',
+  observationId: 'observationId',
+  state: 'state',
+  classifiedReason: 'classifiedReason',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt'
+} as const
+
+export type SyncAttemptScalarFieldEnum = (typeof SyncAttemptScalarFieldEnum)[keyof typeof SyncAttemptScalarFieldEnum]
+
+
+export const ProviderCircuitStateScalarFieldEnum = {
+  id: 'id',
+  provider: 'provider',
+  endpointFamily: 'endpointFamily',
+  state: 'state',
+  failureCount: 'failureCount',
+  openedAt: 'openedAt',
+  nextProbeAt: 'nextProbeAt',
+  lastError: 'lastError',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProviderCircuitStateScalarFieldEnum = (typeof ProviderCircuitStateScalarFieldEnum)[keyof typeof ProviderCircuitStateScalarFieldEnum]
+
+
+export const EvidenceBuildScalarFieldEnum = {
+  id: 'id',
+  teamId: 'teamId',
+  cutoff: 'cutoff',
+  configVersion: 'configVersion',
+  configHash: 'configHash',
+  syncRunId: 'syncRunId',
+  replayPlanId: 'replayPlanId',
+  state: 'state',
+  publishedAt: 'publishedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type EvidenceBuildScalarFieldEnum = (typeof EvidenceBuildScalarFieldEnum)[keyof typeof EvidenceBuildScalarFieldEnum]
+
+
+export const EvidenceComponentScalarFieldEnum = {
+  id: 'id',
+  buildId: 'buildId',
+  component: 'component',
+  value: 'value',
+  sampleSize: 'sampleSize',
+  limitation: 'limitation',
+  sourceTimes: 'sourceTimes'
+} as const
+
+export type EvidenceComponentScalarFieldEnum = (typeof EvidenceComponentScalarFieldEnum)[keyof typeof EvidenceComponentScalarFieldEnum]
+
+
+export const ResultVersionScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  observationId: 'observationId',
+  effectiveAt: 'effectiveAt',
+  observedAt: 'observedAt',
+  homeGoals: 'homeGoals',
+  awayGoals: 'awayGoals',
+  status: 'status',
+  revision: 'revision',
+  supersedesResultVersionId: 'supersedesResultVersionId',
+  createdAt: 'createdAt'
+} as const
+
+export type ResultVersionScalarFieldEnum = (typeof ResultVersionScalarFieldEnum)[keyof typeof ResultVersionScalarFieldEnum]
 
 
 export const LeagueExternalRefScalarFieldEnum = {
@@ -303,6 +474,14 @@ export const JsonNullValueInput = {
 } as const
 
 export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
+
+
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
 export const QueryMode = {

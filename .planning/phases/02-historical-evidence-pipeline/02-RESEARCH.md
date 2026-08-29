@@ -325,20 +325,23 @@ const eligible = rows
 | A3 | Form decay 0.85, Elo 1500/K20, H2H cap 5%. | Feature Defaults | Model behavior; must be treated as versioned configuration, not locked science. |
 | A4 | Three physical BullMQ queues are preferable to one priority queue. | Architecture | Operational topology; locked lane semantics remain satisfied either way. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Provider-local reset semantics and allowance values**
-   - Known: reservation is keyed by provider-local reset date and endpoint class.
-   - Unclear: football-data.org headers/reset timezone and endpoint costs under actual credentials.
-   - Recommendation: define provider policy config and a contract test with captured headers; fail closed when reset metadata is unknown.
-2. **Historical source coverage**
-   - Known: Phase 2 requires results and standings for the initial supported competition.
-   - Unclear: exact free-tier historical depth and whether standings expose source update timestamps.
-   - Recommendation: add a capability/coverage probe and persist “source update unavailable” explicitly.
-3. **Retention of raw payloads**
-   - Known: raw payload or immutable reference is required.
-   - Unclear: inline JSON retention horizon/size threshold.
-   - Recommendation: inline JSON for MVP with size metrics; do not introduce object storage without measured need.
+1. **Provider-local reset semantics and allowance values — RESOLVED**
+   - Provider-local reset metadata and allowance are configured and recorded per provider as part of the durable budget policy.
+   - Unknown timezone or response-header semantics fail closed for new optional and standard calls. Already-authorized critical reservations continue under the configured policy; they are not retroactively invalidated by missing runtime metadata.
+   - Runtime response headers may update separately recorded observed-quota metadata, but they cannot silently increase or otherwise widen the configured allowance. Any allowance change is an explicit configuration/audit event.
+   - Planning implication: extend budget-policy tests with unknown timezone/header cases, observed-header updates, and proof that runtime metadata cannot widen allowance.
+2. **Historical source coverage and source timestamps — RESOLVED**
+   - Phase 2 supports only the bounded history actually returned by the configured football-data.org endpoints.
+   - Missing historical depth is an explicit `LIMITED` result; missing `sourceUpdatedAt` remains `null`. The system never infers or fabricates completeness from the absence of older rows.
+   - Capture time remains the authoritative `observedAt` boundary whenever the source does not expose its own update timestamp.
+   - Planning implication: persist requested-versus-returned window metadata and add tests for truncated history, absent `sourceUpdatedAt`, `LIMITED` projection, and exclusion of post-cutoff captures.
+3. **Raw payload retention — RESOLVED**
+   - For the MVP, every Phase 2 observation retains immutable raw JSON in PostgreSQL together with its payload hash.
+   - Phase 2 performs no automatic deletion of raw observations. Evidence referenced by normalized facts or derived features must not be deleted.
+   - Record payload byte-size metrics so later operations/privacy planning can design archival and retention policy from measured volume. Archival, tiering, and retention rules are explicitly deferred; they must preserve referential auditability.
+   - Planning implication: test payload immutability/hash identity, atomic fact-to-observation linkage, absence of Phase 2 deletion paths, and recorded payload-size metrics.
 
 ## Environment Availability
 
@@ -386,6 +389,9 @@ const eligible = rows
 - [ ] Add provider spy that throws classified 4xx validation, 429, timeout, 5xx, and open-circuit failures.
 - [ ] Add property tests: replay twice produces same facts/build; adding post-cutoff observation cannot alter prior evidence; shuffled input yields identical output.
 - [ ] Add migration test and representative-volume query-plan fixture.
+- [ ] Add quota-policy cases proving unknown reset timezone/header semantics fail closed for optional/standard work and runtime headers cannot widen configured allowance.
+- [ ] Add bounded-coverage cases proving truncated provider history yields `LIMITED`, absent `sourceUpdatedAt` remains `null`, and capture time governs `observedAt`.
+- [ ] Add raw-observation cases proving JSON/hash immutability, payload-size metric capture, no automatic deletion path, and preserved fact/feature references.
 
 ## Security Domain
 

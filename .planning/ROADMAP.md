@@ -88,6 +88,43 @@ Plans:
   5. Elo, home/away strength, goal rates, rest days, and low-weight H2H are chronological and exclude facts captured after the requested cutoff.
 
 **Plans**: TBD
+**Wave 1**
+
+- [ ] 02-01-PLAN.md
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02-02-PLAN.md
+- [ ] 02-03-PLAN.md
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 02-04-PLAN.md
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 02-05-PLAN.md
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 02-06-PLAN.md
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 02-07-PLAN.md
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 02-08-PLAN.md
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 02-09-PLAN.md
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 02-10-PLAN.md
+
 **UI hint**: yes
 
 ### Phase 3: Forecast and Manual Value Workbench
@@ -163,7 +200,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Trustworthy Fixture Discovery | 12/12 | Complete    | 2026-08-29 |
-| 2. Historical Evidence Pipeline | 0/TBD | Not started | - |
+| 2. Historical Evidence Pipeline | 0/10 | Planned    |  |
 | 3. Forecast and Manual Value Workbench | 0/TBD | Not started | - |
 | 4. Settlement and Evidence Scorecard | 0/TBD | Not started | - |
 | 5. Provider-Aware Coverage and Enrichment | 0/TBD | Not started | - |

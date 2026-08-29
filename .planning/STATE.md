@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 current_phase: 2
 current_phase_name: Historical Evidence Pipeline
 status: "Phase 01 shipped — PR #1"
-stopped_at: Phase 2 context gathered
-last_updated: "2026-08-29T05:48:55.517Z"
+stopped_at: Phase 2 UI-SPEC approved
+last_updated: "2026-08-29T06:04:18.280Z"
 last_activity: 2026-08-29
 progress:
   total_phases: 6
@@ -98,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-08-29T05:48:55.461Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-historical-evidence-pipeline/02-CONTEXT.md
+Last session: 2026-08-29T06:04:18.219Z
+Stopped at: Phase 2 UI-SPEC approved
+Resume file: .planning/phases/02-historical-evidence-pipeline/02-UI-SPEC.md

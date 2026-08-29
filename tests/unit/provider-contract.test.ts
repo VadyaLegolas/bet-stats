@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { FootballDataOrgClient, ProviderPayloadError } from "../../packages/football-data/src/index.js";
-import { normalizeCompetitionMatches } from "../../packages/football-data/src/index.js";
+import { normalizeCompetitionMatches, normalizeCompetitionResults } from "../../packages/football-data/src/index.js";
 
 const validPayload = {
   competition: { code: "PL", name: "Premier League" },
@@ -13,6 +13,16 @@ const validPayload = {
     season: { id: 2287, startDate: "2026-08-08", endDate: "2027-05-23" },
     homeTeam: { id: 57, name: "Arsenal FC" },
     awayTeam: { id: 61, name: "Chelsea FC" },
+  }],
+};
+
+const finishedPayload = {
+  competition: { code: "PL", name: "Premier League" },
+  matches: [{
+    ...validPayload.matches[0],
+    status: "FINISHED",
+    lastUpdated: "2026-08-29T16:02:03Z",
+    score: { fullTime: { home: 2, away: 1 } },
   }],
 };
 
@@ -52,5 +62,37 @@ describe("football-data.org provider contract", () => {
     expect(error).toBeInstanceOf(Error);
     expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
     expect(JSON.stringify(error)).not.toContain(token);
+  });
+
+  it("normalizes a finished result with capture and requested coverage provenance", () => {
+    const requestedWindow = { dateFrom: "2026-08-01", dateTo: "2026-08-31" };
+    expect(normalizeCompetitionResults(finishedPayload, requestedWindow, new Date("2026-08-30T10:00:00Z"))).toEqual([
+      expect.objectContaining({
+        provider: "football-data.org",
+        externalId: "497410",
+        homeScore: 2,
+        awayScore: 1,
+        capturedAt: "2026-08-30T10:00:00.000Z",
+        sourceUpdatedAt: "2026-08-29T16:02:03Z",
+        requestedWindow,
+        returnedCoverage: { matchCount: 1, earliestKickoffUtc: "2026-08-29T14:00:00Z", latestKickoffUtc: "2026-08-29T14:00:00Z" },
+        raw: finishedPayload.matches[0],
+      }),
+    ]);
+  });
+
+  it("fails closed for unfinished or malformed result scores", () => {
+    const window = { dateFrom: "2026-08-01", dateTo: "2026-08-31" };
+    expect(() => normalizeCompetitionResults({ ...finishedPayload, matches: [{ ...finishedPayload.matches[0], status: "TIMED" }] }, window)).toThrow(ProviderPayloadError);
+    expect(() => normalizeCompetitionResults({ ...finishedPayload, matches: [{ ...finishedPayload.matches[0], score: { fullTime: { home: null, away: 1 } } }] }, window)).toThrow(ProviderPayloadError);
+  });
+
+  it("fetches completed results without synthesizing a provider update time", async () => {
+    const payload = { ...finishedPayload, matches: [{ ...finishedPayload.matches[0], lastUpdated: null }] };
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 }));
+    const client = new FootballDataOrgClient({ apiToken: "token", fetcher, now: () => new Date("2026-08-30T10:00:00Z") });
+    const results = await client.fetchCompetitionResults({ dateFrom: "2026-08-01", dateTo: "2026-08-31" });
+    expect(results[0]?.sourceUpdatedAt).toBeNull();
+    expect(fetcher).toHaveBeenCalledWith(expect.stringContaining("status=FINISHED"), expect.any(Object));
   });
 });

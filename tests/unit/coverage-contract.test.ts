@@ -20,6 +20,16 @@ const requiredColumns = [
   "Automated witness",
 ] as const;
 
+const allowedLanes = new Set(["critical", "standard"]);
+const allowedReservations = new Set(["fixture-continuity", "result-continuity", "standings"]);
+const deferredTargets = new Map([
+  ["lineups", "Phase 3"],
+  ["injuries", "Phase 3"],
+  ["odds", "Phase 5"],
+  ["secondary statistics", "Phase 3"],
+  ["fallback/enrichment endpoints", "Phase 5"],
+]);
+
 function splitMarkdownRow(line: string): string[] {
   return line
     .trim()
@@ -77,11 +87,60 @@ describe("Phase 2 football-data.org endpoint coverage contract", () => {
     expect(existsSync(coveragePath), `Missing coverage contract: ${coveragePath}`).toBe(true);
 
     const rows = parseTable(readFileSync(coveragePath, "utf8"), "Explicit opt-outs");
-    for (const endpoint of ["lineups", "injuries", "odds", "secondary statistics", "fallback/enrichment endpoints"]) {
+    for (const [endpoint, targetPhase] of deferredTargets) {
       expect(
         rows.find((row) => row["Endpoint surface"] === endpoint),
         `Missing explicit Phase 3/5 opt-out: ${endpoint}`,
-      ).toEqual(expect.objectContaining({ "Phase 2 status": "deferred" }));
+      ).toEqual(expect.objectContaining({
+        "Phase 2 status": "deferred",
+        "Target phase": targetPhase,
+      }));
+    }
+  });
+
+  it("rejects duplicate, incomplete, or invalid live endpoint classifications by name", () => {
+    const rows = parseTable(readFileSync(coveragePath, "utf8"), "Phase2EndpointCoverage");
+    const seenSurfaces = new Set<string>();
+
+    for (const row of rows) {
+      const surface = row["Endpoint surface"] ?? "<unnamed>";
+      expect(seenSurfaces.has(surface), `Duplicate live endpoint classification: ${surface}`).toBe(false);
+      seenSurfaces.add(surface);
+
+      for (const column of requiredColumns) {
+        expect(row[column], `Missing ${column} for live endpoint: ${surface}`).toBeTruthy();
+      }
+      expect(
+        allowedLanes.has(row["Endpoint priority lane"]!),
+        `Invalid endpoint priority lane for ${surface}: ${row["Endpoint priority lane"]}`,
+      ).toBe(true);
+      expect(
+        allowedReservations.has(row["Reservation class"]!),
+        `Invalid reservation class for ${surface}: ${row["Reservation class"]}`,
+      ).toBe(true);
+      expect(
+        deferredTargets.has(surface),
+        `Deferred endpoint leaked into the Phase 2 live matrix: ${surface}`,
+      ).toBe(false);
+    }
+
+    expect([...seenSurfaces].sort()).toEqual([
+      "completed results",
+      "standings",
+      "upcoming fixtures",
+    ]);
+  });
+
+  it("keeps every deferred endpoint unique and outside the live classifications", () => {
+    const liveRows = parseTable(readFileSync(coveragePath, "utf8"), "Phase2EndpointCoverage");
+    const optOutRows = parseTable(readFileSync(coveragePath, "utf8"), "Explicit opt-outs");
+    const liveSurfaces = new Set(liveRows.map((row) => row["Endpoint surface"]));
+    const optOutSurfaces = optOutRows.map((row) => row["Endpoint surface"]!);
+
+    expect(new Set(optOutSurfaces).size, "Duplicate explicit opt-out row").toBe(optOutSurfaces.length);
+    expect([...optOutSurfaces].sort()).toEqual([...deferredTargets.keys()].sort());
+    for (const surface of optOutSurfaces) {
+      expect(liveSurfaces.has(surface), `Deferred endpoint is also live: ${surface}`).toBe(false);
     }
   });
 });

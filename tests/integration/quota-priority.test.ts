@@ -2,9 +2,17 @@ import { describe, expect, it } from "vitest";
 
 async function priorityBudget(): Promise<Record<string, unknown>> {
   try {
-    return await import(/* @vite-ignore */ new URL("../../packages/domain/src/priority-budget.js", import.meta.url).href);
+    return await import(/* @vite-ignore */ new URL("../../packages/domain/src/request-budget.js", import.meta.url).href);
   } catch (error) {
     throw new Error("Missing Phase 2 production symbol: reservePriorityRequest in packages/domain/src/priority-budget.ts", { cause: error });
+  }
+}
+
+async function standingsJob(): Promise<Record<string, unknown>> {
+  try {
+    return await import(/* @vite-ignore */ new URL("../../workers/data-sync/src/jobs/standings.js", import.meta.url).href);
+  } catch (error) {
+    throw new Error("Missing Phase 2 production symbol: runStandingsSync in workers/data-sync/src/jobs/standings.ts", { cause: error });
   }
 }
 
@@ -30,5 +38,36 @@ describe("priority request budget", () => {
     expect(unknownReset).toMatchObject({ reserved: false, reason: "UNKNOWN_RESET_SEMANTICS" });
     const capped = await reservePriorityRequest({ provider: "football-data.org", resetDate: "2026-08-29", endpointFamily: "RESULTS", lane: "critical", configuredAllowance: 10, runtimeAllowance: 100, reserved: 9, jobKey: "results-capped" });
     expect(capped).toMatchObject({ effectiveAllowance: 10 });
+  });
+
+  it("runs standings through reservation before provider construction and persists one complete capture", async () => {
+    const { runStandingsSync } = await standingsJob() as { runStandingsSync: (input: Record<string, unknown>) => Promise<Record<string, unknown>> };
+    const events: string[] = [];
+    const snapshot = { rows: [{ teamExternalId: "team-1" }, { teamExternalId: "team-2" }] };
+    const reserve = async () => { events.push("reserved"); return { reserved: true, reused: false }; };
+    const providerFactory = () => {
+      events.push("constructed");
+      return { fetchCompetitionStandings: async () => { events.push("called"); return snapshot; } };
+    };
+    const persist = async (value: unknown) => { events.push("persisted"); expect(value).toBe(snapshot); };
+
+    const result = await runStandingsSync({
+      provider: "football-data.org",
+      endpoint: "STANDINGS",
+      capability: "SUPPORTED",
+      circuit: "CLOSED",
+      lane: "standard",
+      allowance: 10,
+      criticalHeadroom: 3,
+      resetTimezone: "UTC",
+      jobKey: "standings-pl-2026",
+      coverage: { competitionCode: "PL" },
+      reserve,
+      providerFactory,
+      persist,
+    });
+
+    expect(result).toMatchObject({ status: "completed" });
+    expect(events).toEqual(["reserved", "constructed", "called", "persisted"]);
   });
 });

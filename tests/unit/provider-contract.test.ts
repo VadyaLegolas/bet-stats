@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { FootballDataOrgClient, ProviderPayloadError } from "../../packages/football-data/src/index.js";
-import { normalizeCompetitionMatches, normalizeCompetitionResults } from "../../packages/football-data/src/index.js";
+import { normalizeCompetitionMatches, normalizeCompetitionResults, normalizeCompetitionStandings } from "../../packages/football-data/src/index.js";
 
 const validPayload = {
   competition: { code: "PL", name: "Premier League" },
@@ -23,6 +23,28 @@ const finishedPayload = {
     status: "FINISHED",
     lastUpdated: "2026-08-29T16:02:03Z",
     score: { fullTime: { home: 2, away: 1 } },
+  }],
+};
+
+const standingsPayload = {
+  competition: { id: 2021, code: "PL", name: "Premier League" },
+  season: { id: 2287, startDate: "2026-08-08", endDate: "2027-05-23" },
+  lastUpdated: null,
+  standings: [{
+    stage: "REGULAR_SEASON",
+    type: "TOTAL",
+    table: [{
+      position: 1,
+      team: { id: 57, name: "Arsenal FC" },
+      playedGames: 3,
+      won: 3,
+      draw: 0,
+      lost: 0,
+      points: 9,
+      goalsFor: 8,
+      goalsAgainst: 1,
+      goalDifference: 7,
+    }],
   }],
 };
 
@@ -94,5 +116,33 @@ describe("football-data.org provider contract", () => {
     const results = await client.fetchCompetitionResults({ dateFrom: "2026-08-01", dateTo: "2026-08-31" });
     expect(results[0]?.sourceUpdatedAt).toBeNull();
     expect(fetcher).toHaveBeenCalledWith(expect.stringContaining("status=FINISHED"), expect.any(Object));
+  });
+
+  it("normalizes standings as one atomic snapshot with envelope provenance", () => {
+    const snapshot = normalizeCompetitionStandings(standingsPayload, { competitionCode: "PL" }, new Date("2026-08-30T10:00:00Z"));
+    expect(snapshot).toEqual(expect.objectContaining({
+      provider: "football-data.org",
+      competitionExternalId: "2021",
+      seasonExternalId: "2287",
+      capturedAt: "2026-08-30T10:00:00.000Z",
+      sourceUpdatedAt: null,
+      requestedCoverage: { competitionCode: "PL" },
+      returnedCoverage: { stage: "REGULAR_SEASON", type: "TOTAL", rowCount: 1 },
+      raw: standingsPayload,
+      rows: [expect.objectContaining({ teamExternalId: "57", position: 1, points: 9 })],
+    }));
+  });
+
+  it("fails closed for malformed or partial standings envelopes", () => {
+    expect(() => normalizeCompetitionStandings({ ...standingsPayload, standings: [] }, { competitionCode: "PL" })).toThrow(ProviderPayloadError);
+    expect(() => normalizeCompetitionStandings({ ...standingsPayload, standings: [{ ...standingsPayload.standings[0], table: [{ position: 1 }] }] }, { competitionCode: "PL" })).toThrow(ProviderPayloadError);
+  });
+
+  it("fetches one complete standings snapshot", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(standingsPayload), { status: 200 }));
+    const client = new FootballDataOrgClient({ apiToken: "token", fetcher, now: () => new Date("2026-08-30T10:00:00Z") });
+    const snapshot = await client.fetchCompetitionStandings({ competitionCode: "PL" });
+    expect(snapshot.rows).toHaveLength(1);
+    expect(fetcher).toHaveBeenCalledWith(expect.stringContaining("/competitions/PL/standings"), expect.any(Object));
   });
 });

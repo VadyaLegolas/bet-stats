@@ -8,6 +8,8 @@ const coveragePath = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../.planning/phases/02-historical-evidence-pipeline/COVERAGE.md",
 );
+const providerContractPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../packages/football-data/src/provider.interface.ts");
+const clientPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../packages/football-data/src/providers/football-data-org/client.ts");
 
 const requiredColumns = [
   "Endpoint surface",
@@ -141,6 +143,19 @@ describe("Phase 2 football-data.org endpoint coverage contract", () => {
     expect([...optOutSurfaces].sort()).toEqual([...deferredTargets.keys()].sort());
     for (const surface of optOutSurfaces) {
       expect(liveSurfaces.has(surface), `Deferred endpoint is also live: ${surface}`).toBe(false);
+    }
+  });
+
+  it("keeps documented adapter methods and DTO names aligned with exported provider contracts", () => {
+    const rows = parseTable(readFileSync(coveragePath, "utf8"), "Phase2EndpointCoverage");
+    const providerContract = readFileSync(providerContractPath, "utf8");
+    const client = readFileSync(clientPath, "utf8");
+
+    for (const row of rows) {
+      const method = row["Adapter method"]!.replaceAll("`", "");
+      const dto = row["Normalized DTO"]!.replaceAll("`", "");
+      expect(client, `Missing documented adapter method export: ${method}`).toMatch(new RegExp(`\\b${method}\\s*\\(`));
+      expect(providerContract, `Missing documented normalized DTO export: ${dto}`).toMatch(new RegExp(`export (?:interface|type) ${dto}\\b`));
     }
   });
 });

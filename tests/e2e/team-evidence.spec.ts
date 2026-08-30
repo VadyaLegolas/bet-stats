@@ -123,10 +123,14 @@ test.describe("fixture-to-cutoff team evidence contract", () => {
   test("renders every shared component kind as named values with units", async ({ page }) => {
     await stubEvidence(page);
     await page.goto(evidenceUrl);
+    await page.locator("summary").filter({ hasText: /^Goal rates$/ }).click();
     await expect(page.getByText("Goals for: 1.75 goals/match", { exact: true })).toBeVisible();
     await expect(page.getByText("Goals against: 0.50 goals/match", { exact: true })).toBeVisible();
+    await page.locator("summary").filter({ hasText: /^Elo rating$/ }).click();
     await expect(page.getByText("Elo rating: 1512.5 rating points", { exact: true })).toBeVisible();
+    await page.locator("summary").filter({ hasText: /^Rest days$/ }).click();
     await expect(page.getByText("Rest: 6.50 days", { exact: true })).toBeVisible();
+    await page.locator("summary").filter({ hasText: /^Head-to-head evidence$/ }).click();
     await expect(page.getByText("H2H points: 2.00 points/match", { exact: true })).toBeVisible();
     await expect(page.getByText("H2H weight: 0.025", { exact: true })).toBeVisible();
     await expect(page.getByText("[object Object]", { exact: true })).toHaveCount(0);

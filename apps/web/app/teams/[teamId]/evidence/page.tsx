@@ -4,6 +4,13 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import {
+  parseEvidenceProjection,
+  type EvidenceComponentKind,
+  type EvidenceProjectionComponent,
+  type EvidenceProjectionDto,
+} from "@bet-stats/domain";
+
 import { EvidenceStateNotice } from "../../../../components/evidence-state-notice";
 
 type Summary = { value?: unknown; sampleSize?: number; requestedSampleSize?: number; sourceUpdatedAt?: string | null | undefined; limitationReason?: string | null | undefined; limitation?: string | null | undefined };
@@ -20,17 +27,52 @@ type Evidence = {
   freshness?: string;
   limitationReason?: string | null;
   summaries?: { five?: Summary; ten?: Summary };
-  components?: Record<string, { value?: unknown; sampleSize?: number; limitation?: string | null; sourceRefs?: Trace[] }>;
+  components?: EvidenceProjectionDto["components"];
   trace?: Trace[];
   receipt?: { configVersion?: string; buildId?: string; inputIds?: string[]; inputs?: Trace[] } | null;
 };
 
 const panel = { border: "1px solid #CBD5E1", borderRadius: 8, background: "#FFFFFF", padding: 20, minWidth: 0 } as const;
 
+export type EvidenceDisplayField = Readonly<{ label: string; value: string }>;
+
+export function renderEvidenceComponentFields(component: EvidenceProjectionComponent): readonly EvidenceDisplayField[] {
+  if (component.value === null) return [{ label: "Value", value: "Not available" }];
+  switch (component.kind) {
+    case "form5": return [{ label: "5-match weighted form", value: `${component.value.toFixed(2)} points/match` }];
+    case "form10": return [{ label: "10-match weighted form", value: `${component.value.toFixed(2)} points/match` }];
+    case "elo": return [{ label: "Elo rating", value: `${component.value.toFixed(1)} rating points` }];
+    case "homeStrength": return [{ label: "Home strength", value: `${component.value.toFixed(2)} points/match` }];
+    case "awayStrength": return [{ label: "Away strength", value: `${component.value.toFixed(2)} points/match` }];
+    case "goalRates": return [
+      { label: "Goals for", value: `${component.value.for.toFixed(2)} goals/match` },
+      { label: "Goals against", value: `${component.value.against.toFixed(2)} goals/match` },
+    ];
+    case "restDays": return [{ label: "Rest", value: `${component.value.toFixed(2)} days` }];
+    case "h2h": return [
+      { label: "H2H points", value: `${component.value.pointsPerMatch.toFixed(2)} points/match` },
+      { label: "H2H weight", value: component.value.weight.toFixed(3) },
+    ];
+  }
+}
+
+function componentLabel(component: EvidenceProjectionComponent): string {
+  switch (component.kind) {
+    case "form5": return "Five-match weighted form";
+    case "form10": return "Ten-match weighted form";
+    case "elo": return "Elo rating";
+    case "homeStrength": return "Home strength";
+    case "awayStrength": return "Away strength";
+    case "goalRates": return "Goal rates";
+    case "restDays": return "Rest days";
+    case "h2h": return "Head-to-head evidence";
+  }
+}
+
 function summaryFrom(data: Evidence, key: "five" | "ten"): Summary {
   const direct = data.summaries?.[key];
   if (direct) return direct;
-  const names = key === "five" ? ["form5", "weightedForm5", "five"] : ["form10", "weightedForm10", "ten"];
+  const names: readonly EvidenceComponentKind[] = key === "five" ? ["form5"] : ["form10"];
   const component = names.map((name) => data.components?.[name]).find(Boolean);
   return { value: component?.value, sampleSize: component?.sampleSize ?? 0, requestedSampleSize: key === "five" ? 5 : 10, limitationReason: component?.limitation };
 }
@@ -54,7 +96,12 @@ export default function TeamEvidencePage() {
     const controller = new AbortController();
     setData(null); setFailed(false);
     void fetch(`/internal-api/teams/${encodeURIComponent(params.teamId)}/evidence?asOf=${encodeURIComponent(asOf)}`, { cache: "no-store", signal: controller.signal })
-      .then(async (response) => { if (!response.ok) throw new Error("evidence unavailable"); return response.json() as Promise<Evidence>; })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("evidence unavailable");
+        const body = await response.json() as Evidence;
+        if (body.resolvedAsOfUtc && body.components) parseEvidenceProjection(body);
+        return body;
+      })
       .then(setData, (error: unknown) => { if ((error as { name?: string }).name !== "AbortError") setFailed(true); });
     return () => controller.abort();
   }, [asOf, params.teamId]);
@@ -74,7 +121,7 @@ export default function TeamEvidencePage() {
     {invalid && <p role="alert">This cutoff could not be used. Enter a valid supported date and time.</p>}
     <EvidenceStateNotice state={data.state} freshness={data.freshness} limitationReason={data.limitationReason}/>
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}><SummaryCard label="5" summary={five}/><SummaryCard label="10" summary={ten}/></div>
-    <section aria-labelledby="components-heading"><h2 id="components-heading">Evidence components</h2>{Object.entries(data.components ?? {}).map(([component, value]) => <details key={component} style={panel}><summary>{component}</summary><p>{value.value === null || value.value === undefined ? "Not available" : String(value.value)}</p><p>Sample: {value.sampleSize ?? 0}</p>{value.limitation && <p>{value.limitation}</p>}</details>)}</section>
+    <section aria-labelledby="components-heading"><h2 id="components-heading">Evidence components</h2>{Object.values(data.components ?? {}).map((component) => <details key={component.kind} style={panel}><summary>{componentLabel(component)}</summary><dl>{renderEvidenceComponentFields(component).map((field) => <div key={field.label}><dt>{field.label}</dt><dd>{field.label}: {field.value}</dd></div>)}</dl><p>Sample: {component.sampleSize}</p>{component.limitation && <p>{component.limitation}</p>}</details>)}</section>
     <section aria-labelledby="trace-heading"><h2 id="trace-heading">Eligible match trace</h2>{trace.length === 0 ? <p>No matches qualify under the effective-time and capture-time cutoff.</p> : <div role="region" aria-label="Eligible matches" style={{ overflowX: "auto" }}><table><caption>Matches included in the historical evidence build</caption><thead><tr><th>Match</th><th>Venue</th><th>Result</th><th>Score</th><th>Effective time</th><th>Observed time</th><th>Source</th><th>Components</th></tr></thead><tbody>{trace.map((row) => <tr key={`${row.fixtureId}-${row.observedAt ?? ""}`}><td>{row.fixtureId}</td><td>{row.venue ?? "Unknown"}</td><td>{row.result ?? "Unknown"}</td><td>{row.score ?? "Unknown"}</td><td>{row.effectiveAt ? <time dateTime={row.effectiveAt}>{row.effectiveAt}</time> : "Unknown"}</td><td>{row.observedAt ? <time dateTime={row.observedAt}>{row.observedAt}</time> : "Unknown"}</td><td>{row.source ?? "Unknown"}</td><td>{row.components?.join(", ") ?? "Unknown"}</td></tr>)}</tbody></table></div>}</section>
     {!data.receipt && <p role="alert">Provenance is unavailable; this evidence cannot be reproduced.</p>}
     <details style={panel}><summary>Reproduction receipt{data.receipt?.configVersion ? ` — ${data.receipt.configVersion}` : ""}{data.receipt ? ` — ${(data.receipt.inputIds ?? data.receipt.inputs ?? []).length} input${(data.receipt.inputIds ?? data.receipt.inputs ?? []).length === 1 ? "" : "s"}` : ""}</summary>{data.receipt ? <pre aria-label="Reproduction receipt data" style={{ overflow: "auto", maxWidth: "100%" }}>{JSON.stringify(data.receipt, null, 2)}</pre> : <p>No receipt is available for this cutoff.</p>}</details>

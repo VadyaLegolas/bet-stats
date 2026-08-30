@@ -10,9 +10,11 @@ import { HealthController } from "./modules/health/health.controller.js";
 import { OperatorGuard } from "./modules/reconciliation/operator.guard.js";
 import { ReconciliationController } from "./modules/reconciliation/reconciliation.controller.js";
 import { ReconciliationService } from "./modules/reconciliation/reconciliation.service.js";
+import { ReplayController } from "./modules/replay/replay.controller.js";
+import { ReplayService } from "./modules/replay/replay.service.js";
 
 @Module({
-  controllers: [EligibilityController, EvidenceController, FixturesController, HealthController, ReconciliationController],
-  providers: [EligibilityGuard, EvidenceService, FixturesService, OperatorGuard, ReconciliationService],
+  controllers: [EligibilityController, EvidenceController, FixturesController, HealthController, ReconciliationController, ReplayController],
+  providers: [EligibilityGuard, EvidenceService, FixturesService, OperatorGuard, ReconciliationService, ReplayService],
 })
 export class AppModule {}

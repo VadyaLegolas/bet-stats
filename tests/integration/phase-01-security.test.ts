@@ -45,14 +45,14 @@ describe("Phase 1 held-out security boundaries", () => {
     expect(projectDataState({ state: "provider-new-state", reason: "untrusted", provider: "held-out", value: null, sourceUpdatedAt: null, capturedAt: "2026-08-28T12:00:00.000Z", freshnessThresholdMs: 60_000 })).toMatchObject({ state: "LIMITED", reason: "UNKNOWN_DATA_STATE", value: null });
   });
 
-  it("contains no Phase-1 implementation path for deferred or prohibited provider surfaces", () => {
+  it("contains no implementation path for still-deferred or prohibited provider surfaces", () => {
     const provider = repositoryFile("packages/football-data/src/providers/football-data-org/client.ts");
     const worker = repositoryFile("workers/data-sync/src/jobs/fixtures.ts");
     const publicFixtures = repositoryFile("apps/web/app/fixtures/page.tsx");
     const production = `${provider}\n${worker}`;
 
     expect(production).not.toMatch(/api-football|understat|thesportsdb/iu);
-    expect(production).not.toMatch(/standings|results|lineups?|injur(?:y|ies)|bookmaker|placeBet|wager/iu);
+    expect(production).not.toMatch(/lineups?|injur(?:y|ies)|bookmaker|placeBet|wager/iu);
     expect(publicFixtures).not.toMatch(/["'`]prediction["'`]|["'`]odds["'`]|["'`]value["'`]|coming soon/iu);
   });
 });

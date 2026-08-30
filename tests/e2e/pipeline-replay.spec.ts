@@ -65,7 +65,7 @@ test("serializes browser-local replay windows as exact UTC instants", async ({ p
   await expect(page.getByText(expected.to, { exact: true })).toBeVisible();
 });
 
-test("blocks invalid local time without sending a preview request", async ({ page }) => {
+test("blocks DST-ambiguous local time without sending a preview request", async ({ page }) => {
   let previewRequests = 0;
   await page.unroute("**/internal-api/pipeline/replay**");
   await page.route("**/internal-api/pipeline/replay**", async (route) => {
@@ -74,7 +74,7 @@ test("blocks invalid local time without sending a preview request", async ({ pag
     return route.fulfill({ status: 500, json: {} });
   });
   await page.goto("/internal/pipeline/replay", { timeout: 10_000 });
-  await page.getByLabel("From (local time)").fill("2026-02-30T12:00");
+  await page.getByLabel("From (local time)").fill("2026-10-25T02:30");
   await page.getByRole("button", { name: "Preview replay" }).click();
   await expect(page.getByRole("alert")).toContainText(/could not be interpreted/i);
   expect(previewRequests).toBe(0);

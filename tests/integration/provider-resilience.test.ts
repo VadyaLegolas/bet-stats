@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { runGatedIngestion } from "../../workers/data-sync/src/ingestion/runner.js";
+
 async function resiliencePolicy(): Promise<Record<string, unknown>> {
   try {
     return await import(/* @vite-ignore */ new URL("../../workers/data-sync/src/resilience/provider-policy.js", import.meta.url).href);
@@ -36,5 +38,54 @@ describe("provider resilience policy", () => {
   it("D-11 treats cache identity as an I/O optimization, never as durable historical truth", async () => {
     const { evaluateProviderCache } = await resiliencePolicy() as { evaluateProviderCache: (input: Record<string, unknown>) => Record<string, unknown> };
     expect(evaluateProviderCache({ provider: "football-data.org", capturedAt: "2026-08-29T10:00:00.000Z", expiresAt: "2026-08-29T10:05:00.000Z", payloadHash: "abc", now: "2026-08-29T10:01:00.000Z" })).toMatchObject({ hit: true, requiresReservation: false, authoritative: false });
+  });
+
+  it("allows exactly one concurrent HALF_OPEN probe before reservation and provider I/O", async () => {
+    let owned = false;
+    const registry = {
+      state: vi.fn(() => "HALF_OPEN" as const),
+      acquireProbe: vi.fn(() => owned ? false : (owned = true)),
+      releaseProbe: vi.fn(() => { owned = false; }),
+    };
+    let releaseProvider!: () => void;
+    const providerBlocked = new Promise<void>((resolve) => { releaseProvider = resolve; });
+    const reserve = vi.fn(async () => ({ reserved: true }));
+    const providerFactory = vi.fn(() => ({}));
+    const callProvider = vi.fn(async () => { await providerBlocked; return "ok"; });
+    const input = {
+      provider: "football-data.org", endpoint: "RESULTS", capability: "SUPPORTED" as const,
+      circuit: "HALF_OPEN" as const, circuitRegistry: registry, lane: "critical" as const,
+      allowance: 10, resetTimezone: "UTC", jobKey: "probe", reserve, providerFactory, callProvider,
+    };
+
+    const owner = runGatedIngestion(input);
+    await vi.waitFor(() => expect(callProvider).toHaveBeenCalledOnce());
+    const deferred = await runGatedIngestion({ ...input, jobKey: "deferred" });
+    expect(deferred).toEqual({ status: "denied", reason: "CIRCUIT_OPEN" });
+    expect(reserve).toHaveBeenCalledTimes(1);
+    expect(providerFactory).toHaveBeenCalledTimes(1);
+    releaseProvider();
+    await expect(owner).resolves.toMatchObject({ status: "completed" });
+    expect(registry.releaseProbe).toHaveBeenCalledOnce();
+  });
+
+  it.each(["success", "classified failure", "thrown error"])("releases HALF_OPEN ownership after %s", async (outcome) => {
+    const registry = {
+      state: () => "HALF_OPEN" as const,
+      acquireProbe: vi.fn(() => true),
+      releaseProbe: vi.fn(),
+    };
+    const reserve = outcome === "classified failure"
+      ? vi.fn(async () => ({ reserved: false, reason: "ALLOWANCE_EXHAUSTED" as const }))
+      : vi.fn(async () => ({ reserved: true }));
+    const execution = runGatedIngestion({
+      provider: "football-data.org", endpoint: "RESULTS", capability: "SUPPORTED", circuit: "HALF_OPEN",
+      circuitRegistry: registry, lane: "critical", allowance: 10, resetTimezone: "UTC", jobKey: outcome,
+      reserve, providerFactory: () => ({}),
+      callProvider: async () => { if (outcome === "thrown error") throw new Error("provider failed"); return "ok"; },
+    });
+    if (outcome === "thrown error") await expect(execution).rejects.toThrow("provider failed");
+    else await execution;
+    expect(registry.releaseProbe).toHaveBeenCalledOnce();
   });
 });

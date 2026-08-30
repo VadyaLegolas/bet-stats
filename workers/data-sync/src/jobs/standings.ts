@@ -77,11 +77,24 @@ async function persistStandingSnapshot(
     const observationRows = await transaction.$queryRawUnsafe<Array<{ id: string }>>(
       `INSERT INTO "SourceObservation" (id, provider, "endpointFamily", "externalIdentity", "observedAt", "sourceUpdatedAt", "payloadHash", "rawPayload", "payloadBytes")
        VALUES ($1, $2, 'STANDINGS', $3, $4::timestamptz, $5::timestamptz, $6, $7::jsonb, $8)
-       ON CONFLICT (provider, "endpointFamily", "payloadHash") DO UPDATE SET "payloadHash" = EXCLUDED."payloadHash" RETURNING id`,
+       ON CONFLICT (provider, "endpointFamily", "payloadHash") DO NOTHING RETURNING id`,
       randomUUID(), snapshot.provider, snapshot.competitionExternalId, snapshot.capturedAt, snapshot.sourceUpdatedAt,
       payloadHash, rawPayload, Buffer.byteLength(rawPayload),
     );
-    const observationId = observationRows[0]?.id;
+    const reused = observationRows.length === 0
+      ? await transaction.$queryRawUnsafe<Array<{ id: string; provider: string; endpointFamily: string; payloadHash: string }>>(
+          `SELECT id, provider, "endpointFamily", "payloadHash" FROM "SourceObservation"
+           WHERE provider = $1 AND "endpointFamily" = 'STANDINGS' AND "payloadHash" = $2`,
+          snapshot.provider,
+          payloadHash,
+        )
+      : [];
+    const reusedObservation = reused[0];
+    if (reusedObservation &&
+        (reusedObservation.provider !== snapshot.provider || reusedObservation.endpointFamily !== "STANDINGS" || reusedObservation.payloadHash !== payloadHash)) {
+      throw new Error("Standing observation identity mismatch");
+    }
+    const observationId = observationRows[0]?.id ?? reusedObservation?.id;
     if (!observationId) throw new Error("Standing observation was not persisted");
     const existing = await transaction.$queryRawUnsafe<Array<{ id: string }>>(
       `SELECT id FROM "StandingSnapshot" WHERE "leagueId" = $1 AND "seasonId" = $2 AND "observationId" = $3`,

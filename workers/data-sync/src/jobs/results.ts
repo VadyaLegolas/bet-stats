@@ -88,7 +88,7 @@ async function persistResults(database: PrismaClient, results: readonly Normaliz
       const observations = await transaction.$queryRawUnsafe<Array<{ id: string }>>(
         `INSERT INTO "SourceObservation" (id, provider, "endpointFamily", "externalIdentity", "requestedFrom", "requestedTo", "returnedFrom", "returnedTo", "observedAt", "sourceUpdatedAt", "payloadHash", "rawPayload", "payloadBytes")
          VALUES ($1, $2, 'RESULTS', $3, $4::date, $5::date, $6::timestamptz, $7::timestamptz, $8::timestamptz, $9::timestamptz, $10, $11::jsonb, $12)
-         ON CONFLICT (provider, "endpointFamily", "payloadHash") DO UPDATE SET "payloadHash" = EXCLUDED."payloadHash" RETURNING id`,
+         ON CONFLICT (provider, "endpointFamily", "payloadHash") DO NOTHING RETURNING id`,
         observationId,
         result.provider,
         result.externalId,
@@ -102,7 +102,20 @@ async function persistResults(database: PrismaClient, results: readonly Normaliz
         rawPayload,
         Buffer.byteLength(rawPayload),
       );
-      const durableObservationId = observations[0]?.id;
+      const reused = observations.length === 0
+        ? await transaction.$queryRawUnsafe<Array<{ id: string; provider: string; endpointFamily: string; payloadHash: string }>>(
+            `SELECT id, provider, "endpointFamily", "payloadHash" FROM "SourceObservation"
+             WHERE provider = $1 AND "endpointFamily" = 'RESULTS' AND "payloadHash" = $2`,
+            result.provider,
+            payloadHash,
+          )
+        : [];
+      const reusedObservation = reused[0];
+      if (reusedObservation &&
+          (reusedObservation.provider !== result.provider || reusedObservation.endpointFamily !== "RESULTS" || reusedObservation.payloadHash !== payloadHash)) {
+        throw new Error("Result observation identity mismatch");
+      }
+      const durableObservationId = observations[0]?.id ?? reusedObservation?.id;
       if (!durableObservationId) throw new Error("Result observation was not persisted");
       const existing = await transaction.$queryRawUnsafe<Array<{ observationId: string; revision: number; id: string }>>(
         `SELECT "observationId", revision, id FROM "ResultVersion" WHERE "fixtureId" = $1 ORDER BY revision DESC LIMIT 1`,

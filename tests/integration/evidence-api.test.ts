@@ -38,4 +38,31 @@ describe("cutoff-aware evidence API", () => {
     const { resolveTeamEvidence } = await phase2Evidence();
     await expect(resolveTeamEvidence({ teamId: "team", asOf: receipt.requestedAsOf }, { findPublished: async () => published({ id: "future", cutoff: "2026-08-29T10:00:00.001Z" }) })).rejects.toMatchObject({ code: "POST_CUTOFF_BUILD" });
   });
+
+  it.each([
+    ["missing receipt input", [], receipt.inputs],
+    ["missing observedAt", [{ fixtureId: "fixture-1", effectiveAt: receipt.inputs[0]!.effectiveAt }], [{ ...receipt.inputs[0], observedAt: "" }]],
+    ["missing effectiveAt", [{ fixtureId: "fixture-1", observedAt: receipt.inputs[0]!.observedAt }], [{ ...receipt.inputs[0], effectiveAt: "" }]],
+    ["missing payload identity", receipt.inputs, [{ ...receipt.inputs[0], payloadHash: "" }]],
+    ["mismatched source", [{ fixtureId: "other", effectiveAt: receipt.inputs[0]!.effectiveAt, observedAt: receipt.inputs[0]!.observedAt }], receipt.inputs],
+  ])("fails only the affected component closed for %s", async (_case, componentTimes, receiptInputs) => {
+    const { resolveTeamEvidence } = await phase2Evidence();
+    const result = await resolveTeamEvidence(
+      { teamId: "team", asOf: receipt.requestedAsOf },
+      { findPublished: async () => published({
+        components: [
+          { component: "receipt", value: { ...receipt, inputs: receiptInputs }, sampleSize: 1, limitation: null, sourceTimes: receiptInputs },
+          { component: "form5", value: 2.1, sampleSize: 1, limitation: null, sourceTimes: componentTimes },
+          { component: "elo", value: 1512, sampleSize: 1, limitation: null, sourceTimes: receipt.inputs },
+        ],
+      }) },
+    );
+    expect(result).toMatchObject({
+      state: "LIMITED",
+      components: {
+        form5: { value: null, limitation: "MISSING_TIMESTAMP", sourceRefs: [] },
+        elo: { value: 1512, limitation: null },
+      },
+    });
+  });
 });

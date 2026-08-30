@@ -36,6 +36,50 @@ async function stubReplay(page: Page) {
   });
 }
 
+test("serializes browser-local replay windows as exact UTC instants", async ({ page }) => {
+  const previewBodies: Record<string, unknown>[] = [];
+  await page.unroute("**/internal-api/pipeline/replay**");
+  await page.route("**/internal-api/pipeline/replay**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() === "GET") return route.fulfill({ json: { circuit: "CLOSED" } });
+    if (url.pathname.endsWith("/preview")) {
+      previewBodies.push(request.postDataJSON() as Record<string, unknown>);
+      return route.fulfill({ json: { previewId: "utc-preview", previewVersion: "utc-v1", units: 1, lane: "standard", input: request.postDataJSON() } });
+    }
+    return route.fulfill({ json: { replayPlanId: "utc-plan", status: "QUEUED" } });
+  });
+  await page.goto("/internal/pipeline/replay", { timeout: 10_000 });
+  await page.getByLabel("From (local time)").fill("2026-08-01T12:34");
+  await page.getByLabel("To (local time)").fill("2026-08-01T13:45");
+  const expected = await page.evaluate(() => ({
+    from: new Date(2026, 7, 1, 12, 34).toISOString(),
+    to: new Date(2026, 7, 1, 13, 45).toISOString(),
+  }));
+  await page.getByRole("button", { name: "Preview replay" }).click();
+  await expect(page.getByText(/1 logical units/)).toBeVisible();
+  expect(previewBodies).toHaveLength(1);
+  expect(previewBodies[0]).toMatchObject(expected);
+  expect(String(previewBodies[0]?.from)).toMatch(/:\d{2}\.\d{3}Z$/);
+  await expect(page.getByText(expected.from, { exact: true })).toBeVisible();
+  await expect(page.getByText(expected.to, { exact: true })).toBeVisible();
+});
+
+test("blocks invalid local time without sending a preview request", async ({ page }) => {
+  let previewRequests = 0;
+  await page.unroute("**/internal-api/pipeline/replay**");
+  await page.route("**/internal-api/pipeline/replay**", async (route) => {
+    if (route.request().method() === "GET") return route.fulfill({ json: {} });
+    previewRequests += 1;
+    return route.fulfill({ status: 500, json: {} });
+  });
+  await page.goto("/internal/pipeline/replay", { timeout: 10_000 });
+  await page.getByLabel("From (local time)").fill("2026-02-30T12:00");
+  await page.getByRole("button", { name: "Preview replay" }).click();
+  await expect(page.getByRole("alert")).toContainText(/could not be interpreted/i);
+  expect(previewRequests).toBe(0);
+});
+
 test.beforeEach(async ({ page }) => {
   page.setDefaultTimeout(2_000);
   await stubReplay(page);

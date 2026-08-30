@@ -5,6 +5,7 @@ import { reservePriorityRequest } from "@bet-stats/domain";
 import type { NormalizedStandingSnapshot, StandingsProvider, StandingsRequestCoverage } from "@bet-stats/football-data";
 
 import { runGatedIngestion, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
+import type { ReplayJobData } from "../queues/index.js";
 
 export interface StandingsSyncInput {
   provider: string;
@@ -62,6 +63,13 @@ export function runStandingsSync(input: StandingsSyncInput): Promise<GatedIngest
     callProvider: (provider) => provider.fetchCompetitionStandings(input.coverage),
     persist,
   });
+}
+
+export async function runReplayStandingsJob(input: ReplayJobData, dependencies: { database: PrismaClient; providerFactory: StandingsSyncInput["providerFactory"]; allowance?: number }): Promise<void> {
+  const refs = await dependencies.database.$queryRawUnsafe<Array<{ leagueId: string; seasonId: string }>>(`SELECT l."leagueId",s."seasonId" FROM "LeagueExternalRef" l JOIN "SeasonExternalRef" s ON s.provider=l.provider JOIN "Season" season ON season.id=s."seasonId" AND season."leagueId"=l."leagueId" WHERE l.provider=$1 AND l."externalId"=$2 AND s."externalId"=$3 LIMIT 1`, input.input.provider, input.input.competitionId, input.input.seasonId);
+  const ref = refs[0]; if (!ref) throw Object.assign(new Error("IDENTITY_UNRESOLVED"), { code: "IDENTITY_UNRESOLVED" });
+  const result = await runStandingsSync({ provider: input.input.provider, endpoint: "STANDINGS", capability: "SUPPORTED", circuit: "CLOSED", allowance: dependencies.allowance ?? 10, criticalHeadroom: 0, jobKey: input.logicalId, coverage: { competitionCode: input.input.competitionId as StandingsRequestCoverage["competitionCode"] }, providerFactory: dependencies.providerFactory, database: dependencies.database, leagueId: ref.leagueId, seasonId: ref.seasonId });
+  if (result.status !== "completed") throw Object.assign(new Error(result.status), { code: result.status.toUpperCase() });
 }
 
 async function persistStandingSnapshot(

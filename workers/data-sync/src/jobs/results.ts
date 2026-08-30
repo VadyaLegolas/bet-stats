@@ -5,6 +5,7 @@ import { reserveProviderRequest } from "@bet-stats/domain";
 import type { NormalizedResult, RequestedDateWindow, ResultProvider } from "@bet-stats/football-data";
 
 import { runGatedIngestion, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
+import type { ReplayJobData } from "../queues/index.js";
 
 interface ResultProviderCompatibility extends Partial<ResultProvider> {
   fetchResults?: () => Promise<readonly NormalizedResult[] | { data: readonly NormalizedResult[]; quota?: unknown }>;
@@ -65,6 +66,11 @@ export function runResultSyncJob(input: ResultSyncJobInput): Promise<GatedIngest
     observeQuota: input.observeQuota,
     persist: input.database ? async (results) => persistResults(input.database!, results) : undefined,
   });
+}
+
+export async function runReplayResultJob(input: ReplayJobData, dependencies: { database: PrismaClient; providerFactory: ResultSyncJobInput["providerFactory"]; allowance?: number }): Promise<void> {
+  const result = await runResultSyncJob({ provider: input.input.provider, endpoint: "RESULTS", capability: "SUPPORTED", circuit: "CLOSED", allowance: dependencies.allowance ?? 10, jobKey: input.logicalId, providerFactory: dependencies.providerFactory, database: dependencies.database, alreadyAuthorized: true, window: { competitionCode: input.input.competitionId as RequestedDateWindow["competitionCode"], dateFrom: input.unit.from.slice(0, 10), dateTo: input.unit.to.slice(0, 10) } });
+  if (result.status !== "completed") throw Object.assign(new Error(result.status), { code: result.status.toUpperCase() });
 }
 
 async function persistResults(database: PrismaClient, results: readonly NormalizedResult[]): Promise<void> {

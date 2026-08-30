@@ -32,6 +32,16 @@ async function stubEvidence(page: Page, overrides: Record<string, unknown> = {})
           five: { value: 1.8, sampleSize: 3, requestedSampleSize: 5, sourceUpdatedAt: null, limitationReason: "Limited sample: 3 eligible matches" },
           ten: { value: null, sampleSize: 0, requestedSampleSize: 10, sourceUpdatedAt: null, limitationReason: "No eligible matches with complete provenance" },
         },
+        components: {
+          form5: { kind: "form5", value: 1.8, unit: "points-per-match", sampleSize: 3, limitation: "LIMITED_HISTORY", sourceRefs: [] },
+          form10: { kind: "form10", value: null, unit: "points-per-match", sampleSize: 0, limitation: "NO_ELIGIBLE_HISTORY", sourceRefs: [] },
+          elo: { kind: "elo", value: 1512.5, unit: "rating-points", sampleSize: 3, limitation: null, sourceRefs: [] },
+          homeStrength: { kind: "homeStrength", value: 2.25, unit: "points-per-match", sampleSize: 2, limitation: null, sourceRefs: [] },
+          awayStrength: { kind: "awayStrength", value: 1, unit: "points-per-match", sampleSize: 1, limitation: "LIMITED_HISTORY", sourceRefs: [] },
+          goalRates: { kind: "goalRates", value: { for: 1.75, against: 0.5 }, unit: "goals-per-match", sampleSize: 3, limitation: null, sourceRefs: [] },
+          restDays: { kind: "restDays", value: 6.5, unit: "days", sampleSize: 1, limitation: null, sourceRefs: [] },
+          h2h: { kind: "h2h", value: { pointsPerMatch: 2, weight: 0.025 }, unit: "points-per-match", sampleSize: 5, limitation: null, sourceRefs: [] },
+        },
         trace: [{ fixtureId: "past-1", effectiveAt: "2026-08-20T18:00:00.000Z", observedAt: "2026-08-20T20:00:00.000Z" }],
         receipt: { configVersion: "form-v1", buildId: "build-1", inputIds: ["past-1"] },
         ...overrides,
@@ -108,6 +118,18 @@ test.describe("fixture-to-cutoff team evidence contract", () => {
       await expect(page.getByText("What the system could know at the selected time.")).toBeVisible();
       await expect(page.getByText(/forecast probability|odds|value bet|recommendation|confidence score|guaranteed|risk-free|bet now/i)).toHaveCount(0);
     });
+  });
+
+  test("renders every shared component kind as named values with units", async ({ page }) => {
+    await stubEvidence(page);
+    await page.goto(evidenceUrl);
+    await expect(page.getByText("Goals for: 1.75 goals/match", { exact: true })).toBeVisible();
+    await expect(page.getByText("Goals against: 0.50 goals/match", { exact: true })).toBeVisible();
+    await expect(page.getByText("Elo rating: 1512.5 rating points", { exact: true })).toBeVisible();
+    await expect(page.getByText("Rest: 6.50 days", { exact: true })).toBeVisible();
+    await expect(page.getByText("H2H points: 2.00 points/match", { exact: true })).toBeVisible();
+    await expect(page.getByText("H2H weight: 0.025", { exact: true })).toBeVisible();
+    await expect(page.getByText("[object Object]", { exact: true })).toHaveCount(0);
   });
 
   test("has no serious or critical accessibility violations", async ({ page }) => {

@@ -3,7 +3,9 @@ import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { parseEvidenceProjection } from "@bet-stats/domain";
 import { EvidenceService } from "../../apps/api/src/modules/evidence/evidence.service.js";
+import { renderEvidenceComponentFields } from "../../apps/web/app/teams/[teamId]/evidence/page.js";
 import {
   createPrismaEvidenceRebuildDatabase,
   runEvidenceRebuild,
@@ -66,8 +68,13 @@ describe("real PostgreSQL evidence publication boundary", () => {
     process.env.DATABASE_URL = databaseUrl;
     const service = new EvidenceService();
     const first = await service.get("home", "2026-08-29T12:00:00.000Z");
+    const sharedDto = parseEvidenceProjection(first);
     expect(first).toMatchObject({ state: "LIMITED", resolvedAsOfUtc: "2026-08-29T12:00:00.000Z", receipt: { configVersion: "evidence-v1", inputs: [{ fixtureId: "fixture", payloadHash: "hash-early" }] } });
     expect(first.components.form5).toMatchObject({ value: 3, sampleSize: 1 });
+    expect(renderEvidenceComponentFields(sharedDto.components.goalRates!)).toEqual([
+      { label: "Goals for", value: "2.00 goals/match" },
+      { label: "Goals against", value: "1.00 goals/match" },
+    ]);
 
     await prisma.sourceObservation.create({ data: { id: "obs-late", provider: "football-data.org", endpointFamily: "RESULTS", externalIdentity: "fixture", observedAt: new Date("2026-08-30T10:00:00.000Z"), payloadHash: "hash-late", rawPayload: { score: "1-1" }, payloadBytes: 15 } });
     await prisma.resultVersion.create({ data: { id: "result-late", fixtureId: "fixture", observationId: "obs-late", effectiveAt: new Date("2026-08-29T09:00:00.000Z"), observedAt: new Date("2026-08-30T10:00:00.000Z"), homeGoals: 1, awayGoals: 1, status: "FINISHED", revision: 2, supersedesResultVersionId: "result-early" } });

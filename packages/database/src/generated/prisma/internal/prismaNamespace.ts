@@ -408,6 +408,7 @@ export const ModelName = {
   StandingSnapshot: 'StandingSnapshot',
   StandingSnapshotRow: 'StandingSnapshotRow',
   ReplayPlan: 'ReplayPlan',
+  ReplayPreview: 'ReplayPreview',
   SyncRun: 'SyncRun',
   SyncAttempt: 'SyncAttempt',
   ProviderCircuitState: 'ProviderCircuitState',
@@ -438,7 +439,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "syncRun" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "resultVersion" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "resultVersion" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1253,6 +1254,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ReplayPlanCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ReplayPlanCountAggregateOutputType> | number
+        }
+      }
+    }
+    ReplayPreview: {
+      payload: Prisma.$ReplayPreviewPayload<ExtArgs>
+      fields: Prisma.ReplayPreviewFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ReplayPreviewFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayPreviewPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ReplayPreviewFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayPreviewPayload>
+        }
+        findFirst: {
+          args: Prisma.ReplayPreviewFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayPreviewPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ReplayPreviewFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayPreviewPayload>
+        }
+        findMany: {
+          args: Prisma.ReplayPreviewFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayPreviewPayload>[]
+        }
+        create: {
+          args: Prisma.ReplayPreviewCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayPreviewPayload>
+        }
+        createMany: {
+          args: Prisma.ReplayPreviewCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ReplayPreviewCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayPreviewPayload>[]
+        }
+        delete: {
+          args: Prisma.ReplayPreviewDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayPreviewPayload>
+        }
+        update: {
+          args: Prisma.ReplayPreviewUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayPreviewPayload>
+        }
+        deleteMany: {
+          args: Prisma.ReplayPreviewDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ReplayPreviewUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ReplayPreviewUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayPreviewPayload>[]
+        }
+        upsert: {
+          args: Prisma.ReplayPreviewUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayPreviewPayload>
+        }
+        aggregate: {
+          args: Prisma.ReplayPreviewAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateReplayPreview>
+        }
+        groupBy: {
+          args: Prisma.ReplayPreviewGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ReplayPreviewGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ReplayPreviewCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ReplayPreviewCountAggregateOutputType> | number
         }
       }
     }
@@ -2558,10 +2633,29 @@ export const ReplayPlanScalarFieldEnum = {
   previewVersion: 'previewVersion',
   reason: 'reason',
   actor: 'actor',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  previewId: 'previewId'
 } as const
 
 export type ReplayPlanScalarFieldEnum = (typeof ReplayPlanScalarFieldEnum)[keyof typeof ReplayPlanScalarFieldEnum]
+
+
+export const ReplayPreviewScalarFieldEnum = {
+  id: 'id',
+  logicalKey: 'logicalKey',
+  version: 'version',
+  previewVersion: 'previewVersion',
+  normalizedInput: 'normalizedInput',
+  unitManifest: 'unitManifest',
+  impact: 'impact',
+  providerPolicyFingerprint: 'providerPolicyFingerprint',
+  expiresAt: 'expiresAt',
+  consumedAt: 'consumedAt',
+  actor: 'actor',
+  createdAt: 'createdAt'
+} as const
+
+export type ReplayPreviewScalarFieldEnum = (typeof ReplayPreviewScalarFieldEnum)[keyof typeof ReplayPreviewScalarFieldEnum]
 
 
 export const SyncRunScalarFieldEnum = {
@@ -3194,6 +3288,7 @@ export type GlobalOmitConfig = {
   standingSnapshot?: Prisma.StandingSnapshotOmit
   standingSnapshotRow?: Prisma.StandingSnapshotRowOmit
   replayPlan?: Prisma.ReplayPlanOmit
+  replayPreview?: Prisma.ReplayPreviewOmit
   syncRun?: Prisma.SyncRunOmit
   syncAttempt?: Prisma.SyncAttemptOmit
   providerCircuitState?: Prisma.ProviderCircuitStateOmit

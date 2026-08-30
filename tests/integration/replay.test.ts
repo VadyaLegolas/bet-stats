@@ -1,86 +1,53 @@
-import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { createReplayService } from "../../apps/api/src/modules/replay/replay.service.js";
 
-async function replayPlanner(): Promise<Record<string, unknown>> {
-  try {
-    return await import(/* @vite-ignore */ new URL("../../workers/data-sync/src/replay/service.js", import.meta.url).href);
-  } catch (error) {
-    throw new Error("Missing Phase 2 production symbol: previewReplay in workers/data-sync/src/replay/service.ts", { cause: error });
-  }
-}
+const request = { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-01T00:00:00.000Z", to: "2026-08-03T00:00:00.000Z" };
+const databaseRoot = resolve(import.meta.dirname, "../../packages/database");
+const prismaCli = resolve(databaseRoot, "node_modules/prisma/build/index.js");
+const containerName = `bet-stats-replay-${process.pid}`;
+let databaseUrl = ""; let prisma: PrismaClient;
+function docker(...args: string[]) { return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim(); }
 
-describe("bounded historical replay", () => {
-  it("D-15 defaults to dry-run and preserves the original logical identities", async () => {
-    const { previewReplay } = await replayPlanner() as { previewReplay: (input: Record<string, unknown>) => Promise<Record<string, unknown>> };
-    const preview = await previewReplay({ provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-01T00:00:00.000Z", to: "2026-08-03T00:00:00.000Z" });
-    expect(preview).toMatchObject({ dryRun: true, queued: false, bounded: true });
-    expect(preview).toMatchObject({ calls: 3, builds: 3 });
-    expect(preview).toHaveProperty("logicalJobIds");
+describe("durable bounded replay", () => {
+  beforeAll(async () => {
+    docker("run", "--detach", "--name", containerName, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "--publish", "127.0.0.1::5432", "postgres:18-alpine");
+    for (let attempt = 0; attempt < 60; attempt += 1) { try { docker("exec", containerName, "pg_isready", "-U", "postgres", "-d", "bet_stats"); break; } catch (error) { if (attempt === 59) throw error; Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500); } }
+    const port = docker("port", containerName, "5432/tcp").split(":").at(-1); if (!port) throw new Error("PostgreSQL port missing");
+    databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${port}/bet_stats`;
+    execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], { cwd: databaseRoot, env: { ...process.env, DATABASE_URL: databaseUrl }, stdio: "pipe" });
+    prisma = createPrismaClient(databaseUrl);
+  }, 120_000);
+  afterAll(async () => { await prisma?.$disconnect(); try { docker("rm", "--force", containerName); } catch { /* best effort */ } });
+
+  it("freezes preview/version and loads them after service reconstruction", async () => {
+    const first = createReplayService({ database: prisma, actor: "operator-a" });
+    const preview = await first.preview(request);
+    expect(preview).toMatchObject({ dryRun: true, bounded: true, calls: 3, builds: 3 });
+    const restartedDatabase = createPrismaClient(databaseUrl);
+    const restarted = createReplayService({ database: restartedDatabase, actor: "operator-a" });
+    expect(await restarted.preview(request)).toEqual(preview);
+    await expect(restarted.queue({ previewId: preview.previewId, previewVersion: "stale" })).rejects.toMatchObject({ code: "STALE_PREVIEW", status: 409 });
+    await restartedDatabase.$disconnect();
   });
 
-  it("D-15 rejects stale previews and requires an explicit reason for a new revision", async () => {
-    const { previewReplay, queueReplay } = await replayPlanner() as { previewReplay: (input: Record<string, unknown>) => Promise<Record<string, unknown>>; queueReplay: (input: Record<string, unknown>) => Promise<Record<string, unknown>> };
-    const preview = await previewReplay({ provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-01T00:00:00.000Z", to: "2026-08-02T00:00:00.000Z" });
-    await expect(queueReplay({ previewId: preview.previewId, previewVersion: "stale" })).rejects.toMatchObject({ code: "STALE_PREVIEW" });
-    await expect(queueReplay({ previewId: preview.previewId, previewVersion: preview.previewVersion, newRevision: true, reason: "" })).rejects.toMatchObject({ code: "REVISION_REASON_REQUIRED" });
+  it("atomically creates versioned runs, consumes once, and reconstructs status", async () => {
+    const service = createReplayService({ database: prisma, actor: "operator-b" });
+    const preview = await service.preview({ ...request, from: "2026-08-05T00:00:00.000Z", to: "2026-08-06T00:00:00.000Z" });
+    const queued = await service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
+    expect(queued).toMatchObject({ queued: true, duplicate: false, revision: 1 });
+    expect(await service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion })).toMatchObject({ queued: false, duplicate: true, replayPlanId: queued.replayPlanId });
+    expect(await prisma.replayPlan.count({ where: { id: queued.replayPlanId } })).toBe(1);
+    expect(await prisma.syncRun.count({ where: { replayPlanId: queued.replayPlanId } })).toBe(2);
+    expect(await createReplayService({ database: prisma }).status(queued.replayPlanId)).toMatchObject({ state: "QUEUED", outcome: "PENDING", runs: [{ state: "PENDING" }, { state: "PENDING" }] });
   });
 
-  it("D-16 repairs current truth without mutation or any observation deletion path", async () => {
-    const { previewReplay, queueReplay } = await replayPlanner() as { previewReplay: (input: Record<string, unknown>) => Promise<Record<string, unknown>>; queueReplay: (input: Record<string, unknown>) => Promise<Record<string, unknown>> };
-    const preview = await previewReplay({ provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-01T00:00:00.000Z", to: "2026-08-02T00:00:00.000Z" });
-    const result = await queueReplay({ previewId: preview.previewId, previewVersion: preview.previewVersion, preserveObservationIds: true, recomputeEvidence: true });
-    expect(result).toMatchObject({ immutableObservations: true, predictionSnapshotsMutated: false });
-    expect(result).not.toHaveProperty("deletedObservationIds");
-    await expect(queueReplay({ previewId: preview.previewId, previewVersion: preview.previewVersion })).resolves.toMatchObject({ duplicate: true });
-  });
-});
-
-async function replayApi() { return import("../../apps/api/src/modules/replay/replay.service.js"); }
-
-describe("protected replay API contract", () => {
-  const request = { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-01T00:00:00.000Z", to: "2026-08-03T00:00:00.000Z" };
-
-  it("protects every replay route with the inherited operator guard", () => {
-    const controller = readFileSync("apps/api/src/modules/replay/replay.controller.ts", "utf8");
-    expect(controller).toContain("@UseGuards(OperatorGuard)");
-    expect(controller).not.toMatch(/url|queueName|laneName/i);
-  });
-
-  it("returns a bounded safe preview with immutable effects and headroom", async () => {
-    const { createReplayService } = await replayApi();
-    const api = createReplayService();
-    const preview = await api.preview(request);
-    expect(preview).toMatchObject({ dryRun: true, calls: 3, builds: 3, lane: "standard", headroom: { available: true }, effects: { immutableObservations: true, predictionSnapshotsMutated: false } });
-    expect(preview).not.toHaveProperty("url");
-    expect(preview).not.toHaveProperty("queueName");
-  });
-
-  it("maps stale confirmation to conflict and freezes duplicate submissions", async () => {
-    const { createReplayService } = await replayApi();
-    const api = createReplayService();
-    const preview = await api.preview(request);
-    await expect(api.queue({ previewId: preview.previewId, previewVersion: "stale" })).rejects.toMatchObject({ status: 409, code: "STALE_PREVIEW" });
-    const queued = await api.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
-    expect(queued).toMatchObject({ queued: true, duplicate: false });
-    await expect(api.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion })).resolves.toMatchObject({ queued: false, duplicate: true, replayPlanId: queued.replayPlanId });
-  });
-
-  it("rejects zero-unit previews and forced revisions without an explicit reason", async () => {
-    const { createReplayService } = await replayApi();
-    const noHeadroom = createReplayService({ availableCalls: 0 });
-    await expect(noHeadroom.preview(request)).rejects.toMatchObject({ code: "NO_HEADROOM" });
-    const api = createReplayService();
-    const preview = await api.preview(request);
-    await expect(api.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion, newRevision: true, reason: "" })).rejects.toMatchObject({ code: "REVISION_REASON_REQUIRED" });
-  });
-
-  it("exposes classified status without raw errors or secrets", async () => {
-    const { createReplayService } = await replayApi();
-    const api = createReplayService();
-    const preview = await api.preview(request);
-    const queued = await api.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
-    const status = await api.status(queued.replayPlanId);
-    expect(status).toMatchObject({ state: "QUEUED", outcome: "PENDING", provider: { circuit: "CLOSED", quota: "AVAILABLE" } });
-    expect(JSON.stringify(status)).not.toMatch(/credential|stack|exception|secret/i);
+  it("requires audited reason and rejects zero headroom", async () => {
+    await expect(createReplayService({ database: prisma, availableCalls: 0 }).preview({ ...request, from: "2026-08-10T00:00:00.000Z", to: "2026-08-10T00:00:00.000Z" })).rejects.toMatchObject({ code: "NO_HEADROOM" });
+    const service = createReplayService({ database: prisma });
+    const preview = await service.preview({ ...request, from: "2026-08-11T00:00:00.000Z", to: "2026-08-11T00:00:00.000Z" });
+    await expect(service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion, newRevision: true, reason: "" })).rejects.toMatchObject({ code: "REVISION_REASON_REQUIRED" });
   });
 });

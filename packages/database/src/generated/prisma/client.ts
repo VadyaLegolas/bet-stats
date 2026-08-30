@@ -97,6 +97,11 @@ export type StandingSnapshotRow = Prisma.StandingSnapshotRowModel
  */
 export type ReplayPlan = Prisma.ReplayPlanModel
 /**
+ * Model ReplayPreview
+ * 
+ */
+export type ReplayPreview = Prisma.ReplayPreviewModel
+/**
  * Model SyncRun
  * 
  */

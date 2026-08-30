@@ -62,6 +62,7 @@ export const ModelName = {
   StandingSnapshot: 'StandingSnapshot',
   StandingSnapshotRow: 'StandingSnapshotRow',
   ReplayPlan: 'ReplayPlan',
+  ReplayPreview: 'ReplayPreview',
   SyncRun: 'SyncRun',
   SyncAttempt: 'SyncAttempt',
   ProviderCircuitState: 'ProviderCircuitState',
@@ -248,10 +249,29 @@ export const ReplayPlanScalarFieldEnum = {
   previewVersion: 'previewVersion',
   reason: 'reason',
   actor: 'actor',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  previewId: 'previewId'
 } as const
 
 export type ReplayPlanScalarFieldEnum = (typeof ReplayPlanScalarFieldEnum)[keyof typeof ReplayPlanScalarFieldEnum]
+
+
+export const ReplayPreviewScalarFieldEnum = {
+  id: 'id',
+  logicalKey: 'logicalKey',
+  version: 'version',
+  previewVersion: 'previewVersion',
+  normalizedInput: 'normalizedInput',
+  unitManifest: 'unitManifest',
+  impact: 'impact',
+  providerPolicyFingerprint: 'providerPolicyFingerprint',
+  expiresAt: 'expiresAt',
+  consumedAt: 'consumedAt',
+  actor: 'actor',
+  createdAt: 'createdAt'
+} as const
+
+export type ReplayPreviewScalarFieldEnum = (typeof ReplayPreviewScalarFieldEnum)[keyof typeof ReplayPreviewScalarFieldEnum]
 
 
 export const SyncRunScalarFieldEnum = {

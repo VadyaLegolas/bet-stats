@@ -243,8 +243,29 @@ model ReplayPlan {
   createdAt      DateTime        @default(now()) @db.Timestamptz(3)
   syncRuns       SyncRun[]
   evidenceBuilds EvidenceBuild[]
+  preview        ReplayPreview? @relation(fields: [previewId], references: [id], onDelete: Restrict)
+  previewId      String?        @unique
 
   @@unique([logicalKey, revision])
+}
+
+model ReplayPreview {
+  id                        String       @id @default(cuid())
+  logicalKey                String
+  version                   Int
+  previewVersion            String       @unique
+  normalizedInput           Json
+  unitManifest              Json
+  impact                    Json
+  providerPolicyFingerprint String
+  expiresAt                 DateTime     @db.Timestamptz(3)
+  consumedAt                DateTime?    @db.Timestamptz(3)
+  actor                     String
+  createdAt                 DateTime     @default(now()) @db.Timestamptz(3)
+  replayPlan                ReplayPlan?
+
+  @@unique([logicalKey, version])
+  @@index([logicalKey, expiresAt])
 }
 
 model SyncRun {

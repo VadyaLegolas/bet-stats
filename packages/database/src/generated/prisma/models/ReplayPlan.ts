@@ -47,6 +47,7 @@ export type ReplayPlanMinAggregateOutputType = {
   reason: string | null
   actor: string | null
   createdAt: Date | null
+  previewId: string | null
 }
 
 export type ReplayPlanMaxAggregateOutputType = {
@@ -62,6 +63,7 @@ export type ReplayPlanMaxAggregateOutputType = {
   reason: string | null
   actor: string | null
   createdAt: Date | null
+  previewId: string | null
 }
 
 export type ReplayPlanCountAggregateOutputType = {
@@ -77,6 +79,7 @@ export type ReplayPlanCountAggregateOutputType = {
   reason: number
   actor: number
   createdAt: number
+  previewId: number
   _all: number
 }
 
@@ -102,6 +105,7 @@ export type ReplayPlanMinAggregateInputType = {
   reason?: true
   actor?: true
   createdAt?: true
+  previewId?: true
 }
 
 export type ReplayPlanMaxAggregateInputType = {
@@ -117,6 +121,7 @@ export type ReplayPlanMaxAggregateInputType = {
   reason?: true
   actor?: true
   createdAt?: true
+  previewId?: true
 }
 
 export type ReplayPlanCountAggregateInputType = {
@@ -132,6 +137,7 @@ export type ReplayPlanCountAggregateInputType = {
   reason?: true
   actor?: true
   createdAt?: true
+  previewId?: true
   _all?: true
 }
 
@@ -234,6 +240,7 @@ export type ReplayPlanGroupByOutputType = {
   reason: string | null
   actor: string
   createdAt: Date
+  previewId: string | null
   _count: ReplayPlanCountAggregateOutputType | null
   _avg: ReplayPlanAvgAggregateOutputType | null
   _sum: ReplayPlanSumAggregateOutputType | null
@@ -272,8 +279,10 @@ export type ReplayPlanWhereInput = {
   reason?: Prisma.StringNullableFilter<"ReplayPlan"> | string | null
   actor?: Prisma.StringFilter<"ReplayPlan"> | string
   createdAt?: Prisma.DateTimeFilter<"ReplayPlan"> | Date | string
+  previewId?: Prisma.StringNullableFilter<"ReplayPlan"> | string | null
   syncRuns?: Prisma.SyncRunListRelationFilter
   evidenceBuilds?: Prisma.EvidenceBuildListRelationFilter
+  preview?: Prisma.XOR<Prisma.ReplayPreviewNullableScalarRelationFilter, Prisma.ReplayPreviewWhereInput> | null
 }
 
 export type ReplayPlanOrderByWithRelationInput = {
@@ -289,12 +298,15 @@ export type ReplayPlanOrderByWithRelationInput = {
   reason?: Prisma.SortOrderInput | Prisma.SortOrder
   actor?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  previewId?: Prisma.SortOrderInput | Prisma.SortOrder
   syncRuns?: Prisma.SyncRunOrderByRelationAggregateInput
   evidenceBuilds?: Prisma.EvidenceBuildOrderByRelationAggregateInput
+  preview?: Prisma.ReplayPreviewOrderByWithRelationInput
 }
 
 export type ReplayPlanWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  previewId?: string
   logicalKey_revision?: Prisma.ReplayPlanLogicalKeyRevisionCompoundUniqueInput
   AND?: Prisma.ReplayPlanWhereInput | Prisma.ReplayPlanWhereInput[]
   OR?: Prisma.ReplayPlanWhereInput[]
@@ -312,7 +324,8 @@ export type ReplayPlanWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"ReplayPlan"> | Date | string
   syncRuns?: Prisma.SyncRunListRelationFilter
   evidenceBuilds?: Prisma.EvidenceBuildListRelationFilter
-}, "id" | "logicalKey_revision">
+  preview?: Prisma.XOR<Prisma.ReplayPreviewNullableScalarRelationFilter, Prisma.ReplayPreviewWhereInput> | null
+}, "id" | "previewId" | "logicalKey_revision">
 
 export type ReplayPlanOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -327,6 +340,7 @@ export type ReplayPlanOrderByWithAggregationInput = {
   reason?: Prisma.SortOrderInput | Prisma.SortOrder
   actor?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  previewId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ReplayPlanCountOrderByAggregateInput
   _avg?: Prisma.ReplayPlanAvgOrderByAggregateInput
   _max?: Prisma.ReplayPlanMaxOrderByAggregateInput
@@ -350,6 +364,7 @@ export type ReplayPlanScalarWhereWithAggregatesInput = {
   reason?: Prisma.StringNullableWithAggregatesFilter<"ReplayPlan"> | string | null
   actor?: Prisma.StringWithAggregatesFilter<"ReplayPlan"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ReplayPlan"> | Date | string
+  previewId?: Prisma.StringNullableWithAggregatesFilter<"ReplayPlan"> | string | null
 }
 
 export type ReplayPlanCreateInput = {
@@ -367,6 +382,7 @@ export type ReplayPlanCreateInput = {
   createdAt?: Date | string
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutReplayPlanInput
   evidenceBuilds?: Prisma.EvidenceBuildCreateNestedManyWithoutReplayPlanInput
+  preview?: Prisma.ReplayPreviewCreateNestedOneWithoutReplayPlanInput
 }
 
 export type ReplayPlanUncheckedCreateInput = {
@@ -382,6 +398,7 @@ export type ReplayPlanUncheckedCreateInput = {
   reason?: string | null
   actor: string
   createdAt?: Date | string
+  previewId?: string | null
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutReplayPlanInput
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedCreateNestedManyWithoutReplayPlanInput
 }
@@ -401,6 +418,7 @@ export type ReplayPlanUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   syncRuns?: Prisma.SyncRunUpdateManyWithoutReplayPlanNestedInput
   evidenceBuilds?: Prisma.EvidenceBuildUpdateManyWithoutReplayPlanNestedInput
+  preview?: Prisma.ReplayPreviewUpdateOneWithoutReplayPlanNestedInput
 }
 
 export type ReplayPlanUncheckedUpdateInput = {
@@ -416,6 +434,7 @@ export type ReplayPlanUncheckedUpdateInput = {
   reason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actor?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  previewId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutReplayPlanNestedInput
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedUpdateManyWithoutReplayPlanNestedInput
 }
@@ -433,6 +452,7 @@ export type ReplayPlanCreateManyInput = {
   reason?: string | null
   actor: string
   createdAt?: Date | string
+  previewId?: string | null
 }
 
 export type ReplayPlanUpdateManyMutationInput = {
@@ -463,6 +483,7 @@ export type ReplayPlanUncheckedUpdateManyInput = {
   reason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actor?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  previewId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ReplayPlanLogicalKeyRevisionCompoundUniqueInput = {
@@ -483,6 +504,7 @@ export type ReplayPlanCountOrderByAggregateInput = {
   reason?: Prisma.SortOrder
   actor?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  previewId?: Prisma.SortOrder
 }
 
 export type ReplayPlanAvgOrderByAggregateInput = {
@@ -502,6 +524,7 @@ export type ReplayPlanMaxOrderByAggregateInput = {
   reason?: Prisma.SortOrder
   actor?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  previewId?: Prisma.SortOrder
 }
 
 export type ReplayPlanMinOrderByAggregateInput = {
@@ -517,6 +540,7 @@ export type ReplayPlanMinOrderByAggregateInput = {
   reason?: Prisma.SortOrder
   actor?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  previewId?: Prisma.SortOrder
 }
 
 export type ReplayPlanSumOrderByAggregateInput = {
@@ -526,6 +550,38 @@ export type ReplayPlanSumOrderByAggregateInput = {
 export type ReplayPlanNullableScalarRelationFilter = {
   is?: Prisma.ReplayPlanWhereInput | null
   isNot?: Prisma.ReplayPlanWhereInput | null
+}
+
+export type ReplayPlanCreateNestedOneWithoutPreviewInput = {
+  create?: Prisma.XOR<Prisma.ReplayPlanCreateWithoutPreviewInput, Prisma.ReplayPlanUncheckedCreateWithoutPreviewInput>
+  connectOrCreate?: Prisma.ReplayPlanCreateOrConnectWithoutPreviewInput
+  connect?: Prisma.ReplayPlanWhereUniqueInput
+}
+
+export type ReplayPlanUncheckedCreateNestedOneWithoutPreviewInput = {
+  create?: Prisma.XOR<Prisma.ReplayPlanCreateWithoutPreviewInput, Prisma.ReplayPlanUncheckedCreateWithoutPreviewInput>
+  connectOrCreate?: Prisma.ReplayPlanCreateOrConnectWithoutPreviewInput
+  connect?: Prisma.ReplayPlanWhereUniqueInput
+}
+
+export type ReplayPlanUpdateOneWithoutPreviewNestedInput = {
+  create?: Prisma.XOR<Prisma.ReplayPlanCreateWithoutPreviewInput, Prisma.ReplayPlanUncheckedCreateWithoutPreviewInput>
+  connectOrCreate?: Prisma.ReplayPlanCreateOrConnectWithoutPreviewInput
+  upsert?: Prisma.ReplayPlanUpsertWithoutPreviewInput
+  disconnect?: Prisma.ReplayPlanWhereInput | boolean
+  delete?: Prisma.ReplayPlanWhereInput | boolean
+  connect?: Prisma.ReplayPlanWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ReplayPlanUpdateToOneWithWhereWithoutPreviewInput, Prisma.ReplayPlanUpdateWithoutPreviewInput>, Prisma.ReplayPlanUncheckedUpdateWithoutPreviewInput>
+}
+
+export type ReplayPlanUncheckedUpdateOneWithoutPreviewNestedInput = {
+  create?: Prisma.XOR<Prisma.ReplayPlanCreateWithoutPreviewInput, Prisma.ReplayPlanUncheckedCreateWithoutPreviewInput>
+  connectOrCreate?: Prisma.ReplayPlanCreateOrConnectWithoutPreviewInput
+  upsert?: Prisma.ReplayPlanUpsertWithoutPreviewInput
+  disconnect?: Prisma.ReplayPlanWhereInput | boolean
+  delete?: Prisma.ReplayPlanWhereInput | boolean
+  connect?: Prisma.ReplayPlanWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ReplayPlanUpdateToOneWithWhereWithoutPreviewInput, Prisma.ReplayPlanUpdateWithoutPreviewInput>, Prisma.ReplayPlanUncheckedUpdateWithoutPreviewInput>
 }
 
 export type ReplayPlanCreateNestedOneWithoutSyncRunsInput = {
@@ -560,6 +616,90 @@ export type ReplayPlanUpdateOneWithoutEvidenceBuildsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ReplayPlanUpdateToOneWithWhereWithoutEvidenceBuildsInput, Prisma.ReplayPlanUpdateWithoutEvidenceBuildsInput>, Prisma.ReplayPlanUncheckedUpdateWithoutEvidenceBuildsInput>
 }
 
+export type ReplayPlanCreateWithoutPreviewInput = {
+  id?: string
+  logicalKey: string
+  revision: number
+  provider: string
+  competitionId: string
+  endpointFamily: string
+  windowFrom: Date | string
+  windowTo: Date | string
+  previewVersion: string
+  reason?: string | null
+  actor: string
+  createdAt?: Date | string
+  syncRuns?: Prisma.SyncRunCreateNestedManyWithoutReplayPlanInput
+  evidenceBuilds?: Prisma.EvidenceBuildCreateNestedManyWithoutReplayPlanInput
+}
+
+export type ReplayPlanUncheckedCreateWithoutPreviewInput = {
+  id?: string
+  logicalKey: string
+  revision: number
+  provider: string
+  competitionId: string
+  endpointFamily: string
+  windowFrom: Date | string
+  windowTo: Date | string
+  previewVersion: string
+  reason?: string | null
+  actor: string
+  createdAt?: Date | string
+  syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutReplayPlanInput
+  evidenceBuilds?: Prisma.EvidenceBuildUncheckedCreateNestedManyWithoutReplayPlanInput
+}
+
+export type ReplayPlanCreateOrConnectWithoutPreviewInput = {
+  where: Prisma.ReplayPlanWhereUniqueInput
+  create: Prisma.XOR<Prisma.ReplayPlanCreateWithoutPreviewInput, Prisma.ReplayPlanUncheckedCreateWithoutPreviewInput>
+}
+
+export type ReplayPlanUpsertWithoutPreviewInput = {
+  update: Prisma.XOR<Prisma.ReplayPlanUpdateWithoutPreviewInput, Prisma.ReplayPlanUncheckedUpdateWithoutPreviewInput>
+  create: Prisma.XOR<Prisma.ReplayPlanCreateWithoutPreviewInput, Prisma.ReplayPlanUncheckedCreateWithoutPreviewInput>
+  where?: Prisma.ReplayPlanWhereInput
+}
+
+export type ReplayPlanUpdateToOneWithWhereWithoutPreviewInput = {
+  where?: Prisma.ReplayPlanWhereInput
+  data: Prisma.XOR<Prisma.ReplayPlanUpdateWithoutPreviewInput, Prisma.ReplayPlanUncheckedUpdateWithoutPreviewInput>
+}
+
+export type ReplayPlanUpdateWithoutPreviewInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  logicalKey?: Prisma.StringFieldUpdateOperationsInput | string
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  provider?: Prisma.StringFieldUpdateOperationsInput | string
+  competitionId?: Prisma.StringFieldUpdateOperationsInput | string
+  endpointFamily?: Prisma.StringFieldUpdateOperationsInput | string
+  windowFrom?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  windowTo?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  previewVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  reason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  actor?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  syncRuns?: Prisma.SyncRunUpdateManyWithoutReplayPlanNestedInput
+  evidenceBuilds?: Prisma.EvidenceBuildUpdateManyWithoutReplayPlanNestedInput
+}
+
+export type ReplayPlanUncheckedUpdateWithoutPreviewInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  logicalKey?: Prisma.StringFieldUpdateOperationsInput | string
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  provider?: Prisma.StringFieldUpdateOperationsInput | string
+  competitionId?: Prisma.StringFieldUpdateOperationsInput | string
+  endpointFamily?: Prisma.StringFieldUpdateOperationsInput | string
+  windowFrom?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  windowTo?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  previewVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  reason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  actor?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutReplayPlanNestedInput
+  evidenceBuilds?: Prisma.EvidenceBuildUncheckedUpdateManyWithoutReplayPlanNestedInput
+}
+
 export type ReplayPlanCreateWithoutSyncRunsInput = {
   id?: string
   logicalKey: string
@@ -574,6 +714,7 @@ export type ReplayPlanCreateWithoutSyncRunsInput = {
   actor: string
   createdAt?: Date | string
   evidenceBuilds?: Prisma.EvidenceBuildCreateNestedManyWithoutReplayPlanInput
+  preview?: Prisma.ReplayPreviewCreateNestedOneWithoutReplayPlanInput
 }
 
 export type ReplayPlanUncheckedCreateWithoutSyncRunsInput = {
@@ -589,6 +730,7 @@ export type ReplayPlanUncheckedCreateWithoutSyncRunsInput = {
   reason?: string | null
   actor: string
   createdAt?: Date | string
+  previewId?: string | null
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedCreateNestedManyWithoutReplayPlanInput
 }
 
@@ -622,6 +764,7 @@ export type ReplayPlanUpdateWithoutSyncRunsInput = {
   actor?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   evidenceBuilds?: Prisma.EvidenceBuildUpdateManyWithoutReplayPlanNestedInput
+  preview?: Prisma.ReplayPreviewUpdateOneWithoutReplayPlanNestedInput
 }
 
 export type ReplayPlanUncheckedUpdateWithoutSyncRunsInput = {
@@ -637,6 +780,7 @@ export type ReplayPlanUncheckedUpdateWithoutSyncRunsInput = {
   reason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actor?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  previewId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedUpdateManyWithoutReplayPlanNestedInput
 }
 
@@ -654,6 +798,7 @@ export type ReplayPlanCreateWithoutEvidenceBuildsInput = {
   actor: string
   createdAt?: Date | string
   syncRuns?: Prisma.SyncRunCreateNestedManyWithoutReplayPlanInput
+  preview?: Prisma.ReplayPreviewCreateNestedOneWithoutReplayPlanInput
 }
 
 export type ReplayPlanUncheckedCreateWithoutEvidenceBuildsInput = {
@@ -669,6 +814,7 @@ export type ReplayPlanUncheckedCreateWithoutEvidenceBuildsInput = {
   reason?: string | null
   actor: string
   createdAt?: Date | string
+  previewId?: string | null
   syncRuns?: Prisma.SyncRunUncheckedCreateNestedManyWithoutReplayPlanInput
 }
 
@@ -702,6 +848,7 @@ export type ReplayPlanUpdateWithoutEvidenceBuildsInput = {
   actor?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   syncRuns?: Prisma.SyncRunUpdateManyWithoutReplayPlanNestedInput
+  preview?: Prisma.ReplayPreviewUpdateOneWithoutReplayPlanNestedInput
 }
 
 export type ReplayPlanUncheckedUpdateWithoutEvidenceBuildsInput = {
@@ -717,6 +864,7 @@ export type ReplayPlanUncheckedUpdateWithoutEvidenceBuildsInput = {
   reason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actor?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  previewId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   syncRuns?: Prisma.SyncRunUncheckedUpdateManyWithoutReplayPlanNestedInput
 }
 
@@ -773,8 +921,10 @@ export type ReplayPlanSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   reason?: boolean
   actor?: boolean
   createdAt?: boolean
+  previewId?: boolean
   syncRuns?: boolean | Prisma.ReplayPlan$syncRunsArgs<ExtArgs>
   evidenceBuilds?: boolean | Prisma.ReplayPlan$evidenceBuildsArgs<ExtArgs>
+  preview?: boolean | Prisma.ReplayPlan$previewArgs<ExtArgs>
   _count?: boolean | Prisma.ReplayPlanCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["replayPlan"]>
 
@@ -791,6 +941,8 @@ export type ReplayPlanSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   reason?: boolean
   actor?: boolean
   createdAt?: boolean
+  previewId?: boolean
+  preview?: boolean | Prisma.ReplayPlan$previewArgs<ExtArgs>
 }, ExtArgs["result"]["replayPlan"]>
 
 export type ReplayPlanSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -806,6 +958,8 @@ export type ReplayPlanSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   reason?: boolean
   actor?: boolean
   createdAt?: boolean
+  previewId?: boolean
+  preview?: boolean | Prisma.ReplayPlan$previewArgs<ExtArgs>
 }, ExtArgs["result"]["replayPlan"]>
 
 export type ReplayPlanSelectScalar = {
@@ -821,22 +975,29 @@ export type ReplayPlanSelectScalar = {
   reason?: boolean
   actor?: boolean
   createdAt?: boolean
+  previewId?: boolean
 }
 
-export type ReplayPlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logicalKey" | "revision" | "provider" | "competitionId" | "endpointFamily" | "windowFrom" | "windowTo" | "previewVersion" | "reason" | "actor" | "createdAt", ExtArgs["result"]["replayPlan"]>
+export type ReplayPlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logicalKey" | "revision" | "provider" | "competitionId" | "endpointFamily" | "windowFrom" | "windowTo" | "previewVersion" | "reason" | "actor" | "createdAt" | "previewId", ExtArgs["result"]["replayPlan"]>
 export type ReplayPlanInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   syncRuns?: boolean | Prisma.ReplayPlan$syncRunsArgs<ExtArgs>
   evidenceBuilds?: boolean | Prisma.ReplayPlan$evidenceBuildsArgs<ExtArgs>
+  preview?: boolean | Prisma.ReplayPlan$previewArgs<ExtArgs>
   _count?: boolean | Prisma.ReplayPlanCountOutputTypeDefaultArgs<ExtArgs>
 }
-export type ReplayPlanIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
-export type ReplayPlanIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type ReplayPlanIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  preview?: boolean | Prisma.ReplayPlan$previewArgs<ExtArgs>
+}
+export type ReplayPlanIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  preview?: boolean | Prisma.ReplayPlan$previewArgs<ExtArgs>
+}
 
 export type $ReplayPlanPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "ReplayPlan"
   objects: {
     syncRuns: Prisma.$SyncRunPayload<ExtArgs>[]
     evidenceBuilds: Prisma.$EvidenceBuildPayload<ExtArgs>[]
+    preview: Prisma.$ReplayPreviewPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -851,6 +1012,7 @@ export type $ReplayPlanPayload<ExtArgs extends runtime.Types.Extensions.Internal
     reason: string | null
     actor: string
     createdAt: Date
+    previewId: string | null
   }, ExtArgs["result"]["replayPlan"]>
   composites: {}
 }
@@ -1247,6 +1409,7 @@ export interface Prisma__ReplayPlanClient<T, Null = never, ExtArgs extends runti
   readonly [Symbol.toStringTag]: "PrismaPromise"
   syncRuns<T extends Prisma.ReplayPlan$syncRunsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ReplayPlan$syncRunsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SyncRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   evidenceBuilds<T extends Prisma.ReplayPlan$evidenceBuildsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ReplayPlan$evidenceBuildsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EvidenceBuildPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  preview<T extends Prisma.ReplayPlan$previewArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ReplayPlan$previewArgs<ExtArgs>>): Prisma.Prisma__ReplayPreviewClient<runtime.Types.Result.GetResult<Prisma.$ReplayPreviewPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1288,6 +1451,7 @@ export interface ReplayPlanFieldRefs {
   readonly reason: Prisma.FieldRef<"ReplayPlan", 'String'>
   readonly actor: Prisma.FieldRef<"ReplayPlan", 'String'>
   readonly createdAt: Prisma.FieldRef<"ReplayPlan", 'DateTime'>
+  readonly previewId: Prisma.FieldRef<"ReplayPlan", 'String'>
 }
     
 
@@ -1542,6 +1706,10 @@ export type ReplayPlanCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Exte
    */
   data: Prisma.ReplayPlanCreateManyInput | Prisma.ReplayPlanCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ReplayPlanIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1612,6 +1780,10 @@ export type ReplayPlanUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Exte
    * Limit how many ReplayPlans to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ReplayPlanIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1726,6 +1898,25 @@ export type ReplayPlan$evidenceBuildsArgs<ExtArgs extends runtime.Types.Extensio
   take?: number
   skip?: number
   distinct?: Prisma.EvidenceBuildScalarFieldEnum | Prisma.EvidenceBuildScalarFieldEnum[]
+}
+
+/**
+ * ReplayPlan.preview
+ */
+export type ReplayPlan$previewArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ReplayPreview
+   */
+  select?: Prisma.ReplayPreviewSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ReplayPreview
+   */
+  omit?: Prisma.ReplayPreviewOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ReplayPreviewInclude<ExtArgs> | null
+  where?: Prisma.ReplayPreviewWhereInput
 }
 
 /**

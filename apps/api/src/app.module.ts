@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 
+import { EvidenceController } from "./modules/evidence/evidence.controller.js";
+import { EvidenceService } from "./modules/evidence/evidence.service.js";
 import { FixturesController } from "./modules/fixtures/fixtures.controller.js";
 import { FixturesService } from "./modules/fixtures/fixtures.service.js";
 import { EligibilityController } from "./modules/eligibility/eligibility.controller.js";
@@ -10,7 +12,7 @@ import { ReconciliationController } from "./modules/reconciliation/reconciliatio
 import { ReconciliationService } from "./modules/reconciliation/reconciliation.service.js";
 
 @Module({
-  controllers: [EligibilityController, FixturesController, HealthController, ReconciliationController],
-  providers: [EligibilityGuard, FixturesService, OperatorGuard, ReconciliationService],
+  controllers: [EligibilityController, EvidenceController, FixturesController, HealthController, ReconciliationController],
+  providers: [EligibilityGuard, EvidenceService, FixturesService, OperatorGuard, ReconciliationService],
 })
 export class AppModule {}

@@ -2,6 +2,8 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { runEvidenceRebuild } from "../../workers/data-sync/src/jobs/evidence-rebuild.js";
+
 const databaseRoot = resolve(import.meta.dirname, "../../packages/database");
 const containerName = `bet-stats-temporal-${process.pid}`;
 const prismaCli = resolve(databaseRoot, "node_modules/prisma/build/index.js");
@@ -39,3 +41,40 @@ describe("temporal provenance contract", () => {
     expect(() => sql(`DELETE FROM "SourceObservation" WHERE id='obs-1';`)).toThrow();
   });
 });
+
+describe("evidence publication contract", () => {
+  it("keeps the prior receipt visible until every source run is terminal", async () => {
+    const database = fakeEvidenceDatabase("RUNNING");
+    const result = await runEvidenceRebuild({ database, teamId: "home", cutoff: "2026-08-30T00:00:00.000Z", configHash: "config", configVersion: "evidence-v1", syncRunId: "run-2" });
+    expect(result).toMatchObject({ state: "PENDING", visibleBuildId: "published-old" });
+    expect(database.builds).toHaveLength(1);
+  });
+
+  it("publishes components atomically and converges for an identical rebuild", async () => {
+    const database = fakeEvidenceDatabase("SUCCEEDED");
+    const input = { database, teamId: "home", cutoff: "2026-08-30T00:00:00.000Z", configHash: "config", configVersion: "evidence-v1", syncRunId: "run-2" } as const;
+    const first = await runEvidenceRebuild(input);
+    const second = await runEvidenceRebuild(input);
+    expect(first).toMatchObject({ state: "PUBLISHED" });
+    expect(second).toEqual(first);
+    expect(database.builds.filter((build) => build.syncRunId === "run-2")).toHaveLength(1);
+    expect(database.builds.at(-1)).toMatchObject({ state: "PUBLISHED" });
+    expect(database.components.length).toBeGreaterThan(5);
+  });
+});
+
+function fakeEvidenceDatabase(sourceState: string) {
+  const builds: Array<Record<string, unknown>> = [{ id: "published-old", teamId: "home", cutoff: new Date("2026-08-29T00:00:00.000Z"), configHash: "old", syncRunId: "run-1", state: "PUBLISHED" }];
+  const components: Array<Record<string, unknown>> = [];
+  const match = { fixtureId: "fixture", kickoffUtc: "2026-08-29T09:00:00.000Z", effectiveAt: "2026-08-29T09:00:00.000Z", observedAt: "2026-08-29T10:00:00.000Z", sourceUpdatedAt: null, payloadHash: "hash-1", payloadBytes: 15, teamId: "home", opponentId: "away", venue: "HOME" as const, goalsFor: 2, goalsAgainst: 1, points: 3 as const };
+  const transaction = {
+    sourceRunState: async () => sourceState,
+    latestPublishedBuild: async () => builds.filter((build) => build.state === "PUBLISHED").at(-1) ?? null,
+    findBuild: async (key: Record<string, unknown>) => builds.find((build) => build.teamId === key.teamId && build.configHash === key.configHash && build.syncRunId === key.syncRunId) ?? null,
+    loadEligibleMatches: async () => [match],
+    createBuild: async (build: Record<string, unknown>) => { const stored = { ...build, id: `build-${builds.length}` }; builds.push(stored); return stored; },
+    stageComponent: async (component: Record<string, unknown>) => { components.push(component); },
+    publishBuild: async (id: string) => { const build = builds.find((item) => item.id === id); if (build) build.state = "PUBLISHED"; },
+  };
+  return { builds, components, transaction: async <T>(work: (tx: typeof transaction) => Promise<T>) => work(transaction) };
+}

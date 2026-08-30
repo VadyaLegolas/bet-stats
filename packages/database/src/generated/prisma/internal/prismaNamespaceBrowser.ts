@@ -266,6 +266,11 @@ export const SyncRunScalarFieldEnum = {
   state: 'state',
   correlationId: 'correlationId',
   replayPlanId: 'replayPlanId',
+  expectedUnits: 'expectedUnits',
+  completedUnits: 'completedUnits',
+  expectedCaptures: 'expectedCaptures',
+  completedCaptures: 'completedCaptures',
+  completionManifest: 'completionManifest',
   terminalAt: 'terminalAt',
   createdAt: 'createdAt'
 } as const

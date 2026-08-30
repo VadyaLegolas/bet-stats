@@ -66,7 +66,7 @@ describe("real PostgreSQL evidence publication boundary", () => {
     process.env.DATABASE_URL = databaseUrl;
     const service = new EvidenceService();
     const first = await service.get("home", "2026-08-29T12:00:00.000Z");
-    expect(first).toMatchObject({ state: "COMPLETE", resolvedAsOfUtc: "2026-08-29T12:00:00.000Z", receipt: { configVersion: "evidence-v1", inputs: [{ fixtureId: "fixture", payloadHash: "hash-early" }] } });
+    expect(first).toMatchObject({ state: "LIMITED", resolvedAsOfUtc: "2026-08-29T12:00:00.000Z", receipt: { configVersion: "evidence-v1", inputs: [{ fixtureId: "fixture", payloadHash: "hash-early" }] } });
     expect(first.components.form5).toMatchObject({ value: 3, sampleSize: 1 });
 
     await prisma.sourceObservation.create({ data: { id: "obs-late", provider: "football-data.org", endpointFamily: "RESULTS", externalIdentity: "fixture", observedAt: new Date("2026-08-30T10:00:00.000Z"), payloadHash: "hash-late", rawPayload: { score: "1-1" }, payloadBytes: 15 } });

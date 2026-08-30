@@ -1,13 +1,16 @@
 import { randomUUID } from "node:crypto";
 
+import type { PrismaClient } from "@bet-stats/database";
 import { buildTeamEvidence, type EvidenceMatch } from "@bet-stats/domain";
 
 export const LATEST_VISIBLE_RESULT_SQL = `
 SELECT * FROM (
   SELECT rv.*, f."kickoffUtc", f."homeTeamId", f."awayTeamId",
+    so."sourceUpdatedAt", so."payloadHash", so."payloadBytes",
     ROW_NUMBER() OVER (PARTITION BY rv."fixtureId" ORDER BY rv."observedAt" DESC, rv.revision DESC, rv.id ASC) AS rank
   FROM "ResultVersion" rv
   JOIN "Fixture" f ON f.id = rv."fixtureId"
+  JOIN "SourceObservation" so ON so.id = rv."observationId"
   WHERE rv."effectiveAt" <= $1::timestamptz AND rv."observedAt" <= $1::timestamptz
 ) visible WHERE rank = 1
 ORDER BY "kickoffUtc", "observedAt", "fixtureId"`;
@@ -45,6 +48,67 @@ export interface EvidenceRebuildInput {
   readonly configHash: string;
   readonly syncRunId: string;
   readonly replayPlanId?: string;
+}
+
+type EligibleResultRow = Readonly<{
+  fixtureId: string;
+  kickoffUtc: Date;
+  homeTeamId: string;
+  awayTeamId: string;
+  effectiveAt: Date;
+  observedAt: Date;
+  sourceUpdatedAt: Date | null;
+  payloadHash: string;
+  payloadBytes: number;
+  homeGoals: number | null;
+  awayGoals: number | null;
+}>;
+
+/** Production PostgreSQL adapter for the pure rebuild orchestration. */
+export function createPrismaEvidenceRebuildDatabase(client: PrismaClient): EvidenceRebuildDatabase {
+  return {
+    transaction: async (work) => client.$transaction(async (transaction) => work({
+      sourceRunCompletion: async (syncRunId) => transaction.syncRun.findUnique({
+        where: { id: syncRunId },
+        select: { state: true, expectedUnits: true, completedUnits: true, expectedCaptures: true, completedCaptures: true, completionManifest: true },
+      }),
+      latestPublishedBuild: async (teamId, cutoff) => transaction.evidenceBuild.findFirst({
+        where: { teamId, cutoff: { lte: new Date(cutoff) }, state: "PUBLISHED" },
+        orderBy: [{ cutoff: "desc" }, { publishedAt: "desc" }],
+      }),
+      findBuild: async (key) => transaction.evidenceBuild.findFirst({
+        where: { teamId: key.teamId, cutoff: new Date(key.cutoff), configHash: key.configHash, syncRunId: key.syncRunId },
+      }),
+      loadEligibleMatches: async (teamId, cutoff, statement) => {
+        const rows = await transaction.$queryRawUnsafe<EligibleResultRow[]>(statement, new Date(cutoff));
+        return rows.map((row) => {
+          const isHome = row.homeTeamId === teamId;
+          const goalsFor = isHome ? row.homeGoals : row.awayGoals;
+          const goalsAgainst = isHome ? row.awayGoals : row.homeGoals;
+          const points = goalsFor === null || goalsAgainst === null ? undefined : goalsFor > goalsAgainst ? 3 as const : goalsFor === goalsAgainst ? 1 as const : 0 as const;
+          return {
+            fixtureId: row.fixtureId,
+            kickoffUtc: row.kickoffUtc.toISOString(),
+            effectiveAt: row.effectiveAt.toISOString(),
+            observedAt: row.observedAt.toISOString(),
+            sourceUpdatedAt: row.sourceUpdatedAt?.toISOString() ?? null,
+            payloadHash: row.payloadHash,
+            payloadBytes: row.payloadBytes,
+            teamId,
+            opponentId: isHome ? row.awayTeamId : row.homeTeamId,
+            venue: isHome ? "HOME" as const : "AWAY" as const,
+            ...(goalsFor === null ? {} : { goalsFor }),
+            ...(goalsAgainst === null ? {} : { goalsAgainst }),
+            ...(points === undefined ? {} : { points }),
+          };
+        });
+      },
+      createBuild: async (build) => transaction.evidenceBuild.create({ data: build as never }),
+      stageComponent: async (component) => { await transaction.evidenceComponent.create({ data: component as never }); },
+      publishBuild: async (id) => { await transaction.evidenceBuild.update({ where: { id }, data: { state: "PUBLISHED", publishedAt: new Date() } }); },
+      failBuild: async (id) => { await transaction.evidenceBuild.update({ where: { id }, data: { state: "FAILED" } }); },
+    })),
+  };
 }
 
 const COMPONENT_KEYS = ["form5", "form10", "elo", "homeStrength", "awayStrength", "goalRates", "restDays", "h2h"] as const;

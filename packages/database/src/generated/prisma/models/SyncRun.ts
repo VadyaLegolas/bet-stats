@@ -28,10 +28,18 @@ export type AggregateSyncRun = {
 
 export type SyncRunAvgAggregateOutputType = {
   revision: number | null
+  expectedUnits: number | null
+  completedUnits: number | null
+  expectedCaptures: number | null
+  completedCaptures: number | null
 }
 
 export type SyncRunSumAggregateOutputType = {
   revision: number | null
+  expectedUnits: number | null
+  completedUnits: number | null
+  expectedCaptures: number | null
+  completedCaptures: number | null
 }
 
 export type SyncRunMinAggregateOutputType = {
@@ -46,6 +54,10 @@ export type SyncRunMinAggregateOutputType = {
   state: $Enums.LedgerState | null
   correlationId: string | null
   replayPlanId: string | null
+  expectedUnits: number | null
+  completedUnits: number | null
+  expectedCaptures: number | null
+  completedCaptures: number | null
   terminalAt: Date | null
   createdAt: Date | null
 }
@@ -62,6 +74,10 @@ export type SyncRunMaxAggregateOutputType = {
   state: $Enums.LedgerState | null
   correlationId: string | null
   replayPlanId: string | null
+  expectedUnits: number | null
+  completedUnits: number | null
+  expectedCaptures: number | null
+  completedCaptures: number | null
   terminalAt: Date | null
   createdAt: Date | null
 }
@@ -78,6 +94,11 @@ export type SyncRunCountAggregateOutputType = {
   state: number
   correlationId: number
   replayPlanId: number
+  expectedUnits: number
+  completedUnits: number
+  expectedCaptures: number
+  completedCaptures: number
+  completionManifest: number
   terminalAt: number
   createdAt: number
   _all: number
@@ -86,10 +107,18 @@ export type SyncRunCountAggregateOutputType = {
 
 export type SyncRunAvgAggregateInputType = {
   revision?: true
+  expectedUnits?: true
+  completedUnits?: true
+  expectedCaptures?: true
+  completedCaptures?: true
 }
 
 export type SyncRunSumAggregateInputType = {
   revision?: true
+  expectedUnits?: true
+  completedUnits?: true
+  expectedCaptures?: true
+  completedCaptures?: true
 }
 
 export type SyncRunMinAggregateInputType = {
@@ -104,6 +133,10 @@ export type SyncRunMinAggregateInputType = {
   state?: true
   correlationId?: true
   replayPlanId?: true
+  expectedUnits?: true
+  completedUnits?: true
+  expectedCaptures?: true
+  completedCaptures?: true
   terminalAt?: true
   createdAt?: true
 }
@@ -120,6 +153,10 @@ export type SyncRunMaxAggregateInputType = {
   state?: true
   correlationId?: true
   replayPlanId?: true
+  expectedUnits?: true
+  completedUnits?: true
+  expectedCaptures?: true
+  completedCaptures?: true
   terminalAt?: true
   createdAt?: true
 }
@@ -136,6 +173,11 @@ export type SyncRunCountAggregateInputType = {
   state?: true
   correlationId?: true
   replayPlanId?: true
+  expectedUnits?: true
+  completedUnits?: true
+  expectedCaptures?: true
+  completedCaptures?: true
+  completionManifest?: true
   terminalAt?: true
   createdAt?: true
   _all?: true
@@ -239,6 +281,11 @@ export type SyncRunGroupByOutputType = {
   state: $Enums.LedgerState
   correlationId: string
   replayPlanId: string | null
+  expectedUnits: number
+  completedUnits: number
+  expectedCaptures: number
+  completedCaptures: number
+  completionManifest: runtime.JsonValue
   terminalAt: Date | null
   createdAt: Date
   _count: SyncRunCountAggregateOutputType | null
@@ -278,6 +325,11 @@ export type SyncRunWhereInput = {
   state?: Prisma.EnumLedgerStateFilter<"SyncRun"> | $Enums.LedgerState
   correlationId?: Prisma.StringFilter<"SyncRun"> | string
   replayPlanId?: Prisma.StringNullableFilter<"SyncRun"> | string | null
+  expectedUnits?: Prisma.IntFilter<"SyncRun"> | number
+  completedUnits?: Prisma.IntFilter<"SyncRun"> | number
+  expectedCaptures?: Prisma.IntFilter<"SyncRun"> | number
+  completedCaptures?: Prisma.IntFilter<"SyncRun"> | number
+  completionManifest?: Prisma.JsonFilter<"SyncRun">
   terminalAt?: Prisma.DateTimeNullableFilter<"SyncRun"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"SyncRun"> | Date | string
   replayPlan?: Prisma.XOR<Prisma.ReplayPlanNullableScalarRelationFilter, Prisma.ReplayPlanWhereInput> | null
@@ -297,6 +349,11 @@ export type SyncRunOrderByWithRelationInput = {
   state?: Prisma.SortOrder
   correlationId?: Prisma.SortOrder
   replayPlanId?: Prisma.SortOrderInput | Prisma.SortOrder
+  expectedUnits?: Prisma.SortOrder
+  completedUnits?: Prisma.SortOrder
+  expectedCaptures?: Prisma.SortOrder
+  completedCaptures?: Prisma.SortOrder
+  completionManifest?: Prisma.SortOrder
   terminalAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   replayPlan?: Prisma.ReplayPlanOrderByWithRelationInput
@@ -320,6 +377,11 @@ export type SyncRunWhereUniqueInput = Prisma.AtLeast<{
   state?: Prisma.EnumLedgerStateFilter<"SyncRun"> | $Enums.LedgerState
   correlationId?: Prisma.StringFilter<"SyncRun"> | string
   replayPlanId?: Prisma.StringNullableFilter<"SyncRun"> | string | null
+  expectedUnits?: Prisma.IntFilter<"SyncRun"> | number
+  completedUnits?: Prisma.IntFilter<"SyncRun"> | number
+  expectedCaptures?: Prisma.IntFilter<"SyncRun"> | number
+  completedCaptures?: Prisma.IntFilter<"SyncRun"> | number
+  completionManifest?: Prisma.JsonFilter<"SyncRun">
   terminalAt?: Prisma.DateTimeNullableFilter<"SyncRun"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"SyncRun"> | Date | string
   replayPlan?: Prisma.XOR<Prisma.ReplayPlanNullableScalarRelationFilter, Prisma.ReplayPlanWhereInput> | null
@@ -339,6 +401,11 @@ export type SyncRunOrderByWithAggregationInput = {
   state?: Prisma.SortOrder
   correlationId?: Prisma.SortOrder
   replayPlanId?: Prisma.SortOrderInput | Prisma.SortOrder
+  expectedUnits?: Prisma.SortOrder
+  completedUnits?: Prisma.SortOrder
+  expectedCaptures?: Prisma.SortOrder
+  completedCaptures?: Prisma.SortOrder
+  completionManifest?: Prisma.SortOrder
   terminalAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.SyncRunCountOrderByAggregateInput
@@ -363,6 +430,11 @@ export type SyncRunScalarWhereWithAggregatesInput = {
   state?: Prisma.EnumLedgerStateWithAggregatesFilter<"SyncRun"> | $Enums.LedgerState
   correlationId?: Prisma.StringWithAggregatesFilter<"SyncRun"> | string
   replayPlanId?: Prisma.StringNullableWithAggregatesFilter<"SyncRun"> | string | null
+  expectedUnits?: Prisma.IntWithAggregatesFilter<"SyncRun"> | number
+  completedUnits?: Prisma.IntWithAggregatesFilter<"SyncRun"> | number
+  expectedCaptures?: Prisma.IntWithAggregatesFilter<"SyncRun"> | number
+  completedCaptures?: Prisma.IntWithAggregatesFilter<"SyncRun"> | number
+  completionManifest?: Prisma.JsonWithAggregatesFilter<"SyncRun">
   terminalAt?: Prisma.DateTimeNullableWithAggregatesFilter<"SyncRun"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"SyncRun"> | Date | string
 }
@@ -378,6 +450,11 @@ export type SyncRunCreateInput = {
   windowTo: Date | string
   state?: $Enums.LedgerState
   correlationId: string
+  expectedUnits?: number
+  completedUnits?: number
+  expectedCaptures?: number
+  completedCaptures?: number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
   createdAt?: Date | string
   replayPlan?: Prisma.ReplayPlanCreateNestedOneWithoutSyncRunsInput
@@ -397,6 +474,11 @@ export type SyncRunUncheckedCreateInput = {
   state?: $Enums.LedgerState
   correlationId: string
   replayPlanId?: string | null
+  expectedUnits?: number
+  completedUnits?: number
+  expectedCaptures?: number
+  completedCaptures?: number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
   createdAt?: Date | string
   attempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutSyncRunInput
@@ -414,6 +496,11 @@ export type SyncRunUpdateInput = {
   windowTo?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.EnumLedgerStateFieldUpdateOperationsInput | $Enums.LedgerState
   correlationId?: Prisma.StringFieldUpdateOperationsInput | string
+  expectedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  completedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  expectedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replayPlan?: Prisma.ReplayPlanUpdateOneWithoutSyncRunsNestedInput
@@ -433,6 +520,11 @@ export type SyncRunUncheckedUpdateInput = {
   state?: Prisma.EnumLedgerStateFieldUpdateOperationsInput | $Enums.LedgerState
   correlationId?: Prisma.StringFieldUpdateOperationsInput | string
   replayPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  expectedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  completedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  expectedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutSyncRunNestedInput
@@ -451,6 +543,11 @@ export type SyncRunCreateManyInput = {
   state?: $Enums.LedgerState
   correlationId: string
   replayPlanId?: string | null
+  expectedUnits?: number
+  completedUnits?: number
+  expectedCaptures?: number
+  completedCaptures?: number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
   createdAt?: Date | string
 }
@@ -466,6 +563,11 @@ export type SyncRunUpdateManyMutationInput = {
   windowTo?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.EnumLedgerStateFieldUpdateOperationsInput | $Enums.LedgerState
   correlationId?: Prisma.StringFieldUpdateOperationsInput | string
+  expectedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  completedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  expectedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -482,6 +584,11 @@ export type SyncRunUncheckedUpdateManyInput = {
   state?: Prisma.EnumLedgerStateFieldUpdateOperationsInput | $Enums.LedgerState
   correlationId?: Prisma.StringFieldUpdateOperationsInput | string
   replayPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  expectedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  completedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  expectedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -513,12 +620,21 @@ export type SyncRunCountOrderByAggregateInput = {
   state?: Prisma.SortOrder
   correlationId?: Prisma.SortOrder
   replayPlanId?: Prisma.SortOrder
+  expectedUnits?: Prisma.SortOrder
+  completedUnits?: Prisma.SortOrder
+  expectedCaptures?: Prisma.SortOrder
+  completedCaptures?: Prisma.SortOrder
+  completionManifest?: Prisma.SortOrder
   terminalAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
 export type SyncRunAvgOrderByAggregateInput = {
   revision?: Prisma.SortOrder
+  expectedUnits?: Prisma.SortOrder
+  completedUnits?: Prisma.SortOrder
+  expectedCaptures?: Prisma.SortOrder
+  completedCaptures?: Prisma.SortOrder
 }
 
 export type SyncRunMaxOrderByAggregateInput = {
@@ -533,6 +649,10 @@ export type SyncRunMaxOrderByAggregateInput = {
   state?: Prisma.SortOrder
   correlationId?: Prisma.SortOrder
   replayPlanId?: Prisma.SortOrder
+  expectedUnits?: Prisma.SortOrder
+  completedUnits?: Prisma.SortOrder
+  expectedCaptures?: Prisma.SortOrder
+  completedCaptures?: Prisma.SortOrder
   terminalAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
@@ -549,12 +669,20 @@ export type SyncRunMinOrderByAggregateInput = {
   state?: Prisma.SortOrder
   correlationId?: Prisma.SortOrder
   replayPlanId?: Prisma.SortOrder
+  expectedUnits?: Prisma.SortOrder
+  completedUnits?: Prisma.SortOrder
+  expectedCaptures?: Prisma.SortOrder
+  completedCaptures?: Prisma.SortOrder
   terminalAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
 export type SyncRunSumOrderByAggregateInput = {
   revision?: Prisma.SortOrder
+  expectedUnits?: Prisma.SortOrder
+  completedUnits?: Prisma.SortOrder
+  expectedCaptures?: Prisma.SortOrder
+  completedCaptures?: Prisma.SortOrder
 }
 
 export type SyncRunScalarRelationFilter = {
@@ -647,6 +775,11 @@ export type SyncRunCreateWithoutReplayPlanInput = {
   windowTo: Date | string
   state?: $Enums.LedgerState
   correlationId: string
+  expectedUnits?: number
+  completedUnits?: number
+  expectedCaptures?: number
+  completedCaptures?: number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
   createdAt?: Date | string
   attempts?: Prisma.SyncAttemptCreateNestedManyWithoutSyncRunInput
@@ -664,6 +797,11 @@ export type SyncRunUncheckedCreateWithoutReplayPlanInput = {
   windowTo: Date | string
   state?: $Enums.LedgerState
   correlationId: string
+  expectedUnits?: number
+  completedUnits?: number
+  expectedCaptures?: number
+  completedCaptures?: number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
   createdAt?: Date | string
   attempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutSyncRunInput
@@ -711,6 +849,11 @@ export type SyncRunScalarWhereInput = {
   state?: Prisma.EnumLedgerStateFilter<"SyncRun"> | $Enums.LedgerState
   correlationId?: Prisma.StringFilter<"SyncRun"> | string
   replayPlanId?: Prisma.StringNullableFilter<"SyncRun"> | string | null
+  expectedUnits?: Prisma.IntFilter<"SyncRun"> | number
+  completedUnits?: Prisma.IntFilter<"SyncRun"> | number
+  expectedCaptures?: Prisma.IntFilter<"SyncRun"> | number
+  completedCaptures?: Prisma.IntFilter<"SyncRun"> | number
+  completionManifest?: Prisma.JsonFilter<"SyncRun">
   terminalAt?: Prisma.DateTimeNullableFilter<"SyncRun"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"SyncRun"> | Date | string
 }
@@ -726,6 +869,11 @@ export type SyncRunCreateWithoutAttemptsInput = {
   windowTo: Date | string
   state?: $Enums.LedgerState
   correlationId: string
+  expectedUnits?: number
+  completedUnits?: number
+  expectedCaptures?: number
+  completedCaptures?: number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
   createdAt?: Date | string
   replayPlan?: Prisma.ReplayPlanCreateNestedOneWithoutSyncRunsInput
@@ -744,6 +892,11 @@ export type SyncRunUncheckedCreateWithoutAttemptsInput = {
   state?: $Enums.LedgerState
   correlationId: string
   replayPlanId?: string | null
+  expectedUnits?: number
+  completedUnits?: number
+  expectedCaptures?: number
+  completedCaptures?: number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
   createdAt?: Date | string
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedCreateNestedManyWithoutSyncRunInput
@@ -776,6 +929,11 @@ export type SyncRunUpdateWithoutAttemptsInput = {
   windowTo?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.EnumLedgerStateFieldUpdateOperationsInput | $Enums.LedgerState
   correlationId?: Prisma.StringFieldUpdateOperationsInput | string
+  expectedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  completedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  expectedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replayPlan?: Prisma.ReplayPlanUpdateOneWithoutSyncRunsNestedInput
@@ -794,6 +952,11 @@ export type SyncRunUncheckedUpdateWithoutAttemptsInput = {
   state?: Prisma.EnumLedgerStateFieldUpdateOperationsInput | $Enums.LedgerState
   correlationId?: Prisma.StringFieldUpdateOperationsInput | string
   replayPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  expectedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  completedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  expectedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedUpdateManyWithoutSyncRunNestedInput
@@ -810,6 +973,11 @@ export type SyncRunCreateWithoutEvidenceBuildsInput = {
   windowTo: Date | string
   state?: $Enums.LedgerState
   correlationId: string
+  expectedUnits?: number
+  completedUnits?: number
+  expectedCaptures?: number
+  completedCaptures?: number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
   createdAt?: Date | string
   replayPlan?: Prisma.ReplayPlanCreateNestedOneWithoutSyncRunsInput
@@ -828,6 +996,11 @@ export type SyncRunUncheckedCreateWithoutEvidenceBuildsInput = {
   state?: $Enums.LedgerState
   correlationId: string
   replayPlanId?: string | null
+  expectedUnits?: number
+  completedUnits?: number
+  expectedCaptures?: number
+  completedCaptures?: number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
   createdAt?: Date | string
   attempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutSyncRunInput
@@ -860,6 +1033,11 @@ export type SyncRunUpdateWithoutEvidenceBuildsInput = {
   windowTo?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.EnumLedgerStateFieldUpdateOperationsInput | $Enums.LedgerState
   correlationId?: Prisma.StringFieldUpdateOperationsInput | string
+  expectedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  completedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  expectedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replayPlan?: Prisma.ReplayPlanUpdateOneWithoutSyncRunsNestedInput
@@ -878,6 +1056,11 @@ export type SyncRunUncheckedUpdateWithoutEvidenceBuildsInput = {
   state?: Prisma.EnumLedgerStateFieldUpdateOperationsInput | $Enums.LedgerState
   correlationId?: Prisma.StringFieldUpdateOperationsInput | string
   replayPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  expectedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  completedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  expectedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutSyncRunNestedInput
@@ -894,6 +1077,11 @@ export type SyncRunCreateManyReplayPlanInput = {
   windowTo: Date | string
   state?: $Enums.LedgerState
   correlationId: string
+  expectedUnits?: number
+  completedUnits?: number
+  expectedCaptures?: number
+  completedCaptures?: number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
   createdAt?: Date | string
 }
@@ -909,6 +1097,11 @@ export type SyncRunUpdateWithoutReplayPlanInput = {
   windowTo?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.EnumLedgerStateFieldUpdateOperationsInput | $Enums.LedgerState
   correlationId?: Prisma.StringFieldUpdateOperationsInput | string
+  expectedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  completedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  expectedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attempts?: Prisma.SyncAttemptUpdateManyWithoutSyncRunNestedInput
@@ -926,6 +1119,11 @@ export type SyncRunUncheckedUpdateWithoutReplayPlanInput = {
   windowTo?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.EnumLedgerStateFieldUpdateOperationsInput | $Enums.LedgerState
   correlationId?: Prisma.StringFieldUpdateOperationsInput | string
+  expectedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  completedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  expectedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutSyncRunNestedInput
@@ -943,6 +1141,11 @@ export type SyncRunUncheckedUpdateManyWithoutReplayPlanInput = {
   windowTo?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.EnumLedgerStateFieldUpdateOperationsInput | $Enums.LedgerState
   correlationId?: Prisma.StringFieldUpdateOperationsInput | string
+  expectedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  completedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  expectedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -999,6 +1202,11 @@ export type SyncRunSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   state?: boolean
   correlationId?: boolean
   replayPlanId?: boolean
+  expectedUnits?: boolean
+  completedUnits?: boolean
+  expectedCaptures?: boolean
+  completedCaptures?: boolean
+  completionManifest?: boolean
   terminalAt?: boolean
   createdAt?: boolean
   replayPlan?: boolean | Prisma.SyncRun$replayPlanArgs<ExtArgs>
@@ -1019,6 +1227,11 @@ export type SyncRunSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   state?: boolean
   correlationId?: boolean
   replayPlanId?: boolean
+  expectedUnits?: boolean
+  completedUnits?: boolean
+  expectedCaptures?: boolean
+  completedCaptures?: boolean
+  completionManifest?: boolean
   terminalAt?: boolean
   createdAt?: boolean
   replayPlan?: boolean | Prisma.SyncRun$replayPlanArgs<ExtArgs>
@@ -1036,6 +1249,11 @@ export type SyncRunSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   state?: boolean
   correlationId?: boolean
   replayPlanId?: boolean
+  expectedUnits?: boolean
+  completedUnits?: boolean
+  expectedCaptures?: boolean
+  completedCaptures?: boolean
+  completionManifest?: boolean
   terminalAt?: boolean
   createdAt?: boolean
   replayPlan?: boolean | Prisma.SyncRun$replayPlanArgs<ExtArgs>
@@ -1053,11 +1271,16 @@ export type SyncRunSelectScalar = {
   state?: boolean
   correlationId?: boolean
   replayPlanId?: boolean
+  expectedUnits?: boolean
+  completedUnits?: boolean
+  expectedCaptures?: boolean
+  completedCaptures?: boolean
+  completionManifest?: boolean
   terminalAt?: boolean
   createdAt?: boolean
 }
 
-export type SyncRunOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logicalKey" | "revision" | "provider" | "endpointFamily" | "lane" | "windowFrom" | "windowTo" | "state" | "correlationId" | "replayPlanId" | "terminalAt" | "createdAt", ExtArgs["result"]["syncRun"]>
+export type SyncRunOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logicalKey" | "revision" | "provider" | "endpointFamily" | "lane" | "windowFrom" | "windowTo" | "state" | "correlationId" | "replayPlanId" | "expectedUnits" | "completedUnits" | "expectedCaptures" | "completedCaptures" | "completionManifest" | "terminalAt" | "createdAt", ExtArgs["result"]["syncRun"]>
 export type SyncRunInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   replayPlan?: boolean | Prisma.SyncRun$replayPlanArgs<ExtArgs>
   attempts?: boolean | Prisma.SyncRun$attemptsArgs<ExtArgs>
@@ -1090,6 +1313,11 @@ export type $SyncRunPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     state: $Enums.LedgerState
     correlationId: string
     replayPlanId: string | null
+    expectedUnits: number
+    completedUnits: number
+    expectedCaptures: number
+    completedCaptures: number
+    completionManifest: runtime.JsonValue
     terminalAt: Date | null
     createdAt: Date
   }, ExtArgs["result"]["syncRun"]>
@@ -1529,6 +1757,11 @@ export interface SyncRunFieldRefs {
   readonly state: Prisma.FieldRef<"SyncRun", 'LedgerState'>
   readonly correlationId: Prisma.FieldRef<"SyncRun", 'String'>
   readonly replayPlanId: Prisma.FieldRef<"SyncRun", 'String'>
+  readonly expectedUnits: Prisma.FieldRef<"SyncRun", 'Int'>
+  readonly completedUnits: Prisma.FieldRef<"SyncRun", 'Int'>
+  readonly expectedCaptures: Prisma.FieldRef<"SyncRun", 'Int'>
+  readonly completedCaptures: Prisma.FieldRef<"SyncRun", 'Int'>
+  readonly completionManifest: Prisma.FieldRef<"SyncRun", 'Json'>
   readonly terminalAt: Prisma.FieldRef<"SyncRun", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"SyncRun", 'DateTime'>
 }

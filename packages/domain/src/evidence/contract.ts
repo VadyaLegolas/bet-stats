@@ -49,6 +49,76 @@ export interface EvidenceReceipt {
   readonly inputs: readonly EvidenceSourceRef[];
 }
 
+export type EvidenceComponentKind = "form5" | "form10" | "elo" | "homeStrength" | "awayStrength" | "goalRates" | "restDays" | "h2h";
+export type EvidenceUnit = "points-per-match" | "rating-points" | "goals-per-match" | "days" | "weight";
+
+interface EvidenceProjectionComponentBase {
+  readonly sampleSize: number;
+  readonly limitation: EvidenceLimitation | null;
+  readonly sourceRefs: readonly EvidenceSourceRef[];
+}
+
+export type EvidenceProjectionComponent =
+  | (EvidenceProjectionComponentBase & { readonly kind: "form5" | "form10"; readonly value: number | null; readonly unit: "points-per-match" })
+  | (EvidenceProjectionComponentBase & { readonly kind: "elo"; readonly value: number | null; readonly unit: "rating-points" })
+  | (EvidenceProjectionComponentBase & { readonly kind: "homeStrength" | "awayStrength"; readonly value: number | null; readonly unit: "points-per-match" })
+  | (EvidenceProjectionComponentBase & { readonly kind: "goalRates"; readonly value: Readonly<{ for: number; against: number }> | null; readonly unit: "goals-per-match" })
+  | (EvidenceProjectionComponentBase & { readonly kind: "restDays"; readonly value: number | null; readonly unit: "days" })
+  | (EvidenceProjectionComponentBase & { readonly kind: "h2h"; readonly value: Readonly<{ pointsPerMatch: number; weight: number }> | null; readonly unit: "points-per-match" });
+
+export interface EvidenceProjectionDto {
+  readonly teamId: string;
+  readonly requestedAsOf: string;
+  readonly resolvedAsOfUtc: string;
+  readonly cutoffBoundary: Readonly<{ observedAt: string }>;
+  readonly state: "COMPLETE" | "LIMITED" | "PENDING";
+  readonly freshness: "FRESH" | "STALE" | "UNAVAILABLE";
+  readonly buildId: string | null;
+  readonly publishedAt: string | null;
+  readonly receipt: EvidenceReceipt | null;
+  readonly coverage: EvidenceWindow | null;
+  readonly components: Partial<Record<EvidenceComponentKind, EvidenceProjectionComponent>>;
+}
+
+const COMPONENT_UNITS: Readonly<Record<EvidenceComponentKind, EvidenceUnit>> = {
+  form5: "points-per-match",
+  form10: "points-per-match",
+  elo: "rating-points",
+  homeStrength: "points-per-match",
+  awayStrength: "points-per-match",
+  goalRates: "goals-per-match",
+  restDays: "days",
+  h2h: "points-per-match",
+};
+
+export function isEvidenceComponentKind(value: string): value is EvidenceComponentKind {
+  return Object.hasOwn(COMPONENT_UNITS, value);
+}
+
+export function evidenceComponentUnit(kind: EvidenceComponentKind): EvidenceUnit {
+  return COMPONENT_UNITS[kind];
+}
+
+export function parseEvidenceProjection(value: unknown): EvidenceProjectionDto {
+  if (!value || typeof value !== "object") throw new Error("INVALID_EVIDENCE_PROJECTION");
+  const candidate = value as EvidenceProjectionDto;
+  if (typeof candidate.teamId !== "string" || typeof candidate.requestedAsOf !== "string" || typeof candidate.resolvedAsOfUtc !== "string" || !candidate.components || typeof candidate.components !== "object") throw new Error("INVALID_EVIDENCE_PROJECTION");
+  for (const [key, component] of Object.entries(candidate.components)) {
+    if (!isEvidenceComponentKind(key) || !component || component.kind !== key || component.unit !== evidenceComponentUnit(key) || !Array.isArray(component.sourceRefs)) throw new Error("INVALID_EVIDENCE_COMPONENT");
+    if (component.value !== null && !validComponentValue(key, component.value)) throw new Error("INVALID_EVIDENCE_COMPONENT_VALUE");
+  }
+  return candidate;
+}
+
+function validComponentValue(kind: EvidenceComponentKind, value: unknown): boolean {
+  if (["form5", "form10", "elo", "homeStrength", "awayStrength", "restDays"].includes(kind)) return typeof value === "number" && Number.isFinite(value);
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return kind === "goalRates"
+    ? typeof record.for === "number" && Number.isFinite(record.for) && typeof record.against === "number" && Number.isFinite(record.against)
+    : typeof record.pointsPerMatch === "number" && Number.isFinite(record.pointsPerMatch) && typeof record.weight === "number" && Number.isFinite(record.weight);
+}
+
 export function toSourceRef(match: EvidenceMatch): EvidenceSourceRef {
   return { fixtureId: match.fixtureId, effectiveAt: match.effectiveAt, observedAt: match.observedAt, sourceUpdatedAt: match.sourceUpdatedAt, payloadHash: match.payloadHash, payloadBytes: match.payloadBytes };
 }

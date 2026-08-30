@@ -1,6 +1,16 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
-import type { EvidenceReceipt, EvidenceSourceRef } from "@bet-stats/domain";
+import {
+  evidenceComponentUnit,
+  isEvidenceComponentKind,
+  parseEvidenceProjection,
+  type EvidenceComponentKind,
+  type EvidenceLimitation,
+  type EvidenceProjectionComponent,
+  type EvidenceProjectionDto,
+  type EvidenceReceipt,
+  type EvidenceSourceRef,
+} from "@bet-stats/domain";
 
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/;
 const STALE_AFTER_MS = 72 * 60 * 60 * 1_000;
@@ -25,19 +35,7 @@ export interface EvidenceRepository {
   findPublished(teamId: string, cutoff: string): Promise<PublishedEvidenceBuild | null>;
 }
 
-export type EvidenceProjection = {
-  teamId: string;
-  requestedAsOf: string;
-  resolvedAsOfUtc: string;
-  cutoffBoundary: { observedAt: string };
-  state: "COMPLETE" | "LIMITED" | "PENDING";
-  freshness: "FRESH" | "STALE" | "UNAVAILABLE";
-  buildId: string | null;
-  publishedAt: string | null;
-  receipt: EvidenceReceipt | null;
-  coverage: EvidenceReceipt["sourceWindow"] | null;
-  components: Record<string, { value: unknown; sampleSize: number; limitation: string | null; sourceRefs: readonly EvidenceSourceRef[] }>;
-};
+export type EvidenceProjection = EvidenceProjectionDto;
 
 function contractError(code: string): Error & { code: string } {
   return Object.assign(new Error(code), { code });
@@ -56,32 +54,69 @@ function asReceipt(value: unknown): EvidenceReceipt | null {
   return typeof candidate.resolvedAsOf === "string" && Array.isArray(candidate.inputs) && candidate.sourceWindow !== undefined ? candidate as EvidenceReceipt : null;
 }
 
-function sourceRefs(component: PublishedEvidenceComponent, receipt: EvidenceReceipt | null): readonly EvidenceSourceRef[] {
-  if (!Array.isArray(component.sourceTimes)) return [];
+function validSourceRef(value: unknown): value is EvidenceSourceRef {
+  if (!value || typeof value !== "object") return false;
+  const source = value as Partial<EvidenceSourceRef>;
+  return typeof source.fixtureId === "string" && source.fixtureId.length > 0
+    && typeof source.effectiveAt === "string" && Number.isFinite(Date.parse(source.effectiveAt))
+    && typeof source.observedAt === "string" && Number.isFinite(Date.parse(source.observedAt))
+    && typeof source.payloadHash === "string" && source.payloadHash.length > 0
+    && typeof source.payloadBytes === "number" && Number.isInteger(source.payloadBytes) && source.payloadBytes >= 0;
+}
+
+function sourceRefs(component: PublishedEvidenceComponent, receipt: EvidenceReceipt | null): readonly EvidenceSourceRef[] | null {
+  if (!Array.isArray(component.sourceTimes)) return null;
   const inputs = receipt?.inputs ?? [];
-  return component.sourceTimes.flatMap((source) => {
-    if (!source || typeof source !== "object") return [];
-    const fixtureId = String((source as { fixtureId?: unknown }).fixtureId ?? "");
-    const full = inputs.find((input) => input.fixtureId === fixtureId);
-    return full ? [full] : [];
-  });
+  const refs: EvidenceSourceRef[] = [];
+  for (const value of component.sourceTimes) {
+    if (!value || typeof value !== "object") return null;
+    const source = value as { fixtureId?: unknown; effectiveAt?: unknown; observedAt?: unknown };
+    const full = inputs.find((input) => input.fixtureId === source.fixtureId && input.effectiveAt === source.effectiveAt && input.observedAt === source.observedAt);
+    if (!full || !validSourceRef(full)) return null;
+    refs.push(full);
+  }
+  if (component.value !== null && component.value !== undefined && refs.length === 0) return null;
+  return refs;
+}
+
+function limitation(value: string | null): EvidenceLimitation | null {
+  return value === "NO_ELIGIBLE_HISTORY" || value === "LIMITED_HISTORY" || value === "MISSING_TIMESTAMP" ? value : null;
+}
+
+function projectComponent(component: PublishedEvidenceComponent, receipt: EvidenceReceipt | null): EvidenceProjectionComponent | null {
+  if (!isEvidenceComponentKind(component.component)) return null;
+  const kind: EvidenceComponentKind = component.component;
+  const refs = sourceRefs(component, receipt);
+  const projected = {
+    kind,
+    value: refs === null ? null : component.value ?? null,
+    unit: evidenceComponentUnit(kind),
+    sampleSize: component.sampleSize,
+    limitation: refs === null ? "MISSING_TIMESTAMP" as const : limitation(component.limitation),
+    sourceRefs: refs ?? [],
+  };
+  try { return parseEvidenceProjection({ teamId: "validation", requestedAsOf: "validation", resolvedAsOfUtc: "validation", cutoffBoundary: { observedAt: "validation" }, state: "LIMITED", freshness: "UNAVAILABLE", buildId: null, publishedAt: null, receipt: null, coverage: null, components: { [kind]: projected } }).components[kind] ?? null; }
+  catch { return { ...projected, value: null, limitation: "MISSING_TIMESTAMP", sourceRefs: [] } as EvidenceProjectionComponent; }
 }
 
 export async function resolveTeamEvidence(input: { teamId?: unknown; asOf?: unknown }, repository?: EvidenceRepository): Promise<EvidenceProjection> {
   const cutoff = parseCutoff(input.asOf);
   if (typeof input.teamId !== "string" || input.teamId.trim() === "") throw contractError("INVALID_TEAM_ID");
   const build = await repository?.findPublished(input.teamId, cutoff.utc) ?? null;
-  if (!build) return { teamId: input.teamId, requestedAsOf: cutoff.requested, resolvedAsOfUtc: cutoff.utc, cutoffBoundary: { observedAt: cutoff.utc }, state: "PENDING", freshness: "UNAVAILABLE", buildId: null, publishedAt: null, receipt: null, coverage: null, components: {} };
+  if (!build) return parseEvidenceProjection({ teamId: input.teamId, requestedAsOf: cutoff.requested, resolvedAsOfUtc: cutoff.utc, cutoffBoundary: { observedAt: cutoff.utc }, state: "PENDING", freshness: "UNAVAILABLE", buildId: null, publishedAt: null, receipt: null, coverage: null, components: {} });
   const buildCutoff = new Date(build.cutoff).getTime();
   if (build.state !== "PUBLISHED") throw contractError("UNPUBLISHED_BUILD");
   if (!Number.isFinite(buildCutoff) || buildCutoff > cutoff.time) throw contractError("POST_CUTOFF_BUILD");
   const receiptRow = build.components.find((component) => component.component === "receipt");
   const receipt = asReceipt(receiptRow?.value);
-  const components = Object.fromEntries(build.components.filter((component) => component.component !== "receipt").map((component) => [component.component, { value: component.value ?? null, sampleSize: component.sampleSize, limitation: component.limitation, sourceRefs: sourceRefs(component, receipt) }]));
-  const limited = !receipt || build.components.some((component) => component.limitation !== null || component.sampleSize === 0);
+  const components = Object.fromEntries(build.components.filter((component) => component.component !== "receipt").flatMap((component) => {
+    const projected = projectComponent(component, receipt);
+    return projected === null ? [] : [[projected.kind, projected]];
+  }));
+  const limited = !receipt || Object.values(components).some((component) => component.limitation !== null || component.sampleSize === 0 || component.value === null);
   const publishedAt = build.publishedAt === null ? null : new Date(build.publishedAt).toISOString();
   const freshness = publishedAt === null ? "UNAVAILABLE" : cutoff.time - Date.parse(publishedAt) > STALE_AFTER_MS ? "STALE" : "FRESH";
-  return { teamId: input.teamId, requestedAsOf: cutoff.requested, resolvedAsOfUtc: cutoff.utc, cutoffBoundary: { observedAt: cutoff.utc }, state: limited ? "LIMITED" : "COMPLETE", freshness, buildId: build.id, publishedAt, receipt, coverage: receipt?.sourceWindow ?? null, components };
+  return parseEvidenceProjection({ teamId: input.teamId, requestedAsOf: cutoff.requested, resolvedAsOfUtc: cutoff.utc, cutoffBoundary: { observedAt: cutoff.utc }, state: limited ? "LIMITED" : "COMPLETE", freshness, buildId: build.id, publishedAt, receipt, coverage: receipt?.sourceWindow ?? null, components });
 }
 
 @Injectable()

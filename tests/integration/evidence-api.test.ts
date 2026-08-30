@@ -40,20 +40,21 @@ describe("cutoff-aware evidence API", () => {
   });
 
   it.each([
-    ["missing receipt input", [], receipt.inputs],
-    ["missing observedAt", [{ fixtureId: "fixture-1", effectiveAt: receipt.inputs[0]!.effectiveAt }], [{ ...receipt.inputs[0], observedAt: "" }]],
-    ["missing effectiveAt", [{ fixtureId: "fixture-1", observedAt: receipt.inputs[0]!.observedAt }], [{ ...receipt.inputs[0], effectiveAt: "" }]],
+    ["missing receipt input", receipt.inputs, []],
+    ["missing observedAt", [{ fixtureId: "fixture-1", effectiveAt: receipt.inputs[0]!.effectiveAt }], receipt.inputs],
+    ["missing effectiveAt", [{ fixtureId: "fixture-1", observedAt: receipt.inputs[0]!.observedAt }], receipt.inputs],
     ["missing payload identity", receipt.inputs, [{ ...receipt.inputs[0], payloadHash: "" }]],
     ["mismatched source", [{ fixtureId: "other", effectiveAt: receipt.inputs[0]!.effectiveAt, observedAt: receipt.inputs[0]!.observedAt }], receipt.inputs],
   ])("fails only the affected component closed for %s", async (_case, componentTimes, receiptInputs) => {
     const { resolveTeamEvidence } = await phase2Evidence();
+    const sibling = { fixtureId: "fixture-2", effectiveAt: "2026-08-23T14:00:00.000Z", observedAt: "2026-08-23T16:00:00.000Z", sourceUpdatedAt: null, payloadHash: "hash-2", payloadBytes: 124 };
     const result = await resolveTeamEvidence(
       { teamId: "team", asOf: receipt.requestedAsOf },
       { findPublished: async () => published({
         components: [
-          { component: "receipt", value: { ...receipt, inputs: receiptInputs }, sampleSize: 1, limitation: null, sourceTimes: receiptInputs },
+          { component: "receipt", value: { ...receipt, inputs: [...receiptInputs, sibling] }, sampleSize: 1, limitation: null, sourceTimes: [...receiptInputs, sibling] },
           { component: "form5", value: 2.1, sampleSize: 1, limitation: null, sourceTimes: componentTimes },
-          { component: "elo", value: 1512, sampleSize: 1, limitation: null, sourceTimes: receipt.inputs },
+          { component: "elo", value: 1512, sampleSize: 1, limitation: null, sourceTimes: [sibling] },
         ],
       }) },
     );

@@ -7,3 +7,5 @@ export * from "./request-budget.js";
 export * from "./evidence/contract.js";
 export * from "./evidence/eligibility.js";
 export * from "./evidence/form.js";
+export * from "./evidence/elo.js";
+export * from "./evidence/features.js";

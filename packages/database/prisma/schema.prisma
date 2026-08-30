@@ -178,16 +178,16 @@ model SourceObservation {
   provider          String
   endpointFamily    String
   externalIdentity  String
-  requestedFrom     DateTime?
-  requestedTo       DateTime?
-  returnedFrom      DateTime?
-  returnedTo        DateTime?
-  observedAt        DateTime
-  sourceUpdatedAt   DateTime?
+  requestedFrom     DateTime?          @db.Timestamptz(3)
+  requestedTo       DateTime?          @db.Timestamptz(3)
+  returnedFrom      DateTime?          @db.Timestamptz(3)
+  returnedTo        DateTime?          @db.Timestamptz(3)
+  observedAt        DateTime           @db.Timestamptz(3)
+  sourceUpdatedAt   DateTime?          @db.Timestamptz(3)
   payloadHash       String
   rawPayload        Json
   payloadBytes      Int
-  createdAt         DateTime           @default(now())
+  createdAt         DateTime           @default(now()) @db.Timestamptz(3)
   resultVersions    ResultVersion[]
   standingSnapshots StandingSnapshot[]
   syncAttempts      SyncAttempt[]
@@ -202,11 +202,11 @@ model StandingSnapshot {
   leagueId      String
   seasonId      String
   observationId String
-  effectiveAt   DateTime
-  observedAt    DateTime
+  effectiveAt   DateTime              @db.Timestamptz(3)
+  observedAt    DateTime              @db.Timestamptz(3)
   isComplete    Boolean
   rowCount      Int
-  createdAt     DateTime              @default(now())
+  createdAt     DateTime              @default(now()) @db.Timestamptz(3)
   observation   SourceObservation     @relation(fields: [observationId], references: [id], onDelete: Restrict)
   rows          StandingSnapshotRow[]
 
@@ -235,12 +235,12 @@ model ReplayPlan {
   provider       String
   competitionId  String
   endpointFamily String
-  windowFrom     DateTime
-  windowTo       DateTime
+  windowFrom     DateTime        @db.Timestamptz(3)
+  windowTo       DateTime        @db.Timestamptz(3)
   previewVersion String
   reason         String?
   actor          String
-  createdAt      DateTime        @default(now())
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
   syncRuns       SyncRun[]
   evidenceBuilds EvidenceBuild[]
 
@@ -254,13 +254,18 @@ model SyncRun {
   provider       String
   endpointFamily String
   lane           String
-  windowFrom     DateTime
-  windowTo       DateTime
+  windowFrom     DateTime        @db.Timestamptz(3)
+  windowTo       DateTime        @db.Timestamptz(3)
   state          LedgerState     @default(PENDING)
   correlationId  String
   replayPlanId   String?
-  terminalAt     DateTime?
-  createdAt      DateTime        @default(now())
+  expectedUnits       Int             @default(0)
+  completedUnits      Int             @default(0)
+  expectedCaptures    Int             @default(0)
+  completedCaptures   Int             @default(0)
+  completionManifest Json             @default("{\"expectedUnits\":[],\"completedUnits\":[],\"expectedCaptures\":[],\"completedCaptures\":[]}")
+  terminalAt          DateTime?       @db.Timestamptz(3)
+  createdAt           DateTime        @default(now()) @db.Timestamptz(3)
   replayPlan     ReplayPlan?     @relation(fields: [replayPlanId], references: [id], onDelete: Restrict)
   attempts       SyncAttempt[]
   evidenceBuilds EvidenceBuild[]
@@ -276,8 +281,8 @@ model SyncAttempt {
   observationId    String?
   state            LedgerState
   classifiedReason String?
-  startedAt        DateTime           @default(now())
-  finishedAt       DateTime?
+  startedAt        DateTime           @default(now()) @db.Timestamptz(3)
+  finishedAt       DateTime?          @db.Timestamptz(3)
   syncRun          SyncRun            @relation(fields: [syncRunId], references: [id], onDelete: Restrict)
   observation      SourceObservation? @relation(fields: [observationId], references: [id], onDelete: Restrict)
 
@@ -290,10 +295,10 @@ model ProviderCircuitState {
   endpointFamily String
   state          CircuitState @default(CLOSED)
   failureCount   Int          @default(0)
-  openedAt       DateTime?
-  nextProbeAt    DateTime?
+  openedAt       DateTime?    @db.Timestamptz(3)
+  nextProbeAt    DateTime?    @db.Timestamptz(3)
   lastError      String?
-  updatedAt      DateTime     @updatedAt
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
 
   @@unique([provider, endpointFamily])
 }
@@ -301,14 +306,14 @@ model ProviderCircuitState {
 model EvidenceBuild {
   id            String              @id @default(cuid())
   teamId        String
-  cutoff        DateTime
+  cutoff        DateTime            @db.Timestamptz(3)
   configVersion String
   configHash    String
   syncRunId     String
   replayPlanId  String?
   state         EvidenceBuildState  @default(BUILDING)
-  publishedAt   DateTime?
-  createdAt     DateTime            @default(now())
+  publishedAt   DateTime?           @db.Timestamptz(3)
+  createdAt     DateTime            @default(now()) @db.Timestamptz(3)
   syncRun       SyncRun             @relation(fields: [syncRunId], references: [id], onDelete: Restrict)
   replayPlan    ReplayPlan?         @relation(fields: [replayPlanId], references: [id], onDelete: Restrict)
   components    EvidenceComponent[]
@@ -334,14 +339,14 @@ model ResultVersion {
   id                        String            @id @default(cuid())
   fixtureId                 String
   observationId             String
-  effectiveAt               DateTime
-  observedAt                DateTime
+  effectiveAt               DateTime          @db.Timestamptz(3)
+  observedAt                DateTime          @db.Timestamptz(3)
   homeGoals                 Int?
   awayGoals                 Int?
   status                    String
   revision                  Int
   supersedesResultVersionId String?           @unique
-  createdAt                 DateTime          @default(now())
+  createdAt                 DateTime          @default(now()) @db.Timestamptz(3)
   fixture                   Fixture           @relation(fields: [fixtureId], references: [id], onDelete: Restrict)
   observation               SourceObservation @relation(fields: [observationId], references: [id], onDelete: Restrict)
   supersedesResultVersion   ResultVersion?    @relation("ResultSupersession", fields: [supersedesResultVersionId], references: [id], onDelete: Restrict)

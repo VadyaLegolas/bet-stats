@@ -40,6 +40,22 @@ describe("temporal provenance contract", () => {
     expect(() => sql(`UPDATE "ResultVersion" SET "homeGoals"=9 WHERE id='result-1';`)).toThrow();
     expect(() => sql(`DELETE FROM "SourceObservation" WHERE id='obs-1';`)).toThrow();
   });
+
+  it("preserves cutoff identity across PostgreSQL session timezones", () => {
+    sql(`SET TIME ZONE 'UTC';`);
+    const utc = sql(`SELECT id FROM "ResultVersion" WHERE "effectiveAt" <= '2026-08-29T10:30:00Z'::timestamptz AND "observedAt" <= '2026-08-29T10:30:00Z'::timestamptz ORDER BY id;`);
+    sql(`SET TIME ZONE 'Europe/Warsaw';`);
+    const warsaw = sql(`SELECT id FROM "ResultVersion" WHERE "effectiveAt" <= '2026-08-29T10:30:00Z'::timestamptz AND "observedAt" <= '2026-08-29T10:30:00Z'::timestamptz ORDER BY id;`);
+    expect(warsaw).toEqual(utc);
+  });
+
+  it("allows only one terminal evidence-build transition", () => {
+    sql(`INSERT INTO "SyncRun" (id,"logicalKey",revision,provider,"endpointFamily",lane,"windowFrom","windowTo",state,"correlationId","expectedUnits","completedUnits","expectedCaptures","completedCaptures","completionManifest") VALUES ('run-db','run-db',1,'football-data.org','RESULTS','critical','2026-08-01T00:00:00Z','2026-08-30T00:00:00Z','SUCCEEDED','corr',1,1,1,1,'{"expectedUnits":["results"],"completedUnits":["results"],"expectedCaptures":["hash-1"],"completedCaptures":["hash-1"]}'); INSERT INTO "EvidenceBuild" (id,"teamId",cutoff,"configVersion","configHash","syncRunId",state) VALUES ('build-db','home','2026-08-30T00:00:00Z','v1','config-db','run-db','BUILDING');`);
+    sql(`UPDATE "EvidenceBuild" SET state='PUBLISHED', "publishedAt"=now() WHERE id='build-db';`);
+    expect(sql(`SELECT state FROM "EvidenceBuild" WHERE id='build-db';`)).toEqual(["PUBLISHED"]);
+    expect(() => sql(`UPDATE "EvidenceBuild" SET state='FAILED', "publishedAt"=NULL WHERE id='build-db';`)).toThrow();
+    expect(() => sql(`DELETE FROM "EvidenceBuild" WHERE id='build-db';`)).toThrow();
+  });
 });
 
 describe("evidence publication contract", () => {

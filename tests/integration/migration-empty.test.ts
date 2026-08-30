@@ -152,5 +152,30 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
       `SELECT indexname FROM pg_indexes WHERE schemaname='public' AND tablename='ResultVersion' ORDER BY indexname;`,
     ).join("\n");
     expect(cutoffIndexes).toContain("ResultVersion_effectiveAt_observedAt_idx");
+
+    const temporalTypes = sql(
+      `SELECT table_name || '.' || column_name || ':' || data_type
+       FROM information_schema.columns
+       WHERE table_schema='public'
+         AND (table_name, column_name) IN (
+           ('SourceObservation','observedAt'),
+           ('ResultVersion','effectiveAt'),
+           ('StandingSnapshot','observedAt'),
+           ('ReplayPlan','windowFrom'),
+           ('SyncRun','windowTo'),
+           ('EvidenceBuild','cutoff')
+         )
+       ORDER BY 1;`,
+    );
+    expect(temporalTypes).toHaveLength(6);
+    expect(temporalTypes.every((column) => column.endsWith(":timestamp with time zone"))).toBe(true);
+
+    const syncRunCompleteness = sql(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='SyncRun'
+         AND column_name IN ('expectedUnits','completedUnits','expectedCaptures','completedCaptures','completionManifest')
+       ORDER BY column_name;`,
+    );
+    expect(syncRunCompleteness).toHaveLength(5);
   });
 });

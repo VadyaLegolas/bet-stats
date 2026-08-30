@@ -89,7 +89,7 @@ describe("football-data.org provider contract", () => {
   });
 
   it("normalizes a finished result with capture and requested coverage provenance", () => {
-    const requestedWindow = { dateFrom: "2026-08-01", dateTo: "2026-08-31" };
+    const requestedWindow = { competitionCode: "PL" as const, dateFrom: "2026-08-01", dateTo: "2026-08-31" };
     expect(normalizeCompetitionResults(finishedPayload, requestedWindow, new Date("2026-08-30T10:00:00Z"))).toEqual([
       expect.objectContaining({
         provider: "football-data.org",
@@ -106,7 +106,7 @@ describe("football-data.org provider contract", () => {
   });
 
   it("fails closed for unfinished or malformed result scores", () => {
-    const window = { dateFrom: "2026-08-01", dateTo: "2026-08-31" };
+    const window = { competitionCode: "PL" as const, dateFrom: "2026-08-01", dateTo: "2026-08-31" };
     expect(() => normalizeCompetitionResults({ ...finishedPayload, matches: [{ ...finishedPayload.matches[0], status: "TIMED" }] }, window)).toThrow(ProviderPayloadError);
     expect(() => normalizeCompetitionResults({ ...finishedPayload, matches: [{ ...finishedPayload.matches[0], score: { fullTime: { home: null, away: 1 } } }] }, window)).toThrow(ProviderPayloadError);
   });

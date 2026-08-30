@@ -27,10 +27,17 @@ export const footballDataFinishedMatchSchema = footballDataMatchSchema.extend({
   }).passthrough(),
 });
 
-export const competitionResultsSchema = z.object({
-  competition: z.object({ code: z.literal("PL"), name: z.string().min(1) }).passthrough(),
+const competitionResultsEnvelopeSchema = z.object({
+  competition: z.object({ code: z.string().min(1), name: z.string().min(1) }).passthrough(),
   matches: z.array(footballDataFinishedMatchSchema),
 }).passthrough();
+
+export function competitionResultsSchema(competitionCode: string) {
+  return competitionResultsEnvelopeSchema.refine(
+    (value) => value.competition.code === competitionCode,
+    { message: "Competition response does not match request", path: ["competition", "code"] },
+  );
+}
 
 const standingRowSchema = z.object({
   position: z.number().int().positive(),
@@ -45,8 +52,8 @@ const standingRowSchema = z.object({
   goalDifference: z.number().int(),
 }).passthrough();
 
-export const competitionStandingsSchema = z.object({
-  competition: z.object({ id: z.number().int().nonnegative(), code: z.literal("PL"), name: z.string().min(1) }).passthrough(),
+const competitionStandingsEnvelopeSchema = z.object({
+  competition: z.object({ id: z.number().int().nonnegative(), code: z.string().min(1), name: z.string().min(1) }).passthrough(),
   season: z.object({ id: z.number().int().nonnegative(), startDate: z.string(), endDate: z.string() }).passthrough(),
   lastUpdated: z.string().datetime({ offset: true }).nullable().optional(),
   standings: z.array(z.object({
@@ -59,3 +66,10 @@ export const competitionStandingsSchema = z.object({
     context.addIssue({ code: "custom", message: "Standings envelope must contain exactly one TOTAL table", path: ["standings"] });
   }
 });
+
+export function competitionStandingsSchema(competitionCode: string) {
+  return competitionStandingsEnvelopeSchema.refine(
+    (value) => value.competition.code === competitionCode,
+    { message: "Competition response does not match request", path: ["competition", "code"] },
+  );
+}

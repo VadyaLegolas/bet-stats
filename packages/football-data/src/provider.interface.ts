@@ -16,7 +16,15 @@ export interface NormalizedFixture {
   raw: Readonly<Record<string, unknown>>;
 }
 
+export const configuredCompetitionCodes = ["PL", "PD", "BL1", "SA", "FL1", "CL", "EL"] as const;
+export type ConfiguredCompetitionCode = (typeof configuredCompetitionCodes)[number];
+
+export function isConfiguredCompetitionCode(value: string): value is ConfiguredCompetitionCode {
+  return configuredCompetitionCodes.some((code) => code === value);
+}
+
 export interface RequestedDateWindow {
+  competitionCode: ConfiguredCompetitionCode;
   dateFrom: string;
   dateTo: string;
 }
@@ -56,7 +64,7 @@ export interface ResultProvider {
 }
 
 export interface StandingsRequestCoverage {
-  competitionCode: string;
+  competitionCode: ConfiguredCompetitionCode;
 }
 
 export interface NormalizedStandingRow {

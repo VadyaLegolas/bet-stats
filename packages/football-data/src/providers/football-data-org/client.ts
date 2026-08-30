@@ -1,4 +1,4 @@
-import type { FixtureProvider, NormalizedFixture, NormalizedResult, NormalizedStandingSnapshot, RequestedDateWindow, ResultProvider, StandingsProvider, StandingsRequestCoverage } from "../../provider.interface.js";
+import { isConfiguredCompetitionCode, type FixtureProvider, type NormalizedFixture, type NormalizedResult, type NormalizedStandingSnapshot, type RequestedDateWindow, type ResultProvider, type StandingsProvider, type StandingsRequestCoverage } from "../../provider.interface.js";
 import { normalizeCompetitionMatches, normalizeCompetitionResults, normalizeCompetitionStandings, ProviderPayloadError } from "./normalize.js";
 
 type Fetcher = (input: string | URL, init?: RequestInit) => Promise<Response>;
@@ -42,8 +42,9 @@ export class FootballDataOrgClient implements FixtureProvider, ResultProvider, S
 
   async fetchCompetitionResults(window: RequestedDateWindow): Promise<readonly NormalizedResult[]> {
     try {
+      assertConfiguredCompetition(window.competitionCode);
       const query = new URLSearchParams({ status: "FINISHED", dateFrom: window.dateFrom, dateTo: window.dateTo });
-      const response = await this.#fetcher(`https://api.football-data.org/v4/competitions/PL/matches?${query}`, {
+      const response = await this.#fetcher(`https://api.football-data.org/v4/competitions/${window.competitionCode}/matches?${query}`, {
         headers: { "X-Auth-Token": this.#apiToken },
         signal: AbortSignal.timeout(this.#timeoutMs),
       });
@@ -61,6 +62,7 @@ export class FootballDataOrgClient implements FixtureProvider, ResultProvider, S
 
   async fetchCompetitionStandings(coverage: StandingsRequestCoverage): Promise<NormalizedStandingSnapshot> {
     try {
+      assertConfiguredCompetition(coverage.competitionCode);
       const response = await this.#fetcher(`https://api.football-data.org/v4/competitions/${encodeURIComponent(coverage.competitionCode)}/standings`, {
         headers: { "X-Auth-Token": this.#apiToken },
         signal: AbortSignal.timeout(this.#timeoutMs),
@@ -76,4 +78,8 @@ export class FootballDataOrgClient implements FixtureProvider, ResultProvider, S
   fetchStandings(coverage: StandingsRequestCoverage): Promise<NormalizedStandingSnapshot> {
     return this.fetchCompetitionStandings(coverage);
   }
+}
+
+function assertConfiguredCompetition(value: string): void {
+  if (!isConfiguredCompetitionCode(value)) throw new ProviderPayloadError("Unsupported football-data.org competition code");
 }

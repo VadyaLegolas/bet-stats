@@ -44,7 +44,7 @@ export function normalizeCompetitionResults(
   requestedWindow: RequestedDateWindow,
   capturedAt = new Date(),
 ): readonly NormalizedResult[] {
-  const parsed = competitionResultsSchema.safeParse(payload);
+  const parsed = competitionResultsSchema(requestedWindow.competitionCode).safeParse(payload);
   if (!parsed.success) throw new ProviderPayloadError("Invalid football-data.org competition results payload");
 
   const kickoffTimes = parsed.data.matches.map((match) => match.utcDate).sort();
@@ -77,7 +77,7 @@ export function normalizeCompetitionStandings(
   requestedCoverage: StandingsRequestCoverage,
   capturedAt = new Date(),
 ): NormalizedStandingSnapshot {
-  const parsed = competitionStandingsSchema.safeParse(payload);
+  const parsed = competitionStandingsSchema(requestedCoverage.competitionCode).safeParse(payload);
   if (!parsed.success) throw new ProviderPayloadError("Invalid football-data.org competition standings payload");
   const standing = parsed.data.standings.find((candidate) => candidate.type === "TOTAL");
   if (!standing) throw new ProviderPayloadError("Invalid football-data.org competition standings payload");

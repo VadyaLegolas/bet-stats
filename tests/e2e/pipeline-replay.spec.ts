@@ -64,7 +64,7 @@ test("blocks stale previews and requires an explicit forced-revision reason", as
   });
   await missing("forced revision has separate confirmation and required reason", async () => {
     await page.getByLabel(/force new revision/i).check();
-    await expect(page.getByLabel(/revision reason/i)).toBeRequired();
+    await expect(page.getByLabel(/revision reason/i)).toHaveAttribute("required", "");
     await expect(page.getByRole("dialog")).toContainText(/new immutable revision/i);
   });
 });

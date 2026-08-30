@@ -1,0 +1,140 @@
+// The application owns this runtime dependency; importing its resolved workspace
+// copy lets this root-level boundary test bootstrap Nest before decorators load.
+import "../../apps/api/node_modules/reflect-metadata/Reflect.js";
+
+import { execFileSync } from "node:child_process";
+import { readFileSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
+import { NestFactory } from "../../apps/api/node_modules/@nestjs/core/index.js";
+import type { INestApplication } from "../../apps/api/node_modules/@nestjs/common/index.js";
+import { NextRequest } from "../../apps/web/node_modules/next/server.js";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { AppModule } from "../../apps/api/src/app.module.js";
+import { GET as proxyGet, POST as proxyPost } from "../../apps/web/app/internal-api/pipeline/replay/[[...path]]/route.js";
+import { createReplayWorker } from "../../workers/data-sync/src/queues/index.js";
+
+const credential = "boundary-operator-secret";
+const databaseRoot = resolve(import.meta.dirname, "../../packages/database");
+const postgresName = `bet-stats-boundary-pg-${process.pid}`;
+const redisName = `bet-stats-boundary-redis-${process.pid}`;
+const queuePrefix = `boundary-${process.pid}`;
+let databaseUrl = "";
+let redisUrl = "";
+let prisma: PrismaClient;
+let app: INestApplication;
+const workers: Array<{ close(): Promise<void> }> = [];
+
+function docker(...args: string[]) {
+  return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+}
+
+function applyCheckedInMigrations() {
+  const migrationsRoot = resolve(databaseRoot, "prisma/migrations");
+  for (const migration of readdirSync(migrationsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort()) {
+    const sql = readFileSync(resolve(migrationsRoot, migration, "migration.sql"));
+    execFileSync("docker", ["exec", "-i", postgresName, "psql", "-h", "127.0.0.1", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats"], { input: sql, stdio: ["pipe", "pipe", "pipe"] });
+  }
+}
+
+async function startApi() {
+  process.env.DATABASE_URL = databaseUrl;
+  process.env.REDIS_URL = redisUrl;
+  process.env.QUEUE_PREFIX = queuePrefix;
+  process.env.OPERATOR_CREDENTIAL = credential;
+  app = await NestFactory.create(AppModule, { logger: false });
+  await app.listen(0, "127.0.0.1");
+  const address = app.getHttpServer().address() as { port: number };
+  process.env.API_ORIGIN = `http://127.0.0.1:${address.port}`;
+}
+
+async function proxy(path: string[], method: "GET" | "POST", body?: Record<string, unknown>) {
+  const url = `http://web.test/internal-api/pipeline/replay/${path.join("/")}`;
+  const request = new NextRequest(url, {
+    method,
+    ...(body ? { headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {}),
+  });
+  const response = await (method === "POST" ? proxyPost : proxyGet)(request, { params: Promise.resolve({ path }) });
+  return { response, json: await response.json() as Record<string, unknown> };
+}
+
+async function waitForPlan(planId: string, state: "SUCCEEDED" | "FAILED") {
+  for (let attempt = 0; attempt < 160; attempt += 1) {
+    const result = await proxy([planId], "GET");
+    if (result.json.state === state) return result;
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+  }
+  throw new Error(`Replay plan did not reach ${state} within 16 seconds`);
+}
+
+describe("production replay proxy boundary", () => {
+  beforeAll(async () => {
+    docker("run", "--detach", "--name", postgresName, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "--publish", "127.0.0.1::5432", "postgres:18-alpine");
+    for (let attempt = 0; attempt < 60; attempt += 1) { try { docker("exec", postgresName, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "bet_stats"); break; } catch (error) { if (attempt === 59) throw error; await new Promise((resolveWait) => setTimeout(resolveWait, 500)); } }
+    const postgresPort = docker("port", postgresName, "5432/tcp").split(":").at(-1);
+    if (!postgresPort) throw new Error("PostgreSQL port missing");
+    databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${postgresPort}/bet_stats`;
+    applyCheckedInMigrations();
+    prisma = createPrismaClient(databaseUrl);
+
+    docker("run", "--detach", "--name", redisName, "--publish", "127.0.0.1::6379", "redis:8-alpine");
+    for (let attempt = 0; attempt < 60; attempt += 1) { try { docker("exec", redisName, "redis-cli", "ping"); break; } catch (error) { if (attempt === 59) throw error; await new Promise((resolveWait) => setTimeout(resolveWait, 250)); } }
+    const redisPort = docker("port", redisName, "6379/tcp").split(":").at(-1);
+    if (!redisPort) throw new Error("Redis port missing");
+    redisUrl = `redis://127.0.0.1:${redisPort}`;
+    await startApi();
+  }, 120_000);
+
+  afterAll(async () => {
+    await app?.close();
+    await prisma?.$disconnect();
+    for (const name of [postgresName, redisName]) try { docker("rm", "--force", name); } catch { /* best effort */ }
+  });
+
+  afterEach(async () => {
+    await Promise.all(workers.splice(0).map((worker) => worker.close()));
+  });
+
+  it("crosses Next proxy, guarded Nest, BullMQ Worker and durable PostgreSQL terminal state", async () => {
+    const executions = new Map<string, number>();
+    const worker = createReplayWorker({ redisUrl, database: prisma, prefix: queuePrefix, execute: async (data) => { executions.set(data.logicalId, (executions.get(data.logicalId) ?? 0) + 1); } });
+    workers.push(worker);
+    const input = { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-30T10:15:00.000Z", to: "2026-08-30T10:15:00.000Z" };
+    const preview = await proxy(["preview"], "POST", input);
+    expect(preview.response.headers.get("cache-control")).toContain("private, no-store");
+    expect(preview.json).toMatchObject({ dryRun: true, input });
+    expect(JSON.stringify(preview.json)).not.toContain(credential);
+
+    const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
+    expect(queued.json).toMatchObject({ queued: true, duplicate: false });
+    const replayPlanId = String(queued.json.replayPlanId);
+    const terminal = await waitForPlan(replayPlanId, "SUCCEEDED");
+    expect(terminal.json).toMatchObject({ state: "SUCCEEDED", outcome: "COMPLETED", attempts: [{ attemptNumber: 1, state: "SUCCEEDED" }] });
+    expect(await prisma.replayPlan.count({ where: { id: replayPlanId } })).toBe(1);
+    expect(await prisma.syncRun.count({ where: { replayPlanId, state: "SUCCEEDED" } })).toBe(1);
+    expect([...executions.values()]).toEqual([1]);
+
+    const duplicate = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
+    expect(duplicate.json).toMatchObject({ replayPlanId, queued: false, duplicate: true });
+    expect(await prisma.syncRun.count({ where: { replayPlanId } })).toBe(1);
+
+    await app.close();
+    await startApi();
+    expect((await proxy([replayPlanId], "GET")).json).toMatchObject({ state: "SUCCEEDED", outcome: "COMPLETED" });
+  }, 30_000);
+
+  it("projects exhausted retries as a classified durable dead letter", async () => {
+    const worker = createReplayWorker({ redisUrl, database: prisma, prefix: queuePrefix, execute: async () => { throw Object.assign(new Error("raw provider secret"), { code: "PROVIDER_TIMEOUT" }); } });
+    workers.push(worker);
+    const input = { provider: "football-data.org", competitionId: "PL", seasonId: "dead-letter", endpointFamily: "RESULTS", from: "2026-08-31T10:15:00.000Z", to: "2026-08-31T10:15:00.000Z" };
+    const preview = await proxy(["preview"], "POST", input);
+    const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
+    const terminal = await waitForPlan(String(queued.json.replayPlanId), "FAILED");
+    expect(terminal.json).toMatchObject({ state: "FAILED", outcome: "DEAD_LETTER", attempts: [
+      { attemptNumber: 1, classifiedReason: "PROVIDER_TIMEOUT" },
+      { attemptNumber: 2, classifiedReason: "PROVIDER_TIMEOUT" },
+      { attemptNumber: 3, classifiedReason: "PROVIDER_TIMEOUT" },
+    ] });
+    expect(JSON.stringify(terminal.json)).not.toMatch(/raw provider secret|credential|postgresql:|redis:/i);
+  }, 30_000);
+});

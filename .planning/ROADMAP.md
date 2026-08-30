@@ -75,7 +75,7 @@ Plans:
 
 ### Phase 2: Historical Evidence Pipeline
 
-**Goal**: Users can inspect time-correct team evidence produced by resilient, quota-aware jobs that operators can safely replay.
+**Goal**: As a football analytics user, I want to inspect time-correct team evidence and request safe historical replays, so that I can rely on reproducible, quota-aware football history.
 **Mode:** mvp
 **Depends on**: Phase 1
 **Requirements**: PIPE-01, PIPE-02, PIPE-03, PIPE-04, PIPE-05, PIPE-06, PIPE-07, PIPE-08
@@ -90,40 +90,40 @@ Plans:
 **Plans**: TBD
 **Wave 1**
 
-- [ ] 02-01-PLAN.md
+- [x] 02-01-PLAN.md
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-02-PLAN.md
-- [ ] 02-03-PLAN.md
+- [x] 02-02-PLAN.md
+- [x] 02-03-PLAN.md
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 02-04-PLAN.md
+- [x] 02-04-PLAN.md
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 02-05-PLAN.md
+- [x] 02-05-PLAN.md
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 02-06-PLAN.md
+- [x] 02-06-PLAN.md
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 02-07-PLAN.md
+- [x] 02-07-PLAN.md
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 02-08-PLAN.md
+- [x] 02-08-PLAN.md
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 02-09-PLAN.md
+- [x] 02-09-PLAN.md
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 02-10-PLAN.md
+- [x] 02-10-PLAN.md
 
 **UI hint**: yes
 
@@ -200,7 +200,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Trustworthy Fixture Discovery | 12/12 | Complete    | 2026-08-29 |
-| 2. Historical Evidence Pipeline | 0/10 | Planned    |  |
+| 2. Historical Evidence Pipeline | 10/10 | In Progress|  |
 | 3. Forecast and Manual Value Workbench | 0/TBD | Not started | - |
 | 4. Settlement and Evidence Scorecard | 0/TBD | Not started | - |
 | 5. Provider-Aware Coverage and Enrichment | 0/TBD | Not started | - |

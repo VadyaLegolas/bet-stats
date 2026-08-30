@@ -21,4 +21,27 @@ describe("historical pipeline job contract", () => {
     expect(createPipelineQueueName(`vitest-${process.pid}-a`)).not.toBe(createPipelineQueueName(`vitest-${process.pid}-b`));
     expect(createPipelineQueueName(`vitest-${process.pid}-a`)).toContain(`vitest-${process.pid}-a`);
   });
+
+  it("registers fixture continuity and result ingestion on the critical lane", async () => {
+    const queues = await import("../../workers/data-sync/src/queues/index.js");
+    const fixture = async () => "fixture";
+    const results = async () => "results";
+    const registrations: Array<{ queue: string; name: string; handler: unknown }> = [];
+    const workers = queues.createSyncWorkers({
+      prefix: `vitest-${process.pid}`,
+      handlers: { fixtures: fixture, results },
+      register: (registration) => { registrations.push(registration); return { close: async () => undefined }; },
+    });
+    expect(workers).toHaveLength(2);
+    expect(registrations).toEqual(expect.arrayContaining([
+      expect.objectContaining({ queue: queues.criticalQueue(`vitest-${process.pid}`), name: "fixtures", handler: fixture }),
+      expect.objectContaining({ queue: queues.criticalQueue(`vitest-${process.pid}`), name: "results", handler: results }),
+    ]));
+  });
+
+  it("uses the same bounded transient retry policy for fixture and result work", async () => {
+    const { createSyncJobOptions } = await import("../../workers/data-sync/src/queues/index.js");
+    expect(createSyncJobOptions("fixtures")).toEqual(createSyncJobOptions("results"));
+    expect(createSyncJobOptions("fixtures")).toMatchObject({ attempts: 3, backoff: { type: "exponential" } });
+  });
 });

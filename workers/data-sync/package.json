@@ -12,7 +12,9 @@
     "@bet-stats/config": "workspace:*",
     "@bet-stats/database": "workspace:*",
     "@bet-stats/domain": "workspace:*",
-    "@bet-stats/football-data": "workspace:*"
+    "@bet-stats/football-data": "workspace:*",
+    "bullmq": "^6.3.2",
+    "cockatiel": "^3.2.1"
   },
   "devDependencies": {
     "@types/node": "24.10.9",

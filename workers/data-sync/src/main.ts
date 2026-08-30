@@ -1,5 +1,7 @@
 import { dependencyReadiness, readServerConfig } from "@bet-stats/config";
 
+export { createSyncWorkers } from "./queues/index.js";
+
 export function createWorkerReadiness(state: { postgres: boolean; redis: boolean }) {
   return dependencyReadiness(state);
 }

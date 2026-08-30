@@ -48,6 +48,8 @@ const standingsPayload = {
   }],
 };
 
+const competitionCodes = ["PL", "PD", "BL1", "SA", "FL1", "CL", "EL"] as const;
+
 describe("football-data.org provider contract", () => {
   it("validates and normalizes nullable fixture data with provenance", () => {
     const capturedAt = new Date("2026-08-28T12:00:00Z");
@@ -113,9 +115,39 @@ describe("football-data.org provider contract", () => {
     const payload = { ...finishedPayload, matches: [{ ...finishedPayload.matches[0], lastUpdated: null }] };
     const fetcher = vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 }));
     const client = new FootballDataOrgClient({ apiToken: "token", fetcher, now: () => new Date("2026-08-30T10:00:00Z") });
-    const results = await client.fetchCompetitionResults({ dateFrom: "2026-08-01", dateTo: "2026-08-31" });
+    const results = await client.fetchCompetitionResults({ competitionCode: "PL", dateFrom: "2026-08-01", dateTo: "2026-08-31" });
     expect(results[0]?.sourceUpdatedAt).toBeNull();
     expect(fetcher).toHaveBeenCalledWith(expect.stringContaining("status=FINISHED"), expect.any(Object));
+  });
+
+  it.each(competitionCodes)("routes %s result and standings requests on their own provider path", async (competitionCode) => {
+    const resultPayload = { ...finishedPayload, competition: { ...finishedPayload.competition, code: competitionCode } };
+    const standingPayload = { ...standingsPayload, competition: { ...standingsPayload.competition, code: competitionCode } };
+    const fetcher = vi.fn(async (input: string | URL) => new Response(JSON.stringify(String(input).endsWith("/standings") ? standingPayload : resultPayload), { status: 200 }));
+    const client = new FootballDataOrgClient({ apiToken: "token", fetcher });
+
+    await client.fetchCompetitionResults({ competitionCode, dateFrom: "2026-08-01", dateTo: "2026-08-31" });
+    await client.fetchCompetitionStandings({ competitionCode });
+
+    expect(fetcher.mock.calls[0]?.[0]).toEqual(expect.stringContaining(`/competitions/${competitionCode}/matches`));
+    expect(fetcher.mock.calls[1]?.[0]).toEqual(expect.stringContaining(`/competitions/${competitionCode}/standings`));
+  });
+
+  it("rejects unknown competition codes before fetch", async () => {
+    const fetcher = vi.fn();
+    const client = new FootballDataOrgClient({ apiToken: "token", fetcher });
+    await expect(client.fetchCompetitionResults({ competitionCode: "UNKNOWN", dateFrom: "2026-08-01", dateTo: "2026-08-31" } as never)).rejects.toThrow(ProviderPayloadError);
+    await expect(client.fetchCompetitionStandings({ competitionCode: "UNKNOWN" } as never)).rejects.toThrow(ProviderPayloadError);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("rejects provider envelopes whose competition differs from the request", async () => {
+    const client = new FootballDataOrgClient({
+      apiToken: "token",
+      fetcher: vi.fn(async (input: string | URL) => new Response(JSON.stringify(String(input).endsWith("/standings") ? standingsPayload : finishedPayload), { status: 200 })),
+    });
+    await expect(client.fetchCompetitionResults({ competitionCode: "PD", dateFrom: "2026-08-01", dateTo: "2026-08-31" })).rejects.toThrow(ProviderPayloadError);
+    await expect(client.fetchCompetitionStandings({ competitionCode: "PD" })).rejects.toThrow(ProviderPayloadError);
   });
 
   it("normalizes standings as one atomic snapshot with envelope provenance", () => {

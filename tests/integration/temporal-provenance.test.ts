@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { runEvidenceRebuild } from "../../workers/data-sync/src/jobs/evidence-rebuild.js";
+import { recordSyncRunCompletion } from "../../workers/data-sync/src/ingestion/runner.js";
 
 const databaseRoot = resolve(import.meta.dirname, "../../packages/database");
 const containerName = `bet-stats-temporal-${process.pid}`;
@@ -77,20 +78,56 @@ describe("evidence publication contract", () => {
     expect(database.builds.at(-1)).toMatchObject({ state: "PUBLISHED" });
     expect(database.components.length).toBeGreaterThan(5);
   });
+
+  it.each(["FAILED", "CANCELLED"])("retains the prior publication for a %s source run", async (state) => {
+    const database = fakeEvidenceDatabase(state);
+    const result = await runEvidenceRebuild({ database, teamId: "home", cutoff: "2026-08-30T00:00:00.000Z", configHash: "config", configVersion: "evidence-v1", syncRunId: "run-2" });
+    expect(result).toEqual({ state: "PENDING", visibleBuildId: "published-old" });
+    expect(database.builds).toHaveLength(1);
+  });
+
+  it("rejects incomplete SUCCEEDED work and records duplicate completion once", async () => {
+    const database = fakeEvidenceDatabase("SUCCEEDED", false);
+    const rejected = await runEvidenceRebuild({ database, teamId: "home", cutoff: "2026-08-30T00:00:00.000Z", configHash: "config", configVersion: "evidence-v1", syncRunId: "run-2" });
+    expect(rejected).toEqual({ state: "PENDING", visibleBuildId: "published-old" });
+
+    let manifest: unknown = { expectedUnits: ["results"], completedUnits: [], expectedCaptures: ["hash-1"], completedCaptures: [] };
+    const updates: Array<Record<string, unknown>> = [];
+    const transaction = {
+      lockSyncRun: async () => ({ state: "RUNNING", completionManifest: manifest }),
+      updateSyncRun: async (_id: string, update: Record<string, unknown>) => { manifest = update.completionManifest; updates.push(update); },
+    };
+    await recordSyncRunCompletion(transaction, "run-2", "results", ["hash-1"]);
+    await recordSyncRunCompletion(transaction, "run-2", "results", ["hash-1"]);
+    expect(updates.at(-1)).toMatchObject({ completedUnits: 1, completedCaptures: 1, state: "SUCCEEDED" });
+  });
 });
 
-function fakeEvidenceDatabase(sourceState: string) {
+function fakeEvidenceDatabase(sourceState: string, complete = sourceState === "SUCCEEDED") {
   const builds: Array<Record<string, unknown>> = [{ id: "published-old", teamId: "home", cutoff: new Date("2026-08-29T00:00:00.000Z"), configHash: "old", syncRunId: "run-1", state: "PUBLISHED" }];
   const components: Array<Record<string, unknown>> = [];
   const match = { fixtureId: "fixture", kickoffUtc: "2026-08-29T09:00:00.000Z", effectiveAt: "2026-08-29T09:00:00.000Z", observedAt: "2026-08-29T10:00:00.000Z", sourceUpdatedAt: null, payloadHash: "hash-1", payloadBytes: 15, teamId: "home", opponentId: "away", venue: "HOME" as const, goalsFor: 2, goalsAgainst: 1, points: 3 as const };
   const transaction = {
-    sourceRunState: async () => sourceState,
+    sourceRunCompletion: async () => ({
+      state: sourceState,
+      expectedUnits: 1,
+      completedUnits: complete ? 1 : 0,
+      expectedCaptures: 1,
+      completedCaptures: complete ? 1 : 0,
+      completionManifest: {
+        expectedUnits: ["results"],
+        completedUnits: complete ? ["results"] : [],
+        expectedCaptures: ["hash-1"],
+        completedCaptures: complete ? ["hash-1"] : [],
+      },
+    }),
     latestPublishedBuild: async () => builds.filter((build) => build.state === "PUBLISHED").at(-1) ?? null,
     findBuild: async (key: Record<string, unknown>) => builds.find((build) => build.teamId === key.teamId && build.configHash === key.configHash && build.syncRunId === key.syncRunId) ?? null,
     loadEligibleMatches: async () => [match],
     createBuild: async (build: Record<string, unknown>) => { const stored = { ...build, id: `build-${builds.length}` }; builds.push(stored); return stored; },
     stageComponent: async (component: Record<string, unknown>) => { components.push(component); },
     publishBuild: async (id: string) => { const build = builds.find((item) => item.id === id); if (build) build.state = "PUBLISHED"; },
+    failBuild: async (id: string) => { const build = builds.find((item) => item.id === id); if (build) build.state = "FAILED"; },
   };
   return { builds, components, transaction: async <T>(work: (tx: typeof transaction) => Promise<T>) => work(transaction) };
 }

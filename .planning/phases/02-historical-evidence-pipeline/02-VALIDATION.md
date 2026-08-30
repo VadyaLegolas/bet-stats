@@ -1,9 +1,9 @@
 ---
 phase: 02
 slug: historical-evidence-pipeline
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-08-29
 ---
 
@@ -32,27 +32,27 @@ created: 2026-08-29
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 02-W0-01 | W0 | 0 | PIPE-01 | T-02-01 | Queue namespace and teardown prevent cross-run contamination | integration | `pnpm exec vitest run tests/integration/pipeline-jobs.test.ts` | ❌ W0 | ⬜ pending |
-| 02-W0-02 | W0 | 0 | PIPE-02 | Facts cannot detach from immutable provenance | integration | `pnpm exec vitest run tests/integration/temporal-provenance.test.ts` | ❌ W0 | ⬜ pending |
-| 02-W0-03 | W0 | 0 | PIPE-03 | Provider spy proves reservation precedes construction/I/O | integration | `pnpm exec vitest run tests/integration/provider-budget-order.test.ts` | ❌ W0 | ⬜ pending |
-| 02-W0-04 | W0 | 0 | PIPE-04 | Optional lanes cannot consume critical headroom | integration | `pnpm exec vitest run tests/integration/quota-priority.test.ts` | ❌ W0 | ⬜ pending |
-| 02-W0-05 | W0 | 0 | PIPE-05 | Bounded retry and circuit state do not leak secrets or spend blocked quota | integration | `pnpm exec vitest run tests/integration/provider-resilience.test.ts` | ❌ W0 | ⬜ pending |
-| 02-W0-06 | W0 | 0 | PIPE-06 | Replay is authorized, bounded, and idempotent | integration | `pnpm exec vitest run tests/integration/replay.test.ts` | ❌ W0 | ⬜ pending |
-| 02-W0-07 | W0 | 0 | PIPE-07 | Evidence API echoes cutoff and preserves null/limitation states | unit/API/E2E | `pnpm exec vitest run tests/unit/form.test.ts tests/integration/evidence-api.test.ts` | ❌ W0 | ⬜ pending |
-| 02-W0-08 | W0 | 0 | PIPE-08 | Post-cutoff facts cannot affect historical features | property/unit | `pnpm exec vitest run tests/unit/chronological-features.test.ts` | ❌ W0 | ⬜ pending |
+| 02-W0-01 | W0 | 0 | PIPE-01 | T-02-01 | Queue namespace and teardown prevent cross-run contamination | integration | `pnpm exec vitest run tests/integration/pipeline-jobs.test.ts` | ✅ | ✅ green |
+| 02-W0-02 | W0 | 0 | PIPE-02 | Facts cannot detach from immutable provenance | integration | `pnpm exec vitest run tests/integration/temporal-provenance.test.ts` | ✅ | ✅ green |
+| 02-W0-03 | W0 | 0 | PIPE-03 | Provider spy proves reservation precedes construction/I/O | integration | `pnpm exec vitest run tests/integration/provider-budget-order.test.ts` | ✅ | ✅ green |
+| 02-W0-04 | W0 | 0 | PIPE-04 | Optional lanes cannot consume critical headroom | integration | `pnpm exec vitest run tests/integration/quota-priority.test.ts` | ✅ | ✅ green |
+| 02-W0-05 | W0 | 0 | PIPE-05 | Bounded retry and circuit state do not leak secrets or spend blocked quota | integration | `pnpm exec vitest run tests/integration/provider-resilience.test.ts` | ✅ | ✅ green |
+| 02-W0-06 | W0 | 0 | PIPE-06 | Replay is authorized, bounded, and idempotent | integration | `pnpm exec vitest run tests/integration/replay.test.ts` | ✅ | ✅ green |
+| 02-W0-07 | W0 | 0 | PIPE-07 | Evidence API echoes cutoff and preserves null/limitation states | unit/API/E2E | `pnpm exec vitest run tests/unit/form.test.ts tests/integration/evidence-api.test.ts` | ✅ | ✅ green |
+| 02-W0-08 | W0 | 0 | PIPE-08 | Post-cutoff facts cannot affect historical features | property/unit | `pnpm exec vitest run tests/unit/chronological-features.test.ts` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
 ## Wave 0 Requirements
 
-- [ ] `tests/integration/pipeline-jobs.test.ts` — Redis-backed harness with a unique queue prefix and deterministic teardown.
-- [ ] `tests/integration/temporal-provenance.test.ts` — empty-database migration and atomic observation/fact witnesses.
-- [ ] `tests/integration/provider-budget-order.test.ts` — provider spy and reservation-order assertions.
-- [ ] `tests/integration/quota-priority.test.ts` — critical-headroom concurrency cases.
-- [ ] `tests/integration/provider-resilience.test.ts` — fake clock and classified 4xx/429/timeout/5xx/circuit failures.
-- [ ] `tests/integration/replay.test.ts` — dry-run, same logical identity, and explicit revision replay cases.
-- [ ] `tests/unit/form.test.ts`, `tests/unit/chronological-features.test.ts` — dual-time, stable ordering, DST/UTC, missing timestamps, shuffled input, and post-cutoff invariants.
-- [ ] `tests/integration/evidence-api.test.ts` plus Playwright evidence journey — cutoff echo, trace, sample size, provenance, and limitation rendering.
+- [x] `tests/integration/pipeline-jobs.test.ts` — Redis-backed harness with a unique queue prefix and deterministic teardown.
+- [x] `tests/integration/temporal-provenance.test.ts` — empty-database migration and atomic observation/fact witnesses.
+- [x] `tests/integration/provider-budget-order.test.ts` — provider spy and reservation-order assertions.
+- [x] `tests/integration/quota-priority.test.ts` — critical-headroom concurrency cases.
+- [x] `tests/integration/provider-resilience.test.ts` — fake clock and classified 4xx/429/timeout/5xx/circuit failures.
+- [x] `tests/integration/replay.test.ts` — dry-run, same logical identity, and explicit revision replay cases.
+- [x] `tests/unit/form.test.ts`, `tests/unit/chronological-features.test.ts` — dual-time, stable ordering, DST/UTC, missing timestamps, shuffled input, and post-cutoff invariants.
+- [x] `tests/integration/evidence-api.test.ts` plus Playwright evidence journey — cutoff echo, trace, sample size, provenance, and limitation rendering.
 
 ## Manual-Only Verifications
 
@@ -62,11 +62,21 @@ created: 2026-08-29
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verification or Wave 0 dependencies.
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verification.
-- [ ] Wave 0 covers all missing references.
-- [ ] No watch-mode flags.
-- [ ] Targeted feedback latency is below 30 seconds.
-- [ ] `nyquist_compliant: true` set in frontmatter.
+- [x] All tasks have `<automated>` verification or Wave 0 dependencies.
+- [x] Sampling continuity: no 3 consecutive tasks without automated verification.
+- [x] Wave 0 covers all missing references.
+- [x] No watch-mode flags.
+- [x] Targeted feedback latency is below 30 seconds (47 tests in 25.42s on 2026-08-30).
+- [x] `nyquist_compliant: true` set in frontmatter.
 
-**Approval:** pending
+## Execution Evidence
+
+- Wave 0: 9 files, 47 tests passed in 25.42s.
+- Unit suite: 8 files, 56 tests passed in 2.33s.
+- Integration suite: 14 files, 73 tests passed in 64.54s, including migration from empty PostgreSQL 18.
+- Typecheck: 7/7 workspace packages passed.
+- Browser E2E: 22/22 journeys passed; evidence and replay added 2/2 axe scans with no serious or critical violations.
+- Endpoint review: Phase 2 remains limited to fixtures, results and standings; deferred surfaces remain unauthorized in `COVERAGE.md`.
+- Threat review: T-02-14 credential remains server-only, T-02-15 browser rendering uses an allowlist and inert JSON, and T-02-16 freezes preview identity while suppressing duplicate submits.
+
+**Approval:** automated validation complete; manual visual hierarchy judgment remains routed to end-of-phase UAT.

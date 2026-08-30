@@ -1,4 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readdirSync } from "node:fs";
+import { resolve } from "node:path";
+
+const axePackage = readdirSync(resolve(process.cwd(), "node_modules/.pnpm")).find((entry) => entry.startsWith("axe-core@"));
+if (!axePackage) throw new Error("axe-core is required for accessibility scans");
+const axePath = resolve(process.cwd(), "node_modules/.pnpm", axePackage, "node_modules/axe-core/axe.min.js");
 
 const kickoff = "2026-08-29T14:00:00.000Z";
 const evidenceUrl = `/teams/team-arsenal/evidence?asOf=${encodeURIComponent(kickoff)}&fixtureId=fixture-premier-league-001`;
@@ -102,5 +108,18 @@ test.describe("fixture-to-cutoff team evidence contract", () => {
       await expect(page.getByText("What the system could know at the selected time.")).toBeVisible();
       await expect(page.getByText(/forecast probability|odds|value bet|recommendation|confidence score|guaranteed|risk-free|bet now/i)).toHaveCount(0);
     });
+  });
+
+  test("has no serious or critical accessibility violations", async ({ page }) => {
+    await stubEvidence(page);
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.goto(evidenceUrl);
+    await page.addScriptTag({ path: axePath });
+    const violations = await page.evaluate(async () => {
+      const axe = (globalThis as unknown as { axe: { run: (root: Document) => Promise<{ violations: { impact: string | null; id: string }[] }> } }).axe;
+      const result = await axe.run(document);
+      return result.violations.filter((violation) => violation.impact === "serious" || violation.impact === "critical").map((violation) => violation.id);
+    });
+    expect(violations).toEqual([]);
   });
 });

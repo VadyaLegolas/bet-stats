@@ -1,4 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readdirSync } from "node:fs";
+import { resolve } from "node:path";
+
+const axePackage = readdirSync(resolve(process.cwd(), "node_modules/.pnpm")).find((entry) => entry.startsWith("axe-core@"));
+if (!axePackage) throw new Error("axe-core is required for accessibility scans");
+const axePath = resolve(process.cwd(), "node_modules/.pnpm", axePackage, "node_modules/axe-core/axe.min.js");
 
 const secret = "api-key-super-secret";
 const rawException = "ECONNRESET at ProviderClient.call (provider.ts:42)";
@@ -96,4 +102,16 @@ test("projects only classified safe status and never renders secrets or raw exce
     await expect(page.getByText(rawException, { exact: false })).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText("provider.ts:42");
   });
+});
+
+test("has no serious or critical accessibility violations", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto("/internal/pipeline/replay", { timeout: 10_000 });
+  await page.addScriptTag({ path: axePath });
+  const violations = await page.evaluate(async () => {
+    const axe = (globalThis as unknown as { axe: { run: (root: Document) => Promise<{ violations: { impact: string | null; id: string }[] }> } }).axe;
+    const result = await axe.run(document);
+    return result.violations.filter((violation) => violation.impact === "serious" || violation.impact === "critical").map((violation) => violation.id);
+  });
+  expect(violations).toEqual([]);
 });

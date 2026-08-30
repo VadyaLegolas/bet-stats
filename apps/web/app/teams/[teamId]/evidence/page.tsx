@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { EvidenceStateNotice } from "../../../../components/evidence-state-notice";
 
-type Summary = { value?: unknown; sampleSize?: number; requestedSampleSize?: number; sourceUpdatedAt?: string | null; limitationReason?: string | null; limitation?: string | null };
+type Summary = { value?: unknown; sampleSize?: number; requestedSampleSize?: number; sourceUpdatedAt?: string | null | undefined; limitationReason?: string | null | undefined; limitation?: string | null | undefined };
 type Trace = { fixtureId: string; effectiveAt?: string; observedAt?: string; venue?: string; result?: string; score?: string; source?: string; components?: string[] };
 type Evidence = {
   team?: { id: string; name: string };

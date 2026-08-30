@@ -1,7 +1,7 @@
 type EvidenceStateNoticeProps = Readonly<{
-  state?: string;
-  freshness?: string;
-  limitationReason?: string | null;
+  state?: string | undefined;
+  freshness?: string | undefined;
+  limitationReason?: string | null | undefined;
 }>;
 
 export function EvidenceStateNotice({ state, freshness, limitationReason }: EvidenceStateNoticeProps) {

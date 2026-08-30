@@ -9,19 +9,18 @@ async function resiliencePolicy(): Promise<Record<string, unknown>> {
 }
 
 describe("provider resilience policy", () => {
-  it("D-12 fails validation/identity errors immediately and bounds transient retries", async () => {
-    vi.useFakeTimers();
+  it("D-12 classifies terminal failures and leaves transient retries to BullMQ", async () => {
     const { executeProviderCall } = await resiliencePolicy() as { executeProviderCall: (input: Record<string, unknown>) => Promise<Record<string, unknown>> };
     const validationCall = vi.fn().mockRejectedValue({ kind: "VALIDATION", message: "invalid payload" });
-    const immediate = executeProviderCall({ provider: "football-data.org", endpointFamily: "RESULTS", call: validationCall, maxAttempts: 3, correlationId: "corr-validation" });
-    await vi.runAllTimersAsync();
+    const immediate = executeProviderCall({ provider: "football-data.org", endpointFamily: "RESULTS", call: validationCall, attemptsMade: 0, maxAttempts: 3, correlationId: "corr-validation" });
     await expect(immediate).resolves.toMatchObject({ status: "failed", attempts: 1, reason: "VALIDATION" });
     const transientCall = vi.fn().mockRejectedValue({ kind: "TIMEOUT", message: "secret-token-must-not-escape" });
-    const exhausted = executeProviderCall({ provider: "football-data.org", endpointFamily: "RESULTS", call: transientCall, maxAttempts: 3, correlationId: "corr-timeout" });
-    await vi.runAllTimersAsync();
+    const retryable = executeProviderCall({ provider: "football-data.org", endpointFamily: "RESULTS", call: transientCall, attemptsMade: 0, maxAttempts: 3, correlationId: "corr-timeout" });
+    await expect(retryable).resolves.toMatchObject({ status: "retry", attempts: 1, correlationId: "corr-timeout", reason: "TIMEOUT" });
+    expect(transientCall).toHaveBeenCalledTimes(1);
+    const exhausted = executeProviderCall({ provider: "football-data.org", endpointFamily: "RESULTS", call: transientCall, attemptsMade: 2, maxAttempts: 3, correlationId: "corr-timeout" });
     await expect(exhausted).resolves.toMatchObject({ status: "dead-letter", attempts: 3, correlationId: "corr-timeout", reason: "TIMEOUT" });
     expect(JSON.stringify(await exhausted)).not.toContain("secret-token-must-not-escape");
-    vi.useRealTimers();
   });
 
   it("D-13 scopes circuits by provider and endpoint family and blocks before reservation", async () => {

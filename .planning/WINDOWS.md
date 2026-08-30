@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 3
+open_count: 4
 waived_count: 0
 fixed_count: 0
-total_count: 3
-last_updated: 2026-08-30T06:10:47.471Z
+total_count: 4
+last_updated: 2026-08-30T06:20:26.411Z
 ---
 
 # Broken Windows Ledger
@@ -18,6 +18,7 @@ last_updated: 2026-08-30T06:10:47.471Z
 | 1 | 02 | unrun-verify | tests/integration/replay.test.ts |  | Plan 02-04 replay verification depends on previewReplay and queueReplay owned by Plan 02-07 | open |  | 2026-08-29T15:20:08.498Z |  |
 | 2 | 02 | unrun-verify | tests/integration/temporal-provenance.test.ts |  | Plan 02-06 temporal provenance verification could not start because Docker Desktop was not running | open |  | 2026-08-30T05:42:22.684Z |  |
 | 3 | 2 | unrun-verify | tests/integration/temporal-provenance.test.ts |  | Docker-backed temporal provenance verification could not run because Docker Desktop was unavailable and startup was cancelled | open |  | 2026-08-30T06:10:47.471Z |  |
+| 4 | 02 | deviation | tests/integration/phase-01-security.test.ts | 48 | Phase 1 deny-list was narrowed because Phase 2 intentionally added results and standings ingestion | open |  | 2026-08-30T06:20:26.411Z |  |
 
 ````json
 [
@@ -55,6 +56,18 @@ last_updated: 2026-08-30T06:10:47.471Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-08-30T06:10:47.471Z",
+    "resolved_at": null
+  },
+  {
+    "id": 4,
+    "kind": "deviation",
+    "phase": "02",
+    "file": "tests/integration/phase-01-security.test.ts",
+    "line": 48,
+    "description": "Phase 1 deny-list was narrowed because Phase 2 intentionally added results and standings ingestion",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-08-30T06:20:26.411Z",
     "resolved_at": null
   }
 ]

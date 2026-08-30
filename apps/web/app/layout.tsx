@@ -22,7 +22,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <main style={{ maxWidth: 1200, margin: "0 auto", minHeight: "70vh", padding: "48px 24px" }}>{children}</main>
         <footer style={{ borderTop: "1px solid #CBD5E1", background: "#FFFFFF" }}>
           <p style={{ maxWidth: 1200, margin: "0 auto", padding: "24px", fontSize: 14, lineHeight: 1.4 }}>
-            Football data and analytical information only. No outcome is guaranteed. If betting is legal where you are, be aware of the risk of financial loss.
+            Football data and analytical information only. Outcomes remain uncertain. If betting is legal where you are, be aware of the risk of financial loss.
           </p>
         </footer>
       </body>

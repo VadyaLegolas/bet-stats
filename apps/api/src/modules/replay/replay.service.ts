@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
-import { ConflictException, Injectable, NotFoundException, Optional } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException, OnModuleDestroy, Optional, ServiceUnavailableException } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { Queue } from "bullmq";
 
 const PROVIDERS = new Set(["football-data.org"]);
 const COMPETITIONS = new Set(["PL", "PD", "BL1", "SA", "FL1", "CL", "EL"]);
@@ -11,6 +12,27 @@ export type ReplayInput = { provider: string; competitionId: string; seasonId: s
 export type ReplayUnit = { logicalId: string; from: string; to: string };
 type PreviewRow = { id: string; logicalKey: string; version: number; previewVersion: string; normalizedInput: ReplayInput; unitManifest: ReplayUnit[]; impact: { calls: number; builds: number }; providerPolicyFingerprint: string; expiresAt: Date; consumedAt: Date | null; actor: string };
 export interface ReplayEnqueuer { enqueue(run: { syncRunId: string; replayPlanId: string; logicalId: string; revision: number; input: ReplayInput; unit: ReplayUnit }): Promise<void> }
+
+export function createBullReplayEnqueuer(redisUrl: string, database: PrismaClient, prefix = "bet-stats"): ReplayEnqueuer & { close(): Promise<void> } {
+  const queue = new Queue(`${prefix}-sync-standard`, { connection: { url: redisUrl, maxRetriesPerRequest: null } });
+  return {
+    async enqueue(run) {
+      try {
+        await queue.add(run.input.endpointFamily.toLowerCase(), run, {
+          attempts: 3,
+          backoff: { type: "exponential", delay: 1_000, jitter: 0.25 },
+          jobId: `${run.logicalId}-${run.revision}`,
+          removeOnComplete: { age: 86_400, count: 1_000 },
+          removeOnFail: { age: 604_800, count: 5_000 },
+        });
+      } catch (error) {
+        await database.$executeRawUnsafe(`UPDATE "SyncRun" SET "completionManifest"=jsonb_set("completionManifest",'{delivery}',to_jsonb('RETRYABLE'::text),true) WHERE id=$1 AND state='PENDING'`, run.syncRunId);
+        throw Object.assign(new Error("QUEUE_DELIVERY_FAILED"), { code: "QUEUE_DELIVERY_FAILED", cause: error });
+      }
+    },
+    close: () => queue.close(),
+  };
+}
 
 function replayError(code: string, status = 400): Error & { code: string; status: number } { return Object.assign(new Error(code), { code, status }); }
 function normalize(input: Record<string, unknown>): ReplayInput {
@@ -88,11 +110,25 @@ export function createReplayService(options: { database: PrismaClient; enqueuer?
 type QueuedRun = { syncRunId: string; logicalId: string; revision: number; input: ReplayInput; unit: ReplayUnit };
 
 @Injectable()
-export class ReplayService {
+export class ReplayService implements OnModuleDestroy {
   private readonly engine: ReturnType<typeof createReplayService> | null;
-  constructor(@Optional() database?: PrismaClient) { const resolved = database ?? (process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null); this.engine = resolved ? createReplayService({ database: resolved }) : null; }
+  private readonly queueClient: (ReplayEnqueuer & { close(): Promise<void> }) | null;
+  constructor(@Optional() database?: PrismaClient) {
+    const resolved = database ?? (process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null);
+    this.queueClient = resolved && process.env.REDIS_URL ? createBullReplayEnqueuer(process.env.REDIS_URL, resolved, process.env.QUEUE_PREFIX) : null;
+    this.engine = resolved ? createReplayService({ database: resolved, ...(this.queueClient ? { enqueuer: this.queueClient } : {}) }) : null;
+  }
   private requireEngine() { if (!this.engine) throw new NotFoundException("Not found"); return this.engine; }
   preview(input: Record<string, unknown>) { return this.requireEngine().preview(input); }
-  async queue(input: Record<string, unknown>) { try { return await this.requireEngine().queue(input); } catch (error) { if ((error as { code?: string }).code === "STALE_PREVIEW") throw new ConflictException({ code: "STALE_PREVIEW" }); throw error; } }
+  async queue(input: Record<string, unknown>) {
+    try { return await this.requireEngine().queue(input); }
+    catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code === "STALE_PREVIEW") throw new ConflictException({ code });
+      if (code === "QUEUE_DELIVERY_FAILED") throw new ServiceUnavailableException({ code });
+      throw error;
+    }
+  }
   status(id: string) { return this.requireEngine().status(id); }
+  async onModuleDestroy() { await this.queueClient?.close(); }
 }

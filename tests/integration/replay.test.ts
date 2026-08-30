@@ -3,6 +3,8 @@ import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import { createReplayService } from "../../apps/api/src/modules/replay/replay.service.js";
+import { ReplayController } from "../../apps/api/src/modules/replay/replay.controller.js";
+import { OperatorGuard } from "../../apps/api/src/modules/reconciliation/operator.guard.js";
 import { createReplayQueue, createReplayWorker } from "../../workers/data-sync/src/queues/index.js";
 
 const request = { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-01T00:00:00.000Z", to: "2026-08-03T00:00:00.000Z" };
@@ -54,6 +56,18 @@ describe("durable bounded replay", () => {
     const service = createReplayService({ database: prisma });
     const preview = await service.preview({ ...request, from: "2026-08-11T00:00:00.000Z", to: "2026-08-11T00:00:00.000Z" });
     await expect(service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion, newRevision: true, reason: "" })).rejects.toMatchObject({ code: "REVISION_REASON_REQUIRED" });
+  });
+
+  it("keeps replay endpoints guarded and exposes only classified state", async () => {
+    const guard = new OperatorGuard("operator-secret");
+    expect(() => guard.authorize("wrong-secret")).toThrowError("Not found");
+    const service = createReplayService({ database: prisma });
+    const controller = new ReplayController(service as never);
+    const preview = await controller.preview({ ...request, from: "2026-08-12T00:00:00.000Z", to: "2026-08-12T00:00:00.000Z" });
+    const queued = await controller.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
+    const status = await controller.status(queued.replayPlanId);
+    expect(status).toMatchObject({ state: "QUEUED", outcome: "PENDING", lane: "standard" });
+    expect(JSON.stringify(status)).not.toMatch(/postgresql:|redis:|password|credential/i);
   });
 
   it("uses a real BullMQ worker for terminal, duplicate, retry and dead-letter lifecycle", async () => {

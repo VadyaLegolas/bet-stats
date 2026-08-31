@@ -2,7 +2,15 @@ import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import {
+  createPrismaClient,
+  createReplayProviderPolicyRepository,
+  type PrismaClient,
+} from "@bet-stats/database";
+import {
+  evaluateReplayProviderPolicy,
+  fingerprintReplayProviderPolicy,
+} from "@bet-stats/domain";
 import { createBullReplayEnqueuer, createReplayService } from "../../apps/api/src/modules/replay/replay.service.js";
 import { ReplayController } from "../../apps/api/src/modules/replay/replay.controller.js";
 import { OperatorGuard } from "../../apps/api/src/modules/reconciliation/operator.guard.js";
@@ -15,6 +23,15 @@ const containerName = `bet-stats-replay-${process.pid}`;
 const redisName = `bet-stats-replay-redis-${process.pid}`;
 let databaseUrl = ""; let redisUrl = ""; let prisma: PrismaClient;
 function docker(...args: string[]) { return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim(); }
+
+const resultsPolicy = {
+  provider: "football-data.org",
+  endpointFamily: "RESULTS",
+  lane: "standard" as const,
+  configuredAllowance: 10,
+  criticalHeadroom: 3,
+  resetTimezone: "UTC",
+};
 
 function replayJobData(input: { syncRunId: string; replayPlanId: string; logicalId: string; state: "FAILED" | "CANCELLED" | "SUCCEEDED" }) {
   const from = "2026-08-22T00:00:00.000Z";
@@ -42,6 +59,84 @@ describe("durable bounded replay", () => {
     const redisPort = docker("port", redisName, "6379/tcp").split(":").at(-1); if (!redisPort) throw new Error("Redis port missing"); redisUrl = `redis://127.0.0.1:${redisPort}`;
   }, 120_000);
   afterAll(async () => { await prisma?.$disconnect(); for (const name of [containerName, redisName]) try { docker("rm", "--force", name); } catch { /* best effort */ } });
+
+  it("reads one durable provider-policy snapshot with a stable complete fingerprint", async () => {
+    const now = new Date("2026-08-31T12:00:00.000Z");
+    const updatedAt = new Date("2026-08-31T11:59:00.000Z");
+    await prisma.providerCircuitState.upsert({
+      where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
+      create: { id: randomUUID(), provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily, state: "CLOSED", updatedAt },
+      update: { state: "CLOSED", openedAt: null, nextProbeAt: null, probeLeaseToken: null, probeLeaseExpiresAt: null, updatedAt },
+    });
+    await prisma.providerRequestReservation.deleteMany({ where: { provider: resultsPolicy.provider, requestDate: now, endpoint: resultsPolicy.endpointFamily } });
+    await prisma.providerRequestReservation.createMany({ data: [
+      { provider: resultsPolicy.provider, requestDate: now, endpoint: resultsPolicy.endpointFamily, jobKey: `snapshot-a-${randomUUID()}` },
+      { provider: resultsPolicy.provider, requestDate: now, endpoint: "FIXTURES", jobKey: `snapshot-b-${randomUUID()}` },
+    ] });
+
+    const repository = createReplayProviderPolicyRepository({
+      database: prisma,
+      policies: [resultsPolicy],
+      now: () => now,
+      circuitFreshnessMs: 5 * 60_000,
+    });
+    const first = await repository.read(resultsPolicy.provider, resultsPolicy.endpointFamily);
+    const second = await repository.read(resultsPolicy.provider, resultsPolicy.endpointFamily);
+
+    expect(first).toEqual({
+      version: "replay-provider-policy/v1",
+      provider: resultsPolicy.provider,
+      endpointFamily: resultsPolicy.endpointFamily,
+      lane: "standard",
+      resetDate: "2026-08-31",
+      resetTimezone: "UTC",
+      configuredAllowance: 10,
+      criticalHeadroom: 3,
+      reserved: 2,
+      remaining: 8,
+      availableForLane: 5,
+      circuit: {
+        state: "CLOSED",
+        updatedAt: updatedAt.toISOString(),
+        nextProbeAt: null,
+        probeLeaseExpiresAt: null,
+      },
+      observedAt: now.toISOString(),
+      validUntil: "2026-08-31T12:04:00.000Z",
+      blockedReason: null,
+    });
+    expect(second).toEqual(first);
+    expect(fingerprintReplayProviderPolicy(first)).toBe("9e300fbea3eb2350ff0d1e6ff8f6db7f06af891c2330c05422350470dab9d79b");
+    expect(fingerprintReplayProviderPolicy(second)).toBe(fingerprintReplayProviderPolicy(first));
+    expect(evaluateReplayProviderPolicy(first, 5, now)).toEqual({ allowed: true, remainingAfter: 0 });
+  });
+
+  it("returns fail-closed snapshots for absent, stale, and malformed policy metadata", async () => {
+    const now = new Date("2026-09-01T12:00:00.000Z");
+    const missingPolicy = createReplayProviderPolicyRepository({ database: prisma, policies: [], now: () => now });
+    const absent = await missingPolicy.read(resultsPolicy.provider, "STANDINGS");
+    expect(absent.blockedReason).toBe("MISSING_POLICY");
+    expect(evaluateReplayProviderPolicy(absent, 1, now)).toEqual({ allowed: false, reason: "MISSING_POLICY" });
+
+    await prisma.providerCircuitState.upsert({
+      where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
+      create: { id: randomUUID(), provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily, state: "CLOSED", updatedAt: new Date("2026-09-01T11:00:00.000Z") },
+      update: { state: "CLOSED", updatedAt: new Date("2026-09-01T11:00:00.000Z") },
+    });
+    const staleRepository = createReplayProviderPolicyRepository({ database: prisma, policies: [resultsPolicy], now: () => now, circuitFreshnessMs: 5 * 60_000 });
+    const stale = await staleRepository.read(resultsPolicy.provider, resultsPolicy.endpointFamily);
+    expect(stale.blockedReason).toBe("STALE_CIRCUIT_STATE");
+    expect(evaluateReplayProviderPolicy(stale, 1, now)).toEqual({ allowed: false, reason: "STALE_CIRCUIT_STATE" });
+
+    const malformedRepository = createReplayProviderPolicyRepository({
+      database: prisma,
+      policies: [{ ...resultsPolicy, configuredAllowance: -1 }],
+      now: () => now,
+    });
+    const malformed = await malformedRepository.read(resultsPolicy.provider, resultsPolicy.endpointFamily);
+    expect(malformed.blockedReason).toBe("MALFORMED_POLICY");
+    expect(evaluateReplayProviderPolicy(malformed, 1, now)).toEqual({ allowed: false, reason: "MALFORMED_POLICY" });
+  });
 
   it("freezes preview/version and loads them after service reconstruction", async () => {
     const first = createReplayService({ database: prisma, actor: "operator-a" });

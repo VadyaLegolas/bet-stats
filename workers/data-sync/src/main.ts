@@ -21,9 +21,9 @@ export function startReplayWorker(input: { databaseUrl: string; redisUrl: string
   const providerPolicyRepository = createReplayProviderPolicyRepository({ database, policies: DEFAULT_REPLAY_PROVIDER_POLICIES });
   const circuitRegistry = createDurableProviderCircuitRegistry({ database });
   const worker = createReplayWorker({ redisUrl: input.redisUrl, database, ...(input.prefix ? { prefix: input.prefix } : {}), execute: async (job: ReplayJobData) => {
-    if (job.input.endpointFamily === "FIXTURES") return runReplayFixtureJob(job, { database, providerFactory });
+    if (job.input.endpointFamily === "FIXTURES") return runReplayFixtureJob(job, { database, providerFactory, providerPolicyRepository, circuitRegistry });
     if (job.input.endpointFamily === "RESULTS") return runReplayResultJob(job, { database, providerFactory, providerPolicyRepository, circuitRegistry });
-    if (job.input.endpointFamily === "STANDINGS") return runReplayStandingsJob(job, { database, providerFactory });
+    if (job.input.endpointFamily === "STANDINGS") return runReplayStandingsJob(job, { database, providerFactory, providerPolicyRepository, circuitRegistry });
     throw Object.assign(new Error("UNSUPPORTED_REPLAY_ENDPOINT"), { code: "UNSUPPORTED_REPLAY_ENDPOINT" });
   } });
   return { worker, async close() { await worker.close(); await database.$disconnect(); } };

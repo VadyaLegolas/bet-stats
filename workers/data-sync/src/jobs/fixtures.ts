@@ -1,10 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import type { PrismaClient } from "@bet-stats/database";
-import { evaluateCapability, reserveProviderRequest, type CapabilityDecision } from "@bet-stats/domain";
+import type { PrismaClient, ReplayProviderPolicyRepository } from "@bet-stats/database";
+import { evaluateCapability, reservePriorityRequest, type CapabilityDecision } from "@bet-stats/domain";
 import type { FixtureProvider, NormalizedFixture } from "@bet-stats/football-data";
 
+import { runGatedIngestion, type CircuitProbeRegistry, type IngestionLane } from "../ingestion/runner.js";
 import type { ReplayJobData } from "../queues/index.js";
+import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js";
 
 const PROVIDER = "football-data.org";
 const ENDPOINT = "FIXTURES";
@@ -16,6 +18,12 @@ export interface FixtureSyncJobInput {
   jobKey: string;
   allowance: number;
   providerFactory: () => FixtureProvider;
+  circuit?: "CLOSED" | "OPEN" | "HALF_OPEN";
+  circuitRegistry?: CircuitProbeRegistry;
+  lane?: IngestionLane;
+  criticalHeadroom?: number;
+  resetTimezone?: string | null;
+  resetDate?: string;
   scope?: {
     competitionExternalId: string;
     seasonExternalId: string;
@@ -26,7 +34,7 @@ export interface FixtureSyncJobInput {
 }
 
 export type FixtureSyncJobResult =
-  | { status: "denied"; reason: Exclude<CapabilityDecision, { allowed: true }>["reason"] | "ALLOWANCE_EXHAUSTED" }
+  | { status: "denied"; reason: Exclude<CapabilityDecision, { allowed: true }>["reason"] | "CAPABILITY_DENIED" | "CIRCUIT_OPEN" | "ALLOWANCE_EXHAUSTED" | "UNKNOWN_RESET_SEMANTICS" | "CRITICAL_HEADROOM" }
   | { status: "completed"; fixturesProcessed: number; reservationReused: boolean };
 
 export async function runFixtureSyncJob(input: FixtureSyncJobInput): Promise<FixtureSyncJobResult> {
@@ -41,31 +49,56 @@ export async function runFixtureSyncJob(input: FixtureSyncJobInput): Promise<Fix
   const decision = evaluateCapability(capability, key, now);
   if (!decision.allowed) return { status: "denied", reason: decision.reason };
 
-  const reservation = await reserveProviderRequest(input.database, {
+  const lane = input.lane ?? "critical";
+  const result = await runGatedIngestion({
     provider: PROVIDER,
-    requestDate: now.toISOString().slice(0, 10),
     endpoint: ENDPOINT,
-    jobKey: input.jobKey,
+    capability: "SUPPORTED",
+    circuit: input.circuit ?? "CLOSED",
+    circuitRegistry: input.circuitRegistry,
+    lane,
     allowance: input.allowance,
+    resetTimezone: input.resetTimezone === undefined ? "UTC" : input.resetTimezone,
+    jobKey: input.jobKey,
+    reserve: () => reservePriorityRequest({
+      database: input.database,
+      provider: PROVIDER,
+      resetDate: input.resetDate ?? now.toISOString().slice(0, 10),
+      resetTimezone: input.resetTimezone === undefined ? "UTC" : input.resetTimezone,
+      endpointFamily: ENDPOINT,
+      lane,
+      configuredAllowance: input.allowance,
+      criticalHeadroom: input.criticalHeadroom ?? 0,
+      jobKey: input.jobKey,
+    }),
+    providerFactory: input.providerFactory,
+    callProvider: async (provider) => {
+      const fetched = await provider.fetchPremierLeagueFixtures();
+      return input.scope ? fetched.filter((fixture) => {
+        const kickoff = Date.parse(fixture.kickoffUtc);
+        return fixture.competitionExternalId === input.scope!.competitionExternalId
+          && fixture.seasonExternalId === input.scope!.seasonExternalId
+          && kickoff >= Date.parse(input.scope!.from)
+          && kickoff <= Date.parse(input.scope!.to);
+      }) : fetched;
+    },
+    persist: async (fixtures) => {
+      for (const fixture of fixtures) await persistCanonicalFixture(input.database, input.leagueId, input.seasonId, fixture);
+    },
   });
-  if (!reservation.reserved) return { status: "denied", reason: reservation.reason };
-
-  // Construction is intentionally after the durable gate so even constructor-side I/O cannot bypass it.
-  const fetched = await input.providerFactory().fetchPremierLeagueFixtures();
-  const fixtures = input.scope ? fetched.filter((fixture) => {
-    const kickoff = Date.parse(fixture.kickoffUtc);
-    return fixture.competitionExternalId === input.scope!.competitionExternalId
-      && fixture.seasonExternalId === input.scope!.seasonExternalId
-      && kickoff >= Date.parse(input.scope!.from)
-      && kickoff <= Date.parse(input.scope!.to);
-  }) : fetched;
-  for (const fixture of fixtures) await persistCanonicalFixture(input.database, input.leagueId, input.seasonId, fixture);
-  return { status: "completed", fixturesProcessed: fixtures.length, reservationReused: reservation.reused };
+  if (result.status === "completed") return { status: "completed", fixturesProcessed: result.value.length, reservationReused: result.reservationReused };
+  if (result.status === "denied") return { status: "denied", reason: result.reason };
+  return { status: "completed", fixturesProcessed: result.value?.length ?? 0, reservationReused: false };
 }
 
 export async function runReplayFixtureJob(
   input: ReplayJobData,
-  dependencies: { database: PrismaClient; providerFactory: () => FixtureProvider; allowance?: number },
+  dependencies: {
+    database: PrismaClient;
+    providerFactory: () => FixtureProvider;
+    providerPolicyRepository: ReplayProviderPolicyRepository;
+    circuitRegistry: CircuitProbeRegistry;
+  },
 ): Promise<void> {
   const from = Date.parse(input.unit.from);
   const to = Date.parse(input.unit.to);
@@ -74,6 +107,14 @@ export async function runReplayFixtureJob(
   if (!Number.isFinite(from) || !Number.isFinite(to) || from > to || from < requestedFrom || to > requestedTo) {
     throw Object.assign(new Error("INVALID_REPLAY_WINDOW"), { code: "INVALID_REPLAY_WINDOW" });
   }
+  const policy = await readReplayWorkerProviderPolicy({
+    database: dependencies.database,
+    providerPolicyRepository: dependencies.providerPolicyRepository,
+    replayPlanId: input.replayPlanId,
+    provider: input.input.provider,
+    endpointFamily: "FIXTURES",
+  });
+  const snapshot = policy.snapshot;
   const refs = await dependencies.database.$queryRawUnsafe<Array<{ leagueId: string; seasonId: string }>>(
     `SELECT l."leagueId", s."seasonId"
      FROM "LeagueExternalRef" l
@@ -93,8 +134,14 @@ export async function runReplayFixtureJob(
     leagueId: ref.leagueId,
     seasonId: ref.seasonId,
     jobKey: input.logicalId,
-    allowance: dependencies.allowance ?? 10,
+    allowance: snapshot.configuredAllowance!,
     providerFactory: dependencies.providerFactory,
+    circuit: snapshot.circuit.state!,
+    circuitRegistry: dependencies.circuitRegistry,
+    lane: snapshot.lane!,
+    criticalHeadroom: snapshot.criticalHeadroom!,
+    resetTimezone: snapshot.resetTimezone,
+    resetDate: snapshot.resetDate!,
     scope: {
       competitionExternalId: input.input.competitionId,
       seasonExternalId: input.input.seasonId,
@@ -103,7 +150,8 @@ export async function runReplayFixtureJob(
     },
   });
   if (result.status !== "completed") {
-    throw Object.assign(new Error(result.reason), { code: result.reason });
+    const code = result.reason;
+    throw Object.assign(new Error(code), { code });
   }
 }
 

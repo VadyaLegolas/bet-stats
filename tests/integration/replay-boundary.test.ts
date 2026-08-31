@@ -93,6 +93,11 @@ async function seedReplayReferences() {
     verifiedAt: new Date(),
     expiresAt: new Date("2027-01-01T00:00:00.000Z"),
   } });
+  await prisma.providerCircuitState.createMany({ data: ["FIXTURES", "RESULTS", "STANDINGS"].map((endpointFamily) => ({
+    provider: "football-data.org",
+    endpointFamily,
+    state: "CLOSED" as const,
+  })) });
   const fixture = await prisma.fixture.create({ data: {
     leagueId: league.id,
     seasonId: season.id,
@@ -267,10 +272,14 @@ describe("production replay proxy boundary", () => {
       to: "2026-09-02T23:59:59.999Z",
     };
     const preview = await proxy(["preview"], "POST", input);
+    const previewFingerprint = (preview.json.providerPolicy as { fingerprint?: string }).fingerprint;
+    expect(previewFingerprint).toEqual(expect.any(String));
     const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
     const terminal = await waitForPlan(String(queued.json.replayPlanId), "SUCCEEDED");
 
     expect(terminal.json).toMatchObject({ state: "SUCCEEDED", outcome: "COMPLETED", attempts: [{ state: "SUCCEEDED" }] });
+    expect((terminal.json.providerPolicy as { approved?: { fingerprint?: string } }).approved?.fingerprint).toBe(previewFingerprint);
+    expect(terminal.json.runs).toEqual([expect.objectContaining({ lane: endpointFamily === "STANDINGS" ? "standard" : "critical" })]);
     expect(calls).toEqual([endpointFamily]);
     if (endpointFamily === "FIXTURES") {
       expect(await prisma.fixtureExternalRef.findUnique({
@@ -279,4 +288,52 @@ describe("production replay proxy boundary", () => {
       })).toMatchObject({ fixture: { status: "SCHEDULED", provenance: [{ provider: "football-data.org" }] } });
     }
   }, 30_000);
+
+  it.each([
+    ["OPEN", "RESULTS"],
+    ["HALF_OPEN", "RESULTS"],
+    ["MISSING", "RESULTS"],
+    ["EXHAUSTED", "RESULTS"],
+    ["HEADROOM", "STANDINGS"],
+  ] as const)("stops %s durable policy before %s provider construction", async (scenario, endpointFamily) => {
+    const calls: string[] = [];
+    const input = {
+      provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily,
+      from: `2026-09-${scenario === "OPEN" ? "03" : scenario === "HALF_OPEN" ? "04" : scenario === "MISSING" ? "05" : scenario === "EXHAUSTED" ? "06" : "07"}T00:00:00.000Z`,
+      to: `2026-09-${scenario === "OPEN" ? "03" : scenario === "HALF_OPEN" ? "04" : scenario === "MISSING" ? "05" : scenario === "EXHAUSTED" ? "06" : "07"}T23:59:59.999Z`,
+    };
+    const preview = await proxy(["preview"], "POST", input);
+    const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
+    const jobPrefix = `boundary-policy-${scenario.toLowerCase()}-${process.pid}`;
+    try {
+      if (scenario === "MISSING") {
+        await prisma.providerCircuitState.delete({ where: { provider_endpointFamily: { provider: input.provider, endpointFamily } } });
+      } else if (scenario === "EXHAUSTED" || scenario === "HEADROOM") {
+        await prisma.providerRequestReservation.createMany({ data: Array.from({ length: scenario === "EXHAUSTED" ? 10 : 7 }, (_, index) => ({
+          provider: input.provider,
+          requestDate: new Date(),
+          endpoint: endpointFamily,
+          jobKey: `${jobPrefix}-${index}`,
+        })) });
+      } else {
+        await prisma.providerCircuitState.update({
+          where: { provider_endpointFamily: { provider: input.provider, endpointFamily } },
+          data: { state: scenario, updatedAt: new Date() },
+        });
+      }
+      const runtime = startReplayWorker({ databaseUrl, redisUrl, apiToken: "test-token", prefix: queuePrefix, providerFactory: () => replayProvider(calls) });
+      workers.push(runtime);
+      const terminal = await waitForPlan(String(queued.json.replayPlanId), "FAILED");
+      expect(calls).toEqual([]);
+      expect(terminal.json).toMatchObject({ state: "FAILED", outcome: "DEAD_LETTER" });
+      expect(JSON.stringify(terminal.json)).not.toMatch(/test-token|postgresql:|redis:/i);
+    } finally {
+      await prisma.providerRequestReservation.deleteMany({ where: { provider: input.provider, jobKey: { startsWith: jobPrefix } } });
+      await prisma.providerCircuitState.upsert({
+        where: { provider_endpointFamily: { provider: input.provider, endpointFamily } },
+        create: { provider: input.provider, endpointFamily, state: "CLOSED" },
+        update: { state: "CLOSED", probeLeaseToken: null, probeLeaseExpiresAt: null, updatedAt: new Date() },
+      });
+    }
+  }, 45_000);
 });

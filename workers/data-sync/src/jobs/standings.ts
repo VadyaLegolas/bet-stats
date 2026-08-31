@@ -1,17 +1,19 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import type { PrismaClient } from "@bet-stats/database";
+import type { PrismaClient, ReplayProviderPolicyRepository } from "@bet-stats/database";
 import { reservePriorityRequest } from "@bet-stats/domain";
 import type { NormalizedStandingSnapshot, StandingsProvider, StandingsRequestCoverage } from "@bet-stats/football-data";
 
-import { runGatedIngestion, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
+import { runGatedIngestion, type CircuitProbeRegistry, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
 import type { ReplayJobData } from "../queues/index.js";
+import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js";
 
 export interface StandingsSyncInput {
   provider: string;
   endpoint: string;
   capability: "SUPPORTED" | "UNKNOWN" | "UNSUPPORTED";
   circuit: "CLOSED" | "OPEN" | "HALF_OPEN";
+  circuitRegistry?: CircuitProbeRegistry;
   lane?: IngestionLane;
   allowance: number;
   criticalHeadroom: number;
@@ -54,6 +56,7 @@ export function runStandingsSync(input: StandingsSyncInput): Promise<GatedIngest
     endpoint: input.endpoint,
     capability: input.capability,
     circuit: input.circuit,
+    circuitRegistry: input.circuitRegistry,
     lane,
     allowance: input.allowance,
     resetTimezone: input.resetTimezone === undefined ? "UTC" : input.resetTimezone,
@@ -65,11 +68,27 @@ export function runStandingsSync(input: StandingsSyncInput): Promise<GatedIngest
   });
 }
 
-export async function runReplayStandingsJob(input: ReplayJobData, dependencies: { database: PrismaClient; providerFactory: StandingsSyncInput["providerFactory"]; allowance?: number }): Promise<void> {
+export async function runReplayStandingsJob(input: ReplayJobData, dependencies: {
+  database: PrismaClient;
+  providerFactory: StandingsSyncInput["providerFactory"];
+  providerPolicyRepository: ReplayProviderPolicyRepository;
+  circuitRegistry: CircuitProbeRegistry;
+}): Promise<void> {
+  const policy = await readReplayWorkerProviderPolicy({
+    database: dependencies.database,
+    providerPolicyRepository: dependencies.providerPolicyRepository,
+    replayPlanId: input.replayPlanId,
+    provider: input.input.provider,
+    endpointFamily: "STANDINGS",
+  });
+  const snapshot = policy.snapshot;
   const refs = await dependencies.database.$queryRawUnsafe<Array<{ leagueId: string; seasonId: string }>>(`SELECT l."leagueId",s."seasonId" FROM "LeagueExternalRef" l JOIN "SeasonExternalRef" s ON s.provider=l.provider JOIN "Season" season ON season.id=s."seasonId" AND season."leagueId"=l."leagueId" WHERE l.provider=$1 AND l."externalId"=$2 AND s."externalId"=$3 LIMIT 1`, input.input.provider, input.input.competitionId, input.input.seasonId);
   const ref = refs[0]; if (!ref) throw Object.assign(new Error("IDENTITY_UNRESOLVED"), { code: "IDENTITY_UNRESOLVED" });
-  const result = await runStandingsSync({ provider: input.input.provider, endpoint: "STANDINGS", capability: "SUPPORTED", circuit: "CLOSED", allowance: dependencies.allowance ?? 10, criticalHeadroom: 0, jobKey: input.logicalId, coverage: { competitionCode: input.input.competitionId as StandingsRequestCoverage["competitionCode"] }, providerFactory: dependencies.providerFactory, database: dependencies.database, leagueId: ref.leagueId, seasonId: ref.seasonId });
-  if (result.status !== "completed") throw Object.assign(new Error(result.status), { code: result.status.toUpperCase() });
+  const result = await runStandingsSync({ provider: input.input.provider, endpoint: "STANDINGS", capability: "SUPPORTED", circuit: snapshot.circuit.state!, circuitRegistry: dependencies.circuitRegistry, lane: snapshot.lane!, allowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, resetTimezone: snapshot.resetTimezone, resetDate: snapshot.resetDate!, jobKey: input.logicalId, coverage: { competitionCode: input.input.competitionId as StandingsRequestCoverage["competitionCode"] }, providerFactory: dependencies.providerFactory, database: dependencies.database, leagueId: ref.leagueId, seasonId: ref.seasonId });
+  if (result.status !== "completed") {
+    const code = result.status === "denied" ? result.reason : result.status.toUpperCase();
+    throw Object.assign(new Error(code), { code });
+  }
 }
 
 async function persistStandingSnapshot(

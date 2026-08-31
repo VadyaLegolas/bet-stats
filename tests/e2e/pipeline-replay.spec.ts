@@ -76,7 +76,7 @@ test("blocks DST-ambiguous local time without sending a preview request", async 
   await page.goto("/internal/pipeline/replay", { timeout: 10_000 });
   await page.getByLabel("From (local time)").fill("2026-10-25T02:30");
   await page.getByRole("button", { name: "Preview replay" }).click();
-  await expect(page.getByRole("alert")).toContainText(/could not be interpreted/i);
+  await expect(page.getByRole("alert").filter({ hasText: /could not be interpreted/i })).toHaveText(/could not be interpreted/i);
   expect(previewRequests).toBe(0);
 });
 
@@ -108,6 +108,7 @@ test("blocks stale previews and requires an explicit forced-revision reason", as
   await page.goto("/internal/pipeline/replay", { timeout: 10_000 });
   await missing("stale preview prevents queueing", async () => {
     await page.getByRole("button", { name: "Preview replay" }).click();
+    await expect(page.getByText(/2 logical units/)).toBeVisible();
     await page.evaluate(() => window.dispatchEvent(new CustomEvent("replay-preview-stale")));
     await expect(page.getByText(/preview.*changed|preview.*stale/i)).toBeVisible();
     await expect(page.getByRole("button", { name: "Queue replay" })).toBeDisabled();

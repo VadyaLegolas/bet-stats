@@ -14,7 +14,8 @@
     "@bet-stats/domain": "workspace:*",
     "@bet-stats/football-data": "workspace:*",
     "bullmq": "^6.3.2",
-    "cockatiel": "^3.2.1"
+    "cockatiel": "^3.2.1",
+    "ioredis": "5"
   },
   "devDependencies": {
     "@types/node": "24.10.9",

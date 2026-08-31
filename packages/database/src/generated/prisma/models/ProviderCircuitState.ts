@@ -42,6 +42,8 @@ export type ProviderCircuitStateMinAggregateOutputType = {
   failureCount: number | null
   openedAt: Date | null
   nextProbeAt: Date | null
+  probeLeaseToken: string | null
+  probeLeaseExpiresAt: Date | null
   lastError: string | null
   updatedAt: Date | null
 }
@@ -54,6 +56,8 @@ export type ProviderCircuitStateMaxAggregateOutputType = {
   failureCount: number | null
   openedAt: Date | null
   nextProbeAt: Date | null
+  probeLeaseToken: string | null
+  probeLeaseExpiresAt: Date | null
   lastError: string | null
   updatedAt: Date | null
 }
@@ -66,6 +70,8 @@ export type ProviderCircuitStateCountAggregateOutputType = {
   failureCount: number
   openedAt: number
   nextProbeAt: number
+  probeLeaseToken: number
+  probeLeaseExpiresAt: number
   lastError: number
   updatedAt: number
   _all: number
@@ -88,6 +94,8 @@ export type ProviderCircuitStateMinAggregateInputType = {
   failureCount?: true
   openedAt?: true
   nextProbeAt?: true
+  probeLeaseToken?: true
+  probeLeaseExpiresAt?: true
   lastError?: true
   updatedAt?: true
 }
@@ -100,6 +108,8 @@ export type ProviderCircuitStateMaxAggregateInputType = {
   failureCount?: true
   openedAt?: true
   nextProbeAt?: true
+  probeLeaseToken?: true
+  probeLeaseExpiresAt?: true
   lastError?: true
   updatedAt?: true
 }
@@ -112,6 +122,8 @@ export type ProviderCircuitStateCountAggregateInputType = {
   failureCount?: true
   openedAt?: true
   nextProbeAt?: true
+  probeLeaseToken?: true
+  probeLeaseExpiresAt?: true
   lastError?: true
   updatedAt?: true
   _all?: true
@@ -211,6 +223,8 @@ export type ProviderCircuitStateGroupByOutputType = {
   failureCount: number
   openedAt: Date | null
   nextProbeAt: Date | null
+  probeLeaseToken: string | null
+  probeLeaseExpiresAt: Date | null
   lastError: string | null
   updatedAt: Date
   _count: ProviderCircuitStateCountAggregateOutputType | null
@@ -246,6 +260,8 @@ export type ProviderCircuitStateWhereInput = {
   failureCount?: Prisma.IntFilter<"ProviderCircuitState"> | number
   openedAt?: Prisma.DateTimeNullableFilter<"ProviderCircuitState"> | Date | string | null
   nextProbeAt?: Prisma.DateTimeNullableFilter<"ProviderCircuitState"> | Date | string | null
+  probeLeaseToken?: Prisma.StringNullableFilter<"ProviderCircuitState"> | string | null
+  probeLeaseExpiresAt?: Prisma.DateTimeNullableFilter<"ProviderCircuitState"> | Date | string | null
   lastError?: Prisma.StringNullableFilter<"ProviderCircuitState"> | string | null
   updatedAt?: Prisma.DateTimeFilter<"ProviderCircuitState"> | Date | string
 }
@@ -258,6 +274,8 @@ export type ProviderCircuitStateOrderByWithRelationInput = {
   failureCount?: Prisma.SortOrder
   openedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   nextProbeAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  probeLeaseToken?: Prisma.SortOrderInput | Prisma.SortOrder
+  probeLeaseExpiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
   lastError?: Prisma.SortOrderInput | Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -274,6 +292,8 @@ export type ProviderCircuitStateWhereUniqueInput = Prisma.AtLeast<{
   failureCount?: Prisma.IntFilter<"ProviderCircuitState"> | number
   openedAt?: Prisma.DateTimeNullableFilter<"ProviderCircuitState"> | Date | string | null
   nextProbeAt?: Prisma.DateTimeNullableFilter<"ProviderCircuitState"> | Date | string | null
+  probeLeaseToken?: Prisma.StringNullableFilter<"ProviderCircuitState"> | string | null
+  probeLeaseExpiresAt?: Prisma.DateTimeNullableFilter<"ProviderCircuitState"> | Date | string | null
   lastError?: Prisma.StringNullableFilter<"ProviderCircuitState"> | string | null
   updatedAt?: Prisma.DateTimeFilter<"ProviderCircuitState"> | Date | string
 }, "id" | "provider_endpointFamily">
@@ -286,6 +306,8 @@ export type ProviderCircuitStateOrderByWithAggregationInput = {
   failureCount?: Prisma.SortOrder
   openedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   nextProbeAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  probeLeaseToken?: Prisma.SortOrderInput | Prisma.SortOrder
+  probeLeaseExpiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
   lastError?: Prisma.SortOrderInput | Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ProviderCircuitStateCountOrderByAggregateInput
@@ -306,6 +328,8 @@ export type ProviderCircuitStateScalarWhereWithAggregatesInput = {
   failureCount?: Prisma.IntWithAggregatesFilter<"ProviderCircuitState"> | number
   openedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ProviderCircuitState"> | Date | string | null
   nextProbeAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ProviderCircuitState"> | Date | string | null
+  probeLeaseToken?: Prisma.StringNullableWithAggregatesFilter<"ProviderCircuitState"> | string | null
+  probeLeaseExpiresAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ProviderCircuitState"> | Date | string | null
   lastError?: Prisma.StringNullableWithAggregatesFilter<"ProviderCircuitState"> | string | null
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"ProviderCircuitState"> | Date | string
 }
@@ -318,6 +342,8 @@ export type ProviderCircuitStateCreateInput = {
   failureCount?: number
   openedAt?: Date | string | null
   nextProbeAt?: Date | string | null
+  probeLeaseToken?: string | null
+  probeLeaseExpiresAt?: Date | string | null
   lastError?: string | null
   updatedAt?: Date | string
 }
@@ -330,6 +356,8 @@ export type ProviderCircuitStateUncheckedCreateInput = {
   failureCount?: number
   openedAt?: Date | string | null
   nextProbeAt?: Date | string | null
+  probeLeaseToken?: string | null
+  probeLeaseExpiresAt?: Date | string | null
   lastError?: string | null
   updatedAt?: Date | string
 }
@@ -342,6 +370,8 @@ export type ProviderCircuitStateUpdateInput = {
   failureCount?: Prisma.IntFieldUpdateOperationsInput | number
   openedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   nextProbeAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  probeLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  probeLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -354,6 +384,8 @@ export type ProviderCircuitStateUncheckedUpdateInput = {
   failureCount?: Prisma.IntFieldUpdateOperationsInput | number
   openedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   nextProbeAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  probeLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  probeLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -366,6 +398,8 @@ export type ProviderCircuitStateCreateManyInput = {
   failureCount?: number
   openedAt?: Date | string | null
   nextProbeAt?: Date | string | null
+  probeLeaseToken?: string | null
+  probeLeaseExpiresAt?: Date | string | null
   lastError?: string | null
   updatedAt?: Date | string
 }
@@ -378,6 +412,8 @@ export type ProviderCircuitStateUpdateManyMutationInput = {
   failureCount?: Prisma.IntFieldUpdateOperationsInput | number
   openedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   nextProbeAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  probeLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  probeLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -390,6 +426,8 @@ export type ProviderCircuitStateUncheckedUpdateManyInput = {
   failureCount?: Prisma.IntFieldUpdateOperationsInput | number
   openedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   nextProbeAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  probeLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  probeLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -407,6 +445,8 @@ export type ProviderCircuitStateCountOrderByAggregateInput = {
   failureCount?: Prisma.SortOrder
   openedAt?: Prisma.SortOrder
   nextProbeAt?: Prisma.SortOrder
+  probeLeaseToken?: Prisma.SortOrder
+  probeLeaseExpiresAt?: Prisma.SortOrder
   lastError?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -423,6 +463,8 @@ export type ProviderCircuitStateMaxOrderByAggregateInput = {
   failureCount?: Prisma.SortOrder
   openedAt?: Prisma.SortOrder
   nextProbeAt?: Prisma.SortOrder
+  probeLeaseToken?: Prisma.SortOrder
+  probeLeaseExpiresAt?: Prisma.SortOrder
   lastError?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -435,6 +477,8 @@ export type ProviderCircuitStateMinOrderByAggregateInput = {
   failureCount?: Prisma.SortOrder
   openedAt?: Prisma.SortOrder
   nextProbeAt?: Prisma.SortOrder
+  probeLeaseToken?: Prisma.SortOrder
+  probeLeaseExpiresAt?: Prisma.SortOrder
   lastError?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -457,6 +501,8 @@ export type ProviderCircuitStateSelect<ExtArgs extends runtime.Types.Extensions.
   failureCount?: boolean
   openedAt?: boolean
   nextProbeAt?: boolean
+  probeLeaseToken?: boolean
+  probeLeaseExpiresAt?: boolean
   lastError?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["providerCircuitState"]>
@@ -469,6 +515,8 @@ export type ProviderCircuitStateSelectCreateManyAndReturn<ExtArgs extends runtim
   failureCount?: boolean
   openedAt?: boolean
   nextProbeAt?: boolean
+  probeLeaseToken?: boolean
+  probeLeaseExpiresAt?: boolean
   lastError?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["providerCircuitState"]>
@@ -481,6 +529,8 @@ export type ProviderCircuitStateSelectUpdateManyAndReturn<ExtArgs extends runtim
   failureCount?: boolean
   openedAt?: boolean
   nextProbeAt?: boolean
+  probeLeaseToken?: boolean
+  probeLeaseExpiresAt?: boolean
   lastError?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["providerCircuitState"]>
@@ -493,11 +543,13 @@ export type ProviderCircuitStateSelectScalar = {
   failureCount?: boolean
   openedAt?: boolean
   nextProbeAt?: boolean
+  probeLeaseToken?: boolean
+  probeLeaseExpiresAt?: boolean
   lastError?: boolean
   updatedAt?: boolean
 }
 
-export type ProviderCircuitStateOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "provider" | "endpointFamily" | "state" | "failureCount" | "openedAt" | "nextProbeAt" | "lastError" | "updatedAt", ExtArgs["result"]["providerCircuitState"]>
+export type ProviderCircuitStateOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "provider" | "endpointFamily" | "state" | "failureCount" | "openedAt" | "nextProbeAt" | "probeLeaseToken" | "probeLeaseExpiresAt" | "lastError" | "updatedAt", ExtArgs["result"]["providerCircuitState"]>
 
 export type $ProviderCircuitStatePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "ProviderCircuitState"
@@ -510,6 +562,8 @@ export type $ProviderCircuitStatePayload<ExtArgs extends runtime.Types.Extension
     failureCount: number
     openedAt: Date | null
     nextProbeAt: Date | null
+    probeLeaseToken: string | null
+    probeLeaseExpiresAt: Date | null
     lastError: string | null
     updatedAt: Date
   }, ExtArgs["result"]["providerCircuitState"]>
@@ -942,6 +996,8 @@ export interface ProviderCircuitStateFieldRefs {
   readonly failureCount: Prisma.FieldRef<"ProviderCircuitState", 'Int'>
   readonly openedAt: Prisma.FieldRef<"ProviderCircuitState", 'DateTime'>
   readonly nextProbeAt: Prisma.FieldRef<"ProviderCircuitState", 'DateTime'>
+  readonly probeLeaseToken: Prisma.FieldRef<"ProviderCircuitState", 'String'>
+  readonly probeLeaseExpiresAt: Prisma.FieldRef<"ProviderCircuitState", 'DateTime'>
   readonly lastError: Prisma.FieldRef<"ProviderCircuitState", 'String'>
   readonly updatedAt: Prisma.FieldRef<"ProviderCircuitState", 'DateTime'>
 }

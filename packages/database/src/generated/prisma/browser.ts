@@ -84,6 +84,12 @@ export type ReplayPreview = Prisma.ReplayPreviewModel
  */
 export type SyncRun = Prisma.SyncRunModel
 /**
+ * Model ReplayDelivery
+ * Durable per-run outbox. PostgreSQL owns delivery truth; BullMQ job identity
+ * remains deterministic and every claim is protected by a bounded lease.
+ */
+export type ReplayDelivery = Prisma.ReplayDeliveryModel
+/**
  * Model SyncAttempt
  * Attempt identity/start data is immutable; a RUNNING attempt may receive one
  * terminal SUCCEEDED or FAILED outcome with a matching finishedAt.

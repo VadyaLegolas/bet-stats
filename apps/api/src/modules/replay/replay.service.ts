@@ -90,6 +90,12 @@ export function createReplayService(options: { database: PrismaClient; enqueuer?
         for (const unit of preview.unitManifest) {
           const syncRunId = randomUUID();
           await tx.$executeRawUnsafe(`INSERT INTO "SyncRun" (id,"logicalKey",revision,provider,"endpointFamily",lane,"windowFrom","windowTo",state,"correlationId","replayPlanId","expectedUnits","expectedCaptures","completionManifest") VALUES ($1,$2,$3,$4,$5,'standard',$6,$7,'PENDING',$8,$9,1,1,$10::jsonb)`, syncRunId, `${unit.logicalId}:replay`, revision, preview.normalizedInput.provider, preview.normalizedInput.endpointFamily, unit.from, unit.to, randomUUID(), replayPlanId, JSON.stringify({ expectedUnits: [unit.logicalId], completedUnits: [], expectedCaptures: [unit.logicalId], completedCaptures: [] }));
+          await tx.$executeRawUnsafe(
+            `INSERT INTO "ReplayDelivery" (id,"syncRunId","jobId") VALUES ($1,$2,$3)`,
+            randomUUID(),
+            syncRunId,
+            `${unit.logicalId}-${revision}`,
+          );
           runs.push({ syncRunId, logicalId: unit.logicalId, revision, input: preview.normalizedInput, unit });
         }
         await tx.$executeRawUnsafe(`UPDATE "ReplayPreview" SET "consumedAt"=$2 WHERE id=$1 AND "consumedAt" IS NULL`, preview.id, now());

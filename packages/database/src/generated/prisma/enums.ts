@@ -69,6 +69,16 @@ export const LedgerState = {
 export type LedgerState = (typeof LedgerState)[keyof typeof LedgerState]
 
 
+export const ReplayDeliveryState = {
+  PENDING: 'PENDING',
+  CLAIMED: 'CLAIMED',
+  RETRYABLE: 'RETRYABLE',
+  DELIVERED: 'DELIVERED'
+} as const
+
+export type ReplayDeliveryState = (typeof ReplayDeliveryState)[keyof typeof ReplayDeliveryState]
+
+
 export const CircuitState = {
   CLOSED: 'CLOSED',
   OPEN: 'OPEN',

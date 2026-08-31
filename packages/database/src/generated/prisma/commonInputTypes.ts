@@ -243,6 +243,23 @@ export type EnumLedgerStateWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedEnumLedgerStateFilter<$PrismaModel>
 }
 
+export type EnumReplayDeliveryStateFilter<$PrismaModel = never> = {
+  equals?: $Enums.ReplayDeliveryState | Prisma.EnumReplayDeliveryStateFieldRefInput<$PrismaModel>
+  in?: $Enums.ReplayDeliveryState[] | Prisma.ListEnumReplayDeliveryStateFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ReplayDeliveryState[] | Prisma.ListEnumReplayDeliveryStateFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumReplayDeliveryStateFilter<$PrismaModel> | $Enums.ReplayDeliveryState
+}
+
+export type EnumReplayDeliveryStateWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ReplayDeliveryState | Prisma.EnumReplayDeliveryStateFieldRefInput<$PrismaModel>
+  in?: $Enums.ReplayDeliveryState[] | Prisma.ListEnumReplayDeliveryStateFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ReplayDeliveryState[] | Prisma.ListEnumReplayDeliveryStateFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumReplayDeliveryStateWithAggregatesFilter<$PrismaModel> | $Enums.ReplayDeliveryState
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumReplayDeliveryStateFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumReplayDeliveryStateFilter<$PrismaModel>
+}
+
 export type EnumCircuitStateFilter<$PrismaModel = never> = {
   equals?: $Enums.CircuitState | Prisma.EnumCircuitStateFieldRefInput<$PrismaModel>
   in?: $Enums.CircuitState[] | Prisma.ListEnumCircuitStateFieldRefInput<$PrismaModel>
@@ -680,6 +697,23 @@ export type NestedEnumLedgerStateWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumLedgerStateFilter<$PrismaModel>
   _max?: Prisma.NestedEnumLedgerStateFilter<$PrismaModel>
+}
+
+export type NestedEnumReplayDeliveryStateFilter<$PrismaModel = never> = {
+  equals?: $Enums.ReplayDeliveryState | Prisma.EnumReplayDeliveryStateFieldRefInput<$PrismaModel>
+  in?: $Enums.ReplayDeliveryState[] | Prisma.ListEnumReplayDeliveryStateFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ReplayDeliveryState[] | Prisma.ListEnumReplayDeliveryStateFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumReplayDeliveryStateFilter<$PrismaModel> | $Enums.ReplayDeliveryState
+}
+
+export type NestedEnumReplayDeliveryStateWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ReplayDeliveryState | Prisma.EnumReplayDeliveryStateFieldRefInput<$PrismaModel>
+  in?: $Enums.ReplayDeliveryState[] | Prisma.ListEnumReplayDeliveryStateFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ReplayDeliveryState[] | Prisma.ListEnumReplayDeliveryStateFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumReplayDeliveryStateWithAggregatesFilter<$PrismaModel> | $Enums.ReplayDeliveryState
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumReplayDeliveryStateFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumReplayDeliveryStateFilter<$PrismaModel>
 }
 
 export type NestedEnumCircuitStateFilter<$PrismaModel = never> = {

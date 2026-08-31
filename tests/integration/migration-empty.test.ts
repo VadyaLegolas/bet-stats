@@ -145,7 +145,7 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
     expect(evidenceTriggers).toEqual(expect.arrayContaining([
       "SourceObservation:SourceObservation_append_only",
       "ResultVersion:ResultVersion_append_only",
-      "SyncAttempt:SyncAttempt_append_only",
+      "SyncAttempt:SyncAttempt_guarded_transition",
       "EvidenceComponent:EvidenceComponent_append_only",
     ]));
 

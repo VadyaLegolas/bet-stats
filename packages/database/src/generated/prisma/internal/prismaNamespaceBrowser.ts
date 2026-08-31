@@ -64,6 +64,7 @@ export const ModelName = {
   ReplayPlan: 'ReplayPlan',
   ReplayPreview: 'ReplayPreview',
   SyncRun: 'SyncRun',
+  ReplayDelivery: 'ReplayDelivery',
   SyncAttempt: 'SyncAttempt',
   ProviderCircuitState: 'ProviderCircuitState',
   EvidenceBuild: 'EvidenceBuild',
@@ -298,6 +299,23 @@ export const SyncRunScalarFieldEnum = {
 export type SyncRunScalarFieldEnum = (typeof SyncRunScalarFieldEnum)[keyof typeof SyncRunScalarFieldEnum]
 
 
+export const ReplayDeliveryScalarFieldEnum = {
+  id: 'id',
+  syncRunId: 'syncRunId',
+  jobId: 'jobId',
+  state: 'state',
+  attemptCount: 'attemptCount',
+  classifiedReason: 'classifiedReason',
+  leaseToken: 'leaseToken',
+  leaseExpiresAt: 'leaseExpiresAt',
+  deliveredAt: 'deliveredAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ReplayDeliveryScalarFieldEnum = (typeof ReplayDeliveryScalarFieldEnum)[keyof typeof ReplayDeliveryScalarFieldEnum]
+
+
 export const SyncAttemptScalarFieldEnum = {
   id: 'id',
   syncRunId: 'syncRunId',
@@ -320,6 +338,8 @@ export const ProviderCircuitStateScalarFieldEnum = {
   failureCount: 'failureCount',
   openedAt: 'openedAt',
   nextProbeAt: 'nextProbeAt',
+  probeLeaseToken: 'probeLeaseToken',
+  probeLeaseExpiresAt: 'probeLeaseExpiresAt',
   lastError: 'lastError',
   updatedAt: 'updatedAt'
 } as const

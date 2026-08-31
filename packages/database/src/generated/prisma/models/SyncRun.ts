@@ -335,6 +335,7 @@ export type SyncRunWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"SyncRun"> | Date | string
   replayPlan?: Prisma.XOR<Prisma.ReplayPlanNullableScalarRelationFilter, Prisma.ReplayPlanWhereInput> | null
   attempts?: Prisma.SyncAttemptListRelationFilter
+  delivery?: Prisma.XOR<Prisma.ReplayDeliveryNullableScalarRelationFilter, Prisma.ReplayDeliveryWhereInput> | null
   evidenceBuilds?: Prisma.EvidenceBuildListRelationFilter
 }
 
@@ -359,6 +360,7 @@ export type SyncRunOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   replayPlan?: Prisma.ReplayPlanOrderByWithRelationInput
   attempts?: Prisma.SyncAttemptOrderByRelationAggregateInput
+  delivery?: Prisma.ReplayDeliveryOrderByWithRelationInput
   evidenceBuilds?: Prisma.EvidenceBuildOrderByRelationAggregateInput
 }
 
@@ -387,6 +389,7 @@ export type SyncRunWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"SyncRun"> | Date | string
   replayPlan?: Prisma.XOR<Prisma.ReplayPlanNullableScalarRelationFilter, Prisma.ReplayPlanWhereInput> | null
   attempts?: Prisma.SyncAttemptListRelationFilter
+  delivery?: Prisma.XOR<Prisma.ReplayDeliveryNullableScalarRelationFilter, Prisma.ReplayDeliveryWhereInput> | null
   evidenceBuilds?: Prisma.EvidenceBuildListRelationFilter
 }, "id" | "logicalKey_revision">
 
@@ -460,6 +463,7 @@ export type SyncRunCreateInput = {
   createdAt?: Date | string
   replayPlan?: Prisma.ReplayPlanCreateNestedOneWithoutSyncRunsInput
   attempts?: Prisma.SyncAttemptCreateNestedManyWithoutSyncRunInput
+  delivery?: Prisma.ReplayDeliveryCreateNestedOneWithoutSyncRunInput
   evidenceBuilds?: Prisma.EvidenceBuildCreateNestedManyWithoutSyncRunInput
 }
 
@@ -483,6 +487,7 @@ export type SyncRunUncheckedCreateInput = {
   terminalAt?: Date | string | null
   createdAt?: Date | string
   attempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutSyncRunInput
+  delivery?: Prisma.ReplayDeliveryUncheckedCreateNestedOneWithoutSyncRunInput
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedCreateNestedManyWithoutSyncRunInput
 }
 
@@ -506,6 +511,7 @@ export type SyncRunUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replayPlan?: Prisma.ReplayPlanUpdateOneWithoutSyncRunsNestedInput
   attempts?: Prisma.SyncAttemptUpdateManyWithoutSyncRunNestedInput
+  delivery?: Prisma.ReplayDeliveryUpdateOneWithoutSyncRunNestedInput
   evidenceBuilds?: Prisma.EvidenceBuildUpdateManyWithoutSyncRunNestedInput
 }
 
@@ -529,6 +535,7 @@ export type SyncRunUncheckedUpdateInput = {
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutSyncRunNestedInput
+  delivery?: Prisma.ReplayDeliveryUncheckedUpdateOneWithoutSyncRunNestedInput
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedUpdateManyWithoutSyncRunNestedInput
 }
 
@@ -737,6 +744,20 @@ export type EnumLedgerStateFieldUpdateOperationsInput = {
   set?: $Enums.LedgerState
 }
 
+export type SyncRunCreateNestedOneWithoutDeliveryInput = {
+  create?: Prisma.XOR<Prisma.SyncRunCreateWithoutDeliveryInput, Prisma.SyncRunUncheckedCreateWithoutDeliveryInput>
+  connectOrCreate?: Prisma.SyncRunCreateOrConnectWithoutDeliveryInput
+  connect?: Prisma.SyncRunWhereUniqueInput
+}
+
+export type SyncRunUpdateOneRequiredWithoutDeliveryNestedInput = {
+  create?: Prisma.XOR<Prisma.SyncRunCreateWithoutDeliveryInput, Prisma.SyncRunUncheckedCreateWithoutDeliveryInput>
+  connectOrCreate?: Prisma.SyncRunCreateOrConnectWithoutDeliveryInput
+  upsert?: Prisma.SyncRunUpsertWithoutDeliveryInput
+  connect?: Prisma.SyncRunWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SyncRunUpdateToOneWithWhereWithoutDeliveryInput, Prisma.SyncRunUpdateWithoutDeliveryInput>, Prisma.SyncRunUncheckedUpdateWithoutDeliveryInput>
+}
+
 export type SyncRunCreateNestedOneWithoutAttemptsInput = {
   create?: Prisma.XOR<Prisma.SyncRunCreateWithoutAttemptsInput, Prisma.SyncRunUncheckedCreateWithoutAttemptsInput>
   connectOrCreate?: Prisma.SyncRunCreateOrConnectWithoutAttemptsInput
@@ -784,6 +805,7 @@ export type SyncRunCreateWithoutReplayPlanInput = {
   terminalAt?: Date | string | null
   createdAt?: Date | string
   attempts?: Prisma.SyncAttemptCreateNestedManyWithoutSyncRunInput
+  delivery?: Prisma.ReplayDeliveryCreateNestedOneWithoutSyncRunInput
   evidenceBuilds?: Prisma.EvidenceBuildCreateNestedManyWithoutSyncRunInput
 }
 
@@ -806,6 +828,7 @@ export type SyncRunUncheckedCreateWithoutReplayPlanInput = {
   terminalAt?: Date | string | null
   createdAt?: Date | string
   attempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutSyncRunInput
+  delivery?: Prisma.ReplayDeliveryUncheckedCreateNestedOneWithoutSyncRunInput
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedCreateNestedManyWithoutSyncRunInput
 }
 
@@ -859,6 +882,114 @@ export type SyncRunScalarWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"SyncRun"> | Date | string
 }
 
+export type SyncRunCreateWithoutDeliveryInput = {
+  id?: string
+  logicalKey: string
+  revision: number
+  provider: string
+  endpointFamily: string
+  lane: string
+  windowFrom: Date | string
+  windowTo: Date | string
+  state?: $Enums.LedgerState
+  correlationId: string
+  expectedUnits?: number
+  completedUnits?: number
+  expectedCaptures?: number
+  completedCaptures?: number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  terminalAt?: Date | string | null
+  createdAt?: Date | string
+  replayPlan?: Prisma.ReplayPlanCreateNestedOneWithoutSyncRunsInput
+  attempts?: Prisma.SyncAttemptCreateNestedManyWithoutSyncRunInput
+  evidenceBuilds?: Prisma.EvidenceBuildCreateNestedManyWithoutSyncRunInput
+}
+
+export type SyncRunUncheckedCreateWithoutDeliveryInput = {
+  id?: string
+  logicalKey: string
+  revision: number
+  provider: string
+  endpointFamily: string
+  lane: string
+  windowFrom: Date | string
+  windowTo: Date | string
+  state?: $Enums.LedgerState
+  correlationId: string
+  replayPlanId?: string | null
+  expectedUnits?: number
+  completedUnits?: number
+  expectedCaptures?: number
+  completedCaptures?: number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  terminalAt?: Date | string | null
+  createdAt?: Date | string
+  attempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutSyncRunInput
+  evidenceBuilds?: Prisma.EvidenceBuildUncheckedCreateNestedManyWithoutSyncRunInput
+}
+
+export type SyncRunCreateOrConnectWithoutDeliveryInput = {
+  where: Prisma.SyncRunWhereUniqueInput
+  create: Prisma.XOR<Prisma.SyncRunCreateWithoutDeliveryInput, Prisma.SyncRunUncheckedCreateWithoutDeliveryInput>
+}
+
+export type SyncRunUpsertWithoutDeliveryInput = {
+  update: Prisma.XOR<Prisma.SyncRunUpdateWithoutDeliveryInput, Prisma.SyncRunUncheckedUpdateWithoutDeliveryInput>
+  create: Prisma.XOR<Prisma.SyncRunCreateWithoutDeliveryInput, Prisma.SyncRunUncheckedCreateWithoutDeliveryInput>
+  where?: Prisma.SyncRunWhereInput
+}
+
+export type SyncRunUpdateToOneWithWhereWithoutDeliveryInput = {
+  where?: Prisma.SyncRunWhereInput
+  data: Prisma.XOR<Prisma.SyncRunUpdateWithoutDeliveryInput, Prisma.SyncRunUncheckedUpdateWithoutDeliveryInput>
+}
+
+export type SyncRunUpdateWithoutDeliveryInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  logicalKey?: Prisma.StringFieldUpdateOperationsInput | string
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  provider?: Prisma.StringFieldUpdateOperationsInput | string
+  endpointFamily?: Prisma.StringFieldUpdateOperationsInput | string
+  lane?: Prisma.StringFieldUpdateOperationsInput | string
+  windowFrom?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  windowTo?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  state?: Prisma.EnumLedgerStateFieldUpdateOperationsInput | $Enums.LedgerState
+  correlationId?: Prisma.StringFieldUpdateOperationsInput | string
+  expectedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  completedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  expectedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  replayPlan?: Prisma.ReplayPlanUpdateOneWithoutSyncRunsNestedInput
+  attempts?: Prisma.SyncAttemptUpdateManyWithoutSyncRunNestedInput
+  evidenceBuilds?: Prisma.EvidenceBuildUpdateManyWithoutSyncRunNestedInput
+}
+
+export type SyncRunUncheckedUpdateWithoutDeliveryInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  logicalKey?: Prisma.StringFieldUpdateOperationsInput | string
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  provider?: Prisma.StringFieldUpdateOperationsInput | string
+  endpointFamily?: Prisma.StringFieldUpdateOperationsInput | string
+  lane?: Prisma.StringFieldUpdateOperationsInput | string
+  windowFrom?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  windowTo?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  state?: Prisma.EnumLedgerStateFieldUpdateOperationsInput | $Enums.LedgerState
+  correlationId?: Prisma.StringFieldUpdateOperationsInput | string
+  replayPlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  expectedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  completedUnits?: Prisma.IntFieldUpdateOperationsInput | number
+  expectedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
+  completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  attempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutSyncRunNestedInput
+  evidenceBuilds?: Prisma.EvidenceBuildUncheckedUpdateManyWithoutSyncRunNestedInput
+}
+
 export type SyncRunCreateWithoutAttemptsInput = {
   id?: string
   logicalKey: string
@@ -878,6 +1009,7 @@ export type SyncRunCreateWithoutAttemptsInput = {
   terminalAt?: Date | string | null
   createdAt?: Date | string
   replayPlan?: Prisma.ReplayPlanCreateNestedOneWithoutSyncRunsInput
+  delivery?: Prisma.ReplayDeliveryCreateNestedOneWithoutSyncRunInput
   evidenceBuilds?: Prisma.EvidenceBuildCreateNestedManyWithoutSyncRunInput
 }
 
@@ -900,6 +1032,7 @@ export type SyncRunUncheckedCreateWithoutAttemptsInput = {
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
   createdAt?: Date | string
+  delivery?: Prisma.ReplayDeliveryUncheckedCreateNestedOneWithoutSyncRunInput
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedCreateNestedManyWithoutSyncRunInput
 }
 
@@ -938,6 +1071,7 @@ export type SyncRunUpdateWithoutAttemptsInput = {
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replayPlan?: Prisma.ReplayPlanUpdateOneWithoutSyncRunsNestedInput
+  delivery?: Prisma.ReplayDeliveryUpdateOneWithoutSyncRunNestedInput
   evidenceBuilds?: Prisma.EvidenceBuildUpdateManyWithoutSyncRunNestedInput
 }
 
@@ -960,6 +1094,7 @@ export type SyncRunUncheckedUpdateWithoutAttemptsInput = {
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  delivery?: Prisma.ReplayDeliveryUncheckedUpdateOneWithoutSyncRunNestedInput
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedUpdateManyWithoutSyncRunNestedInput
 }
 
@@ -983,6 +1118,7 @@ export type SyncRunCreateWithoutEvidenceBuildsInput = {
   createdAt?: Date | string
   replayPlan?: Prisma.ReplayPlanCreateNestedOneWithoutSyncRunsInput
   attempts?: Prisma.SyncAttemptCreateNestedManyWithoutSyncRunInput
+  delivery?: Prisma.ReplayDeliveryCreateNestedOneWithoutSyncRunInput
 }
 
 export type SyncRunUncheckedCreateWithoutEvidenceBuildsInput = {
@@ -1005,6 +1141,7 @@ export type SyncRunUncheckedCreateWithoutEvidenceBuildsInput = {
   terminalAt?: Date | string | null
   createdAt?: Date | string
   attempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutSyncRunInput
+  delivery?: Prisma.ReplayDeliveryUncheckedCreateNestedOneWithoutSyncRunInput
 }
 
 export type SyncRunCreateOrConnectWithoutEvidenceBuildsInput = {
@@ -1043,6 +1180,7 @@ export type SyncRunUpdateWithoutEvidenceBuildsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replayPlan?: Prisma.ReplayPlanUpdateOneWithoutSyncRunsNestedInput
   attempts?: Prisma.SyncAttemptUpdateManyWithoutSyncRunNestedInput
+  delivery?: Prisma.ReplayDeliveryUpdateOneWithoutSyncRunNestedInput
 }
 
 export type SyncRunUncheckedUpdateWithoutEvidenceBuildsInput = {
@@ -1065,6 +1203,7 @@ export type SyncRunUncheckedUpdateWithoutEvidenceBuildsInput = {
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutSyncRunNestedInput
+  delivery?: Prisma.ReplayDeliveryUncheckedUpdateOneWithoutSyncRunNestedInput
 }
 
 export type SyncRunCreateManyReplayPlanInput = {
@@ -1106,6 +1245,7 @@ export type SyncRunUpdateWithoutReplayPlanInput = {
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attempts?: Prisma.SyncAttemptUpdateManyWithoutSyncRunNestedInput
+  delivery?: Prisma.ReplayDeliveryUpdateOneWithoutSyncRunNestedInput
   evidenceBuilds?: Prisma.EvidenceBuildUpdateManyWithoutSyncRunNestedInput
 }
 
@@ -1128,6 +1268,7 @@ export type SyncRunUncheckedUpdateWithoutReplayPlanInput = {
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutSyncRunNestedInput
+  delivery?: Prisma.ReplayDeliveryUncheckedUpdateOneWithoutSyncRunNestedInput
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedUpdateManyWithoutSyncRunNestedInput
 }
 
@@ -1212,6 +1353,7 @@ export type SyncRunSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   createdAt?: boolean
   replayPlan?: boolean | Prisma.SyncRun$replayPlanArgs<ExtArgs>
   attempts?: boolean | Prisma.SyncRun$attemptsArgs<ExtArgs>
+  delivery?: boolean | Prisma.SyncRun$deliveryArgs<ExtArgs>
   evidenceBuilds?: boolean | Prisma.SyncRun$evidenceBuildsArgs<ExtArgs>
   _count?: boolean | Prisma.SyncRunCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["syncRun"]>
@@ -1285,6 +1427,7 @@ export type SyncRunOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
 export type SyncRunInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   replayPlan?: boolean | Prisma.SyncRun$replayPlanArgs<ExtArgs>
   attempts?: boolean | Prisma.SyncRun$attemptsArgs<ExtArgs>
+  delivery?: boolean | Prisma.SyncRun$deliveryArgs<ExtArgs>
   evidenceBuilds?: boolean | Prisma.SyncRun$evidenceBuildsArgs<ExtArgs>
   _count?: boolean | Prisma.SyncRunCountOutputTypeDefaultArgs<ExtArgs>
 }
@@ -1300,6 +1443,7 @@ export type $SyncRunPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
   objects: {
     replayPlan: Prisma.$ReplayPlanPayload<ExtArgs> | null
     attempts: Prisma.$SyncAttemptPayload<ExtArgs>[]
+    delivery: Prisma.$ReplayDeliveryPayload<ExtArgs> | null
     evidenceBuilds: Prisma.$EvidenceBuildPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -1717,6 +1861,7 @@ export interface Prisma__SyncRunClient<T, Null = never, ExtArgs extends runtime.
   readonly [Symbol.toStringTag]: "PrismaPromise"
   replayPlan<T extends Prisma.SyncRun$replayPlanArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SyncRun$replayPlanArgs<ExtArgs>>): Prisma.Prisma__ReplayPlanClient<runtime.Types.Result.GetResult<Prisma.$ReplayPlanPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   attempts<T extends Prisma.SyncRun$attemptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SyncRun$attemptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SyncAttemptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  delivery<T extends Prisma.SyncRun$deliveryArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SyncRun$deliveryArgs<ExtArgs>>): Prisma.Prisma__ReplayDeliveryClient<runtime.Types.Result.GetResult<Prisma.$ReplayDeliveryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   evidenceBuilds<T extends Prisma.SyncRun$evidenceBuildsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SyncRun$evidenceBuildsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EvidenceBuildPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -2206,6 +2351,25 @@ export type SyncRun$attemptsArgs<ExtArgs extends runtime.Types.Extensions.Intern
   take?: number
   skip?: number
   distinct?: Prisma.SyncAttemptScalarFieldEnum | Prisma.SyncAttemptScalarFieldEnum[]
+}
+
+/**
+ * SyncRun.delivery
+ */
+export type SyncRun$deliveryArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ReplayDelivery
+   */
+  select?: Prisma.ReplayDeliverySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ReplayDelivery
+   */
+  omit?: Prisma.ReplayDeliveryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ReplayDeliveryInclude<ExtArgs> | null
+  where?: Prisma.ReplayDeliveryWhereInput
 }
 
 /**

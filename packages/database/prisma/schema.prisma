@@ -49,6 +49,13 @@ enum LedgerState {
   CANCELLED
 }
 
+enum ReplayDeliveryState {
+  PENDING
+  CLAIMED
+  RETRYABLE
+  DELIVERED
+}
+
 enum CircuitState {
   CLOSED
   OPEN
@@ -291,10 +298,30 @@ model SyncRun {
   createdAt           DateTime        @default(now()) @db.Timestamptz(3)
   replayPlan     ReplayPlan?     @relation(fields: [replayPlanId], references: [id], onDelete: Restrict)
   attempts       SyncAttempt[]
+  delivery       ReplayDelivery?
   evidenceBuilds EvidenceBuild[]
 
   @@unique([logicalKey, revision])
   @@index([provider, endpointFamily, state])
+}
+
+/// Durable per-run outbox. PostgreSQL owns delivery truth; BullMQ job identity
+/// remains deterministic and every claim is protected by a bounded lease.
+model ReplayDelivery {
+  id               String              @id @default(cuid())
+  syncRunId        String              @unique
+  jobId            String              @unique
+  state            ReplayDeliveryState @default(PENDING)
+  attemptCount     Int                 @default(0)
+  classifiedReason String?
+  leaseToken       String?
+  leaseExpiresAt   DateTime?           @db.Timestamptz(3)
+  deliveredAt      DateTime?           @db.Timestamptz(3)
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
+  syncRun          SyncRun             @relation(fields: [syncRunId], references: [id], onDelete: Restrict)
+
+  @@index([state, leaseExpiresAt, createdAt])
 }
 
 /// Attempt identity/start data is immutable; a RUNNING attempt may receive one
@@ -322,10 +349,13 @@ model ProviderCircuitState {
   failureCount   Int          @default(0)
   openedAt       DateTime?    @db.Timestamptz(3)
   nextProbeAt    DateTime?    @db.Timestamptz(3)
+  probeLeaseToken String?
+  probeLeaseExpiresAt DateTime? @db.Timestamptz(3)
   lastError      String?
   updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
 
   @@unique([provider, endpointFamily])
+  @@index([provider, endpointFamily, state, nextProbeAt, probeLeaseExpiresAt])
 }
 
 model EvidenceBuild {

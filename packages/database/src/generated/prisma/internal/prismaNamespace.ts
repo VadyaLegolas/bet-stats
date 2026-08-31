@@ -410,6 +410,7 @@ export const ModelName = {
   ReplayPlan: 'ReplayPlan',
   ReplayPreview: 'ReplayPreview',
   SyncRun: 'SyncRun',
+  ReplayDelivery: 'ReplayDelivery',
   SyncAttempt: 'SyncAttempt',
   ProviderCircuitState: 'ProviderCircuitState',
   EvidenceBuild: 'EvidenceBuild',
@@ -439,7 +440,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "resultVersion" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "resultVersion" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1402,6 +1403,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.SyncRunCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.SyncRunCountAggregateOutputType> | number
+        }
+      }
+    }
+    ReplayDelivery: {
+      payload: Prisma.$ReplayDeliveryPayload<ExtArgs>
+      fields: Prisma.ReplayDeliveryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ReplayDeliveryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayDeliveryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ReplayDeliveryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayDeliveryPayload>
+        }
+        findFirst: {
+          args: Prisma.ReplayDeliveryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayDeliveryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ReplayDeliveryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayDeliveryPayload>
+        }
+        findMany: {
+          args: Prisma.ReplayDeliveryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayDeliveryPayload>[]
+        }
+        create: {
+          args: Prisma.ReplayDeliveryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayDeliveryPayload>
+        }
+        createMany: {
+          args: Prisma.ReplayDeliveryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ReplayDeliveryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayDeliveryPayload>[]
+        }
+        delete: {
+          args: Prisma.ReplayDeliveryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayDeliveryPayload>
+        }
+        update: {
+          args: Prisma.ReplayDeliveryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayDeliveryPayload>
+        }
+        deleteMany: {
+          args: Prisma.ReplayDeliveryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ReplayDeliveryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ReplayDeliveryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayDeliveryPayload>[]
+        }
+        upsert: {
+          args: Prisma.ReplayDeliveryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReplayDeliveryPayload>
+        }
+        aggregate: {
+          args: Prisma.ReplayDeliveryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateReplayDelivery>
+        }
+        groupBy: {
+          args: Prisma.ReplayDeliveryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ReplayDeliveryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ReplayDeliveryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ReplayDeliveryCountAggregateOutputType> | number
         }
       }
     }
@@ -2682,6 +2757,23 @@ export const SyncRunScalarFieldEnum = {
 export type SyncRunScalarFieldEnum = (typeof SyncRunScalarFieldEnum)[keyof typeof SyncRunScalarFieldEnum]
 
 
+export const ReplayDeliveryScalarFieldEnum = {
+  id: 'id',
+  syncRunId: 'syncRunId',
+  jobId: 'jobId',
+  state: 'state',
+  attemptCount: 'attemptCount',
+  classifiedReason: 'classifiedReason',
+  leaseToken: 'leaseToken',
+  leaseExpiresAt: 'leaseExpiresAt',
+  deliveredAt: 'deliveredAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ReplayDeliveryScalarFieldEnum = (typeof ReplayDeliveryScalarFieldEnum)[keyof typeof ReplayDeliveryScalarFieldEnum]
+
+
 export const SyncAttemptScalarFieldEnum = {
   id: 'id',
   syncRunId: 'syncRunId',
@@ -2704,6 +2796,8 @@ export const ProviderCircuitStateScalarFieldEnum = {
   failureCount: 'failureCount',
   openedAt: 'openedAt',
   nextProbeAt: 'nextProbeAt',
+  probeLeaseToken: 'probeLeaseToken',
+  probeLeaseExpiresAt: 'probeLeaseExpiresAt',
   lastError: 'lastError',
   updatedAt: 'updatedAt'
 } as const
@@ -3002,6 +3096,20 @@ export type ListEnumLedgerStateFieldRefInput<$PrismaModel> = FieldRefInputType<$
 
 
 /**
+ * Reference to a field of type 'ReplayDeliveryState'
+ */
+export type EnumReplayDeliveryStateFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReplayDeliveryState'>
+    
+
+
+/**
+ * Reference to a field of type 'ReplayDeliveryState[]'
+ */
+export type ListEnumReplayDeliveryStateFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReplayDeliveryState[]'>
+    
+
+
+/**
  * Reference to a field of type 'CircuitState'
  */
 export type EnumCircuitStateFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CircuitState'>
@@ -3290,6 +3398,7 @@ export type GlobalOmitConfig = {
   replayPlan?: Prisma.ReplayPlanOmit
   replayPreview?: Prisma.ReplayPreviewOmit
   syncRun?: Prisma.SyncRunOmit
+  replayDelivery?: Prisma.ReplayDeliveryOmit
   syncAttempt?: Prisma.SyncAttemptOmit
   providerCircuitState?: Prisma.ProviderCircuitStateOmit
   evidenceBuild?: Prisma.EvidenceBuildOmit

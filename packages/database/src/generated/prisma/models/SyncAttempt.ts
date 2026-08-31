@@ -14,7 +14,8 @@ import type * as Prisma from "../internal/prismaNamespace.js"
 
 /**
  * Model SyncAttempt
- * 
+ * Attempt identity/start data is immutable; a RUNNING attempt may receive one
+ * terminal SUCCEEDED or FAILED outcome with a matching finishedAt.
  */
 export type SyncAttemptModel = runtime.Types.Result.DefaultSelection<Prisma.$SyncAttemptPayload>
 

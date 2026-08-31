@@ -67,29 +67,85 @@ export function createReplayWorker(input: {
   concurrency?: number;
 }) {
   const worker = new Worker<ReplayJobData>(standardQueue(input.prefix), async (job: Job<ReplayJobData>) => {
-    const current = await input.database.syncRun.findUnique({ where: { id: job.data.syncRunId } });
-    if (!current || current.replayPlanId !== job.data.replayPlanId) throw Object.assign(new Error("RUN_NOT_FOUND"), { code: "RUN_NOT_FOUND" });
-    if (current.state === "SUCCEEDED") return { duplicate: true };
     const attemptNumber = job.attemptsMade + 1;
-    await input.database.$transaction(async (tx) => {
-      await tx.syncAttempt.upsert({ where: { syncRunId_attemptNumber: { syncRunId: current.id, attemptNumber } }, create: { syncRunId: current.id, attemptNumber, state: "RUNNING" }, update: {} });
-      await tx.syncRun.updateMany({ where: { id: current.id, state: { in: ["PENDING", "RUNNING"] } }, data: { state: "RUNNING" } });
+    const claimed = await input.database.$transaction(async (tx) => {
+      const rows = await tx.$queryRawUnsafe<Array<{ id: string; replayPlanId: string | null; state: string }>>(
+        `SELECT id, "replayPlanId", state FROM "SyncRun" WHERE id=$1 FOR UPDATE`,
+        job.data.syncRunId,
+      );
+      const current = rows[0];
+      if (!current || current.replayPlanId !== job.data.replayPlanId) {
+        throw Object.assign(new Error("RUN_NOT_FOUND"), { code: "RUN_NOT_FOUND" });
+      }
+      if (current.state !== "PENDING") return false;
+      const transition = await tx.syncRun.updateMany({
+        where: { id: current.id, state: "PENDING" },
+        data: { state: "RUNNING" },
+      });
+      if (transition.count !== 1) return false;
+      await tx.syncAttempt.create({ data: { syncRunId: current.id, attemptNumber, state: "RUNNING" } });
+      return true;
     });
+    if (!claimed) return { duplicate: true };
+
     try {
       await input.execute(job.data);
-      await input.database.$transaction(async (tx) => {
-        await tx.syncAttempt.update({ where: { syncRunId_attemptNumber: { syncRunId: current.id, attemptNumber } }, data: { state: "SUCCEEDED", finishedAt: new Date() } });
-        await tx.syncRun.update({ where: { id: current.id }, data: { state: "SUCCEEDED", completedUnits: 1, completedCaptures: 1, terminalAt: new Date(), completionManifest: { expectedUnits: [job.data.logicalId], completedUnits: [job.data.logicalId], expectedCaptures: [job.data.logicalId], completedCaptures: [job.data.logicalId], delivery: "DELIVERED" } } });
-      });
-      return { duplicate: false };
     } catch (error) {
       const exhausted = attemptNumber >= SYNC_MAX_ATTEMPTS; const reason = classifyFailure(error);
       await input.database.$transaction(async (tx) => {
-        await tx.syncAttempt.update({ where: { syncRunId_attemptNumber: { syncRunId: current.id, attemptNumber } }, data: { state: "FAILED", classifiedReason: reason, finishedAt: new Date() } });
-        await tx.syncRun.update({ where: { id: current.id }, data: { state: exhausted ? "FAILED" : "PENDING", terminalAt: exhausted ? new Date() : null } });
+        const locked = await tx.$queryRawUnsafe<Array<{ state: string }>>(
+          `SELECT state FROM "SyncRun" WHERE id=$1 FOR UPDATE`,
+          job.data.syncRunId,
+        );
+        if (locked[0]?.state !== "RUNNING") return;
+        const finishedAt = new Date();
+        const attempt = await tx.syncAttempt.updateMany({
+          where: { syncRunId: job.data.syncRunId, attemptNumber, state: "RUNNING", finishedAt: null },
+          data: { state: "FAILED", classifiedReason: reason, finishedAt },
+        });
+        if (attempt.count !== 1) throw Object.assign(new Error("ATTEMPT_NOT_RUNNING"), { code: "ATTEMPT_NOT_RUNNING" });
+        const run = await tx.syncRun.updateMany({
+          where: { id: job.data.syncRunId, state: "RUNNING" },
+          data: { state: exhausted ? "FAILED" : "PENDING", terminalAt: exhausted ? finishedAt : null },
+        });
+        if (run.count !== 1) throw Object.assign(new Error("RUN_NOT_RUNNING"), { code: "RUN_NOT_RUNNING" });
       });
       throw error;
     }
+
+    await input.database.$transaction(async (tx) => {
+      const locked = await tx.$queryRawUnsafe<Array<{ state: string }>>(
+        `SELECT state FROM "SyncRun" WHERE id=$1 FOR UPDATE`,
+        job.data.syncRunId,
+      );
+      if (locked[0]?.state !== "RUNNING") {
+        throw Object.assign(new Error("RUN_NOT_RUNNING"), { code: "RUN_NOT_RUNNING" });
+      }
+      const finishedAt = new Date();
+      const attempt = await tx.syncAttempt.updateMany({
+        where: { syncRunId: job.data.syncRunId, attemptNumber, state: "RUNNING", finishedAt: null },
+        data: { state: "SUCCEEDED", finishedAt },
+      });
+      if (attempt.count !== 1) throw Object.assign(new Error("ATTEMPT_NOT_RUNNING"), { code: "ATTEMPT_NOT_RUNNING" });
+      const run = await tx.syncRun.updateMany({
+        where: { id: job.data.syncRunId, state: "RUNNING" },
+        data: {
+          state: "SUCCEEDED",
+          completedUnits: 1,
+          completedCaptures: 1,
+          terminalAt: finishedAt,
+          completionManifest: {
+            expectedUnits: [job.data.logicalId],
+            completedUnits: [job.data.logicalId],
+            expectedCaptures: [job.data.logicalId],
+            completedCaptures: [job.data.logicalId],
+            delivery: "DELIVERED",
+          },
+        },
+      });
+      if (run.count !== 1) throw Object.assign(new Error("RUN_NOT_RUNNING"), { code: "RUN_NOT_RUNNING" });
+    });
+    return { duplicate: false };
   }, { connection: redisConnection(input.redisUrl), concurrency: input.concurrency ?? 2, maxStartedAttempts: SYNC_MAX_ATTEMPTS });
   return worker;
 }

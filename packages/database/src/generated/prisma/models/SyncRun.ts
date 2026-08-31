@@ -14,7 +14,8 @@ import type * as Prisma from "../internal/prismaNamespace.js"
 
 /**
  * Model SyncRun
- * 
+ * Operational replay state is guarded in PostgreSQL: PENDING -> RUNNING,
+ * RUNNING -> PENDING|SUCCEEDED|FAILED, with terminal rows immutable.
  */
 export type SyncRunModel = runtime.Types.Result.DefaultSelection<Prisma.$SyncRunPayload>
 

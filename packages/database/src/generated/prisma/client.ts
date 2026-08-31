@@ -103,12 +103,14 @@ export type ReplayPlan = Prisma.ReplayPlanModel
 export type ReplayPreview = Prisma.ReplayPreviewModel
 /**
  * Model SyncRun
- * 
+ * Operational replay state is guarded in PostgreSQL: PENDING -> RUNNING,
+ * RUNNING -> PENDING|SUCCEEDED|FAILED, with terminal rows immutable.
  */
 export type SyncRun = Prisma.SyncRunModel
 /**
  * Model SyncAttempt
- * 
+ * Attempt identity/start data is immutable; a RUNNING attempt may receive one
+ * terminal SUCCEEDED or FAILED outcome with a matching finishedAt.
  */
 export type SyncAttempt = Prisma.SyncAttemptModel
 /**

@@ -268,6 +268,8 @@ model ReplayPreview {
   @@index([logicalKey, expiresAt])
 }
 
+/// Operational replay state is guarded in PostgreSQL: PENDING -> RUNNING,
+/// RUNNING -> PENDING|SUCCEEDED|FAILED, with terminal rows immutable.
 model SyncRun {
   id             String          @id @default(cuid())
   logicalKey     String
@@ -295,6 +297,8 @@ model SyncRun {
   @@index([provider, endpointFamily, state])
 }
 
+/// Attempt identity/start data is immutable; a RUNNING attempt may receive one
+/// terminal SUCCEEDED or FAILED outcome with a matching finishedAt.
 model SyncAttempt {
   id               String             @id @default(cuid())
   syncRunId        String

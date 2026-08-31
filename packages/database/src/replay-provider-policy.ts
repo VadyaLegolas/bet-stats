@@ -20,6 +20,13 @@ export interface ReplayProviderPolicyRepository {
   read(provider: string, endpointFamily: string): Promise<ReplayProviderPolicySnapshot>;
 }
 
+/** One policy definition shared by API preview/status and production Workers. */
+export const DEFAULT_REPLAY_PROVIDER_POLICIES: readonly ReplayProviderPolicyConfig[] = [
+  { provider: "football-data.org", endpointFamily: "FIXTURES", lane: "critical", configuredAllowance: 10, criticalHeadroom: 3, resetTimezone: "UTC" },
+  { provider: "football-data.org", endpointFamily: "RESULTS", lane: "critical", configuredAllowance: 10, criticalHeadroom: 3, resetTimezone: "UTC" },
+  { provider: "football-data.org", endpointFamily: "STANDINGS", lane: "standard", configuredAllowance: 10, criticalHeadroom: 3, resetTimezone: "UTC" },
+];
+
 export function createReplayProviderPolicyRepository(options: {
   database: PrismaClient;
   policies: readonly ReplayProviderPolicyConfig[];

@@ -14,9 +14,9 @@ export interface ReservationDecision {
 }
 
 export interface CircuitProbeRegistry {
-  state(provider: string, endpointFamily: string): "CLOSED" | "OPEN" | "HALF_OPEN";
-  acquireProbe(provider: string, endpointFamily: string): boolean;
-  releaseProbe(provider: string, endpointFamily: string): void;
+  state(provider: string, endpointFamily: string): "CLOSED" | "OPEN" | "HALF_OPEN" | Promise<"CLOSED" | "OPEN" | "HALF_OPEN">;
+  acquireProbe(provider: string, endpointFamily: string): boolean | Promise<boolean>;
+  releaseProbe(provider: string, endpointFamily: string): void | Promise<void>;
 }
 
 export interface GatedIngestionInput<TProvider, TValue> {
@@ -54,12 +54,14 @@ export async function runGatedIngestion<TProvider, TValue>(
   input: GatedIngestionInput<TProvider, TValue>,
 ): Promise<GatedIngestionResult<TValue>> {
   if (input.capability !== "SUPPORTED") return { status: "denied", reason: "CAPABILITY_DENIED" };
-  const circuitState = input.circuitRegistry?.state(input.provider, input.endpoint) ?? input.circuit;
+  const circuitState = input.circuitRegistry
+    ? await input.circuitRegistry.state(input.provider, input.endpoint)
+    : input.circuit;
   if (circuitState === "OPEN") return { status: "denied", reason: "CIRCUIT_OPEN" };
   if (circuitState === "HALF_OPEN" && !input.circuitRegistry) {
     return { status: "denied", reason: "CIRCUIT_OPEN" };
   }
-  const probeOwned = circuitState === "HALF_OPEN" && input.circuitRegistry!.acquireProbe(input.provider, input.endpoint);
+  const probeOwned = circuitState === "HALF_OPEN" && await input.circuitRegistry!.acquireProbe(input.provider, input.endpoint);
   if (circuitState === "HALF_OPEN" && !probeOwned) return { status: "denied", reason: "CIRCUIT_OPEN" };
 
   try {
@@ -90,7 +92,7 @@ export async function runGatedIngestion<TProvider, TValue>(
     await input.complete?.();
     return { status: "completed", value, reservationReused: reservation.reused === true };
   } finally {
-    if (probeOwned) input.circuitRegistry!.releaseProbe(input.provider, input.endpoint);
+    if (probeOwned) await input.circuitRegistry!.releaseProbe(input.provider, input.endpoint);
   }
 }
 

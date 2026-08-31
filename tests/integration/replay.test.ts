@@ -15,6 +15,7 @@ import { createBullReplayEnqueuer, createReplayService } from "../../apps/api/sr
 import { ReplayController } from "../../apps/api/src/modules/replay/replay.controller.js";
 import { OperatorGuard } from "../../apps/api/src/modules/reconciliation/operator.guard.js";
 import { createReplayQueue, createReplayWorker } from "../../workers/data-sync/src/queues/index.js";
+import { createDurableProviderCircuitRegistry } from "../../workers/data-sync/src/resilience/circuits.js";
 
 const request = { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-01T00:00:00.000Z", to: "2026-08-03T00:00:00.000Z" };
 const databaseRoot = resolve(import.meta.dirname, "../../packages/database");
@@ -109,6 +110,34 @@ describe("durable bounded replay", () => {
     expect(fingerprintReplayProviderPolicy(first)).toBe("cae54e3f25a03a2ccc1e012ecb3213ef12c42f52d95d49c728e14e1d55cbf136");
     expect(fingerprintReplayProviderPolicy(second)).toBe(fingerprintReplayProviderPolicy(first));
     expect(evaluateReplayProviderPolicy(first, 5, now)).toEqual({ allowed: true, remainingAfter: 0 });
+  });
+
+  it("uses one compare-and-set HALF_OPEN lease across independently constructed Workers", async () => {
+    await prisma.providerCircuitState.upsert({
+      where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
+      create: { id: randomUUID(), provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily, state: "HALF_OPEN" },
+      update: { state: "HALF_OPEN", probeLeaseToken: null, probeLeaseExpiresAt: null },
+    });
+    const first = createDurableProviderCircuitRegistry({ database: prisma });
+    const secondDatabase = createPrismaClient(databaseUrl);
+    const second = createDurableProviderCircuitRegistry({ database: secondDatabase });
+    try {
+      expect((await Promise.all([
+        first.acquireProbe(resultsPolicy.provider, resultsPolicy.endpointFamily),
+        second.acquireProbe(resultsPolicy.provider, resultsPolicy.endpointFamily),
+      ])).filter(Boolean)).toHaveLength(1);
+      const leased = await prisma.providerCircuitState.findUniqueOrThrow({ where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } } });
+      expect(leased.probeLeaseToken).toEqual(expect.any(String));
+      expect(leased.probeLeaseExpiresAt).toEqual(expect.any(Date));
+
+      await first.releaseProbe(resultsPolicy.provider, resultsPolicy.endpointFamily);
+      await second.releaseProbe(resultsPolicy.provider, resultsPolicy.endpointFamily);
+      expect(await first.acquireProbe(resultsPolicy.provider, resultsPolicy.endpointFamily)).toBe(true);
+    } finally {
+      await first.releaseProbe(resultsPolicy.provider, resultsPolicy.endpointFamily);
+      await second.releaseProbe(resultsPolicy.provider, resultsPolicy.endpointFamily);
+      await secondDatabase.$disconnect();
+    }
   });
 
   it("returns fail-closed snapshots for absent, stale, and malformed policy metadata", async () => {
@@ -387,7 +416,7 @@ describe("durable bounded replay", () => {
     const preview = await controller.preview({ ...request, from: "2026-08-12T00:00:00.000Z", to: "2026-08-12T00:00:00.000Z" });
     const queued = await controller.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
     const status = await controller.status(queued.replayPlanId);
-    expect(status).toMatchObject({ state: "QUEUED", outcome: "PENDING", lane: "standard" });
+    expect(status).toMatchObject({ state: "QUEUED", outcome: "PENDING", lane: "critical" });
     expect(JSON.stringify(status)).not.toMatch(/postgresql:|redis:|password|credential/i);
   });
 

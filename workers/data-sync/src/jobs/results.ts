@@ -1,11 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import type { PrismaClient } from "@bet-stats/database";
-import { reserveProviderRequest } from "@bet-stats/domain";
+import type { PrismaClient, ReplayProviderPolicyRepository } from "@bet-stats/database";
+import { reservePriorityRequest } from "@bet-stats/domain";
 import type { NormalizedResult, RequestedDateWindow, ResultProvider } from "@bet-stats/football-data";
 
-import { runGatedIngestion, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
+import { runGatedIngestion, type CircuitProbeRegistry, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
 import type { ReplayJobData } from "../queues/index.js";
+import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js";
 
 interface ResultProviderCompatibility extends Partial<ResultProvider> {
   fetchResults?: () => Promise<readonly NormalizedResult[] | { data: readonly NormalizedResult[]; quota?: unknown }>;
@@ -16,12 +17,14 @@ export interface ResultSyncJobInput {
   endpoint: string;
   capability: "SUPPORTED" | "UNKNOWN" | "UNSUPPORTED";
   circuit: "CLOSED" | "OPEN" | "HALF_OPEN";
+  circuitRegistry?: CircuitProbeRegistry;
   allowance: number;
   jobKey: string;
   providerFactory: () => ResultProviderCompatibility;
   lane?: IngestionLane;
   resetTimezone?: string | null;
-  alreadyAuthorized?: boolean;
+  resetDate?: string;
+  criticalHeadroom?: number;
   runtimeAllowance?: number;
   cache?: { hit: boolean; value?: readonly NormalizedResult[] };
   reserve?: (request: Record<string, unknown>) => Promise<ReservationDecision>;
@@ -36,12 +39,16 @@ export function runResultSyncJob(input: ResultSyncJobInput): Promise<GatedIngest
   const now = input.now ?? new Date();
   const reserve = input.reserve ?? (async () => {
     if (!input.database) throw new Error("A database or reservation function is required");
-    return reserveProviderRequest(input.database, {
+    return reservePriorityRequest({
+      database: input.database,
       provider: input.provider,
-      requestDate: now.toISOString().slice(0, 10),
-      endpoint: input.endpoint,
+      resetDate: input.resetDate ?? now.toISOString().slice(0, 10),
+      resetTimezone: input.resetTimezone === undefined ? "UTC" : input.resetTimezone,
+      endpointFamily: input.endpoint,
+      lane,
+      configuredAllowance: input.allowance,
+      criticalHeadroom: input.criticalHeadroom ?? 0,
       jobKey: input.jobKey,
-      allowance: input.allowance,
     });
   });
 
@@ -50,10 +57,10 @@ export function runResultSyncJob(input: ResultSyncJobInput): Promise<GatedIngest
     endpoint: input.endpoint,
     capability: input.capability,
     circuit: input.circuit,
+    circuitRegistry: input.circuitRegistry,
     lane,
     allowance: input.allowance,
     resetTimezone: input.resetTimezone === undefined ? "UTC" : input.resetTimezone,
-    alreadyAuthorized: input.alreadyAuthorized,
     jobKey: input.jobKey,
     cache: input.cache,
     reserve,
@@ -68,9 +75,40 @@ export function runResultSyncJob(input: ResultSyncJobInput): Promise<GatedIngest
   });
 }
 
-export async function runReplayResultJob(input: ReplayJobData, dependencies: { database: PrismaClient; providerFactory: ResultSyncJobInput["providerFactory"]; allowance?: number }): Promise<void> {
-  const result = await runResultSyncJob({ provider: input.input.provider, endpoint: "RESULTS", capability: "SUPPORTED", circuit: "CLOSED", allowance: dependencies.allowance ?? 10, jobKey: input.logicalId, providerFactory: dependencies.providerFactory, database: dependencies.database, alreadyAuthorized: true, window: { competitionCode: input.input.competitionId as RequestedDateWindow["competitionCode"], dateFrom: input.unit.from.slice(0, 10), dateTo: input.unit.to.slice(0, 10) } });
-  if (result.status !== "completed") throw Object.assign(new Error(result.status), { code: result.status.toUpperCase() });
+export async function runReplayResultJob(input: ReplayJobData, dependencies: {
+  database: PrismaClient;
+  providerFactory: ResultSyncJobInput["providerFactory"];
+  providerPolicyRepository: ReplayProviderPolicyRepository;
+  circuitRegistry: CircuitProbeRegistry;
+}): Promise<void> {
+  const policy = await readReplayWorkerProviderPolicy({
+    database: dependencies.database,
+    providerPolicyRepository: dependencies.providerPolicyRepository,
+    replayPlanId: input.replayPlanId,
+    provider: input.input.provider,
+    endpointFamily: "RESULTS",
+  });
+  const snapshot = policy.snapshot;
+  const result = await runResultSyncJob({
+    provider: input.input.provider,
+    endpoint: "RESULTS",
+    capability: "SUPPORTED",
+    circuit: snapshot.circuit.state!,
+    circuitRegistry: dependencies.circuitRegistry,
+    lane: snapshot.lane!,
+    allowance: snapshot.configuredAllowance!,
+    criticalHeadroom: snapshot.criticalHeadroom!,
+    resetTimezone: snapshot.resetTimezone,
+    resetDate: snapshot.resetDate!,
+    jobKey: input.logicalId,
+    providerFactory: dependencies.providerFactory,
+    database: dependencies.database,
+    window: { competitionCode: input.input.competitionId as RequestedDateWindow["competitionCode"], dateFrom: input.unit.from.slice(0, 10), dateTo: input.unit.to.slice(0, 10) },
+  });
+  if (result.status !== "completed") {
+    const code = result.status === "denied" ? result.reason : result.status.toUpperCase();
+    throw Object.assign(new Error(code), { code });
+  }
 }
 
 async function persistResults(database: PrismaClient, results: readonly NormalizedResult[]): Promise<void> {

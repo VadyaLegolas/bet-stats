@@ -3,6 +3,7 @@ import { ConflictException, Injectable, NotFoundException, OnModuleDestroy, Opti
 import {
   createPrismaClient,
   createReplayProviderPolicyRepository,
+  DEFAULT_REPLAY_PROVIDER_POLICIES,
   type PrismaClient,
   type ReplayProviderPolicyRepository,
 } from "@bet-stats/database";
@@ -24,15 +25,6 @@ export type ReplayUnit = { logicalId: string; from: string; to: string };
 type PreviewImpact = { calls: number; builds: number; providerPolicy?: unknown };
 type PreviewRow = { id: string; logicalKey: string; version: number; previewVersion: string; normalizedInput: ReplayInput; unitManifest: ReplayUnit[]; impact: PreviewImpact; providerPolicyFingerprint: string; expiresAt: Date; consumedAt: Date | null; actor: string };
 export interface ReplayEnqueuer { enqueue(run: { syncRunId: string; replayPlanId: string; logicalId: string; revision: number; input: ReplayInput; unit: ReplayUnit }): Promise<void> }
-
-const DEFAULT_REPLAY_PROVIDER_POLICIES = ["FIXTURES", "RESULTS", "STANDINGS"].map((endpointFamily) => ({
-  provider: "football-data.org",
-  endpointFamily,
-  lane: "standard" as const,
-  configuredAllowance: 10,
-  criticalHeadroom: 3,
-  resetTimezone: "UTC",
-}));
 
 export function createBullReplayEnqueuer(redisUrl: string, database: PrismaClient, prefix = "bet-stats"): ReplayEnqueuer & { close(): Promise<void> } {
   void database;
@@ -141,7 +133,7 @@ export function createReplayService(options: { database: PrismaClient; enqueuer?
         const runs: QueuedRun[] = [];
         for (const unit of preview.unitManifest) {
           const syncRunId = randomUUID();
-          await tx.$executeRawUnsafe(`INSERT INTO "SyncRun" (id,"logicalKey",revision,provider,"endpointFamily",lane,"windowFrom","windowTo",state,"correlationId","replayPlanId","expectedUnits","expectedCaptures","completionManifest") VALUES ($1,$2,$3,$4,$5,'standard',$6,$7,'PENDING',$8,$9,1,1,$10::jsonb)`, syncRunId, `${unit.logicalId}:replay`, revision, preview.normalizedInput.provider, preview.normalizedInput.endpointFamily, unit.from, unit.to, randomUUID(), replayPlanId, JSON.stringify({ expectedUnits: [unit.logicalId], completedUnits: [], expectedCaptures: [unit.logicalId], completedCaptures: [] }));
+          await tx.$executeRawUnsafe(`INSERT INTO "SyncRun" (id,"logicalKey",revision,provider,"endpointFamily",lane,"windowFrom","windowTo",state,"correlationId","replayPlanId","expectedUnits","expectedCaptures","completionManifest") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'PENDING',$9,$10,1,1,$11::jsonb)`, syncRunId, `${unit.logicalId}:replay`, revision, preview.normalizedInput.provider, preview.normalizedInput.endpointFamily, approvedPolicy.lane, unit.from, unit.to, randomUUID(), replayPlanId, JSON.stringify({ expectedUnits: [unit.logicalId], completedUnits: [], expectedCaptures: [unit.logicalId], completedCaptures: [] }));
           await tx.$executeRawUnsafe(
             `INSERT INTO "ReplayDelivery" (id,"syncRunId","jobId") VALUES ($1,$2,$3)`,
             randomUUID(),

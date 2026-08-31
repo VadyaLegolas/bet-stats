@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
@@ -14,6 +15,19 @@ const containerName = `bet-stats-replay-${process.pid}`;
 const redisName = `bet-stats-replay-redis-${process.pid}`;
 let databaseUrl = ""; let redisUrl = ""; let prisma: PrismaClient;
 function docker(...args: string[]) { return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim(); }
+
+function replayJobData(input: { syncRunId: string; replayPlanId: string; logicalId: string; state: "FAILED" | "CANCELLED" | "SUCCEEDED" }) {
+  const from = "2026-08-22T00:00:00.000Z";
+  const to = "2026-08-22T23:59:59.999Z";
+  return {
+    syncRunId: input.syncRunId,
+    replayPlanId: input.replayPlanId,
+    logicalId: input.logicalId,
+    revision: 1,
+    input: { ...request, seasonId: input.state.toLowerCase(), from, to },
+    unit: { logicalId: input.logicalId, from, to },
+  };
+}
 
 describe("durable bounded replay", () => {
   beforeAll(async () => {
@@ -68,6 +82,92 @@ describe("durable bounded replay", () => {
     const status = await controller.status(queued.replayPlanId);
     expect(status).toMatchObject({ state: "QUEUED", outcome: "PENDING", lane: "standard" });
     expect(JSON.stringify(status)).not.toMatch(/postgresql:|redis:|password|credential/i);
+  });
+
+  it("allows one complete attempt transition while preserving immutable audit fields", async () => {
+    const syncRun = await prisma.syncRun.create({ data: {
+      logicalKey: `attempt-guard-${randomUUID()}`,
+      revision: 1,
+      provider: request.provider,
+      endpointFamily: request.endpointFamily,
+      lane: "standard",
+      windowFrom: new Date(request.from),
+      windowTo: new Date(request.to),
+      state: "RUNNING",
+      correlationId: randomUUID(),
+    } });
+    const startedAt = new Date("2026-08-19T10:00:00.000Z");
+    const attempt = await prisma.syncAttempt.create({ data: {
+      syncRunId: syncRun.id,
+      attemptNumber: 1,
+      state: "RUNNING",
+      startedAt,
+    } });
+    const finishedAt = new Date("2026-08-19T10:01:00.000Z");
+
+    await expect(prisma.syncAttempt.update({
+      where: { id: attempt.id },
+      data: { state: "FAILED", classifiedReason: "PROVIDER_TIMEOUT", finishedAt },
+    })).resolves.toMatchObject({
+      id: attempt.id,
+      syncRunId: syncRun.id,
+      attemptNumber: 1,
+      state: "FAILED",
+      classifiedReason: "PROVIDER_TIMEOUT",
+      startedAt,
+      finishedAt,
+    });
+
+    await expect(prisma.syncAttempt.update({ where: { id: attempt.id }, data: { attemptNumber: 2 } })).rejects.toThrow();
+    await expect(prisma.syncAttempt.update({ where: { id: attempt.id }, data: { startedAt: new Date() } })).rejects.toThrow();
+    await expect(prisma.syncAttempt.update({ where: { id: attempt.id }, data: { state: "RUNNING" } })).rejects.toThrow();
+    await expect(prisma.syncAttempt.update({ where: { id: attempt.id }, data: { classifiedReason: "DIFFERENT_REASON" } })).rejects.toThrow();
+  });
+
+  it.each(["FAILED", "CANCELLED", "SUCCEEDED"] as const)("treats a redelivered %s run as a terminal no-op", async (state) => {
+    const replayPlan = await prisma.replayPlan.create({ data: {
+      logicalKey: `terminal-plan-${state}-${randomUUID()}`,
+      revision: 1,
+      provider: request.provider,
+      competitionId: request.competitionId,
+      endpointFamily: request.endpointFamily,
+      windowFrom: new Date(request.from),
+      windowTo: new Date(request.to),
+      previewVersion: randomUUID(),
+      actor: "integration-test",
+    } });
+    const logicalId = `terminal-${state.toLowerCase()}-${randomUUID()}`;
+    const syncRun = await prisma.syncRun.create({ data: {
+      logicalKey: logicalId,
+      revision: 1,
+      provider: request.provider,
+      endpointFamily: request.endpointFamily,
+      lane: "standard",
+      windowFrom: new Date(request.from),
+      windowTo: new Date(request.to),
+      state,
+      correlationId: randomUUID(),
+      replayPlanId: replayPlan.id,
+      terminalAt: new Date(),
+    } });
+    let executions = 0;
+    const prefix = `terminal-${state.toLowerCase()}-${process.pid}`;
+    const worker = createReplayWorker({ redisUrl, database: prisma, prefix, execute: async () => { executions += 1; } });
+    const queue = createReplayQueue({ redisUrl, prefix, database: prisma });
+
+    try {
+      await queue.enqueue(replayJobData({ syncRunId: syncRun.id, replayPlanId: replayPlan.id, logicalId, state }));
+      for (let poll = 0; poll < 40; poll += 1) {
+        if ((await prisma.syncRun.findUnique({ where: { id: syncRun.id } }))?.state !== state) break;
+        await new Promise((resolveWait) => setTimeout(resolveWait, 50));
+      }
+      expect(executions).toBe(0);
+      expect(await prisma.syncAttempt.count({ where: { syncRunId: syncRun.id } })).toBe(0);
+      expect(await prisma.syncRun.findUnique({ where: { id: syncRun.id } })).toMatchObject({ state });
+    } finally {
+      await worker.close();
+      await queue.close();
+    }
   });
 
   it("uses a real BullMQ worker for terminal, duplicate, retry and dead-letter lifecycle", async () => {

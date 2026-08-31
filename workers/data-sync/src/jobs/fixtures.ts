@@ -4,6 +4,8 @@ import type { PrismaClient } from "@bet-stats/database";
 import { evaluateCapability, reserveProviderRequest, type CapabilityDecision } from "@bet-stats/domain";
 import type { FixtureProvider, NormalizedFixture } from "@bet-stats/football-data";
 
+import type { ReplayJobData } from "../queues/index.js";
+
 const PROVIDER = "football-data.org";
 const ENDPOINT = "FIXTURES";
 
@@ -14,6 +16,12 @@ export interface FixtureSyncJobInput {
   jobKey: string;
   allowance: number;
   providerFactory: () => FixtureProvider;
+  scope?: {
+    competitionExternalId: string;
+    seasonExternalId: string;
+    from: string;
+    to: string;
+  };
   now?: Date;
 }
 
@@ -43,9 +51,60 @@ export async function runFixtureSyncJob(input: FixtureSyncJobInput): Promise<Fix
   if (!reservation.reserved) return { status: "denied", reason: reservation.reason };
 
   // Construction is intentionally after the durable gate so even constructor-side I/O cannot bypass it.
-  const fixtures = await input.providerFactory().fetchPremierLeagueFixtures();
+  const fetched = await input.providerFactory().fetchPremierLeagueFixtures();
+  const fixtures = input.scope ? fetched.filter((fixture) => {
+    const kickoff = Date.parse(fixture.kickoffUtc);
+    return fixture.competitionExternalId === input.scope!.competitionExternalId
+      && fixture.seasonExternalId === input.scope!.seasonExternalId
+      && kickoff >= Date.parse(input.scope!.from)
+      && kickoff <= Date.parse(input.scope!.to);
+  }) : fetched;
   for (const fixture of fixtures) await persistCanonicalFixture(input.database, input.leagueId, input.seasonId, fixture);
   return { status: "completed", fixturesProcessed: fixtures.length, reservationReused: reservation.reused };
+}
+
+export async function runReplayFixtureJob(
+  input: ReplayJobData,
+  dependencies: { database: PrismaClient; providerFactory: () => FixtureProvider; allowance?: number },
+): Promise<void> {
+  const from = Date.parse(input.unit.from);
+  const to = Date.parse(input.unit.to);
+  const requestedFrom = Date.parse(input.input.from);
+  const requestedTo = Date.parse(input.input.to);
+  if (!Number.isFinite(from) || !Number.isFinite(to) || from > to || from < requestedFrom || to > requestedTo) {
+    throw Object.assign(new Error("INVALID_REPLAY_WINDOW"), { code: "INVALID_REPLAY_WINDOW" });
+  }
+  const refs = await dependencies.database.$queryRawUnsafe<Array<{ leagueId: string; seasonId: string }>>(
+    `SELECT l."leagueId", s."seasonId"
+     FROM "LeagueExternalRef" l
+     JOIN "SeasonExternalRef" s ON s.provider=l.provider
+     JOIN "Season" season ON season.id=s."seasonId" AND season."leagueId"=l."leagueId"
+     WHERE l.provider=$1 AND l."externalId"=$2 AND s."externalId"=$3
+     LIMIT 1`,
+    input.input.provider,
+    input.input.competitionId,
+    input.input.seasonId,
+  );
+  const ref = refs[0];
+  if (!ref) throw Object.assign(new Error("IDENTITY_UNRESOLVED"), { code: "IDENTITY_UNRESOLVED" });
+
+  const result = await runFixtureSyncJob({
+    database: dependencies.database,
+    leagueId: ref.leagueId,
+    seasonId: ref.seasonId,
+    jobKey: input.logicalId,
+    allowance: dependencies.allowance ?? 10,
+    providerFactory: dependencies.providerFactory,
+    scope: {
+      competitionExternalId: input.input.competitionId,
+      seasonExternalId: input.input.seasonId,
+      from: input.unit.from,
+      to: input.unit.to,
+    },
+  });
+  if (result.status !== "completed") {
+    throw Object.assign(new Error(result.reason), { code: result.reason });
+  }
 }
 
 async function persistCanonicalFixture(database: PrismaClient, leagueId: string, seasonId: string, fixture: NormalizedFixture): Promise<void> {

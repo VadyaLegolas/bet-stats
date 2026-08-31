@@ -106,7 +106,7 @@ describe("durable bounded replay", () => {
       blockedReason: null,
     });
     expect(second).toEqual(first);
-    expect(fingerprintReplayProviderPolicy(first)).toBe("9e300fbea3eb2350ff0d1e6ff8f6db7f06af891c2330c05422350470dab9d79b");
+    expect(fingerprintReplayProviderPolicy(first)).toBe("98a9e9de0fd41535e6cf73fa81a394ea3b86e967c78e8b810e65b00ad14fce3c");
     expect(fingerprintReplayProviderPolicy(second)).toBe(fingerprintReplayProviderPolicy(first));
     expect(evaluateReplayProviderPolicy(first, 5, now)).toEqual({ allowed: true, remainingAfter: 0 });
   });

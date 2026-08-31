@@ -122,6 +122,9 @@ importers:
 
   packages/database:
     dependencies:
+      '@bet-stats/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@prisma/adapter-pg':
         specifier: 7.10.0
         version: 7.10.0
@@ -144,6 +147,9 @@ importers:
 
   packages/domain:
     devDependencies:
+      '@types/node':
+        specifier: 24.10.9
+        version: 24.10.9
       typescript:
         specifier: 'catalog:'
         version: 5.9.3

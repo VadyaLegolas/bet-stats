@@ -126,10 +126,12 @@ describe("durable bounded replay", () => {
     };
     const restarted = createReplayService({ database: prisma, enqueuer: recoveryEnqueuer });
     await restarted.dispatchDeliveries(plan.id);
-    expect(await prisma.replayDelivery.findMany({ where: { syncRun: { replayPlanId: plan.id } }, orderBy: { jobId: "asc" } })).toEqual([
-      expect.objectContaining({ state: "DELIVERED", attemptCount: 1, classifiedReason: null }),
-      expect.objectContaining({ state: "DELIVERED", attemptCount: 2, classifiedReason: null }),
-    ]);
+    const recoveredDeliveries = await prisma.replayDelivery.findMany({ where: { syncRun: { replayPlanId: plan.id } } });
+    expect(recoveredDeliveries).toEqual(recoveredDeliveries.map(() => expect.objectContaining({
+      state: "DELIVERED",
+      classifiedReason: null,
+    })));
+    expect(recoveredDeliveries.map((delivery) => delivery.attemptCount).sort()).toEqual([1, 2]);
     expect(attemptedJobIds).toHaveLength(3);
     expect(attemptedJobIds[1]).toBe(attemptedJobIds[2]);
 

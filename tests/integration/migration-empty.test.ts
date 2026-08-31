@@ -105,6 +105,7 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
         "SyncAttempt",
         "ProviderCircuitState",
         "ReplayPlan",
+        "ReplayDelivery",
         "EvidenceBuild",
         "EvidenceComponent",
       ]),
@@ -177,5 +178,21 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
        ORDER BY column_name;`,
     );
     expect(syncRunCompleteness).toHaveLength(5);
+
+    const replayDeliveryColumns = sql(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='ReplayDelivery'
+         AND column_name IN ('syncRunId','jobId','state','attemptCount','classifiedReason','leaseToken','leaseExpiresAt','deliveredAt')
+       ORDER BY column_name;`,
+    );
+    expect(replayDeliveryColumns).toHaveLength(8);
+
+    const circuitProbeLeaseColumns = sql(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='ProviderCircuitState'
+         AND column_name IN ('probeLeaseToken','probeLeaseExpiresAt')
+       ORDER BY column_name;`,
+    );
+    expect(circuitProbeLeaseColumns).toEqual(["probeLeaseExpiresAt", "probeLeaseToken"]);
   });
 });

@@ -62,6 +62,34 @@ describe("durable bounded replay", () => {
     expect(await service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion })).toMatchObject({ queued: false, duplicate: true, replayPlanId: queued.replayPlanId });
     expect(await prisma.replayPlan.count({ where: { id: queued.replayPlanId } })).toBe(1);
     expect(await prisma.syncRun.count({ where: { replayPlanId: queued.replayPlanId } })).toBe(2);
+    const deliveries = await prisma.$queryRawUnsafe<Array<{
+      syncRunId: string;
+      jobId: string;
+      state: string;
+      attemptCount: number;
+      classifiedReason: string | null;
+      leaseToken: string | null;
+      leaseExpiresAt: Date | null;
+      deliveredAt: Date | null;
+    }>>(
+      `SELECT d."syncRunId",d."jobId",d.state,d."attemptCount",d."classifiedReason",d."leaseToken",d."leaseExpiresAt",d."deliveredAt"
+       FROM "ReplayDelivery" d
+       JOIN "SyncRun" r ON r.id=d."syncRunId"
+       WHERE r."replayPlanId"=$1
+       ORDER BY d."jobId"`,
+      queued.replayPlanId,
+    );
+    expect(deliveries).toHaveLength(2);
+    expect(new Set(deliveries.map((delivery) => delivery.syncRunId)).size).toBe(2);
+    expect(new Set(deliveries.map((delivery) => delivery.jobId)).size).toBe(2);
+    expect(deliveries).toEqual(deliveries.map((delivery) => expect.objectContaining({
+      state: "PENDING",
+      attemptCount: 0,
+      classifiedReason: null,
+      leaseToken: null,
+      leaseExpiresAt: null,
+      deliveredAt: null,
+    })));
     expect(await createReplayService({ database: prisma }).status(queued.replayPlanId)).toMatchObject({ state: "QUEUED", outcome: "PENDING", runs: [{ state: "PENDING" }, { state: "PENDING" }] });
   });
 

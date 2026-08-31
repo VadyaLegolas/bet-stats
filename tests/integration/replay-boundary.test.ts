@@ -12,6 +12,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import { AppModule } from "../../apps/api/src/app.module.js";
 import { GET as proxyGet, POST as proxyPost } from "../../apps/web/app/internal-api/pipeline/replay/[[...path]]/route.js";
+import { startReplayWorker } from "../../workers/data-sync/src/main.js";
 import { createReplayWorker } from "../../workers/data-sync/src/queues/index.js";
 
 const credential = "boundary-operator-secret";
@@ -67,6 +68,108 @@ async function waitForPlan(planId: string, state: "SUCCEEDED" | "FAILED") {
   throw new Error(`Replay plan did not reach ${state} within 16 seconds`);
 }
 
+async function seedReplayReferences() {
+  const league = await prisma.league.create({ data: { name: "Premier League", countryCode: "GB" } });
+  const season = await prisma.season.create({ data: {
+    leagueId: league.id,
+    label: "2026",
+    startsOn: new Date("2026-08-01T00:00:00.000Z"),
+    endsOn: new Date("2027-05-31T00:00:00.000Z"),
+  } });
+  const home = await prisma.team.create({ data: { name: "Replay Home", normalizedName: "replay home", countryCode: "GB" } });
+  const away = await prisma.team.create({ data: { name: "Replay Away", normalizedName: "replay away", countryCode: "GB" } });
+  await prisma.leagueExternalRef.create({ data: { leagueId: league.id, provider: "football-data.org", externalId: "PL" } });
+  await prisma.seasonExternalRef.create({ data: { seasonId: season.id, provider: "football-data.org", externalId: "2026" } });
+  await prisma.teamExternalRef.createMany({ data: [
+    { teamId: home.id, provider: "football-data.org", externalId: "home-1" },
+    { teamId: away.id, provider: "football-data.org", externalId: "away-1" },
+  ] });
+  await prisma.providerCapability.create({ data: {
+    provider: "football-data.org",
+    leagueId: league.id,
+    seasonId: season.id,
+    endpoint: "FIXTURES",
+    supported: true,
+    verifiedAt: new Date(),
+    expiresAt: new Date("2027-01-01T00:00:00.000Z"),
+  } });
+  const fixture = await prisma.fixture.create({ data: {
+    leagueId: league.id,
+    seasonId: season.id,
+    homeTeamId: home.id,
+    awayTeamId: away.id,
+    kickoffUtc: new Date("2026-09-02T18:00:00.000Z"),
+    status: "SCHEDULED",
+  } });
+  await prisma.fixtureExternalRef.create({ data: { fixtureId: fixture.id, provider: "football-data.org", externalId: "result-fixture" } });
+}
+
+function replayProvider(calls: string[]) {
+  const capturedAt = "2026-09-02T12:00:00.000Z";
+  return {
+    async fetchPremierLeagueFixtures() {
+      calls.push("FIXTURES");
+      return [{
+        provider: "football-data.org" as const,
+        externalId: "fixture-replay",
+        competitionExternalId: "PL",
+        seasonExternalId: "2026",
+        homeTeamExternalId: "home-1",
+        homeTeamName: "Replay Home",
+        awayTeamExternalId: "away-1",
+        awayTeamName: "Replay Away",
+        kickoffUtc: "2026-09-02T20:00:00.000Z",
+        status: "SCHEDULED" as const,
+        capturedAt,
+        sourceUpdatedAt: capturedAt,
+        raw: { id: "fixture-replay" },
+      }];
+    },
+    async fetchCompetitionResults(window: { competitionCode: "PL"; dateFrom: string; dateTo: string }) {
+      calls.push("RESULTS");
+      return [{
+        provider: "football-data.org" as const,
+        externalId: "result-fixture",
+        competitionExternalId: "PL",
+        seasonExternalId: "2026",
+        homeTeamExternalId: "home-1",
+        awayTeamExternalId: "away-1",
+        kickoffUtc: "2026-09-02T18:00:00.000Z",
+        homeScore: 2,
+        awayScore: 1,
+        capturedAt,
+        sourceUpdatedAt: capturedAt,
+        requestedWindow: window,
+        returnedCoverage: { matchCount: 1, earliestKickoffUtc: "2026-09-02T18:00:00.000Z", latestKickoffUtc: "2026-09-02T18:00:00.000Z" },
+        raw: { id: "result-fixture", score: "2-1" },
+      }];
+    },
+    async fetchCompletedResults(window: { competitionCode: "PL"; dateFrom: string; dateTo: string }) {
+      return this.fetchCompetitionResults(window);
+    },
+    async fetchCompetitionStandings(coverage: { competitionCode: "PL" }) {
+      calls.push("STANDINGS");
+      return {
+        provider: "football-data.org" as const,
+        competitionExternalId: "PL",
+        seasonExternalId: "2026",
+        capturedAt,
+        sourceUpdatedAt: capturedAt,
+        requestedCoverage: coverage,
+        returnedCoverage: { stage: "REGULAR_SEASON", type: "TOTAL" as const, rowCount: 2 },
+        rows: [
+          { position: 1, teamExternalId: "home-1", teamName: "Replay Home", playedGames: 4, won: 3, draw: 1, lost: 0, points: 10, goalsFor: 8, goalsAgainst: 2, goalDifference: 6 },
+          { position: 2, teamExternalId: "away-1", teamName: "Replay Away", playedGames: 4, won: 2, draw: 1, lost: 1, points: 7, goalsFor: 6, goalsAgainst: 4, goalDifference: 2 },
+        ],
+        raw: { competition: "PL", rows: 2 },
+      };
+    },
+    async fetchStandings(coverage: { competitionCode: "PL" }) {
+      return this.fetchCompetitionStandings(coverage);
+    },
+  };
+}
+
 describe("production replay proxy boundary", () => {
   beforeAll(async () => {
     docker("run", "--detach", "--name", postgresName, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "--publish", "127.0.0.1::5432", "postgres:18-alpine");
@@ -82,6 +185,7 @@ describe("production replay proxy boundary", () => {
     const redisPort = docker("port", redisName, "6379/tcp").split(":").at(-1);
     if (!redisPort) throw new Error("Redis port missing");
     redisUrl = `redis://127.0.0.1:${redisPort}`;
+    await seedReplayReferences();
     await startApi();
   }, 120_000);
 
@@ -136,5 +240,37 @@ describe("production replay proxy boundary", () => {
       { attemptNumber: 3, classifiedReason: "PROVIDER_TIMEOUT" },
     ] });
     expect(JSON.stringify(terminal.json)).not.toMatch(/raw provider secret|credential|postgresql:|redis:/i);
+  }, 30_000);
+
+  it.each(["FIXTURES", "RESULTS", "STANDINGS"] as const)("routes accepted %s work through the production replay worker", async (endpointFamily) => {
+    const calls: string[] = [];
+    const runtime = startReplayWorker({
+      databaseUrl,
+      redisUrl,
+      apiToken: "test-token",
+      prefix: queuePrefix,
+      providerFactory: () => replayProvider(calls),
+    });
+    workers.push(runtime);
+    const input = {
+      provider: "football-data.org",
+      competitionId: "PL",
+      seasonId: "2026",
+      endpointFamily,
+      from: "2026-09-02T00:00:00.000Z",
+      to: "2026-09-02T23:59:59.999Z",
+    };
+    const preview = await proxy(["preview"], "POST", input);
+    const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
+    const terminal = await waitForPlan(String(queued.json.replayPlanId), "SUCCEEDED");
+
+    expect(terminal.json).toMatchObject({ state: "SUCCEEDED", outcome: "COMPLETED", attempts: [{ state: "SUCCEEDED" }] });
+    expect(calls).toEqual([endpointFamily]);
+    if (endpointFamily === "FIXTURES") {
+      expect(await prisma.fixtureExternalRef.findUnique({
+        where: { provider_externalId: { provider: "football-data.org", externalId: "fixture-replay" } },
+        include: { fixture: { include: { provenance: true } } },
+      })).toMatchObject({ fixture: { status: "SCHEDULED", provenance: [{ provider: "football-data.org" }] } });
+    }
   }, 30_000);
 });

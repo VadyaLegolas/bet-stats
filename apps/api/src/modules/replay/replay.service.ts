@@ -84,12 +84,12 @@ function publicPreview(row: PreviewRow) {
   };
 }
 
-export function createReplayService(options: { database: PrismaClient; enqueuer?: ReplayEnqueuer; providerPolicyRepository?: ReplayProviderPolicyRepository; actor?: string; now?: () => Date }) {
-  const database = options.database; const actor = options.actor ?? "operator"; const now = options.now ?? (() => new Date());
+export function createReplayService(options: { database: PrismaClient; enqueuer?: ReplayEnqueuer; providerPolicyRepository?: ReplayProviderPolicyRepository; now?: () => Date }) {
+  const database = options.database; const now = options.now ?? (() => new Date());
   const providerPolicyRepository = options.providerPolicyRepository ?? createReplayProviderPolicyRepository({ database, policies: DEFAULT_REPLAY_PROVIDER_POLICIES, now });
   const dispatcher = options.enqueuer ? createReplayDeliveryDispatcher({ database, enqueuer: options.enqueuer, now }) : null;
   return {
-    async preview(raw: Record<string, unknown>) {
+    async preview(raw: Record<string, unknown>, actor: string) {
       const input = normalize(raw); const units = buildUnits(input);
       let providerPolicy: ReplayProviderPolicySnapshot;
       try { providerPolicy = await providerPolicyRepository.read(input.provider, input.endpointFamily); }
@@ -208,7 +208,7 @@ export class ReplayService implements OnModuleDestroy {
     this.engine = resolved ? createReplayService({ database: resolved, ...(this.queueClient ? { enqueuer: this.queueClient } : {}) }) : null;
   }
   private requireEngine() { if (!this.engine) throw new NotFoundException("Not found"); return this.engine; }
-  preview(input: Record<string, unknown>) { return this.requireEngine().preview(input); }
+  preview(input: Record<string, unknown>, actor: string) { return this.requireEngine().preview(input, actor); }
   async queue(input: Record<string, unknown>) {
     try { return await this.requireEngine().queue(input); }
     catch (error) {

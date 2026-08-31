@@ -227,6 +227,7 @@ describe("production replay proxy boundary", () => {
     try {
       for (const headers of [
         {},
+        { "x-operator-subject": authorizedSubject, "x-operator-timestamp": new Date().toISOString(), "x-operator-signature": "malformed" },
         ingressHeaders(["preview"], "POST", { timestamp: new Date(Date.now() - 301_000).toISOString() }),
         ingressHeaders(["preview"], "POST", { subject: "not-allowed" }),
         ingressHeaders(["preview"], "POST", { signedPath: "/internal-api/pipeline/replay/queue" }),

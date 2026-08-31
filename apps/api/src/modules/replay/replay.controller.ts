@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Header, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Header, Param, Post, Req, UseGuards } from "@nestjs/common";
 
 import { OperatorGuard } from "../reconciliation/operator.guard.js";
 import { ReplayService } from "./replay.service.js";
@@ -10,7 +10,7 @@ export class ReplayController {
 
   @Post("preview")
   @Header("Cache-Control", "private, no-store")
-  preview(@Body() input: Record<string, unknown>) { return this.replay.preview(input); }
+  preview(@Body() input: Record<string, unknown>, @Req() request: { operator: { actor: string } }) { return this.replay.preview(input, request.operator.actor); }
 
   @Post("queue")
   @Header("Cache-Control", "private, no-store")

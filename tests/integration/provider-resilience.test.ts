@@ -10,6 +10,14 @@ async function resiliencePolicy(): Promise<Record<string, unknown>> {
   }
 }
 
+async function durableCircuits(): Promise<Record<string, unknown>> {
+  try {
+    return await import(/* @vite-ignore */ new URL("../../workers/data-sync/src/resilience/circuits.js", import.meta.url).href);
+  } catch (error) {
+    throw new Error("Missing Phase 2 durable ProviderCircuitRegistry in workers/data-sync/src/resilience/circuits.ts", { cause: error });
+  }
+}
+
 describe("provider resilience policy", () => {
   it("D-12 classifies terminal failures and leaves transient retries to BullMQ", async () => {
     const { executeProviderCall } = await resiliencePolicy() as { executeProviderCall: (input: Record<string, unknown>) => Promise<Record<string, unknown>> };
@@ -87,5 +95,12 @@ describe("provider resilience policy", () => {
     if (outcome === "thrown error") await expect(execution).rejects.toThrow("provider failed");
     else await execution;
     expect(registry.releaseProbe).toHaveBeenCalledOnce();
+  });
+
+  it("uses PostgreSQL-owned HALF_OPEN probe leases rather than process-local state", async () => {
+    const { createDurableProviderCircuitRegistry } = await durableCircuits() as {
+      createDurableProviderCircuitRegistry?: (input: { database: unknown }) => unknown;
+    };
+    expect(createDurableProviderCircuitRegistry).toEqual(expect.any(Function));
   });
 });

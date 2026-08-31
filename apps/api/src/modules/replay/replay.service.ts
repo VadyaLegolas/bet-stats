@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { ConflictException, Injectable, NotFoundException, OnModuleDestroy, Optional, ServiceUnavailableException } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import { Queue } from "bullmq";
+import { createReplayDeliveryDispatcher } from "./replay-delivery.service.js";
 
 const PROVIDERS = new Set(["football-data.org"]);
 const COMPETITIONS = new Set(["PL", "PD", "BL1", "SA", "FL1", "CL", "EL"]);
@@ -14,21 +15,17 @@ type PreviewRow = { id: string; logicalKey: string; version: number; previewVers
 export interface ReplayEnqueuer { enqueue(run: { syncRunId: string; replayPlanId: string; logicalId: string; revision: number; input: ReplayInput; unit: ReplayUnit }): Promise<void> }
 
 export function createBullReplayEnqueuer(redisUrl: string, database: PrismaClient, prefix = "bet-stats"): ReplayEnqueuer & { close(): Promise<void> } {
+  void database;
   const queue = new Queue(`${prefix}-sync-standard`, { connection: { url: redisUrl, maxRetriesPerRequest: null } });
   return {
     async enqueue(run) {
-      try {
-        await queue.add(run.input.endpointFamily.toLowerCase(), run, {
-          attempts: 3,
-          backoff: { type: "exponential", delay: 1_000, jitter: 0.25 },
-          jobId: `${run.logicalId}-${run.revision}`,
-          removeOnComplete: { age: 86_400, count: 1_000 },
-          removeOnFail: { age: 604_800, count: 5_000 },
-        });
-      } catch (error) {
-        await database.$executeRawUnsafe(`UPDATE "SyncRun" SET "completionManifest"=jsonb_set("completionManifest",'{delivery}',to_jsonb('RETRYABLE'::text),true) WHERE id=$1 AND state='PENDING'`, run.syncRunId);
-        throw Object.assign(new Error("QUEUE_DELIVERY_FAILED"), { code: "QUEUE_DELIVERY_FAILED", cause: error });
-      }
+      await queue.add(run.input.endpointFamily.toLowerCase(), run, {
+        attempts: 3,
+        backoff: { type: "exponential", delay: 1_000, jitter: 0.25 },
+        jobId: `${run.logicalId}-${run.revision}`,
+        removeOnComplete: { age: 86_400, count: 1_000 },
+        removeOnFail: { age: 604_800, count: 5_000 },
+      });
     },
     close: () => queue.close(),
   };
@@ -56,6 +53,7 @@ function publicPreview(row: PreviewRow) { return { previewId: row.id, previewVer
 
 export function createReplayService(options: { database: PrismaClient; enqueuer?: ReplayEnqueuer; availableCalls?: number; circuit?: "CLOSED" | "OPEN"; actor?: string; now?: () => Date }) {
   const database = options.database; const availableCalls = options.availableCalls ?? 100; const circuit = options.circuit ?? "CLOSED"; const actor = options.actor ?? "operator"; const now = options.now ?? (() => new Date());
+  const dispatcher = options.enqueuer ? createReplayDeliveryDispatcher({ database, enqueuer: options.enqueuer, now }) : null;
   return {
     async preview(raw: Record<string, unknown>) {
       const input = normalize(raw); const units = buildUnits(input);
@@ -101,15 +99,42 @@ export function createReplayService(options: { database: PrismaClient; enqueuer?
         await tx.$executeRawUnsafe(`UPDATE "ReplayPreview" SET "consumedAt"=$2 WHERE id=$1 AND "consumedAt" IS NULL`, preview.id, now());
         return { replayPlanId, revision, duplicate: false, runs };
       });
-      if (!committed.duplicate && options.enqueuer) for (const run of committed.runs) await options.enqueuer.enqueue({ ...run, replayPlanId: committed.replayPlanId });
+      if (dispatcher) await dispatcher.dispatch(committed.replayPlanId);
       return { replayPlanId: committed.replayPlanId, queued: !committed.duplicate, duplicate: committed.duplicate, revision: committed.revision, reason: raw.newRevision === true ? String(raw.reason).trim() : null, effects: { immutableObservations: true as const, predictionSnapshotsMutated: false as const } };
+    },
+    async dispatchDeliveries(replayPlanId?: string) {
+      return dispatcher?.dispatch(replayPlanId) ?? { claimed: 0, delivered: 0 };
     },
     async status(replayPlanId: string) {
       const plans = await database.$queryRawUnsafe<Array<{ id: string }>>(`SELECT id FROM "ReplayPlan" WHERE id=$1`, replayPlanId); if (!plans[0]) throw replayError("REPLAY_NOT_FOUND", 404);
       const runs = await database.$queryRawUnsafe<Array<{ id: string; state: string; correlationId: string; lane: string }>>(`SELECT id,state,"correlationId",lane FROM "SyncRun" WHERE "replayPlanId"=$1 ORDER BY "createdAt"`, replayPlanId);
       const attempts = await database.$queryRawUnsafe<Array<{ syncRunId: string; attemptNumber: number; state: string; classifiedReason: string | null }>>(`SELECT a."syncRunId",a."attemptNumber",a.state,a."classifiedReason" FROM "SyncAttempt" a JOIN "SyncRun" r ON r.id=a."syncRunId" WHERE r."replayPlanId"=$1 ORDER BY a."syncRunId",a."attemptNumber"`, replayPlanId);
-      const states = runs.map((run) => run.state); const state = states.every((value) => value === "SUCCEEDED") ? "SUCCEEDED" : states.some((value) => value === "RUNNING") ? "RUNNING" : states.some((value) => value === "FAILED") ? "FAILED" : "QUEUED";
-      return { replayPlanId, state, outcome: state === "SUCCEEDED" ? "COMPLETED" : state === "FAILED" ? "DEAD_LETTER" : "PENDING", provider: { circuit, quota: availableCalls > 0 ? "AVAILABLE" : "EXHAUSTED" }, lane: "standard", runs, attempts };
+      const deliveries = await database.$queryRawUnsafe<Array<{ syncRunId: string; state: string; attemptCount: number; classifiedReason: string | null; leaseExpiresAt: Date | null; deliveredAt: Date | null }>>(
+        `SELECT d."syncRunId",d.state,d."attemptCount",d."classifiedReason",d."leaseExpiresAt",d."deliveredAt"
+         FROM "ReplayDelivery" d JOIN "SyncRun" r ON r.id=d."syncRunId"
+         WHERE r."replayPlanId"=$1 ORDER BY d."createdAt",d.id`,
+        replayPlanId,
+      );
+      const states = runs.map((run) => run.state);
+      const executionState = states.every((value) => value === "SUCCEEDED") ? "SUCCEEDED" : states.some((value) => value === "RUNNING") ? "RUNNING" : states.some((value) => value === "FAILED") ? "FAILED" : "PENDING";
+      const outcome = executionState === "SUCCEEDED" ? "COMPLETED" : executionState === "FAILED" ? "DEAD_LETTER" : "PENDING";
+      const delivered = deliveries.filter((delivery) => delivery.state === "DELIVERED").length;
+      const retrying = deliveries.filter((delivery) => delivery.state === "RETRYABLE").length;
+      const pending = deliveries.length - delivered - retrying;
+      const deliveryState = delivered === deliveries.length ? "DELIVERED" : retrying > 0 ? "RETRYING" : "PENDING";
+      const publicRuns = runs.map((run) => ({ ...run, delivery: deliveries.find((delivery) => delivery.syncRunId === run.id) }));
+      const state = executionState === "PENDING" ? "QUEUED" : executionState;
+      return {
+        replayPlanId,
+        state,
+        outcome,
+        delivery: { state: deliveryState, delivered, retrying, pending, records: deliveries },
+        execution: { state: executionState, outcome },
+        provider: { circuit, quota: availableCalls > 0 ? "AVAILABLE" : "EXHAUSTED" },
+        lane: "standard",
+        runs: publicRuns,
+        attempts,
+      };
     },
   };
 }
@@ -136,5 +161,6 @@ export class ReplayService implements OnModuleDestroy {
     }
   }
   status(id: string) { return this.requireEngine().status(id); }
+  dispatchDeliveries(id?: string) { return this.requireEngine().dispatchDeliveries(id); }
   async onModuleDestroy() { await this.queueClient?.close(); }
 }

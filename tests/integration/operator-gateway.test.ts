@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const serverPath = resolve(import.meta.dirname, "../../infra/operator-gateway/server.mjs");
-const testSecret = "test-only-proxy-signing-secret";
+const testSecret = "test-only-proxy-signing-secret-32bytes";
 
 async function listen(server: Server) {
   server.listen(0, "127.0.0.1");
@@ -67,6 +67,36 @@ async function stop(process: ChildProcess) {
   if (process.exitCode !== null) return;
   process.kill();
   await once(process, "exit");
+}
+
+function launchGateway(overrides: Record<string, string | undefined>) {
+  return spawn(process.execPath, [serverPath], {
+    env: {
+      ...process.env,
+      GATEWAY_PORT: "1",
+      WEB_ORIGIN: "http://127.0.0.1:3000",
+      OPERATOR_BASIC_USERNAME: "operator",
+      OPERATOR_BASIC_PASSWORD: "test-password",
+      OPERATOR_SUBJECT: "local-test-operator",
+      OPERATOR_PROXY_SIGNING_SECRET: testSecret,
+      ...overrides,
+    },
+    stdio: "ignore",
+  });
+}
+
+async function exitsBeforeListening(overrides: Record<string, string | undefined>) {
+  const reserved = createServer();
+  const origin = await listen(reserved);
+  const port = new URL(origin).port;
+  await new Promise<void>((resolveClose, rejectClose) => reserved.close((error) => error ? rejectClose(error) : resolveClose()));
+  const child = launchGateway({ GATEWAY_PORT: port, ...overrides });
+  const exited = await Promise.race([
+    once(child, "exit").then(() => true),
+    new Promise<false>((resolveTimeout) => setTimeout(() => resolveTimeout(false), 500)),
+  ]);
+  if (!exited) await stop(child);
+  return exited;
 }
 
 describe("operator gateway HTTP boundary", () => {
@@ -140,20 +170,63 @@ describe("operator gateway HTTP boundary", () => {
   });
 
   it("fails startup when a required configuration value is absent", async () => {
-    const child = spawn(process.execPath, [serverPath], {
-      env: {
-        ...process.env,
-        GATEWAY_PORT: "0",
-        WEB_ORIGIN: "http://127.0.0.1:3000",
-        OPERATOR_BASIC_USERNAME: "operator",
-        OPERATOR_BASIC_PASSWORD: "test-password",
-        OPERATOR_SUBJECT: "local-test-operator",
-        OPERATOR_PROXY_SIGNING_SECRET: undefined,
-      },
-      stdio: "ignore",
-    });
+    const child = launchGateway({ OPERATOR_PROXY_SIGNING_SECRET: undefined });
     const [code] = await once(child, "exit") as [number | null];
     expect(code).not.toBe(0);
+  });
+
+  it.each([
+    ["a short signing secret", { OPERATOR_PROXY_SIGNING_SECRET: "too-short" }],
+    ["a newline in the operator subject", { OPERATOR_SUBJECT: "local\noperator" }],
+    ["a noncanonical operator subject", { OPERATOR_SUBJECT: "ｌocal-test-operator" }],
+  ])("fails startup for %s", async (_, overrides) => {
+    expect(await exitsBeforeListening(overrides)).toBe(true);
+  });
+
+  it("preserves multiple Set-Cookie values and removes Connection-nominated upstream headers", async () => {
+    const upstream = createServer((request, response) => {
+      if (request.url === "/health") return response.end("ok");
+      response.writeHead(200, {
+        connection: "x-upstream-private",
+        "set-cookie": ["first=value; Path=/", "second=value; Path=/"],
+        "x-upstream-private": "remove-me",
+        "x-upstream-public": "preserve-me",
+      });
+      response.end("ok");
+    });
+    const gateway = await startGateway(await listen(upstream));
+
+    try {
+      const response = await fetch(`${gateway.origin}/cookies`);
+      expect(response.status).toBe(200);
+      expect(response.headers.getSetCookie()).toEqual(["first=value; Path=/", "second=value; Path=/"]);
+      expect(response.headers.get("x-upstream-private")).toBeNull();
+      expect(response.headers.get("x-upstream-public")).toBe("preserve-me");
+    } finally {
+      await stop(gateway.process);
+      await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));
+    }
+  });
+
+  it("survives an upstream response reset after it has forwarded headers", async () => {
+    const upstream = createServer((request, response) => {
+      if (request.url === "/health") return response.end("ok");
+      response.writeHead(200, { "content-type": "text/plain" });
+      response.flushHeaders();
+      response.write("partial");
+      setTimeout(() => response.socket?.destroy(), 20);
+    });
+    const gateway = await startGateway(await listen(upstream));
+
+    try {
+      const response = await fetch(`${gateway.origin}/reset`);
+      await expect(response.text()).rejects.toThrow();
+      expect(gateway.process.exitCode).toBeNull();
+      expect((await fetch(`${gateway.origin}/health`)).status).toBe(200);
+    } finally {
+      await stop(gateway.process);
+      await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));
+    }
   });
 
   it("destroys a pending upstream request when the client disconnects", async () => {

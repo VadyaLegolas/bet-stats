@@ -1,8 +1,9 @@
 import { createServer } from "node:http";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
+import { pipeline } from "node:stream";
 
-import { authenticateBasic, isProtectedReplayPath, signedOperatorHeaders, stripOperatorHeaders } from "./security.mjs";
+import { authenticateBasic, isProtectedReplayPath, signedOperatorHeaders } from "./security.mjs";
 
 const hopByHopHeaders = new Set([
   "connection",
@@ -14,6 +15,8 @@ const hopByHopHeaders = new Set([
   "transfer-encoding",
   "upgrade",
 ]);
+const operatorHeaders = new Set(["x-operator-subject", "x-operator-timestamp", "x-operator-signature"]);
+const subjectPattern = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/;
 
 function requiredConfig(environment) {
   const names = [
@@ -38,13 +41,16 @@ function requiredConfig(environment) {
   if (!/^https?:$/.test(webOrigin.protocol) || webOrigin.pathname !== "/" || webOrigin.search || webOrigin.hash || webOrigin.username || webOrigin.password) {
     throw new Error("WEB_ORIGIN must be an absolute HTTP(S) origin");
   }
+  if (environment.OPERATOR_PROXY_SIGNING_SECRET.length < 32) throw new Error("OPERATOR_PROXY_SIGNING_SECRET must contain at least 32 characters");
+  const subject = environment.OPERATOR_SUBJECT.normalize("NFKC").trim();
+  if (subject !== environment.OPERATOR_SUBJECT || !subjectPattern.test(subject)) throw new Error("OPERATOR_SUBJECT must be canonical and match the operator subject format");
 
   return {
     port,
     webOrigin: webOrigin.origin,
     username: environment.OPERATOR_BASIC_USERNAME,
     password: environment.OPERATOR_BASIC_PASSWORD,
-    subject: environment.OPERATOR_SUBJECT,
+    subject,
     signingSecret: environment.OPERATOR_PROXY_SIGNING_SECRET,
   };
 }
@@ -61,11 +67,12 @@ function connectionHeaders(headers) {
   return values.flatMap((entry) => entry?.split(",") ?? []).map((entry) => entry.trim().toLowerCase()).filter(Boolean);
 }
 
-function forwardHeaders(headers) {
-  const excluded = new Set([...hopByHopHeaders, ...connectionHeaders(headers), "host", "authorization"]);
-  const sanitized = stripOperatorHeaders(headers);
+function forwardHeaders(headers, excluded = []) {
+  const blocked = new Set([...hopByHopHeaders, ...connectionHeaders(headers), ...operatorHeaders, ...excluded]);
   const output = {};
-  for (const [name, value] of sanitized.entries()) if (!excluded.has(name)) output[name] = value;
+  for (const [name, value] of Object.entries(headers)) {
+    if (value !== undefined && !blocked.has(name.toLowerCase())) output[name] = value;
+  }
   return output;
 }
 
@@ -97,7 +104,7 @@ function createGateway(config) {
     const protectedPath = isProtectedReplayPath(target.pathname);
     if (protectedPath && !authenticateBasic(incoming.headers.authorization, config.username, config.password)) return unauthorized(response);
 
-    const headers = forwardHeaders(incoming.headers);
+    const headers = forwardHeaders(incoming.headers, ["host", "authorization"]);
     if (protectedPath) Object.assign(headers, signedOperatorHeaders({
       subject: config.subject,
       secret: config.signingSecret,
@@ -112,7 +119,9 @@ function createGateway(config) {
       headers,
     }, (upstreamResponse) => {
       response.writeHead(upstreamResponse.statusCode ?? 502, forwardHeaders(upstreamResponse.headers));
-      upstreamResponse.pipe(response);
+      pipeline(upstreamResponse, response, (error) => {
+        if (error && !response.destroyed) unavailable(response);
+      });
     });
 
     const destroyUpstream = () => {

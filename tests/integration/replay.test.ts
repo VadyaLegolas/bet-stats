@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   createPrismaClient,
   createReplayProviderPolicyRepository,
@@ -106,7 +106,7 @@ describe("durable bounded replay", () => {
       blockedReason: null,
     });
     expect(second).toEqual(first);
-    expect(fingerprintReplayProviderPolicy(first)).toBe("98a9e9de0fd41535e6cf73fa81a394ea3b86e967c78e8b810e65b00ad14fce3c");
+    expect(fingerprintReplayProviderPolicy(first)).toBe("cae54e3f25a03a2ccc1e012ecb3213ef12c42f52d95d49c728e14e1d55cbf136");
     expect(fingerprintReplayProviderPolicy(second)).toBe(fingerprintReplayProviderPolicy(first));
     expect(evaluateReplayProviderPolicy(first, 5, now)).toEqual({ allowed: true, remainingAfter: 0 });
   });
@@ -136,6 +136,84 @@ describe("durable bounded replay", () => {
     const malformed = await malformedRepository.read(resultsPolicy.provider, resultsPolicy.endpointFamily);
     expect(malformed.blockedReason).toBe("MALFORMED_POLICY");
     expect(evaluateReplayProviderPolicy(malformed, 1, now)).toEqual({ allowed: false, reason: "MALFORMED_POLICY" });
+  });
+
+  it("persists the exact approved policy and classifies durable policy changes in status", async () => {
+    const policyNow = new Date("2026-08-31T14:00:00.000Z");
+    const updatedAt = new Date("2026-08-31T13:59:00.000Z");
+    await prisma.providerRequestReservation.deleteMany({ where: { provider: resultsPolicy.provider, requestDate: policyNow } });
+    await prisma.providerCircuitState.upsert({
+      where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
+      create: { id: randomUUID(), provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily, state: "CLOSED", updatedAt },
+      update: { state: "CLOSED", openedAt: null, nextProbeAt: null, probeLeaseToken: null, probeLeaseExpiresAt: null, updatedAt },
+    });
+    const repository = createReplayProviderPolicyRepository({ database: prisma, policies: [resultsPolicy], now: () => policyNow });
+    const expectedApproved = await repository.read(resultsPolicy.provider, resultsPolicy.endpointFamily);
+    const service = createReplayService({ database: prisma, providerPolicyRepository: repository, now: () => policyNow });
+    const preview = await service.preview({ ...request, from: "2026-08-25T00:00:00.000Z", to: "2026-08-25T00:00:00.000Z" });
+
+    expect(preview.providerPolicy).toEqual({
+      fingerprint: fingerprintReplayProviderPolicy(expectedApproved),
+      snapshot: expectedApproved,
+    });
+    expect(preview.headroom).toEqual({ available: true, remainingCalls: expectedApproved.availableForLane! - 1 });
+    const persisted = await prisma.replayPreview.findUniqueOrThrow({ where: { id: preview.previewId } });
+    expect(persisted.providerPolicyFingerprint).toBe(fingerprintReplayProviderPolicy(expectedApproved));
+    expect(persisted.impact).toMatchObject({ providerPolicy: expectedApproved });
+
+    const queued = await service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
+    await prisma.providerCircuitState.update({
+      where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
+      data: { state: "OPEN", openedAt: policyNow, updatedAt: policyNow },
+    });
+    const expectedCurrent = await repository.read(resultsPolicy.provider, resultsPolicy.endpointFamily);
+    expect(await service.status(queued.replayPlanId)).toMatchObject({
+      providerPolicy: {
+        classification: "CHANGED",
+        approved: { fingerprint: fingerprintReplayProviderPolicy(expectedApproved), snapshot: expectedApproved },
+        current: { fingerprint: fingerprintReplayProviderPolicy(expectedCurrent), snapshot: expectedCurrent },
+      },
+    });
+
+    await prisma.providerCircuitState.update({
+      where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
+      data: { state: "CLOSED", openedAt: null, updatedAt },
+    });
+    const stalePreview = await service.preview({ ...request, from: "2026-08-26T00:00:00.000Z", to: "2026-08-26T00:00:00.000Z" });
+    await prisma.providerCircuitState.update({
+      where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
+      data: { state: "OPEN", openedAt: policyNow, updatedAt: policyNow },
+    });
+    await expect(service.queue({ previewId: stalePreview.previewId, previewVersion: stalePreview.previewVersion }))
+      .rejects.toMatchObject({ code: "STALE_PREVIEW", status: 409 });
+  });
+
+  it("rejects every fail-closed provider policy before queue delivery", async () => {
+    const policyNow = new Date("2026-08-31T16:00:00.000Z");
+    const enqueuer = { enqueue: vi.fn(async () => undefined) };
+    const setCircuit = async (state: "CLOSED" | "OPEN") => prisma.providerCircuitState.upsert({
+      where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
+      create: { id: randomUUID(), provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily, state, updatedAt: policyNow },
+      update: { state, openedAt: state === "OPEN" ? policyNow : null, updatedAt: policyNow },
+    });
+    const expectDenied = async (policy: typeof resultsPolicy, reason: string, offset: number) => {
+      const repository = createReplayProviderPolicyRepository({ database: prisma, policies: [policy], now: () => policyNow });
+      const service = createReplayService({ database: prisma, enqueuer, providerPolicyRepository: repository, now: () => policyNow });
+      await expect(service.preview({ ...request, from: `2026-08-${27 + offset}T00:00:00.000Z`, to: `2026-08-${27 + offset}T00:00:00.000Z` }))
+        .rejects.toMatchObject({ code: reason, status: 409 });
+    };
+
+    await prisma.providerRequestReservation.deleteMany({ where: { provider: resultsPolicy.provider, requestDate: policyNow } });
+    await setCircuit("OPEN");
+    await expectDenied(resultsPolicy, "CIRCUIT_OPEN", 0);
+
+    await setCircuit("CLOSED");
+    await expectDenied({ ...resultsPolicy, resetTimezone: "Missing/Timezone" }, "UNKNOWN_RESET_SEMANTICS", 1);
+
+    await prisma.providerRequestReservation.create({ data: { provider: resultsPolicy.provider, requestDate: policyNow, endpoint: "RESULTS", jobKey: randomUUID() } });
+    await expectDenied({ ...resultsPolicy, configuredAllowance: 1, criticalHeadroom: 0 }, "ALLOWANCE_EXHAUSTED", 2);
+    await expectDenied({ ...resultsPolicy, configuredAllowance: 3, criticalHeadroom: 2 }, "CRITICAL_HEADROOM", 3);
+    expect(enqueuer.enqueue).not.toHaveBeenCalled();
   });
 
   it("freezes preview/version and loads them after service reconstruction", async () => {
@@ -285,7 +363,17 @@ describe("durable bounded replay", () => {
   });
 
   it("requires audited reason and rejects zero headroom", async () => {
-    await expect(createReplayService({ database: prisma, availableCalls: 0 }).preview({ ...request, from: "2026-08-10T00:00:00.000Z", to: "2026-08-10T00:00:00.000Z" })).rejects.toMatchObject({ code: "NO_HEADROOM" });
+    const policyNow = new Date("2026-08-31T17:00:00.000Z");
+    await prisma.providerCircuitState.update({
+      where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
+      data: { state: "CLOSED", openedAt: null, updatedAt: policyNow },
+    });
+    const zeroHeadroom = createReplayProviderPolicyRepository({
+      database: prisma,
+      policies: [{ ...resultsPolicy, configuredAllowance: 0, criticalHeadroom: 0 }],
+      now: () => policyNow,
+    });
+    await expect(createReplayService({ database: prisma, providerPolicyRepository: zeroHeadroom, now: () => policyNow }).preview({ ...request, from: "2026-08-10T00:00:00.000Z", to: "2026-08-10T00:00:00.000Z" })).rejects.toMatchObject({ code: "ALLOWANCE_EXHAUSTED" });
     const service = createReplayService({ database: prisma });
     const preview = await service.preview({ ...request, from: "2026-08-11T00:00:00.000Z", to: "2026-08-11T00:00:00.000Z" });
     await expect(service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion, newRevision: true, reason: "" })).rejects.toMatchObject({ code: "REVISION_REASON_REQUIRED" });

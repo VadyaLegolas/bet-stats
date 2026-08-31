@@ -1,6 +1,16 @@
 import { createHash, randomUUID } from "node:crypto";
 import { ConflictException, Injectable, NotFoundException, OnModuleDestroy, Optional, ServiceUnavailableException } from "@nestjs/common";
-import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import {
+  createPrismaClient,
+  createReplayProviderPolicyRepository,
+  type PrismaClient,
+  type ReplayProviderPolicyRepository,
+} from "@bet-stats/database";
+import {
+  evaluateReplayProviderPolicy,
+  fingerprintReplayProviderPolicy,
+  type ReplayProviderPolicySnapshot,
+} from "@bet-stats/domain";
 import { Queue } from "bullmq";
 import { createReplayDeliveryDispatcher } from "./replay-delivery.service.js";
 
@@ -11,8 +21,18 @@ const UTC_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 
 export type ReplayInput = { provider: string; competitionId: string; seasonId: string; endpointFamily: string; from: string; to: string };
 export type ReplayUnit = { logicalId: string; from: string; to: string };
-type PreviewRow = { id: string; logicalKey: string; version: number; previewVersion: string; normalizedInput: ReplayInput; unitManifest: ReplayUnit[]; impact: { calls: number; builds: number }; providerPolicyFingerprint: string; expiresAt: Date; consumedAt: Date | null; actor: string };
+type PreviewImpact = { calls: number; builds: number; providerPolicy?: unknown };
+type PreviewRow = { id: string; logicalKey: string; version: number; previewVersion: string; normalizedInput: ReplayInput; unitManifest: ReplayUnit[]; impact: PreviewImpact; providerPolicyFingerprint: string; expiresAt: Date; consumedAt: Date | null; actor: string };
 export interface ReplayEnqueuer { enqueue(run: { syncRunId: string; replayPlanId: string; logicalId: string; revision: number; input: ReplayInput; unit: ReplayUnit }): Promise<void> }
+
+const DEFAULT_REPLAY_PROVIDER_POLICIES = ["FIXTURES", "RESULTS", "STANDINGS"].map((endpointFamily) => ({
+  provider: "football-data.org",
+  endpointFamily,
+  lane: "standard" as const,
+  configuredAllowance: 10,
+  criticalHeadroom: 3,
+  resetTimezone: "UTC",
+}));
 
 export function createBullReplayEnqueuer(redisUrl: string, database: PrismaClient, prefix = "bet-stats"): ReplayEnqueuer & { close(): Promise<void> } {
   void database;
@@ -49,27 +69,53 @@ function buildUnits(input: ReplayInput): ReplayUnit[] {
     return { logicalId: createHash("sha256").update(JSON.stringify({ ...input, from, to, purpose: "replay" })).digest("hex"), from, to };
   });
 }
-function publicPreview(row: PreviewRow) { return { previewId: row.id, previewVersion: row.previewVersion, dryRun: true as const, bounded: true as const, calls: row.impact.calls, builds: row.impact.builds, lane: "standard" as const, effects: { immutableObservations: true as const, predictionSnapshotsMutated: false as const }, input: row.normalizedInput, logicalJobIds: row.unitManifest.map((unit) => unit.logicalId) }; }
+function publicPolicy(snapshot: ReplayProviderPolicySnapshot) {
+  return { fingerprint: fingerprintReplayProviderPolicy(snapshot), snapshot };
+}
 
-export function createReplayService(options: { database: PrismaClient; enqueuer?: ReplayEnqueuer; availableCalls?: number; circuit?: "CLOSED" | "OPEN"; actor?: string; now?: () => Date }) {
-  const database = options.database; const availableCalls = options.availableCalls ?? 100; const circuit = options.circuit ?? "CLOSED"; const actor = options.actor ?? "operator"; const now = options.now ?? (() => new Date());
+function snapshotFromImpact(value: unknown): ReplayProviderPolicySnapshot | null {
+  if (!value || typeof value !== "object") return null;
+  const snapshot = value as Partial<ReplayProviderPolicySnapshot>;
+  if (snapshot.version !== "replay-provider-policy/v1" || typeof snapshot.provider !== "string" || typeof snapshot.endpointFamily !== "string") return null;
+  return snapshot as ReplayProviderPolicySnapshot;
+}
+
+function publicPreview(row: PreviewRow) {
+  const providerPolicy = snapshotFromImpact(row.impact.providerPolicy);
+  if (!providerPolicy) throw replayError("MALFORMED_POLICY", 409);
+  return {
+    previewId: row.id, previewVersion: row.previewVersion, dryRun: true as const, bounded: true as const,
+    calls: row.impact.calls, builds: row.impact.builds, lane: providerPolicy.lane,
+    effects: { immutableObservations: true as const, predictionSnapshotsMutated: false as const },
+    input: row.normalizedInput, logicalJobIds: row.unitManifest.map((unit) => unit.logicalId),
+    providerPolicy: publicPolicy(providerPolicy),
+  };
+}
+
+export function createReplayService(options: { database: PrismaClient; enqueuer?: ReplayEnqueuer; providerPolicyRepository?: ReplayProviderPolicyRepository; actor?: string; now?: () => Date }) {
+  const database = options.database; const actor = options.actor ?? "operator"; const now = options.now ?? (() => new Date());
+  const providerPolicyRepository = options.providerPolicyRepository ?? createReplayProviderPolicyRepository({ database, policies: DEFAULT_REPLAY_PROVIDER_POLICIES, now });
   const dispatcher = options.enqueuer ? createReplayDeliveryDispatcher({ database, enqueuer: options.enqueuer, now }) : null;
   return {
     async preview(raw: Record<string, unknown>) {
       const input = normalize(raw); const units = buildUnits(input);
-      if (availableCalls < units.length || circuit === "OPEN") throw replayError("NO_HEADROOM", 409);
+      let providerPolicy: ReplayProviderPolicySnapshot;
+      try { providerPolicy = await providerPolicyRepository.read(input.provider, input.endpointFamily); }
+      catch { throw replayError("MALFORMED_POLICY", 409); }
+      const decision = evaluateReplayProviderPolicy(providerPolicy, units.length, now());
+      if (!decision.allowed) throw replayError(decision.reason, 409);
       const logicalKey = createHash("sha256").update(JSON.stringify(input)).digest("hex");
-      const policy = createHash("sha256").update(JSON.stringify({ availableCalls, circuit })).digest("hex");
+      const policy = fingerprintReplayProviderPolicy(providerPolicy);
       const row = await database.$transaction(async (tx) => {
         await tx.$executeRawUnsafe("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", `replay-preview:${logicalKey}`);
         const prior = await tx.$queryRawUnsafe<PreviewRow[]>(`SELECT id,"logicalKey",version,"previewVersion","normalizedInput","unitManifest",impact,"providerPolicyFingerprint","expiresAt","consumedAt",actor FROM "ReplayPreview" WHERE "logicalKey"=$1 AND "consumedAt" IS NULL AND "expiresAt">$2 ORDER BY version DESC LIMIT 1`, logicalKey, now());
         if (prior[0]) return prior[0];
         const versions = await tx.$queryRawUnsafe<Array<{ version: number }>>(`SELECT COALESCE(MAX(version),0)::int AS version FROM "ReplayPreview" WHERE "logicalKey"=$1`, logicalKey);
         const version = (versions[0]?.version ?? 0) + 1; const previewVersion = createHash("sha256").update(JSON.stringify({ logicalKey, version, input, units, policy })).digest("hex");
-        const inserted = await tx.$queryRawUnsafe<PreviewRow[]>(`INSERT INTO "ReplayPreview" (id,"logicalKey",version,"previewVersion","normalizedInput","unitManifest",impact,"providerPolicyFingerprint","expiresAt",actor) VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::jsonb,$8,$9,$10) RETURNING id,"logicalKey",version,"previewVersion","normalizedInput","unitManifest",impact,"providerPolicyFingerprint","expiresAt","consumedAt",actor`, randomUUID(), logicalKey, version, previewVersion, JSON.stringify(input), JSON.stringify(units), JSON.stringify({ calls: units.length, builds: units.length }), policy, new Date(now().getTime() + 900_000), actor);
+        const inserted = await tx.$queryRawUnsafe<PreviewRow[]>(`INSERT INTO "ReplayPreview" (id,"logicalKey",version,"previewVersion","normalizedInput","unitManifest",impact,"providerPolicyFingerprint","expiresAt",actor) VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::jsonb,$8,$9,$10) RETURNING id,"logicalKey",version,"previewVersion","normalizedInput","unitManifest",impact,"providerPolicyFingerprint","expiresAt","consumedAt",actor`, randomUUID(), logicalKey, version, previewVersion, JSON.stringify(input), JSON.stringify(units), JSON.stringify({ calls: units.length, builds: units.length, providerPolicy }), policy, new Date(now().getTime() + 900_000), actor);
         return inserted[0]!;
       });
-      return { ...publicPreview(row), headroom: { available: true as const, remainingCalls: availableCalls - row.impact.calls } };
+      return { ...publicPreview(row), headroom: { available: true as const, remainingCalls: decision.remainingAfter } };
     },
     async queue(raw: Record<string, unknown>) {
       const previewId = String(raw.previewId ?? ""); const previewVersion = String(raw.previewVersion ?? "");
@@ -78,6 +124,14 @@ export function createReplayService(options: { database: PrismaClient; enqueuer?
         await tx.$executeRawUnsafe("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", `replay-confirm:${previewId}`);
         const rows = await tx.$queryRawUnsafe<PreviewRow[]>(`SELECT id,"logicalKey",version,"previewVersion","normalizedInput","unitManifest",impact,"providerPolicyFingerprint","expiresAt","consumedAt",actor FROM "ReplayPreview" WHERE id=$1`, previewId); const preview = rows[0];
         if (!preview || preview.previewVersion !== previewVersion || preview.expiresAt <= now()) throw replayError("STALE_PREVIEW", 409);
+        const approvedPolicy = snapshotFromImpact(preview.impact.providerPolicy);
+        if (!approvedPolicy || preview.providerPolicyFingerprint !== fingerprintReplayProviderPolicy(approvedPolicy)) throw replayError("STALE_PREVIEW", 409);
+        let currentPolicy: ReplayProviderPolicySnapshot;
+        try { currentPolicy = await providerPolicyRepository.read(preview.normalizedInput.provider, preview.normalizedInput.endpointFamily); }
+        catch { throw replayError("STALE_PREVIEW", 409); }
+        if (preview.providerPolicyFingerprint !== fingerprintReplayProviderPolicy(currentPolicy)) throw replayError("STALE_PREVIEW", 409);
+        const currentDecision = evaluateReplayProviderPolicy(currentPolicy, preview.impact.calls, now());
+        if (!currentDecision.allowed) throw replayError(currentDecision.reason, 409);
         const duplicate = await tx.$queryRawUnsafe<Array<{ id: string; revision: number }>>(`SELECT id,revision FROM "ReplayPlan" WHERE "previewId"=$1`, previewId);
         if (duplicate[0]) return { replayPlanId: duplicate[0].id, revision: duplicate[0].revision, duplicate: true, runs: [] as QueuedRun[] };
         if (preview.consumedAt) throw replayError("STALE_PREVIEW", 409);
@@ -106,7 +160,19 @@ export function createReplayService(options: { database: PrismaClient; enqueuer?
       return dispatcher?.dispatch(replayPlanId) ?? { claimed: 0, delivered: 0 };
     },
     async status(replayPlanId: string) {
-      const plans = await database.$queryRawUnsafe<Array<{ id: string }>>(`SELECT id FROM "ReplayPlan" WHERE id=$1`, replayPlanId); if (!plans[0]) throw replayError("REPLAY_NOT_FOUND", 404);
+      const plans = await database.$queryRawUnsafe<Array<{ id: string; provider: string; endpointFamily: string; impact: PreviewImpact; providerPolicyFingerprint: string }>>(
+        `SELECT p.id,p.provider,p."endpointFamily",v.impact,v."providerPolicyFingerprint" FROM "ReplayPlan" p JOIN "ReplayPreview" v ON v.id=p."previewId" WHERE p.id=$1`,
+        replayPlanId,
+      );
+      const plan = plans[0]; if (!plan) throw replayError("REPLAY_NOT_FOUND", 404);
+      const approvedSnapshot = snapshotFromImpact(plan.impact.providerPolicy);
+      let currentSnapshot: ReplayProviderPolicySnapshot | null = null;
+      try { currentSnapshot = await providerPolicyRepository.read(plan.provider, plan.endpointFamily); } catch { /* status remains safely unavailable */ }
+      const approved = approvedSnapshot && plan.providerPolicyFingerprint === fingerprintReplayProviderPolicy(approvedSnapshot)
+        ? publicPolicy(approvedSnapshot)
+        : null;
+      const current = currentSnapshot ? publicPolicy(currentSnapshot) : null;
+      const classification = !approved || !current ? "UNAVAILABLE" : approved.fingerprint === current.fingerprint ? "UNCHANGED" : "CHANGED";
       const runs = await database.$queryRawUnsafe<Array<{ id: string; state: string; correlationId: string; lane: string }>>(`SELECT id,state,"correlationId",lane FROM "SyncRun" WHERE "replayPlanId"=$1 ORDER BY "createdAt"`, replayPlanId);
       const attempts = await database.$queryRawUnsafe<Array<{ syncRunId: string; attemptNumber: number; state: string; classifiedReason: string | null }>>(`SELECT a."syncRunId",a."attemptNumber",a.state,a."classifiedReason" FROM "SyncAttempt" a JOIN "SyncRun" r ON r.id=a."syncRunId" WHERE r."replayPlanId"=$1 ORDER BY a."syncRunId",a."attemptNumber"`, replayPlanId);
       const deliveries = await database.$queryRawUnsafe<Array<{ syncRunId: string; state: string; attemptCount: number; classifiedReason: string | null; leaseExpiresAt: Date | null; deliveredAt: Date | null }>>(
@@ -130,8 +196,8 @@ export function createReplayService(options: { database: PrismaClient; enqueuer?
         outcome,
         delivery: { state: deliveryState, delivered, retrying, pending, records: deliveries },
         execution: { state: executionState, outcome },
-        provider: { circuit, quota: availableCalls > 0 ? "AVAILABLE" : "EXHAUSTED" },
-        lane: "standard",
+        providerPolicy: { classification, approved, current },
+        lane: approvedSnapshot?.lane ?? null,
         runs: publicRuns,
         attempts,
       };

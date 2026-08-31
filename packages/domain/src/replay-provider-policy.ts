@@ -43,7 +43,8 @@ export type ReplayProviderPolicyDecision =
   | { readonly allowed: false; readonly reason: ReplayProviderPolicyDenialReason };
 
 export function fingerprintReplayProviderPolicy(snapshot: ReplayProviderPolicySnapshot): string {
-  return createHash("sha256").update(canonicalJson(snapshot)).digest("hex");
+  const { observedAt: _observedAt, ...policy } = snapshot;
+  return createHash("sha256").update(canonicalJson(policy)).digest("hex");
 }
 
 export function evaluateReplayProviderPolicy(

@@ -14,14 +14,17 @@ function equalText(left, right) {
 }
 
 export function authenticateBasic(header, expectedUsername, expectedPassword) {
-  const scheme = typeof header === "string" ? /^Basic\s+/i.exec(header) : null;
+  const scheme = typeof header === "string" ? /^Basic +/i.exec(header) : null;
   if (!scheme || !expectedUsername || !expectedPassword) return false;
+  const token = header.slice(scheme[0].length);
+  if (!token || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(token)) return false;
   let decoded;
   try {
-    decoded = Buffer.from(header.slice(scheme[0].length), "base64").toString("utf8");
+    decoded = Buffer.from(token, "base64").toString("utf8");
   } catch {
     return false;
   }
+  if (Buffer.from(decoded, "utf8").toString("base64") !== token) return false;
   return equalText(decoded, `${expectedUsername}:${expectedPassword}`);
 }
 

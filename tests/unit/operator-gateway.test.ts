@@ -37,6 +37,8 @@ describe("operator gateway security", () => {
     expect(authenticateBasic(valid.replace("Basic", "bAsIc"), "operator", "correct horse battery staple")).toBe(true);
     expect(authenticateBasic(wrong, "operator", "correct horse battery staple")).toBe(false);
     expect(authenticateBasic(valid.replace("Basic ", "Basic"), "operator", "correct horse battery staple")).toBe(false);
+    expect(authenticateBasic(`${valid}!!!`, "operator", "correct horse battery staple")).toBe(false);
+    expect(authenticateBasic(valid.replace("Basic ", "Basic\t"), "operator", "correct horse battery staple")).toBe(false);
     expect(authenticateBasic(undefined, "operator", "correct horse battery staple")).toBe(false);
   });
 

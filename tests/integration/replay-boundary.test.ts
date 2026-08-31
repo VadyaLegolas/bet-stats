@@ -2,13 +2,14 @@
 // copy lets this root-level boundary test bootstrap Nest before decorators load.
 import "../../apps/api/node_modules/reflect-metadata/Reflect.js";
 
+import { createHash, createHmac } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { NestFactory } from "../../apps/api/node_modules/@nestjs/core/index.js";
 import type { INestApplication } from "../../apps/api/node_modules/@nestjs/common/index.js";
 import { NextRequest } from "../../apps/web/node_modules/next/server.js";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import { AppModule } from "../../apps/api/src/app.module.js";
 import { GET as proxyGet, POST as proxyPost } from "../../apps/web/app/internal-api/pipeline/replay/[[...path]]/route.js";
@@ -16,6 +17,7 @@ import { startReplayWorker } from "../../workers/data-sync/src/main.js";
 import { createReplayWorker } from "../../workers/data-sync/src/queues/index.js";
 
 const credential = "boundary-operator-secret";
+const authorizedSubject = "local-test-operator";
 const databaseRoot = resolve(import.meta.dirname, "../../packages/database");
 const postgresName = `bet-stats-boundary-pg-${process.pid}`;
 const redisName = `bet-stats-boundary-redis-${process.pid}`;
@@ -49,11 +51,26 @@ async function startApi() {
   process.env.API_ORIGIN = `http://127.0.0.1:${address.port}`;
 }
 
-async function proxy(path: string[], method: "GET" | "POST", body?: Record<string, unknown>) {
+function ingressHeaders(path: string[], method: "GET" | "POST", options: { subject?: string; timestamp?: string; signedPath?: string } = {}) {
+  const signingSecret = process.env.OPERATOR_PROXY_SIGNING_SECRET;
+  if (!signingSecret) throw new Error("OPERATOR_PROXY_SIGNING_SECRET must be supplied by the test process");
+  const subject = options.subject ?? authorizedSubject;
+  const timestamp = options.timestamp ?? new Date().toISOString();
+  const pathname = options.signedPath ?? `/internal-api/pipeline/replay/${path.map(encodeURIComponent).join("/")}`;
+  const queryDigest = createHash("sha256").update("").digest("base64url");
+  const signature = createHmac("sha256", signingSecret).update(`${subject}\n${timestamp}\n${method}\n${pathname}\n${queryDigest}`).digest("base64url");
+  return {
+    "x-operator-subject": subject,
+    "x-operator-timestamp": timestamp,
+    "x-operator-signature": signature,
+  };
+}
+
+async function proxy(path: string[], method: "GET" | "POST", body?: Record<string, unknown>, headers = ingressHeaders(path, method)) {
   const url = `http://web.test/internal-api/pipeline/replay/${path.join("/")}`;
   const request = new NextRequest(url, {
     method,
-    ...(body ? { headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {}),
+    ...(body ? { headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) } : { headers }),
   });
   const response = await (method === "POST" ? proxyPost : proxyGet)(request, { params: Promise.resolve({ path }) });
   return { response, json: await response.json() as Record<string, unknown> };
@@ -204,6 +221,26 @@ describe("production replay proxy boundary", () => {
     await Promise.all(workers.splice(0).map((worker) => worker.close()));
   });
 
+  it("rejects unsigned, stale, altered, and unlisted ingress assertions before upstream invocation", async () => {
+    const input = { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-28T10:15:00.000Z", to: "2026-08-28T10:15:00.000Z" };
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    try {
+      for (const headers of [
+        {},
+        ingressHeaders(["preview"], "POST", { timestamp: new Date(Date.now() - 301_000).toISOString() }),
+        ingressHeaders(["preview"], "POST", { subject: "not-allowed" }),
+        ingressHeaders(["preview"], "POST", { signedPath: "/internal-api/pipeline/replay/queue" }),
+      ]) {
+        const result = await proxy(["preview"], "POST", input, headers);
+        expect(result.response.status).toBe(404);
+        expect(result.json).toEqual({ message: "Not found" });
+      }
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   it("crosses Next proxy, guarded Nest, BullMQ Worker and durable PostgreSQL terminal state", async () => {
     const executions = new Map<string, number>();
     const worker = createReplayWorker({ redisUrl, database: prisma, prefix: queuePrefix, execute: async (data) => { executions.set(data.logicalId, (executions.get(data.logicalId) ?? 0) + 1); } });
@@ -213,10 +250,13 @@ describe("production replay proxy boundary", () => {
     expect(preview.response.headers.get("cache-control")).toContain("private, no-store");
     expect(preview.json).toMatchObject({ dryRun: true, input });
     expect(JSON.stringify(preview.json)).not.toContain(credential);
+    expect(JSON.stringify(preview.json)).not.toContain(process.env.OPERATOR_PROXY_SIGNING_SECRET ?? "");
+    expect(await prisma.replayPreview.findUnique({ where: { id: String(preview.json.previewId) } })).toMatchObject({ actor: authorizedSubject });
 
     const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
     expect(queued.json).toMatchObject({ queued: true, duplicate: false });
     const replayPlanId = String(queued.json.replayPlanId);
+    expect(await prisma.replayPlan.findUnique({ where: { id: replayPlanId } })).toMatchObject({ actor: authorizedSubject });
     const terminal = await waitForPlan(replayPlanId, "SUCCEEDED");
     expect(terminal.json).toMatchObject({
       state: "SUCCEEDED",

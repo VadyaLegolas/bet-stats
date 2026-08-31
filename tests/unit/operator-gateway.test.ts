@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createHash, createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 import {
   authenticateBasic,
@@ -15,7 +17,14 @@ describe("operator gateway security", () => {
     "/internal-api/pipeline/replay/preview",
   ])("protects %s", (path) => expect(isProtectedReplayPath(path)).toBe(true));
 
-  it.each(["/", "/fixtures", "/teams/t/evidence", "/internal/reconciliation"])(
+  it.each([
+    "/",
+    "/fixtures",
+    "/teams/t/evidence",
+    "/internal/reconciliation",
+    "/internal/pipeline/replayer",
+    "/internal-api/pipeline/replay-preview",
+  ])(
     "leaves %s public",
     (path) => expect(isProtectedReplayPath(path)).toBe(false),
   );
@@ -29,8 +38,15 @@ describe("operator gateway security", () => {
   });
 
   it("strips spoofed identity and emits the exact Next verifier signature", () => {
-    const stripped = stripOperatorHeaders(new Headers({ "x-operator-subject": "attacker", accept: "application/json" }));
+    const stripped = stripOperatorHeaders(new Headers({
+      "x-operator-subject": "attacker",
+      "x-operator-timestamp": "attacker-timestamp",
+      "x-operator-signature": "attacker-signature",
+      accept: "application/json",
+    }));
     expect(stripped.get("x-operator-subject")).toBeNull();
+    expect(stripped.get("x-operator-timestamp")).toBeNull();
+    expect(stripped.get("x-operator-signature")).toBeNull();
     expect(stripped.get("accept")).toBe("application/json");
     const timestamp = "2026-08-31T12:00:00.000Z";
     const query = new URLSearchParams([["a", "1"], ["z", "2"]]).toString();
@@ -41,5 +57,11 @@ describe("operator gateway security", () => {
       "x-operator-timestamp": timestamp,
       "x-operator-signature": createHmac("sha256", "x".repeat(32)).update(payload).digest("base64url"),
     });
+  });
+
+  it("compares the complete Basic credential pair with one constant-time operation", () => {
+    const source = readFileSync(resolve("infra/operator-gateway/security.mjs"), "utf8");
+    expect(source).toContain("return equalText(decoded, `${expectedUsername}:${expectedPassword}`);");
+    expect(source).not.toContain("equalText(decoded.slice(0, separator)");
   });
 });

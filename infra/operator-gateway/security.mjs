@@ -21,10 +21,7 @@ export function authenticateBasic(header, expectedUsername, expectedPassword) {
   } catch {
     return false;
   }
-  const separator = decoded.indexOf(":");
-  if (separator < 1) return false;
-  return equalText(decoded.slice(0, separator), expectedUsername)
-    && equalText(decoded.slice(separator + 1), expectedPassword);
+  return equalText(decoded, `${expectedUsername}:${expectedPassword}`);
 }
 
 export function stripOperatorHeaders(input) {

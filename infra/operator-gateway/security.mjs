@@ -14,10 +14,11 @@ function equalText(left, right) {
 }
 
 export function authenticateBasic(header, expectedUsername, expectedPassword) {
-  if (!header?.startsWith("Basic ") || !expectedUsername || !expectedPassword) return false;
+  const scheme = typeof header === "string" ? /^Basic\s+/i.exec(header) : null;
+  if (!scheme || !expectedUsername || !expectedPassword) return false;
   let decoded;
   try {
-    decoded = Buffer.from(header.slice(6), "base64").toString("utf8");
+    decoded = Buffer.from(header.slice(scheme[0].length), "base64").toString("utf8");
   } catch {
     return false;
   }

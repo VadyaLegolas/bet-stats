@@ -17,6 +17,10 @@ const hopByHopHeaders = new Set([
 ]);
 const operatorHeaders = new Set(["x-operator-subject", "x-operator-timestamp", "x-operator-signature"]);
 const subjectPattern = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/;
+const upstreamTimeoutMs = 10_000;
+const requestTimeoutMs = 20_000;
+const headersTimeoutMs = 10_000;
+const keepAliveTimeoutMs = 5_000;
 
 function requiredConfig(environment) {
   const names = [
@@ -96,6 +100,12 @@ function unavailable(response) {
   response.end(JSON.stringify({ message: "Upstream unavailable" }));
 }
 
+function upstreamTimeout(response) {
+  if (response.headersSent || response.writableEnded) return response.destroy();
+  response.writeHead(504, { "content-type": "application/json", "cache-control": "no-store" });
+  response.end(JSON.stringify({ message: "Upstream timed out" }));
+}
+
 function createGateway(config) {
   return createServer((incoming, response) => {
     const target = requestTarget(incoming.url, config.webOrigin);
@@ -124,6 +134,7 @@ function createGateway(config) {
       });
     });
 
+    let timedOut = false;
     const destroyUpstream = () => {
       if (!upstreamRequest.destroyed) upstreamRequest.destroy();
     };
@@ -131,7 +142,14 @@ function createGateway(config) {
     response.once("close", () => {
       if (!response.writableEnded) destroyUpstream();
     });
-    upstreamRequest.once("error", () => unavailable(response));
+    upstreamRequest.setTimeout(upstreamTimeoutMs, () => {
+      timedOut = true;
+      upstreamTimeout(response);
+      destroyUpstream();
+    });
+    upstreamRequest.once("error", () => {
+      if (!timedOut) unavailable(response);
+    });
     incoming.pipe(upstreamRequest);
   });
 }
@@ -139,6 +157,9 @@ function createGateway(config) {
 function main() {
   const config = requiredConfig(process.env);
   const gateway = createGateway(config);
+  gateway.requestTimeout = requestTimeoutMs;
+  gateway.headersTimeout = headersTimeoutMs;
+  gateway.keepAliveTimeout = keepAliveTimeoutMs;
   gateway.listen(config.port, "0.0.0.0");
 }
 

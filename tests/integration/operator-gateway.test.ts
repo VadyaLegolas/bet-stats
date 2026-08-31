@@ -169,6 +169,25 @@ describe("operator gateway HTTP boundary", () => {
     }
   });
 
+  it("bounds a stalled upstream request with a classified 504", async () => {
+    const upstream = createServer((request, response) => {
+      if (request.url === "/health") return response.end("ok");
+      request.resume();
+    });
+    const gateway = await startGateway(await listen(upstream));
+
+    try {
+      const startedAt = Date.now();
+      const response = await fetch(`${gateway.origin}/stalled`);
+      expect(response.status).toBe(504);
+      expect(await response.json()).toEqual({ message: "Upstream timed out" });
+      expect(Date.now() - startedAt).toBeLessThan(12_000);
+    } finally {
+      await stop(gateway.process);
+      await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));
+    }
+  }, 15_000);
+
   it("fails startup when a required configuration value is absent", async () => {
     const child = launchGateway({ OPERATOR_PROXY_SIGNING_SECRET: undefined });
     const [code] = await once(child, "exit") as [number | null];

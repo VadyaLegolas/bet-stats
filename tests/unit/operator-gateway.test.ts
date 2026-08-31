@@ -33,7 +33,10 @@ describe("operator gateway security", () => {
     const valid = `Basic ${Buffer.from("operator:correct horse battery staple").toString("base64")}`;
     const wrong = `Basic ${Buffer.from("operator:wrong").toString("base64")}`;
     expect(authenticateBasic(valid, "operator", "correct horse battery staple")).toBe(true);
+    expect(authenticateBasic(valid.replace("Basic", "basic"), "operator", "correct horse battery staple")).toBe(true);
+    expect(authenticateBasic(valid.replace("Basic", "bAsIc"), "operator", "correct horse battery staple")).toBe(true);
     expect(authenticateBasic(wrong, "operator", "correct horse battery staple")).toBe(false);
+    expect(authenticateBasic(valid.replace("Basic ", "Basic"), "operator", "correct horse battery staple")).toBe(false);
     expect(authenticateBasic(undefined, "operator", "correct horse battery staple")).toBe(false);
   });
 

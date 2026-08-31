@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { verifyIngressReplayRequest } from "../../../../../src/security/operator-proxy-authorization.js";
+import { verifyIngressReplayRequest } from "../../../../../src/security/operator-proxy-authorization";
 
 const privateHeaders = { "cache-control": "private, no-store, max-age=0" };
 

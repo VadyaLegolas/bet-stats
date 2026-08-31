@@ -213,7 +213,13 @@ describe("production replay proxy boundary", () => {
     expect(queued.json).toMatchObject({ queued: true, duplicate: false });
     const replayPlanId = String(queued.json.replayPlanId);
     const terminal = await waitForPlan(replayPlanId, "SUCCEEDED");
-    expect(terminal.json).toMatchObject({ state: "SUCCEEDED", outcome: "COMPLETED", attempts: [{ attemptNumber: 1, state: "SUCCEEDED" }] });
+    expect(terminal.json).toMatchObject({
+      state: "SUCCEEDED",
+      outcome: "COMPLETED",
+      delivery: { state: "DELIVERED", delivered: 1, pending: 0, retrying: 0 },
+      execution: { state: "SUCCEEDED", outcome: "COMPLETED" },
+      attempts: [{ attemptNumber: 1, state: "SUCCEEDED" }],
+    });
     expect(await prisma.replayPlan.count({ where: { id: replayPlanId } })).toBe(1);
     expect(await prisma.syncRun.count({ where: { replayPlanId, state: "SUCCEEDED" } })).toBe(1);
     expect([...executions.values()]).toEqual([1]);

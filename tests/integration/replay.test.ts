@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
-import { createReplayService } from "../../apps/api/src/modules/replay/replay.service.js";
+import { createBullReplayEnqueuer, createReplayService } from "../../apps/api/src/modules/replay/replay.service.js";
 import { ReplayController } from "../../apps/api/src/modules/replay/replay.controller.js";
 import { OperatorGuard } from "../../apps/api/src/modules/reconciliation/operator.guard.js";
 import { createReplayQueue, createReplayWorker } from "../../workers/data-sync/src/queues/index.js";
@@ -91,6 +91,100 @@ describe("durable bounded replay", () => {
       deliveredAt: null,
     })));
     expect(await createReplayService({ database: prisma }).status(queued.replayPlanId)).toMatchObject({ state: "QUEUED", outcome: "PENDING", runs: [{ state: "PENDING" }, { state: "PENDING" }] });
+  });
+
+  it("recovers only the undelivered BullMQ unit after partial enqueue and service restart", async () => {
+    const prefix = `delivery-restart-${process.pid}`;
+    const bull = createBullReplayEnqueuer(redisUrl, prisma, prefix);
+    const attemptedJobIds: string[] = [];
+    let failSecond = true;
+    const faultingEnqueuer = {
+      async enqueue(run: Parameters<typeof bull.enqueue>[0]) {
+        attemptedJobIds.push(`${run.logicalId}-${run.revision}`);
+        if (failSecond && attemptedJobIds.length === 2) {
+          failSecond = false;
+          throw new Error("redis raw secret must not escape");
+        }
+        await bull.enqueue(run);
+      },
+    };
+    const service = createReplayService({ database: prisma, enqueuer: faultingEnqueuer });
+    const preview = await service.preview({ ...request, from: "2026-08-07T00:00:00.000Z", to: "2026-08-08T00:00:00.000Z" });
+    await expect(service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion })).rejects.toMatchObject({ code: "QUEUE_DELIVERY_FAILED" });
+    const plan = await prisma.replayPlan.findUniqueOrThrow({ where: { previewId: preview.previewId } });
+    expect(await service.status(plan.id)).toMatchObject({
+      delivery: { state: "RETRYING", delivered: 1, retrying: 1 },
+      execution: { state: "PENDING" },
+    });
+    expect(JSON.stringify(await service.status(plan.id))).not.toContain("redis raw secret");
+
+    const recoveryEnqueuer = {
+      async enqueue(run: Parameters<typeof bull.enqueue>[0]) {
+        attemptedJobIds.push(`${run.logicalId}-${run.revision}`);
+        await bull.enqueue(run);
+      },
+    };
+    const restarted = createReplayService({ database: prisma, enqueuer: recoveryEnqueuer });
+    await restarted.dispatchDeliveries(plan.id);
+    expect(await prisma.replayDelivery.findMany({ where: { syncRun: { replayPlanId: plan.id } }, orderBy: { jobId: "asc" } })).toEqual([
+      expect.objectContaining({ state: "DELIVERED", attemptCount: 1, classifiedReason: null }),
+      expect.objectContaining({ state: "DELIVERED", attemptCount: 2, classifiedReason: null }),
+    ]);
+    expect(attemptedJobIds).toHaveLength(3);
+    expect(attemptedJobIds[1]).toBe(attemptedJobIds[2]);
+
+    const executions = new Map<string, number>();
+    const worker = createReplayWorker({ redisUrl, database: prisma, prefix, execute: async (data) => {
+      executions.set(data.logicalId, (executions.get(data.logicalId) ?? 0) + 1);
+    } });
+    try {
+      for (let poll = 0; poll < 100 && (await restarted.status(plan.id)).state !== "SUCCEEDED"; poll += 1) {
+        await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+      }
+      expect([...executions.values()].sort()).toEqual([1, 1]);
+      await restarted.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
+      expect(attemptedJobIds).toHaveLength(3);
+      expect(await restarted.status(plan.id)).toMatchObject({
+        delivery: { state: "DELIVERED", delivered: 2, retrying: 0, pending: 0 },
+        execution: { state: "SUCCEEDED" },
+      });
+    } finally {
+      await worker.close();
+      await bull.close();
+    }
+  }, 30_000);
+
+  it("serializes concurrent dispatchers and reclaims an expired delivery lease", async () => {
+    const seed = createReplayService({ database: prisma });
+    const preview = await seed.preview({ ...request, from: "2026-08-09T00:00:00.000Z", to: "2026-08-09T00:00:00.000Z" });
+    const queued = await seed.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
+    let enqueues = 0;
+    const enqueuer = { async enqueue() { enqueues += 1; await new Promise((resolveWait) => setTimeout(resolveWait, 75)); } };
+    const firstDispatcher = createReplayService({ database: prisma, enqueuer });
+    const secondDispatcher = createReplayService({ database: prisma, enqueuer });
+    await Promise.all([
+      firstDispatcher.dispatchDeliveries(queued.replayPlanId),
+      secondDispatcher.dispatchDeliveries(queued.replayPlanId),
+    ]);
+    expect(enqueues).toBe(1);
+
+    const expiredPreview = await seed.preview({ ...request, from: "2026-08-13T00:00:00.000Z", to: "2026-08-13T00:00:00.000Z" });
+    const expired = await seed.queue({ previewId: expiredPreview.previewId, previewVersion: expiredPreview.previewVersion });
+    await prisma.$executeRawUnsafe(
+      `UPDATE "ReplayDelivery" d SET state='CLAIMED',"attemptCount"=1,"leaseToken"=$2,"leaseExpiresAt"=CURRENT_TIMESTAMP - INTERVAL '1 second',"updatedAt"=CURRENT_TIMESTAMP
+       FROM "SyncRun" r WHERE d."syncRunId"=r.id AND r."replayPlanId"=$1`,
+      expired.replayPlanId,
+      "expired-process-lease",
+    );
+    const reconstructed = createReplayService({ database: prisma, enqueuer });
+    await reconstructed.dispatchDeliveries(expired.replayPlanId);
+    expect(await prisma.replayDelivery.findFirstOrThrow({ where: { syncRun: { replayPlanId: expired.replayPlanId } } })).toMatchObject({
+      state: "DELIVERED",
+      attemptCount: 2,
+      classifiedReason: null,
+      leaseToken: null,
+      leaseExpiresAt: null,
+    });
   });
 
   it("requires audited reason and rejects zero headroom", async () => {

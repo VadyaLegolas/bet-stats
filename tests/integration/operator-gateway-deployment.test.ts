@@ -8,6 +8,7 @@ const composeFile = "infra/docker-compose.operator.yml";
 
 type ComposeService = {
   environment?: Record<string, string>;
+  healthcheck?: { test?: string[] };
   networks?: Record<string, unknown>;
   ports?: Array<{ published: string; target: number }>;
   volumes?: Array<{ source: string; target: string }>;
@@ -67,6 +68,14 @@ describe("operator gateway deployment topology", () => {
       expect(Object.keys(compose.services[serviceName]?.networks ?? {})).toEqual(["internal"]);
     }
     expect(compose.networks.edge?.internal).not.toBe(true);
+  });
+
+  it("marks the gateway healthy only when the public upstream response succeeds", () => {
+    const compose = loadComposeConfiguration();
+    const healthcheck = compose.services["operator-gateway"]?.healthcheck?.test?.join(" ") ?? "";
+
+    expect(healthcheck).toContain("if(!r.ok)");
+    expect(healthcheck).not.toContain("r.status===401");
   });
 
   it("provides the production provider configuration required by API and worker startup", () => {

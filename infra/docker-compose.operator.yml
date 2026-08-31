@@ -25,7 +25,7 @@ services:
       web:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/fixtures').then(r=>{if(r.status===401)throw new Error('unexpected authentication challenge')})"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/fixtures').then(r=>{if(!r.ok)throw new Error(String(r.status))})"]
       interval: 10s
       timeout: 5s
       retries: 12

@@ -88,6 +88,13 @@ Plans:
   5. Elo, home/away strength, goal rates, rest days, and low-weight H2H are chronological and exclude facts captured after the requested cutoff.
 
 **Plans**: TBD
+
+- [x] 02-11-PLAN.md
+- [x] 02-12-PLAN.md
+- [x] 02-13-PLAN.md
+- [x] 02-14-PLAN.md
+- [x] 02-15-PLAN.md
+
 **Wave 1**
 
 - [x] 02-01-PLAN.md
@@ -200,7 +207,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Trustworthy Fixture Discovery | 12/12 | Complete    | 2026-08-29 |
-| 2. Historical Evidence Pipeline | 10/10 | In Progress|  |
+| 2. Historical Evidence Pipeline | 15/15 | In Progress|  |
 | 3. Forecast and Manual Value Workbench | 0/TBD | Not started | - |
 | 4. Settlement and Evidence Scorecard | 0/TBD | Not started | - |
 | 5. Provider-Aware Coverage and Enrichment | 0/TBD | Not started | - |

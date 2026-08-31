@@ -1,171 +1,145 @@
 ---
 phase: 02-historical-evidence-pipeline
-reviewed: 2026-08-30T09:30:00Z
+reviewed: 2026-08-31T03:06:45Z
 depth: standard
-files_reviewed: 47
+files_reviewed: 33
 files_reviewed_list:
-  - apps/api/src/app.module.ts
-  - apps/api/src/modules/evidence/evidence.controller.ts
-  - apps/api/src/modules/evidence/evidence.service.ts
-  - apps/api/src/modules/replay/replay.controller.ts
-  - apps/api/src/modules/replay/replay.service.ts
-  - apps/web/app/fixtures/[fixtureId]/page.tsx
-  - apps/web/app/internal-api/pipeline/replay/[[...path]]/route.ts
-  - apps/web/app/internal/pipeline/replay/page.tsx
-  - apps/web/app/teams/[teamId]/evidence/page.tsx
-  - apps/web/components/evidence-state-notice.tsx
-  - packages/database/prisma/migrations/20260829_historical_evidence/migration.sql
+  - packages/database/prisma/migrations/20260830_phase02_temporal_repair/migration.sql
   - packages/database/prisma/schema.prisma
-  - packages/domain/src/evidence/contract.ts
-  - packages/domain/src/evidence/eligibility.ts
-  - packages/domain/src/evidence/form.ts
-  - packages/domain/src/evidence/elo.ts
-  - packages/domain/src/evidence/features.ts
-  - packages/domain/src/index.ts
-  - packages/domain/src/request-budget.ts
-  - packages/football-data/src/provider.interface.ts
-  - packages/football-data/src/providers/football-data-org/client.ts
-  - packages/football-data/src/providers/football-data-org/normalize.ts
-  - packages/football-data/src/providers/football-data-org/schema.ts
-  - workers/data-sync/package.json
-  - workers/data-sync/src/ingestion/runner.ts
-  - workers/data-sync/src/jobs/evidence-rebuild.ts
   - workers/data-sync/src/jobs/results.ts
   - workers/data-sync/src/jobs/standings.ts
-  - workers/data-sync/src/main.ts
-  - workers/data-sync/src/queues/index.ts
-  - workers/data-sync/src/replay/service.ts
-  - workers/data-sync/src/resilience/circuits.ts
-  - tests/e2e/pipeline-replay.spec.ts
-  - tests/e2e/team-evidence.spec.ts
-  - tests/integration/evidence-api.test.ts
-  - tests/integration/migration-empty.test.ts
-  - tests/integration/phase-01-security.test.ts
-  - tests/integration/pipeline-jobs.test.ts
-  - tests/integration/provider-budget-order.test.ts
-  - tests/integration/provider-resilience.test.ts
-  - tests/integration/quota-priority.test.ts
-  - tests/integration/replay.test.ts
+  - workers/data-sync/src/jobs/evidence-rebuild.ts
+  - workers/data-sync/src/ingestion/runner.ts
   - tests/integration/temporal-provenance.test.ts
-  - tests/unit/chronological-features.test.ts
-  - tests/unit/coverage-contract.test.ts
-  - tests/unit/form.test.ts
+  - tests/integration/migration-empty.test.ts
+  - packages/football-data/src/provider.interface.ts
+  - packages/football-data/src/providers/football-data-org/client.ts
+  - packages/football-data/src/providers/football-data-org/schema.ts
+  - packages/football-data/src/providers/football-data-org/normalize.ts
   - tests/unit/provider-contract.test.ts
+  - tests/integration/provider-resilience.test.ts
+  - packages/database/prisma/migrations/20260830_phase02_replay_preview/migration.sql
+  - apps/api/src/modules/replay/replay.service.ts
+  - apps/api/src/modules/replay/replay.controller.ts
+  - apps/api/src/app.module.ts
+  - workers/data-sync/src/queues/index.ts
+  - workers/data-sync/src/main.ts
+  - tests/integration/replay.test.ts
+  - apps/web/app/internal/pipeline/replay/page.tsx
+  - apps/web/app/internal-api/pipeline/replay/[[...path]]/route.ts
+  - tests/integration/replay-boundary.test.ts
+  - tests/e2e/pipeline-replay.spec.ts
+  - apps/api/package.json
+  - workers/data-sync/package.json
+  - packages/domain/src/evidence/contract.ts
+  - apps/api/src/modules/evidence/evidence.service.ts
+  - apps/web/app/teams/[teamId]/evidence/page.tsx
+  - tests/integration/evidence-publication.test.ts
+  - tests/integration/evidence-api.test.ts
+  - tests/e2e/team-evidence.spec.ts
 findings:
-  critical: 7
-  warning: 4
+  critical: 6
+  warning: 1
   info: 0
-  total: 11
+  total: 7
 status: issues_found
 ---
 
 # Phase 2: Code Review Report
 
-**Reviewed:** 2026-08-30T09:30:00Z  
+**Reviewed:** 2026-08-31T03:06:45Z
 **Depth:** standard  
-**Files Reviewed:** 47  
+**Files Reviewed:** 33
 **Status:** issues_found
 
 ## Summary
 
-The implementation does not yet satisfy the phase's durable, replayable evidence contract. The most serious defects make production replay a no-op, prevent database publication/idempotent ingestion, and allow evidence to be published from failed or cancelled source runs. The green browser tests use route stubs whose payloads differ from the production API, masking two end-to-end failures.
+The gap-closure fixes the original direct persistence and projection defects: immutable observation reuse, `TIMESTAMPTZ(3)` evidence instants, complete-successful publication, UTC browser replay times, competition parameterization, and typed evidence/provenance rendering are now present.
+
+The durable replay path is still not shippable. Its database lifecycle conflicts with the checked-in append-only trigger (confirmed by the real PostgreSQL/Redis suite), its Next proxy acts as an unauthenticated operator deputy, and queue delivery/state/circuit wiring can create stranded or unsafe work.
+
+Command executed: `node node_modules/vitest/vitest.mjs run tests/integration/replay.test.ts --project integration`. Result: **1 failed / 5 tests**. The BullMQ lifecycle test left all three attempts `RUNNING` and the run `RUNNING`; PostgreSQL rejected the Worker’s `SyncAttempt.update()` calls.
+
+## Previous Findings Reassessment
+
+| Previous finding | Status after 02-11…02-15 | Evidence |
+|---|---|---|
+| CR-01 durable replay was process-local/no-op | **Partially resolved; remaining blocker** | Preview/plan/run rows and BullMQ enqueue now exist, but CR-01 through CR-04 below prevent reliable or authorized execution. |
+| CR-02 EvidenceBuild transition was impossible | **Resolved** | The temporal repair replaces the blanket trigger with the guarded `BUILDING -> PUBLISHED|FAILED` transition; the PostgreSQL publication witness succeeds. |
+| CR-03 idempotent observation recovery updated immutable observations | **Resolved** | Result and standings persistence use `ON CONFLICT DO NOTHING RETURNING`, then a unique-key select. |
+| CR-04 failed/cancelled source work could publish | **Resolved in rebuild; reintroduced in Worker lifecycle** | `isCompleteSuccessfulRun()` rejects terminal failures, but a delivered job can change a terminal run back to `SUCCEEDED` (CR-06). |
+| CR-05 replay UI sent offset-less datetimes | **Resolved** | The UI freezes `datetime-local` values as explicit UTC ISO instants before preview. |
+| CR-06 competition path was hardcoded to PL | **Resolved** | The allowlist is passed to result/standings URLs and matched in response schemas. |
+| CR-07 persistence lost timezone semantics | **Resolved for Phase-2 evidence fields** | The forward migration and Prisma schema use `TIMESTAMPTZ(3)`; PostgreSQL session-timezone coverage is present. |
+| WR-01 object values rendered as `[object Object]` | **Resolved** | The shared discriminated evidence contract renders named fields and units. |
+| WR-02 missing provenance left a computed value visible | **Resolved, with collision risk remaining** | Projection nulls an affected value, but WR-01 below still uses an ambiguous provenance join key. |
+| WR-03 half-open workers lacked a probe lease | **Not resolved in the live replay path** | The generic runner has a lease, but production replay jobs hard-code `CLOSED` and never supply a registry (CR-05). |
+| WR-04 tests replaced production boundaries | **Partially resolved** | A real proxy/Redis/PostgreSQL test was added, but the replay integration test now fails and does not cover authorization or delivery recovery. |
 
 ## Narrative Findings (AI reviewer)
 
 ## Critical Issues
 
-### CR-01: Replay API reports queued work without persisting or enqueueing anything
+### CR-01: SyncAttempt append-only trigger prevents every replay from reaching a terminal state
 
-**File:** `apps/api/src/modules/replay/replay.service.ts:35-78`
+**Classification:** BLOCKER
+**File:** `workers/data-sync/src/queues/index.ts:81-89`
+**Issue:** The Worker creates a `RUNNING` attempt, then updates it to `SUCCEEDED` or `FAILED`. `SyncAttempt_append_only` in `20260829_historical_evidence/migration.sql:68` forbids every update and no gap-closure migration removes or narrows that trigger. Consequently, successful executions cannot record success; the catch path cannot record failure either. The real container test demonstrates the effect: all three attempts remain `RUNNING` and the `SyncRun` remains `RUNNING`.
 
-**Issue:** The production Nest service creates only process-local `Map` records. `queue()` never inserts `ReplayPlan`/`SyncRun`, never calls the worker replay service, and never adds BullMQ jobs. It nevertheless returns `queued: true`. Every preview/status disappears on restart or another API replica, and an operator receives a false success while no replay occurs. This violates PIPE-05/06 and the durable/idempotent replay contract.
+**Fix:** Replace the blanket `SyncAttempt` trigger with a database-guarded state transition (for example `RUNNING -> SUCCEEDED|FAILED` only, while identity/start fields stay immutable), then add a PostgreSQL test covering both Worker terminal branches.
 
-**Fix:** Replace the in-memory engine with a repository-backed orchestration service: persist preview/version and replay plans transactionally, create versioned `SyncRun` rows, then enqueue deterministic BullMQ job IDs. Status must query durable rows. Keep duplicate and stale-preview checks as database constraints/optimistic predicates.
+### CR-02: Public Next replay proxy bypasses the operator authorization boundary
 
-### CR-02: Append-only trigger makes evidence publication impossible
+**Classification:** BLOCKER
+**File:** `apps/web/app/internal-api/pipeline/replay/[[...path]]/route.ts:3-15`
+**Issue:** Any caller of the public Next route receives the server-side `OPERATOR_CREDENTIAL` forwarded as `x-operator-credential`. The Nest `OperatorGuard` protects the direct controller, but this proxy supplies valid credentials without checking an authenticated user, role, or session. An unauthenticated internet caller can therefore create replays, consume provider quota, and inspect replay status.
 
-**File:** `packages/database/prisma/migrations/20260829_historical_evidence/migration.sql:68`
+**Fix:** Protect the Next route with the application’s real operator session/role check before forwarding. Do not use a server-held API credential as proof that the browser caller is an operator; return 404/403 before proxying for unauthenticated callers. Add an integration test for an unauthenticated proxy request.
 
-**Issue:** `EvidenceBuild_append_only` rejects every `UPDATE`, but the rebuild workflow creates a `BUILDING` row and then calls `publishBuild()` to transition it to `PUBLISHED` (`workers/data-sync/src/jobs/evidence-rebuild.ts:55-61`). Against the real database that transition must fail, so no build can become visible. The mock transaction used by tests does not execute this trigger and masks the defect.
+### CR-03: Queue-delivery failure strands committed replay runs permanently
 
-**Fix:** Use a narrowly scoped state-transition trigger that permits `BUILDING -> PUBLISHED|FAILED` while forbidding changes to identity/content fields and all changes after publication, or model publication as an append-only publication row/event and select it through a join.
+**Classification:** BLOCKER
+**File:** `apps/api/src/modules/replay/replay.service.ts:79-99`
+**Issue:** `queue()` commits the preview consumption, `ReplayPlan`, and every `SyncRun` before enqueueing. If a queue add fails after the first run (or before any run), the catch merely marks that one row `RETRYABLE` and returns 503. A repeated confirmation takes the duplicate branch at lines 83-85 and never retries delivery because lines 98-99 enqueue only non-duplicates. Multi-unit plans can therefore run partially while the remaining durable runs remain `PENDING` forever.
 
-### CR-03: Idempotent observation inserts conflict with the append-only trigger
+**Fix:** Use a transactional outbox/delivery ledger and a retrying dispatcher, or make duplicate confirmations enqueue every run whose durable delivery state is not `DELIVERED`. Track delivery per run, make the repair idempotent with the deterministic job ID, and test failure after the first of two enqueues followed by recovery.
 
-**File:** `workers/data-sync/src/jobs/results.ts:88-104`
+### CR-04: The replay UI defaults to an endpoint the Worker deliberately dead-letters
 
-**Issue:** Both result ingestion here and standings ingestion at `workers/data-sync/src/jobs/standings.ts:77-83` use `ON CONFLICT ... DO UPDATE` to recover the existing observation ID. `SourceObservation_append_only` rejects all updates (`migration.sql:40`), including this no-op update. Reprocessing an identical provider payload therefore fails instead of converging, breaking the mandatory idempotency guarantee.
+**Classification:** BLOCKER
+**File:** `apps/web/app/internal/pipeline/replay/page.tsx:85`
+**Issue:** The visible endpoint selector defaults to `FIXTURES`, and `ReplayService` explicitly accepts `FIXTURES` (`replay.service.ts:8,40`). `startReplayWorker()` only routes `RESULTS` and `STANDINGS`; all other values throw `UNSUPPORTED_REPLAY_ENDPOINT` (`workers/data-sync/src/main.ts:18-20`). Thus a normal first-time replay submission is accepted and queued, then guaranteed to exhaust retries and dead-letter.
 
-**Fix:** Use `INSERT ... ON CONFLICT DO NOTHING RETURNING id`, then select the existing ID by the unique key when no row is returned, all under the existing advisory lock/transaction. Do not issue any update to immutable observations.
+**Fix:** Implement a fixtures replay handler with the same durable completion semantics, or remove `FIXTURES` from the API allowlist and UI until it exists. Add a production Worker test for every selectable endpoint.
 
-### CR-04: Failed and cancelled source runs are treated as publishable evidence
+### CR-05: Live replay bypasses provider circuit state, quota state, and HALF_OPEN ownership
 
-**File:** `workers/data-sync/src/jobs/evidence-rebuild.ts:43-67`
+**Classification:** BLOCKER
+**File:** `workers/data-sync/src/jobs/results.ts:71-73`
+**Issue:** The generic gate now supports a registry-owned HALF_OPEN lease, but replay jobs pass `circuit: "CLOSED"` and do not pass a `CircuitProbeRegistry`; standings does the same at `standings.ts:71-72`. No production code constructs or wires `ProviderCircuitRegistry` into these paths. In parallel, preview evaluates fixed defaults (`availableCalls = 100`, `circuit = "CLOSED"`) rather than the persisted provider budget/circuit state (`replay.service.ts:57-64`). A replay can therefore be approved and issue provider calls while the real circuit is OPEN/HALF_OPEN or its allowance is exhausted.
 
-**Issue:** `isTerminal()` returns true for `FAILED` and `CANCELLED`. The rebuild then loads whatever facts happen to exist and publishes a complete build. “Terminal” is not equivalent to “complete”: failed/cancelled ingestion can leave a truncated source window. This silently turns partial data into authoritative evidence, directly violating D-14/D-16 and the plan requirement to publish only complete builds.
+**Fix:** Obtain the durable provider budget/circuit projection before preview and at execution, wire the registry/circuit policy through the actual Worker job inputs, and deny/defer before reservation when it is OPEN or a HALF_OPEN lease is unavailable. Expose only that verified state to the UI and cover it with two concurrent production Workers.
 
-**Fix:** Publish only from `SUCCEEDED` runs whose expected units/captures are complete. Project `FAILED`/`CANCELLED` as pending/limited failure and retain the previous published build. Add real-database tests for each terminal state.
+### CR-06: A redelivered job can revive FAILED or CANCELLED source work and make it publishable
 
-### CR-05: Replay form submits timestamps rejected by its own API
+**Classification:** BLOCKER
+**File:** `workers/data-sync/src/queues/index.ts:69-83`
+**Issue:** Only `SUCCEEDED` returns early. For a `FAILED` or `CANCELLED` run, the Worker still executes provider I/O and then unconditionally updates the run to `SUCCEEDED` at line 82. Once CR-01 is repaired (or if a database role bypasses the trigger), a stale/redelivered/manual BullMQ job can convert failed or cancelled source work into a complete successful run. The evidence gate then accepts it, defeating the repaired failed/cancelled publication contract.
 
-**File:** `apps/web/app/internal/pipeline/replay/page.tsx:63`
-
-**Issue:** `datetime-local` produces values such as `2026-08-01T00:00` with no offset. The API accepts only seconds plus trailing `Z` (`apps/api/src/modules/replay/replay.service.ts:7,26`). The production preview request therefore always returns `INVALID_WINDOW`. E2E tests stub the endpoint and never validate the submitted payload, so they pass despite the broken journey.
-
-**Fix:** Convert both form values to explicit UTC ISO strings before `JSON.stringify` (and document the interpretation), or accept/normalize the documented local input server-side. Add an E2E assertion on the intercepted request body and an integration test through the real proxy/API.
-
-### CR-06: Provider client cannot ingest six of the seven allowlisted competitions
-
-**File:** `packages/football-data/src/providers/football-data-org/client.ts:43-51`
-
-**Issue:** Completed-result fetches always call `/competitions/PL/...`; result schemas also require `competition.code === "PL"` (`schema.ts:30-33`). Replay accepts PD, BL1, SA, FL1, CL and EL, but those replays will either fetch Premier League data under another competition identity or reject a legitimate provider response. The platform's top-five/UEFA scope is therefore incorrect.
-
-**Fix:** Include an allowlisted competition code in `RequestedDateWindow` (or a dedicated request DTO), build the URL from it, and validate that the response competition matches the request rather than a PL literal. Cover every configured competition.
-
-### CR-07: Evidence tables lose timezone semantics at the persistence boundary
-
-**File:** `packages/database/prisma/migrations/20260829_historical_evidence/migration.sql:6-13`
-
-**Issue:** All evidence instants are declared `TIMESTAMP(3)` (without time zone), while writes cast inputs to `timestamptz` and the phase contract requires exact UTC dual-time semantics. PostgreSQL converts `timestamptz` to the session timezone when storing into `timestamp`; later comparisons/casts can represent a different instant when database/session timezone changes. Prisma fields likewise lack `@db.Timestamptz`. This can include or exclude facts at the wrong cutoff.
-
-**Fix:** Migrate every instant (`observedAt`, `effectiveAt`, cutoff, window bounds, source timestamps, publication times) to `TIMESTAMPTZ(3)` and annotate Prisma with `@db.Timestamptz(3)`. Set/database-test non-UTC session timezones to prove invariant cutoff behavior.
+**Fix:** Lock the run in the initial transaction and proceed only from `PENDING`/`RUNNING`; treat `FAILED`, `CANCELLED`, and `SUCCEEDED` as terminal no-ops. Make the terminal transition conditional in SQL/Prisma and add redelivery tests for both terminal failure states.
 
 ## Warnings
 
-### WR-01: Evidence UI renders structured form values as `[object Object]`
+### WR-01: Component provenance joins do not include the payload identity
 
-**File:** `apps/web/app/teams/[teamId]/evidence/page.tsx:30-42`
+**Classification:** WARNING
+**File:** `workers/data-sync/src/jobs/evidence-rebuild.ts:131`
+**Issue:** Staged component `sourceTimes` retains only `fixtureId`, `effectiveAt`, and `observedAt`. The API later finds a receipt input by that same three-field tuple (`apps/api/src/modules/evidence/evidence.service.ts:71-76`), even though the immutable source identity also includes `payloadHash` and `payloadBytes`. Two corrections for the same fixture captured at the same instant can be projected with the wrong receipt payload while still appearing valid.
 
-**Issue:** The API exposes each component's persisted `value`; `form5`/`form10` are staged from `item.value`, currently numeric, but other components such as goal rates and H2H are objects. The generic component renderer at line 77 calls `String(value.value)`, producing `[object Object]`, an unlabeled and unusable result contrary to the UI contract.
-
-**Fix:** Define a discriminated DTO per component and render named fields/units. Reject unknown component shapes rather than string-coercing arbitrary JSON.
-
-### WR-02: Missing provenance does not actually block computed values
-
-**File:** `apps/api/src/modules/evidence/evidence.service.ts:59-84`
-
-**Issue:** When component `sourceTimes` cannot be matched to receipt inputs, `sourceRefs()` returns `[]`, but the component's non-null value remains exposed. Unless persistence independently set `MISSING_TIMESTAMP`, the API/UI shows a computed value alongside only a page-level provenance warning. D-19/D-20 require the affected component itself to be unavailable.
-
-**Fix:** Validate receipt/source consistency at projection time. If any required source reference is absent or malformed, set that component's value to `null`, limitation to `MISSING_TIMESTAMP`, and overall state to `LIMITED`.
-
-### WR-03: Half-open circuits are allowed through without probe ownership
-
-**File:** `workers/data-sync/src/ingestion/runner.ts:48-69`
-
-**Issue:** The gate denies only `OPEN`; every `HALF_OPEN` job proceeds directly and does not call `ProviderCircuitRegistry.acquireProbe()`. Concurrent workers can therefore all issue provider calls during half-open recovery, defeating the single-probe contract and causing incorrect circuit transitions.
-
-**Fix:** Require a probe lease for `HALF_OPEN`, deny/defer when acquisition fails, and release it in `finally`. Integrate the registry into the runner rather than passing only a state string.
-
-### WR-04: Tests replace the production boundaries and miss the principal failures
-
-**File:** `tests/e2e/pipeline-replay.spec.ts:20-42`
-
-**Issue:** Replay E2E intercepts every internal API call and accepts any request body, so it cannot detect the invalid datetime format, missing provider-state endpoint, missing durable writes, or missing BullMQ enqueue. Temporal publication tests use an in-memory transaction whose `publishBuild` mutates freely, so they cannot detect the database trigger conflict. These are reliability defects in the tests, not merely coverage preferences.
-
-**Fix:** Retain narrow UI fixture tests, but add one browser/integration journey through the real Next proxy and Nest service with PostgreSQL/Redis Testcontainers. Exercise duplicate payload ingestion and `BUILDING -> PUBLISHED` against the checked-in migration.
+**Fix:** Persist `payloadHash` (and preferably `payloadBytes`) in each component source reference, require an exact identity match in `sourceRefs()`, and add a collision fixture with the same fixture/effective/observed times but two different hashes.
 
 ---
 
-_Reviewed: 2026-08-30T09:30:00Z_  
-_Reviewer: the agent (gsd-code-reviewer)_  
+_Reviewed: 2026-08-31T03:06:45Z_
+_Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_

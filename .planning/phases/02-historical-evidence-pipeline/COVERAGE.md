@@ -6,6 +6,10 @@ scheduling and budget policy; the endpoint surface is the variant detail within
 that lane. Every live call still requires a durable reservation before provider
 construction or network I/O.
 
+Upcoming-fixture replay is competition-bound across PL, PD, BL1, SA, FL1, CL,
+and EL: each request carries its exact bounded date window, and the adapter
+rejects any provider envelope that reports a different competition.
+
 ## Coverage decisions
 
 | capability | decision | reason |

@@ -154,9 +154,28 @@ describe("football-data.org provider contract", () => {
     expect(fetcher.mock.calls[1]?.[0]).toEqual(expect.stringContaining(`/competitions/${competitionCode}/standings`));
   });
 
+  it.each(competitionCodes)("routes %s fixture requests with exact bounded coverage", async (competitionCode) => {
+    const payload = { ...validPayload, competition: { ...validPayload.competition, code: competitionCode } };
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 }));
+    const client = new FootballDataOrgClient({ apiToken: "token", fetcher });
+
+    const fixtures = await client.fetchCompetitionFixtures({
+      competitionCode,
+      dateFrom: "2026-09-01",
+      dateTo: "2026-09-07",
+    });
+
+    expect(fetcher).toHaveBeenCalledExactlyOnceWith(
+      `https://api.football-data.org/v4/competitions/${encodeURIComponent(competitionCode)}/matches?status=SCHEDULED&dateFrom=2026-09-01&dateTo=2026-09-07`,
+      expect.any(Object),
+    );
+    expect(fixtures).toEqual([expect.objectContaining({ competitionExternalId: competitionCode })]);
+  });
+
   it("rejects unknown competition codes before fetch", async () => {
     const fetcher = vi.fn();
     const client = new FootballDataOrgClient({ apiToken: "token", fetcher });
+    await expect(client.fetchCompetitionFixtures({ competitionCode: "UNKNOWN", dateFrom: "2026-08-01", dateTo: "2026-08-31" } as never)).rejects.toThrow(ProviderPayloadError);
     await expect(client.fetchCompetitionResults({ competitionCode: "UNKNOWN", dateFrom: "2026-08-01", dateTo: "2026-08-31" } as never)).rejects.toThrow(ProviderPayloadError);
     await expect(client.fetchCompetitionStandings({ competitionCode: "UNKNOWN" } as never)).rejects.toThrow(ProviderPayloadError);
     expect(fetcher).not.toHaveBeenCalled();
@@ -169,6 +188,22 @@ describe("football-data.org provider contract", () => {
     });
     await expect(client.fetchCompetitionResults({ competitionCode: "PD", dateFrom: "2026-08-01", dateTo: "2026-08-31" })).rejects.toThrow(ProviderPayloadError);
     await expect(client.fetchCompetitionStandings({ competitionCode: "PD" })).rejects.toThrow(ProviderPayloadError);
+  });
+
+  it("redacts secret-bearing failures from competition fixture requests", async () => {
+    const token = "COMPETITION_FIXTURE_SECRET";
+    const client = new FootballDataOrgClient({ apiToken: token, fetcher: async () => { throw new Error(token); } });
+
+    const error = await client.fetchCompetitionFixtures({
+      competitionCode: "EL",
+      dateFrom: "2026-09-01",
+      dateTo: "2026-09-07",
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
+    expect(String((error as Error).message)).toBe("football-data.org request failed");
+    expect(JSON.stringify(error)).not.toContain(token);
   });
 
   it("normalizes standings as one atomic snapshot with envelope provenance", () => {

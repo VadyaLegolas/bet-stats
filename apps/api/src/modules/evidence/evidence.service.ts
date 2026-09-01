@@ -52,7 +52,8 @@ function parseCutoff(value: unknown): { requested: string; utc: string; time: nu
 function asReceipt(value: unknown): EvidenceReceipt | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<EvidenceReceipt>;
-  return typeof candidate.resolvedAsOf === "string" && Array.isArray(candidate.inputs) && candidate.sourceWindow !== undefined ? candidate as EvidenceReceipt : null;
+  if (typeof candidate.resolvedAsOf !== "string" || !Array.isArray(candidate.inputs) || candidate.sourceWindow === undefined) return null;
+  return { ...candidate, inputs: candidate.inputs.filter(isEvidenceSourceRef) } as EvidenceReceipt;
 }
 
 function sourceRefs(component: PublishedEvidenceComponent, receipt: EvidenceReceipt | null): readonly EvidenceSourceRef[] | null {

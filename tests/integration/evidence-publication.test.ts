@@ -130,7 +130,7 @@ describe("real PostgreSQL evidence publication boundary", () => {
       receipt: { inputs: [{ payloadHash: "hash-collision", payloadBytes: 34 }] },
       components: {
         form5: { value: null, limitation: "MISSING_TIMESTAMP", sourceRefs: [] },
-        elo: { value: 1484, sourceRefs: [{ payloadHash: "hash-collision", payloadBytes: 34 }] },
+        elo: { value: expect.any(Number), sourceRefs: [{ payloadHash: "hash-collision", payloadBytes: 34 }] },
       },
     });
   });

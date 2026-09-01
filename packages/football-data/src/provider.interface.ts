@@ -55,6 +55,8 @@ export interface NormalizedResult {
 export type NormalizedCompletedResult = NormalizedResult;
 
 export interface FixtureProvider {
+  fetchCompetitionFixtures(window: RequestedDateWindow): Promise<readonly NormalizedFixture[]>;
+  /** @deprecated Use fetchCompetitionFixtures with an explicit competition and date window. */
   fetchPremierLeagueFixtures(): Promise<readonly NormalizedFixture[]>;
 }
 

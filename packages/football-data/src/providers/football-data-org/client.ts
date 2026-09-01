@@ -1,5 +1,6 @@
 import { isConfiguredCompetitionCode, type FixtureProvider, type NormalizedFixture, type NormalizedResult, type NormalizedStandingSnapshot, type RequestedDateWindow, type ResultProvider, type StandingsProvider, type StandingsRequestCoverage } from "../../provider.interface.js";
 import { normalizeCompetitionMatches, normalizeCompetitionResults, normalizeCompetitionStandings, ProviderPayloadError } from "./normalize.js";
+import { requestedCompetitionMatchesSchema } from "./schema.js";
 
 type Fetcher = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
@@ -24,19 +25,30 @@ export class FootballDataOrgClient implements FixtureProvider, ResultProvider, S
     this.#now = options.now ?? (() => new Date());
   }
 
-  async fetchPremierLeagueFixtures(): Promise<readonly NormalizedFixture[]> {
+  async fetchCompetitionFixtures(window: RequestedDateWindow): Promise<readonly NormalizedFixture[]> {
     try {
-      const response = await this.#fetcher("https://api.football-data.org/v4/competitions/PL/matches?status=SCHEDULED", {
+      assertConfiguredCompetition(window.competitionCode);
+      const query = new URLSearchParams({ status: "SCHEDULED", dateFrom: window.dateFrom, dateTo: window.dateTo });
+      const response = await this.#fetcher(`https://api.football-data.org/v4/competitions/${encodeURIComponent(window.competitionCode)}/matches?${query}`, {
         headers: { "X-Auth-Token": this.#apiToken },
         signal: AbortSignal.timeout(this.#timeoutMs),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return normalizeCompetitionMatches(await response.json(), this.#now());
+      const payload: unknown = await response.json();
+      if (!requestedCompetitionMatchesSchema(window.competitionCode).safeParse(payload).success) {
+        throw new ProviderPayloadError("Invalid football-data.org competition matches payload");
+      }
+      return normalizeCompetitionMatches(payload, this.#now());
     } catch (error) {
       if (error instanceof ProviderPayloadError) throw error;
       // Provider/network errors may echo request headers; do not retain them on the public error.
       throw new Error("football-data.org request failed");
     }
+  }
+
+  fetchPremierLeagueFixtures(): Promise<readonly NormalizedFixture[]> {
+    const date = this.#now().toISOString().slice(0, 10);
+    return this.fetchCompetitionFixtures({ competitionCode: "PL", dateFrom: date, dateTo: date });
   }
 
 

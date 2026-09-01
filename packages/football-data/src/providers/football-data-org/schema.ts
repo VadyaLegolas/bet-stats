@@ -11,11 +11,18 @@ export const footballDataMatchSchema = z.object({
 }).passthrough();
 
 export const competitionMatchesSchema = z.object({
-  competition: z.object({ code: z.literal("PL"), name: z.string().min(1) }).passthrough(),
+  competition: z.object({ code: z.string().min(1), name: z.string().min(1) }).passthrough(),
   matches: z.array(footballDataMatchSchema),
 }).passthrough();
 
 export type FootballDataCompetitionMatches = z.infer<typeof competitionMatchesSchema>;
+
+export function requestedCompetitionMatchesSchema(competitionCode: string) {
+  return competitionMatchesSchema.refine(
+    (value) => value.competition.code === competitionCode,
+    { message: "Competition response does not match request", path: ["competition", "code"] },
+  );
+}
 
 export const footballDataFinishedMatchSchema = footballDataMatchSchema.extend({
   status: z.literal("FINISHED"),

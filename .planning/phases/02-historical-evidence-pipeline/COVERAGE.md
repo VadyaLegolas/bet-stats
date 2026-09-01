@@ -27,7 +27,7 @@ rejects any provider envelope that reports a different competition.
 
 | Endpoint surface | Adapter method | Capability key | Endpoint priority lane | Reservation class | Normalized DTO | Durable observation/fact | Automated witness |
 |---|---|---|---|---|---|---|---|
-| upcoming fixtures (PL, PD, BL1, SA, FL1, CL, EL) | `fetchCompetitionFixtures` | `fixtures.read` | critical | fixture-continuity | `NormalizedFixture` | immutable provider observation + canonical fixture | provider contract: `tests/unit/provider-contract.test.ts`; replay boundary: `tests/integration/replay-boundary.test.ts` |
+| upcoming fixtures | `fetchCompetitionFixtures` | `fixtures.read` | critical | fixture-continuity | `NormalizedFixture` | immutable provider observation + canonical fixture | provider contract: `tests/unit/provider-contract.test.ts`; replay boundary: `tests/integration/replay-boundary.test.ts` |
 | completed results | `fetchCompletedResults` | `results.read` | critical | result-continuity | `NormalizedCompletedResult` | immutable provider observation + versioned completed-result fact | `tests/integration/pipeline-jobs.test.ts` |
 | standings | `fetchStandings` | `standings.read` | standard | standings | `NormalizedStandingsSnapshot` | immutable provider observation + atomic standings snapshot | `tests/integration/temporal-provenance.test.ts` |
 

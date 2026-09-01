@@ -11,7 +11,9 @@ SELECT * FROM (
   FROM "ResultVersion" rv
   JOIN "Fixture" f ON f.id = rv."fixtureId"
   JOIN "SourceObservation" so ON so.id = rv."observationId"
-  WHERE rv."effectiveAt" <= $1::timestamptz AND rv."observedAt" <= $1::timestamptz
+  WHERE rv."effectiveAt" <= $1::timestamptz
+    AND rv."observedAt" <= $1::timestamptz
+    AND (f."homeTeamId" = $2 OR f."awayTeamId" = $2)
 ) visible WHERE rank = 1
 ORDER BY "kickoffUtc", "observedAt", "fixtureId"`;
 
@@ -80,7 +82,7 @@ export function createPrismaEvidenceRebuildDatabase(client: PrismaClient): Evide
         where: { teamId: key.teamId, cutoff: new Date(key.cutoff), configHash: key.configHash, syncRunId: key.syncRunId },
       }),
       loadEligibleMatches: async (teamId, cutoff, statement) => {
-        const rows = await transaction.$queryRawUnsafe<EligibleResultRow[]>(statement, new Date(cutoff));
+        const rows = await transaction.$queryRawUnsafe<EligibleResultRow[]>(statement, new Date(cutoff), teamId);
         return rows.map((row) => {
           const isHome = row.homeTeamId === teamId;
           const goalsFor = isHome ? row.homeGoals : row.awayGoals;

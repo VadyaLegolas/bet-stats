@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 current_phase: 2
 current_phase_name: Historical Evidence Pipeline
 status: executing
-stopped_at: Completed 02-21-PLAN.md
-last_updated: "2026-09-01T06:30:20.430Z"
+stopped_at: Completed 02-22-PLAN.md
+last_updated: "2026-09-01T06:49:59.917Z"
 last_activity: 2026-09-01
 last_activity_desc: Phase 2 execution started
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 34
-  completed_plans: 33
+  completed_plans: 34
   percent: 17
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-08-29)
 ## Current Position
 
 Phase: 2 (Historical Evidence Pipeline) — EXECUTING
-Plan: 2 of 22
+Plan: 3 of 22
 Status: Ready to execute
 Last activity: 2026-09-01 — Phase 2 execution started
 
@@ -69,6 +69,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 01 P11 | 23min | 2 tasks | 10 files |
 | Phase 01 P12 | 34min | 2 tasks | 7 files |
 | Phase 02 P21 | 9min | 2 tasks | 5 files |
+| Phase 02 P22 | 19min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 1]: Betting analytics remain server-gated while neutral fixture discovery stays public.
 - [Phase 2]: Component provenance matches receipt inputs on fixture, effective time, observed time, payload hash, and payload byte count.
 - [Phase 2]: Malformed receipt inputs are discarded at projection time so only dependent components fail closed while valid siblings remain visible.
+- [Phase 2]: The live evidence gate owns a uniquely named PostgreSQL container and exact child PIDs, and cleanup targets only those recorded resources.
+- [Phase 2]: Browser assertions compare the production Nest payload with the Next DOM without installing any request interception.
 
 ### Pending Todos
 
@@ -102,6 +105,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-01T06:30:20.352Z
-Stopped at: Completed 02-21-PLAN.md
+Last session: 2026-09-01T06:49:59.826Z
+Stopped at: Completed 02-22-PLAN.md
 Resume file: None

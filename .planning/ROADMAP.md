@@ -95,7 +95,7 @@ Plans:
 - [x] 02-19-PLAN.md
 - [x] 02-20-PLAN.md
 - [x] 02-21-PLAN.md
-- [ ] 02-22-PLAN.md
+- [x] 02-22-PLAN.md
 
 - [x] 02-11-PLAN.md
 - [x] 02-12-PLAN.md
@@ -215,7 +215,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Trustworthy Fixture Discovery | 12/12 | Complete    | 2026-08-29 |
-| 2. Historical Evidence Pipeline | 21/22 | In Progress|  |
+| 2. Historical Evidence Pipeline | 22/22 | In Progress|  |
 | 3. Forecast and Manual Value Workbench | 0/TBD | Not started | - |
 | 4. Settlement and Evidence Scorecard | 0/TBD | Not started | - |
 | 5. Provider-Aware Coverage and Enrichment | 0/TBD | Not started | - |

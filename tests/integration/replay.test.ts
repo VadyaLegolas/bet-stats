@@ -1,3 +1,4 @@
+import "../../apps/api/node_modules/reflect-metadata/Reflect.js";
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
@@ -16,6 +17,8 @@ import { ReplayController } from "../../apps/api/src/modules/replay/replay.contr
 import { OperatorGuard } from "../../apps/api/src/modules/reconciliation/operator.guard.js";
 import { createReplayQueue, createReplayWorker } from "../../workers/data-sync/src/queues/index.js";
 import { createDurableProviderCircuitRegistry } from "../../workers/data-sync/src/resilience/circuits.js";
+import { NestFactory } from "../../apps/api/node_modules/@nestjs/core/index.js";
+import { AppModule } from "../../apps/api/src/app.module.js";
 
 const request = { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-01T00:00:00.000Z", to: "2026-08-03T00:00:00.000Z" };
 const databaseRoot = resolve(import.meta.dirname, "../../packages/database");
@@ -433,6 +436,43 @@ describe("durable bounded replay", () => {
     const service = createReplayService({ database: prisma });
     const preview = await service.preview({ ...request, from: "2026-08-11T00:00:00.000Z", to: "2026-08-11T00:00:00.000Z" });
     await expect(service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion, newRevision: true, reason: "" })).rejects.toMatchObject({ code: "REVISION_REASON_REQUIRED" });
+  });
+
+  it("returns disclosure-safe HTTP validation codes for replay and evidence", async () => {
+    process.env.DATABASE_URL = databaseUrl;
+    process.env.OPERATOR_CREDENTIAL = "http-boundary-credential";
+    const app = await NestFactory.create(AppModule, { logger: false });
+    await app.listen(0, "127.0.0.1");
+    const address = app.getHttpServer().address() as { port: number };
+    const origin = `http://127.0.0.1:${address.port}`;
+    const secret = "postgresql://operator:password@private.example/database";
+    try {
+      const replay = await fetch(`${origin}/internal/pipeline/replay/preview`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-operator-credential": "http-boundary-credential", "x-operator-actor": "integration-operator" },
+        body: JSON.stringify({ ...request, provider: secret }),
+      });
+      expect(replay.status).toBe(400);
+      const replayBody = await replay.json();
+      expect(replayBody).toEqual({ code: "NOT_ALLOWED" });
+
+      const reason = await fetch(`${origin}/internal/pipeline/replay/queue`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-operator-credential": "http-boundary-credential", "x-operator-actor": "integration-operator" },
+        body: JSON.stringify({ newRevision: true, reason: "" }),
+      });
+      expect(reason.status).toBe(400);
+      const reasonBody = await reason.json();
+      expect(reasonBody).toEqual({ code: "REVISION_REASON_REQUIRED" });
+
+      const evidence = await fetch(`${origin}/teams/%20/evidence?asOf=${encodeURIComponent(secret)}`);
+      expect(evidence.status).toBe(400);
+      const evidenceBody = await evidence.json();
+      expect(evidenceBody).toEqual({ code: "INVALID_AS_OF" });
+      expect(JSON.stringify([replayBody, reasonBody, evidenceBody])).not.toContain(secret);
+    } finally {
+      await app.close();
+    }
   });
 
   it("keeps replay endpoints guarded and exposes only classified state", async () => {

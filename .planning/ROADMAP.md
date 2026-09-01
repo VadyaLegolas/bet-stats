@@ -97,6 +97,16 @@ Plans:
 - [x] 02-21-PLAN.md
 - [x] 02-22-PLAN.md
 
+**Wave 19** *(gap closure; blocked on Wave 18 completion)*
+
+- [ ] 02-23-PLAN.md
+- [ ] 02-24-PLAN.md
+- [ ] 02-25-PLAN.md
+
+**Wave 20** *(blocked on Wave 19 completion)*
+
+- [ ] 02-26-PLAN.md
+
 - [x] 02-11-PLAN.md
 - [x] 02-12-PLAN.md
 - [x] 02-13-PLAN.md

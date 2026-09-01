@@ -6,11 +6,24 @@ scheduling and budget policy; the endpoint surface is the variant detail within
 that lane. Every live call still requires a durable reservation before provider
 construction or network I/O.
 
+## Coverage decisions
+
+| capability | decision | reason |
+|---|---|---|
+| upcoming fixtures | INTEGRATE | |
+| completed results | INTEGRATE | |
+| standings | INTEGRATE | |
+| lineups | OPT-OUT | Optional enrichment must not consume historical continuity headroom; scheduled for Phase 3. |
+| injuries | OPT-OUT | Optional enrichment remains outside the Phase 2 live path; scheduled for Phase 3. |
+| odds | OPT-OUT | MVP odds remain user-entered; provider odds are scheduled for Phase 5. |
+| secondary statistics | OPT-OUT | Additional match statistics follow the core evidence pipeline in Phase 3. |
+| fallback/enrichment endpoints | OPT-OUT | Fallback providers and broader enrichment require Phase 5 coverage and quota review. |
+
 ## Phase2EndpointCoverage
 
 | Endpoint surface | Adapter method | Capability key | Endpoint priority lane | Reservation class | Normalized DTO | Durable observation/fact | Automated witness |
 |---|---|---|---|---|---|---|---|
-| upcoming fixtures | `fetchPremierLeagueFixtures` | `fixtures.read` | critical | fixture-continuity | `NormalizedFixture` | immutable provider observation + canonical fixture | `tests/unit/provider-contract.test.ts` |
+| upcoming fixtures (PL, PD, BL1, SA, FL1, CL, EL) | `fetchCompetitionFixtures` | `fixtures.read` | critical | fixture-continuity | `NormalizedFixture` | immutable provider observation + canonical fixture | provider contract: `tests/unit/provider-contract.test.ts`; replay boundary: `tests/integration/replay-boundary.test.ts` |
 | completed results | `fetchCompletedResults` | `results.read` | critical | result-continuity | `NormalizedCompletedResult` | immutable provider observation + versioned completed-result fact | `tests/integration/pipeline-jobs.test.ts` |
 | standings | `fetchStandings` | `standings.read` | standard | standings | `NormalizedStandingsSnapshot` | immutable provider observation + atomic standings snapshot | `tests/integration/temporal-provenance.test.ts` |
 

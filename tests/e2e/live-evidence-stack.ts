@@ -8,6 +8,7 @@ import { createPrismaClient, type PrismaClient } from "../../packages/database/s
 
 export const LIVE_TEAM_ID = "live-evidence-home";
 export const LIVE_CUTOFF = "2026-09-01T12:00:00.000Z";
+export const LIVE_LATER_CUTOFF = "2026-09-02T12:00:00.000Z";
 export const LIVE_API_ORIGIN = "http://127.0.0.1:3211";
 export const LIVE_WEB_ORIGIN = "http://127.0.0.1:3210";
 

@@ -8,6 +8,7 @@ test("live published cutoff crosses PostgreSQL, Nest, Next, and the browser", as
   const evidence = await response.json() as { resolvedAsOfUtc: string };
 
   await page.goto(`/teams/${LIVE_TEAM_ID}/evidence?asOf=${encodeURIComponent(LIVE_CUTOFF)}`);
-  await expect(page.getByText(evidence.resolvedAsOfUtc, { exact: true })).toBeVisible();
+  const resolvedCutoff = page.locator("dt", { hasText: "Resolved cutoff (UTC)" }).locator("xpath=following-sibling::dd[1]");
+  await expect(resolvedCutoff).toHaveText(evidence.resolvedAsOfUtc);
   expect(evidence.resolvedAsOfUtc).toBe(LIVE_CUTOFF);
 });

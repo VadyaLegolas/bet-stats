@@ -88,6 +88,27 @@ describe("football-data.org provider contract", () => {
     expect(JSON.stringify(error)).not.toContain(token);
   });
 
+  it("routes a PD fixture request through its requested window and rejects a PL envelope", async () => {
+    const pdPayload = { ...validPayload, competition: { ...validPayload.competition, code: "PD" } };
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(pdPayload), { status: 200 }));
+    const client = new FootballDataOrgClient({ apiToken: "token", fetcher });
+    const window = { competitionCode: "PD" as const, dateFrom: "2026-09-01", dateTo: "2026-09-03" };
+
+    const fixtures = await client.fetchCompetitionFixtures(window);
+
+    expect(fixtures[0]?.competitionExternalId).toBe("PD");
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://api.football-data.org/v4/competitions/PD/matches?status=SCHEDULED&dateFrom=2026-09-01&dateTo=2026-09-03",
+      expect.any(Object),
+    );
+
+    const mismatched = new FootballDataOrgClient({
+      apiToken: "token",
+      fetcher: vi.fn(async () => new Response(JSON.stringify(validPayload), { status: 200 })),
+    });
+    await expect(mismatched.fetchCompetitionFixtures(window)).rejects.toThrow(ProviderPayloadError);
+  });
+
   it("normalizes a finished result with capture and requested coverage provenance", () => {
     const requestedWindow = { competitionCode: "PL" as const, dateFrom: "2026-08-01", dateTo: "2026-08-31" };
     expect(normalizeCompetitionResults(finishedPayload, requestedWindow, new Date("2026-08-30T10:00:00Z"))).toEqual([

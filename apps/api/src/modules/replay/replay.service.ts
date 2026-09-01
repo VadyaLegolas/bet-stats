@@ -116,6 +116,7 @@ export function createReplayService(options: { database: PrismaClient; enqueuer?
         await tx.$executeRawUnsafe("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", `replay-confirm:${previewId}`);
         const rows = await tx.$queryRawUnsafe<PreviewRow[]>(`SELECT id,"logicalKey",version,"previewVersion","normalizedInput","unitManifest",impact,"providerPolicyFingerprint","expiresAt","consumedAt",actor FROM "ReplayPreview" WHERE id=$1`, previewId); const preview = rows[0];
         if (!preview || preview.previewVersion !== previewVersion || preview.expiresAt <= now()) throw replayError("STALE_PREVIEW", 409);
+        await tx.$executeRawUnsafe("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", `replay-confirm-logical:${preview.logicalKey}`);
         const approvedPolicy = snapshotFromImpact(preview.impact.providerPolicy);
         if (!approvedPolicy || preview.providerPolicyFingerprint !== fingerprintReplayProviderPolicy(approvedPolicy)) throw replayError("STALE_PREVIEW", 409);
         let currentPolicy: ReplayProviderPolicySnapshot;
@@ -126,6 +127,14 @@ export function createReplayService(options: { database: PrismaClient; enqueuer?
         if (!currentDecision.allowed) throw replayError(currentDecision.reason, 409);
         const duplicate = await tx.$queryRawUnsafe<Array<{ id: string; revision: number }>>(`SELECT id,revision FROM "ReplayPlan" WHERE "previewId"=$1`, previewId);
         if (duplicate[0]) return { replayPlanId: duplicate[0].id, revision: duplicate[0].revision, duplicate: true, runs: [] as QueuedRun[] };
+        const logicalPlans = await tx.$queryRawUnsafe<Array<{ id: string; revision: number }>>(
+          `SELECT id,revision FROM "ReplayPlan" WHERE "logicalKey"=$1 ORDER BY revision DESC LIMIT 1`,
+          preview.logicalKey,
+        );
+        if (raw.newRevision !== true && logicalPlans[0]) {
+          await tx.$executeRawUnsafe(`UPDATE "ReplayPreview" SET "consumedAt"=$2 WHERE id=$1 AND "consumedAt" IS NULL`, preview.id, now());
+          return { replayPlanId: logicalPlans[0].id, revision: logicalPlans[0].revision, duplicate: true, runs: [] as QueuedRun[] };
+        }
         if (preview.consumedAt) throw replayError("STALE_PREVIEW", 409);
         const revisions = await tx.$queryRawUnsafe<Array<{ revision: number }>>(`SELECT COALESCE(MAX(revision),0)::int AS revision FROM "ReplayPlan" WHERE "logicalKey"=$1`, preview.logicalKey);
         const revision = raw.newRevision === true ? (revisions[0]?.revision ?? 0) + 1 : 1; const replayPlanId = randomUUID();

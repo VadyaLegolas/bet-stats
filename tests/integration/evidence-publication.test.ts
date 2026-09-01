@@ -203,4 +203,112 @@ describe("real PostgreSQL evidence publication boundary", () => {
       expect(refs.every((ref) => ref.fixtureId === "fixture")).toBe(true);
     }
   });
+
+  it("preserves cutoff equality, empty history, and identical-build idempotency", async () => {
+    const cutoff = "2026-08-31T12:00:00.000Z";
+    await prisma.team.create({
+      data: { id: "empty-team", name: "Empty Team", normalizedName: "empty team", countryCode: "GB" },
+    });
+
+    const temporalRows = [
+      {
+        suffix: "equal",
+        effectiveAt: cutoff,
+        observedAt: cutoff,
+        payloadHash: "hash-equal",
+      },
+      {
+        suffix: "effective-after",
+        effectiveAt: "2026-08-31T12:00:00.001Z",
+        observedAt: cutoff,
+        payloadHash: "hash-effective-after",
+      },
+      {
+        suffix: "observed-after",
+        effectiveAt: cutoff,
+        observedAt: "2026-08-31T12:00:00.001Z",
+        payloadHash: "hash-observed-after",
+      },
+    ] as const;
+    for (const row of temporalRows) {
+      await prisma.fixture.create({
+        data: {
+          id: `fixture-${row.suffix}`,
+          leagueId: "league",
+          seasonId: "season",
+          homeTeamId: "home",
+          awayTeamId: "away",
+          kickoffUtc: new Date("2026-08-31T09:00:00.000Z"),
+          status: "FINISHED",
+        },
+      });
+      await prisma.sourceObservation.create({
+        data: {
+          id: `obs-${row.suffix}`,
+          provider: "football-data.org",
+          endpointFamily: "RESULTS",
+          externalIdentity: `fixture-${row.suffix}`,
+          observedAt: new Date(row.observedAt),
+          payloadHash: row.payloadHash,
+          rawPayload: { score: "1-0" },
+          payloadBytes: 15,
+        },
+      });
+      await prisma.resultVersion.create({
+        data: {
+          id: `result-${row.suffix}`,
+          fixtureId: `fixture-${row.suffix}`,
+          observationId: `obs-${row.suffix}`,
+          effectiveAt: new Date(row.effectiveAt),
+          observedAt: new Date(row.observedAt),
+          homeGoals: 1,
+          awayGoals: 0,
+          status: "FINISHED",
+          revision: 1,
+        },
+      });
+    }
+    await seedRun("run-boundary", cutoff, "obs-equal", "hash-equal");
+
+    const rebuildDatabase = createPrismaEvidenceRebuildDatabase(prisma);
+    const input = {
+      database: rebuildDatabase,
+      teamId: "home",
+      cutoff,
+      configVersion: "evidence-v1",
+      configHash: "config-boundary",
+      syncRunId: "run-boundary",
+    } as const;
+    const first = await runEvidenceRebuild(input);
+    const firstBuild = await prisma.evidenceBuild.findUniqueOrThrow({
+      where: { id: first.buildId },
+      include: { components: { orderBy: { component: "asc" } } },
+    });
+    const receipt = firstBuild.components.find((component) => component.component === "receipt");
+    const receiptInputs = (receipt?.value as { inputs: Array<{ fixtureId: string }> }).inputs;
+
+    expect(receiptInputs.map((item) => item.fixtureId)).toEqual(["fixture", "fixture-equal"]);
+    for (const component of firstBuild.components) {
+      const refs = component.sourceTimes as Array<{ fixtureId: string }>;
+      expect(refs.every((ref) => receiptInputs.some((inputRef) => inputRef.fixtureId === ref.fixtureId))).toBe(true);
+    }
+
+    const second = await runEvidenceRebuild(input);
+    expect(second).toEqual(first);
+    expect(await prisma.evidenceBuild.count({ where: { teamId: "home", cutoff: new Date(cutoff), configHash: "config-boundary", syncRunId: "run-boundary" } })).toBe(1);
+    expect(await prisma.evidenceComponent.count({ where: { buildId: first.buildId } })).toBe(9);
+    expect(await prisma.evidenceBuild.findUniqueOrThrow({ where: { id: first.buildId }, include: { components: { orderBy: { component: "asc" } } } })).toEqual(firstBuild);
+
+    const empty = await runEvidenceRebuild({ ...input, teamId: "empty-team", configHash: "config-empty" });
+    const emptyBuild = await prisma.evidenceBuild.findUniqueOrThrow({
+      where: { id: empty.buildId },
+      include: { components: true },
+    });
+    const emptyReceipt = emptyBuild.components.find((component) => component.component === "receipt");
+    expect(emptyReceipt).toMatchObject({ sampleSize: 0, limitation: "EMPTY", value: { inputs: [] } });
+    for (const component of emptyBuild.components.filter((item) => item.component !== "receipt")) {
+      expect(component).toMatchObject({ sampleSize: 0, limitation: "NO_ELIGIBLE_HISTORY", sourceTimes: [] });
+      if (component.component !== "elo") expect(component.value).toBeNull();
+    }
+  });
 });

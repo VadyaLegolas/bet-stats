@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { ConflictException, Injectable, NotFoundException, OnModuleDestroy, Optional, ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, OnModuleDestroy, Optional, ServiceUnavailableException } from "@nestjs/common";
 import {
   createPrismaClient,
   createReplayProviderPolicyRepository,
@@ -43,7 +43,16 @@ export function createBullReplayEnqueuer(redisUrl: string, database: PrismaClien
   };
 }
 
-function replayError(code: string, status = 400): Error & { code: string; status: number } { return Object.assign(new Error(code), { code, status }); }
+function replayError(code: string, status = 400): Error & { code: string; status: number } {
+  const exception = status === 409
+    ? new ConflictException({ code })
+    : status === 404
+      ? new NotFoundException({ code })
+      : status === 503
+        ? new ServiceUnavailableException({ code })
+        : new BadRequestException({ code });
+  return Object.assign(exception, { code, status });
+}
 function normalize(input: Record<string, unknown>): ReplayInput {
   const value = { provider: String(input.provider ?? ""), competitionId: String(input.competitionId ?? ""), seasonId: String(input.seasonId ?? "").trim(), endpointFamily: String(input.endpointFamily ?? ""), from: String(input.from ?? ""), to: String(input.to ?? "") };
   if (!PROVIDERS.has(value.provider) || !COMPETITIONS.has(value.competitionId) || !ENDPOINTS.has(value.endpointFamily)) throw replayError("NOT_ALLOWED");

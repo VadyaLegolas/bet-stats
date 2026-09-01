@@ -1,4 +1,4 @@
-import { Injectable, type OnModuleDestroy } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import {
   evidenceComponentUnit,
@@ -39,7 +39,10 @@ export interface EvidenceRepository {
 export type EvidenceProjection = EvidenceProjectionDto;
 
 function contractError(code: string): Error & { code: string } {
-  return Object.assign(new Error(code), { code });
+  const exception = code === "UNPUBLISHED_BUILD" || code === "POST_CUTOFF_BUILD"
+    ? new ConflictException({ code })
+    : new BadRequestException({ code });
+  return Object.assign(exception, { code });
 }
 
 function parseCutoff(value: unknown): { requested: string; utc: string; time: number } {

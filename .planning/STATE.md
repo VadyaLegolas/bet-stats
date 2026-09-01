@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 current_phase: 2
 current_phase_name: Historical Evidence Pipeline
-status: "Phase 01 shipped — PR #1"
-stopped_at: Phase 2 gap closure executed; re-verification pending
-last_updated: "2026-08-31T03:00:56.763Z"
-last_activity: 2026-08-29
-last_activity_desc: Phase 2 planning complete
+status: executing
+stopped_at: Completed 02-21-PLAN.md
+last_updated: "2026-09-01T06:30:20.430Z"
+last_activity: 2026-09-01
+last_activity_desc: Phase 2 execution started
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 27
-  completed_plans: 27
+  total_plans: 34
+  completed_plans: 33
   percent: 17
 ---
 
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-08-29)
 
 ## Current Position
 
-Phase: 2 (Historical Evidence Pipeline) — READY TO EXECUTE
-Plan: Not started
-Status: Phase 01 shipped — PR #1
-Last activity: 2026-08-29 — Phase 2 planning complete
+Phase: 2 (Historical Evidence Pipeline) — EXECUTING
+Plan: 2 of 22
+Status: Ready to execute
+Last activity: 2026-09-01 — Phase 2 execution started
 
 Progress: [██░░░░░░░░] 17%
 
@@ -68,6 +68,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 01 P10 | 22min | 2 tasks | 8 files |
 | Phase 01 P11 | 23min | 2 tasks | 10 files |
 | Phase 01 P12 | 34min | 2 tasks | 7 files |
+| Phase 02 P21 | 9min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 1]: Provider identity is canonicalized independently of external IDs; ambiguity is resolved through append-only audited decisions.
 - [Phase 1]: Capability and request-budget authorization are durable, fail closed, and occur before provider calls.
 - [Phase 1]: Betting analytics remain server-gated while neutral fixture discovery stays public.
+- [Phase 2]: Component provenance matches receipt inputs on fixture, effective time, observed time, payload hash, and payload byte count.
+- [Phase 2]: Malformed receipt inputs are discarded at projection time so only dependent components fail closed while valid siblings remain visible.
 
 ### Pending Todos
 
@@ -99,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-08-31T03:00:56.325Z
-Stopped at: Phase 2 gap closure executed; re-verification pending
-Resume file: .planning/phases/02-historical-evidence-pipeline/02-VERIFICATION.md
+Last session: 2026-09-01T06:30:20.352Z
+Stopped at: Completed 02-21-PLAN.md
+Resume file: None

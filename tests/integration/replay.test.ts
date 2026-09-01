@@ -295,6 +295,33 @@ describe("durable bounded replay", () => {
     expect(await createReplayService({ database: prisma }).status(queued.replayPlanId)).toMatchObject({ state: "QUEUED", outcome: "PENDING", runs: [{ state: "PENDING" }, { state: "PENDING" }] });
   });
 
+  it("treats a fresh preview with the same logical key as duplicate work", async () => {
+    const input = { ...request, from: "2026-08-26T00:00:00.000Z", to: "2026-08-26T00:00:00.000Z" };
+    await prisma.providerCircuitState.upsert({
+      where: { provider_endpointFamily: { provider: input.provider, endpointFamily: input.endpointFamily } },
+      create: { id: randomUUID(), provider: input.provider, endpointFamily: input.endpointFamily, state: "CLOSED", updatedAt: new Date() },
+      update: { state: "CLOSED", openedAt: null, nextProbeAt: null, probeLeaseToken: null, probeLeaseExpiresAt: null, updatedAt: new Date() },
+    });
+    const enqueuer = { enqueue: vi.fn(async () => undefined) };
+    const service = createReplayService({ database: prisma, enqueuer });
+    const firstPreview = await service.preview(input, "operator-logical-key");
+    const first = await service.queue({ previewId: firstPreview.previewId, previewVersion: firstPreview.previewVersion });
+    const secondPreview = await service.preview(input, "operator-logical-key");
+
+    expect(secondPreview.previewId).not.toBe(firstPreview.previewId);
+    const [left, right] = await Promise.all([
+      service.queue({ previewId: secondPreview.previewId, previewVersion: secondPreview.previewVersion }),
+      service.queue({ previewId: secondPreview.previewId, previewVersion: secondPreview.previewVersion }),
+    ]);
+
+    expect(left).toMatchObject({ replayPlanId: first.replayPlanId, queued: false, duplicate: true, revision: 1 });
+    expect(right).toEqual(left);
+    expect(await prisma.replayPlan.count({ where: { logicalKey: (await prisma.replayPlan.findUniqueOrThrow({ where: { id: first.replayPlanId } })).logicalKey } })).toBe(1);
+    expect(await prisma.syncRun.count({ where: { replayPlanId: first.replayPlanId } })).toBe(1);
+    expect(await prisma.replayDelivery.count({ where: { syncRun: { replayPlanId: first.replayPlanId } } })).toBe(1);
+    expect(enqueuer.enqueue).toHaveBeenCalledTimes(1);
+  });
+
   it("recovers only the undelivered BullMQ unit after partial enqueue and service restart", async () => {
     const prefix = `delivery-restart-${process.pid}`;
     const bull = createBullReplayEnqueuer(redisUrl, prisma, prefix);

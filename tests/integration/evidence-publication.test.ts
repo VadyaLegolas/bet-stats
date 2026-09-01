@@ -134,4 +134,73 @@ describe("real PostgreSQL evidence publication boundary", () => {
       },
     });
   });
+
+  it("excludes unrelated fixtures before latest-visible result ranking", async () => {
+    await prisma.team.createMany({
+      data: [
+        { id: "unrelated-home", name: "Unrelated Home", normalizedName: "unrelated home", countryCode: "GB" },
+        { id: "unrelated-away", name: "Unrelated Away", normalizedName: "unrelated away", countryCode: "GB" },
+      ],
+      skipDuplicates: true,
+    });
+    await prisma.fixture.create({
+      data: {
+        id: "unrelated-fixture",
+        leagueId: "league",
+        seasonId: "season",
+        homeTeamId: "unrelated-home",
+        awayTeamId: "unrelated-away",
+        kickoffUtc: new Date("2026-08-29T09:00:00.000Z"),
+        status: "FINISHED",
+      },
+    });
+    await prisma.sourceObservation.create({
+      data: {
+        id: "obs-unrelated",
+        provider: "football-data.org",
+        endpointFamily: "RESULTS",
+        externalIdentity: "unrelated-fixture",
+        observedAt: new Date("2026-08-29T10:00:00.000Z"),
+        payloadHash: "hash-unrelated",
+        rawPayload: { score: "4-0" },
+        payloadBytes: 15,
+      },
+    });
+    await prisma.resultVersion.create({
+      data: {
+        id: "result-unrelated",
+        fixtureId: "unrelated-fixture",
+        observationId: "obs-unrelated",
+        effectiveAt: new Date("2026-08-29T09:00:00.000Z"),
+        observedAt: new Date("2026-08-29T10:00:00.000Z"),
+        homeGoals: 4,
+        awayGoals: 0,
+        status: "FINISHED",
+        revision: 99,
+      },
+    });
+    await seedRun("run-team-isolation", "2026-08-29T12:00:00.000Z", "obs-early", "hash-early");
+
+    const rebuildDatabase = createPrismaEvidenceRebuildDatabase(prisma);
+    const result = await runEvidenceRebuild({
+      database: rebuildDatabase,
+      teamId: "home",
+      cutoff: "2026-08-29T12:00:00.000Z",
+      configVersion: "evidence-v1",
+      configHash: "config-team-isolation",
+      syncRunId: "run-team-isolation",
+    });
+    const build = await prisma.evidenceBuild.findUniqueOrThrow({
+      where: { id: result.buildId },
+      include: { components: true },
+    });
+    const receipt = build.components.find((component) => component.component === "receipt");
+
+    expect(receipt?.value).toMatchObject({ inputs: [{ fixtureId: "fixture", payloadHash: "hash-early" }] });
+    expect(receipt?.sampleSize).toBe(1);
+    for (const component of build.components) {
+      const refs = component.sourceTimes as Array<{ fixtureId: string }>;
+      expect(refs.every((ref) => ref.fixtureId === "fixture")).toBe(true);
+    }
+  });
 });

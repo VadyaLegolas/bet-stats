@@ -103,11 +103,24 @@ export function parseEvidenceProjection(value: unknown): EvidenceProjectionDto {
   if (!value || typeof value !== "object") throw new Error("INVALID_EVIDENCE_PROJECTION");
   const candidate = value as EvidenceProjectionDto;
   if (typeof candidate.teamId !== "string" || typeof candidate.requestedAsOf !== "string" || typeof candidate.resolvedAsOfUtc !== "string" || !candidate.components || typeof candidate.components !== "object") throw new Error("INVALID_EVIDENCE_PROJECTION");
+  if (candidate.receipt !== null && (!candidate.receipt || !Array.isArray(candidate.receipt.inputs) || candidate.receipt.inputs.some((input) => !isEvidenceSourceRef(input)))) throw new Error("INVALID_EVIDENCE_RECEIPT");
   for (const [key, component] of Object.entries(candidate.components)) {
     if (!isEvidenceComponentKind(key) || !component || component.kind !== key || component.unit !== evidenceComponentUnit(key) || !Array.isArray(component.sourceRefs)) throw new Error("INVALID_EVIDENCE_COMPONENT");
+    if (component.sourceRefs.some((source) => !isEvidenceSourceRef(source))) throw new Error("INVALID_EVIDENCE_SOURCE_REF");
     if (component.value !== null && !validComponentValue(key, component.value)) throw new Error("INVALID_EVIDENCE_COMPONENT_VALUE");
   }
   return candidate;
+}
+
+export function isEvidenceSourceRef(value: unknown): value is EvidenceSourceRef {
+  if (!value || typeof value !== "object") return false;
+  const source = value as Partial<EvidenceSourceRef>;
+  return typeof source.fixtureId === "string" && source.fixtureId.length > 0
+    && typeof source.effectiveAt === "string" && Number.isFinite(Date.parse(source.effectiveAt))
+    && typeof source.observedAt === "string" && Number.isFinite(Date.parse(source.observedAt))
+    && (source.sourceUpdatedAt === null || typeof source.sourceUpdatedAt === "string")
+    && typeof source.payloadHash === "string" && source.payloadHash.length > 0
+    && typeof source.payloadBytes === "number" && Number.isInteger(source.payloadBytes) && source.payloadBytes >= 0;
 }
 
 function validComponentValue(kind: EvidenceComponentKind, value: unknown): boolean {

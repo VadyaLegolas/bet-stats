@@ -2,6 +2,7 @@ import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import {
   evidenceComponentUnit,
+  isEvidenceSourceRef,
   isEvidenceComponentKind,
   parseEvidenceProjection,
   type EvidenceComponentKind,
@@ -54,25 +55,20 @@ function asReceipt(value: unknown): EvidenceReceipt | null {
   return typeof candidate.resolvedAsOf === "string" && Array.isArray(candidate.inputs) && candidate.sourceWindow !== undefined ? candidate as EvidenceReceipt : null;
 }
 
-function validSourceRef(value: unknown): value is EvidenceSourceRef {
-  if (!value || typeof value !== "object") return false;
-  const source = value as Partial<EvidenceSourceRef>;
-  return typeof source.fixtureId === "string" && source.fixtureId.length > 0
-    && typeof source.effectiveAt === "string" && Number.isFinite(Date.parse(source.effectiveAt))
-    && typeof source.observedAt === "string" && Number.isFinite(Date.parse(source.observedAt))
-    && typeof source.payloadHash === "string" && source.payloadHash.length > 0
-    && typeof source.payloadBytes === "number" && Number.isInteger(source.payloadBytes) && source.payloadBytes >= 0;
-}
-
 function sourceRefs(component: PublishedEvidenceComponent, receipt: EvidenceReceipt | null): readonly EvidenceSourceRef[] | null {
   if (!Array.isArray(component.sourceTimes)) return null;
   const inputs = receipt?.inputs ?? [];
   const refs: EvidenceSourceRef[] = [];
   for (const value of component.sourceTimes) {
-    if (!value || typeof value !== "object") return null;
-    const source = value as { fixtureId?: unknown; effectiveAt?: unknown; observedAt?: unknown };
-    const full = inputs.find((input) => input.fixtureId === source.fixtureId && input.effectiveAt === source.effectiveAt && input.observedAt === source.observedAt);
-    if (!full || !validSourceRef(full)) return null;
+    if (!isEvidenceSourceRef(value)) return null;
+    const source = value;
+    const full = inputs.find((input) => isEvidenceSourceRef(input)
+      && input.fixtureId === source.fixtureId
+      && input.effectiveAt === source.effectiveAt
+      && input.observedAt === source.observedAt
+      && input.payloadHash === source.payloadHash
+      && input.payloadBytes === source.payloadBytes);
+    if (!full) return null;
     refs.push(full);
   }
   if (component.value !== null && component.value !== undefined && refs.length === 0) return null;

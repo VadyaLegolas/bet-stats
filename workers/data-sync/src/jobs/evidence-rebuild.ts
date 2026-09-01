@@ -128,7 +128,7 @@ export async function runEvidenceRebuild(input: EvidenceRebuildInput) {
     const build = existing ?? await transaction.createBuild({ id: randomUUID(), ...key, configVersion: input.configVersion, state: "BUILDING", ...(input.replayPlanId === undefined ? {} : { replayPlanId: input.replayPlanId }) });
     for (const component of COMPONENT_KEYS) {
       const item = evidence[component];
-      await transaction.stageComponent({ buildId: build.id, component, value: item.value, sampleSize: item.sampleSize, limitation: item.limitation, sourceTimes: item.sourceRefs.map((source) => ({ fixtureId: source.fixtureId, effectiveAt: source.effectiveAt, observedAt: source.observedAt })) });
+      await transaction.stageComponent({ buildId: build.id, component, value: item.value, sampleSize: item.sampleSize, limitation: item.limitation, sourceTimes: item.sourceRefs });
     }
     await transaction.stageComponent({ buildId: build.id, component: "receipt", value: evidence.receipt, sampleSize: evidence.receipt.inputs.length, limitation: evidence.state === "COMPLETE" ? null : evidence.state, sourceTimes: evidence.receipt.inputs });
     await transaction.publishBuild(build.id);

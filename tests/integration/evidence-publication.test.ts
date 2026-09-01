@@ -88,6 +88,7 @@ describe("real PostgreSQL evidence publication boundary", () => {
       fixtureId: "fixture",
       effectiveAt: "2026-08-29T09:00:00.000Z",
       observedAt: "2026-08-29T10:00:00.000Z",
+      sourceUpdatedAt: null,
       payloadHash: "hash-early",
       payloadBytes: 15,
     }]);

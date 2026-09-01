@@ -155,5 +155,11 @@ export async function appendLaterCorrection(): Promise<void> {
   try {
     await prisma.sourceObservation.create({ data: { id: "live-correction-observation", provider: "football-data.org", endpointFamily: "RESULTS", externalIdentity: "live-past-10", observedAt: new Date("2026-09-02T10:00:00.000Z"), payloadHash: "live-correction-hash", rawPayload: { score: "0-2", corrected: true }, payloadBytes: 38 } });
     await prisma.resultVersion.create({ data: { id: "live-correction-result", fixtureId: "live-past-10", observationId: "live-correction-observation", effectiveAt: new Date("2026-08-10T12:00:00.000Z"), observedAt: new Date("2026-09-02T10:00:00.000Z"), homeGoals: 0, awayGoals: 2, status: "FINISHED", revision: 2, supersedesResultVersionId: "live-result-10" } });
+    const completionManifest = { expectedUnits: ["results"], completedUnits: ["results"], expectedCaptures: ["live-correction-hash"], completedCaptures: ["live-correction-hash"] };
+    await prisma.syncRun.create({ data: { id: "live-correction-run", logicalKey: "live-correction-run", revision: 1, provider: "football-data.org", endpointFamily: "RESULTS", lane: "critical", windowFrom: new Date(LIVE_CUTOFF), windowTo: new Date(LIVE_LATER_CUTOFF), state: "SUCCEEDED", correlationId: "live-correction-correlation", expectedUnits: 1, completedUnits: 1, expectedCaptures: 1, completedCaptures: 1, completionManifest } });
+    await prisma.syncAttempt.create({ data: { syncRunId: "live-correction-run", attemptNumber: 1, observationId: "live-correction-observation", state: "SUCCEEDED", finishedAt: new Date(LIVE_LATER_CUTOFF) } });
+    const { createPrismaEvidenceRebuildDatabase, runEvidenceRebuild } = await import("../../workers/data-sync/dist/jobs/evidence-rebuild.js");
+    const result = await runEvidenceRebuild({ database: createPrismaEvidenceRebuildDatabase(prisma), teamId: LIVE_TEAM_ID, cutoff: LIVE_LATER_CUTOFF, configVersion: "live-evidence-v2", configHash: "live-evidence-config-v2", syncRunId: "live-correction-run" });
+    if (result.state !== "PUBLISHED") throw new Error(`Expected corrected PUBLISHED evidence, received ${result.state}`);
   } finally { await prisma.$disconnect(); }
 }

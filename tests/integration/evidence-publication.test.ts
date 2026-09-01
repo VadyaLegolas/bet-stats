@@ -70,7 +70,27 @@ describe("real PostgreSQL evidence publication boundary", () => {
     const first = await service.get("home", "2026-08-29T12:00:00.000Z");
     const sharedDto = parseEvidenceProjection(first);
     expect(first).toMatchObject({ state: "LIMITED", resolvedAsOfUtc: "2026-08-29T12:00:00.000Z", receipt: { configVersion: "evidence-v1", inputs: [{ fixtureId: "fixture", payloadHash: "hash-early" }] } });
-    expect(first.components.form5).toMatchObject({ value: 3, sampleSize: 1 });
+    expect(first.components.form5).toMatchObject({
+      value: 3,
+      sampleSize: 1,
+      sourceRefs: [{
+        fixtureId: "fixture",
+        effectiveAt: "2026-08-29T09:00:00.000Z",
+        observedAt: "2026-08-29T10:00:00.000Z",
+        payloadHash: "hash-early",
+        payloadBytes: 15,
+      }],
+    });
+    const stagedForm = await prisma.evidenceComponent.findUniqueOrThrow({
+      where: { buildId_component: { buildId: first.buildId!, component: "form5" } },
+    });
+    expect(stagedForm.sourceTimes).toEqual([{
+      fixtureId: "fixture",
+      effectiveAt: "2026-08-29T09:00:00.000Z",
+      observedAt: "2026-08-29T10:00:00.000Z",
+      payloadHash: "hash-early",
+      payloadBytes: 15,
+    }]);
     expect(renderEvidenceComponentFields(sharedDto.components.goalRates!)).toEqual([
       { label: "Goals for", value: "2.00 goals/match" },
       { label: "Goals against", value: "1.00 goals/match" },

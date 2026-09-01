@@ -44,6 +44,7 @@ describe("cutoff-aware evidence API", () => {
     ["missing observedAt", [{ fixtureId: "fixture-1", effectiveAt: receipt.inputs[0]!.effectiveAt }], receipt.inputs],
     ["missing effectiveAt", [{ fixtureId: "fixture-1", observedAt: receipt.inputs[0]!.observedAt }], receipt.inputs],
     ["missing payload identity", receipt.inputs, [{ ...receipt.inputs[0], payloadHash: "" }]],
+    ["mismatched payload bytes", [{ ...receipt.inputs[0], payloadBytes: 124 }], receipt.inputs],
     ["mismatched source", [{ fixtureId: "other", effectiveAt: receipt.inputs[0]!.effectiveAt, observedAt: receipt.inputs[0]!.observedAt }], receipt.inputs],
   ])("fails only the affected component closed for %s", async (_case, componentTimes, receiptInputs) => {
     const { resolveTeamEvidence } = await phase2Evidence();
@@ -63,6 +64,29 @@ describe("cutoff-aware evidence API", () => {
       components: {
         form5: { value: null, limitation: "MISSING_TIMESTAMP", sourceRefs: [] },
         elo: { value: 1512, limitation: null },
+      },
+    });
+  });
+
+  it("does not cross-join corrections that share the same temporal tuple", async () => {
+    const { resolveTeamEvidence } = await phase2Evidence();
+    const correction = { ...receipt.inputs[0], payloadHash: "hash-correction", payloadBytes: 321 };
+    const result = await resolveTeamEvidence(
+      { teamId: "team", asOf: receipt.requestedAsOf },
+      { findPublished: async () => published({
+        components: [
+          { component: "receipt", value: { ...receipt, inputs: [receipt.inputs[0], correction] }, sampleSize: 2, limitation: null, sourceTimes: [receipt.inputs[0], correction] },
+          { component: "form5", value: 2.1, sampleSize: 1, limitation: null, sourceTimes: [correction] },
+          { component: "elo", value: 1512, sampleSize: 1, limitation: null, sourceTimes: [{ ...correction, payloadHash: "unknown-hash" }] },
+        ],
+      }) },
+    );
+
+    expect(result).toMatchObject({
+      state: "LIMITED",
+      components: {
+        form5: { value: 2.1, sourceRefs: [correction] },
+        elo: { value: null, limitation: "MISSING_TIMESTAMP", sourceRefs: [] },
       },
     });
   });

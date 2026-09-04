@@ -4,6 +4,7 @@ import {
   evidenceComponentUnit,
   isEvidenceSourceRef,
   isEvidenceComponentKind,
+  parseEvidenceReceipt,
   parseEvidenceProjection,
   type EvidenceComponentKind,
   type EvidenceLimitation,
@@ -50,13 +51,6 @@ function parseCutoff(value: unknown): { requested: string; utc: string; time: nu
   const time = Date.parse(value);
   if (!Number.isFinite(time)) throw contractError("INVALID_AS_OF");
   return { requested: value, utc: new Date(time).toISOString(), time };
-}
-
-function asReceipt(value: unknown): EvidenceReceipt | null {
-  if (!value || typeof value !== "object") return null;
-  const candidate = value as Partial<EvidenceReceipt>;
-  if (typeof candidate.resolvedAsOf !== "string" || !Array.isArray(candidate.inputs) || candidate.sourceWindow === undefined) return null;
-  return { ...candidate, inputs: candidate.inputs.filter(isEvidenceSourceRef) } as EvidenceReceipt;
 }
 
 function sourceRefs(component: PublishedEvidenceComponent, receipt: EvidenceReceipt | null): readonly EvidenceSourceRef[] | null {
@@ -108,7 +102,7 @@ export async function resolveTeamEvidence(input: { teamId?: unknown; asOf?: unkn
   if (build.state !== "PUBLISHED") throw contractError("UNPUBLISHED_BUILD");
   if (!Number.isFinite(buildCutoff) || buildCutoff > cutoff.time) throw contractError("POST_CUTOFF_BUILD");
   const receiptRow = build.components.find((component) => component.component === "receipt");
-  const receipt = asReceipt(receiptRow?.value);
+  const receipt = parseEvidenceReceipt(receiptRow?.value);
   const components = Object.fromEntries(build.components.filter((component) => component.component !== "receipt").flatMap((component) => {
     const projected = projectComponent(component, receipt);
     return projected === null ? [] : [[projected.kind, projected]];

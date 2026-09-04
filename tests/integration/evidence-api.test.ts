@@ -40,13 +40,13 @@ describe("cutoff-aware evidence API", () => {
   });
 
   it.each([
-    ["missing receipt input", receipt.inputs, []],
-    ["missing observedAt", [{ fixtureId: "fixture-1", effectiveAt: receipt.inputs[0]!.effectiveAt }], receipt.inputs],
-    ["missing effectiveAt", [{ fixtureId: "fixture-1", observedAt: receipt.inputs[0]!.observedAt }], receipt.inputs],
-    ["missing payload identity", receipt.inputs, [{ ...receipt.inputs[0], payloadHash: "" }]],
-    ["mismatched payload bytes", [{ ...receipt.inputs[0], payloadBytes: 124 }], receipt.inputs],
-    ["mismatched source", [{ fixtureId: "other", effectiveAt: receipt.inputs[0]!.effectiveAt, observedAt: receipt.inputs[0]!.observedAt }], receipt.inputs],
-  ])("fails only the affected component closed for %s", async (_case, componentTimes, receiptInputs) => {
+    ["missing receipt input", receipt.inputs, [], true],
+    ["missing observedAt", [{ fixtureId: "fixture-1", effectiveAt: receipt.inputs[0]!.effectiveAt }], receipt.inputs, true],
+    ["missing effectiveAt", [{ fixtureId: "fixture-1", observedAt: receipt.inputs[0]!.observedAt }], receipt.inputs, true],
+    ["missing payload identity", receipt.inputs, [{ ...receipt.inputs[0], payloadHash: "" }], false],
+    ["mismatched payload bytes", [{ ...receipt.inputs[0], payloadBytes: 124 }], receipt.inputs, true],
+    ["mismatched source", [{ fixtureId: "other", effectiveAt: receipt.inputs[0]!.effectiveAt, observedAt: receipt.inputs[0]!.observedAt }], receipt.inputs, true],
+  ])("fails affected provenance closed for %s", async (_case, componentTimes, receiptInputs, validReceipt) => {
     const { resolveTeamEvidence } = await phase2Evidence();
     const sibling = { fixtureId: "fixture-2", effectiveAt: "2026-08-23T14:00:00.000Z", observedAt: "2026-08-23T16:00:00.000Z", sourceUpdatedAt: null, payloadHash: "hash-2", payloadBytes: 124 };
     const result = await resolveTeamEvidence(
@@ -63,7 +63,7 @@ describe("cutoff-aware evidence API", () => {
       state: "LIMITED",
       components: {
         form5: { value: null, limitation: "MISSING_TIMESTAMP", sourceRefs: [] },
-        elo: { value: 1512, limitation: null },
+        elo: validReceipt ? { value: 1512, limitation: null } : { value: null, limitation: "MISSING_TIMESTAMP" },
       },
     });
   });

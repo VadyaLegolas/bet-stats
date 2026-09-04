@@ -103,13 +103,25 @@ export function parseEvidenceProjection(value: unknown): EvidenceProjectionDto {
   if (!value || typeof value !== "object") throw new Error("INVALID_EVIDENCE_PROJECTION");
   const candidate = value as EvidenceProjectionDto;
   if (typeof candidate.teamId !== "string" || typeof candidate.requestedAsOf !== "string" || typeof candidate.resolvedAsOfUtc !== "string" || !candidate.components || typeof candidate.components !== "object") throw new Error("INVALID_EVIDENCE_PROJECTION");
-  if (candidate.receipt !== null && (!candidate.receipt || !Array.isArray(candidate.receipt.inputs) || candidate.receipt.inputs.some((input) => !isEvidenceSourceRef(input)))) throw new Error("INVALID_EVIDENCE_RECEIPT");
+  if (candidate.receipt !== null && parseEvidenceReceipt(candidate.receipt) === null) throw new Error("INVALID_EVIDENCE_RECEIPT");
   for (const [key, component] of Object.entries(candidate.components)) {
     if (!isEvidenceComponentKind(key) || !component || component.kind !== key || component.unit !== evidenceComponentUnit(key) || !Array.isArray(component.sourceRefs)) throw new Error("INVALID_EVIDENCE_COMPONENT");
     if (component.sourceRefs.some((source) => !isEvidenceSourceRef(source))) throw new Error("INVALID_EVIDENCE_SOURCE_REF");
     if (component.value !== null && !validComponentValue(key, component.value)) throw new Error("INVALID_EVIDENCE_COMPONENT_VALUE");
   }
   return candidate;
+}
+
+export function parseEvidenceReceipt(value: unknown): EvidenceReceipt | null {
+  if (!hasExactKeys(value, ["requestedAsOf", "resolvedAsOf", "configVersion", "sourceWindow", "inputs"])) return null;
+  const requestedAsOf = instant(value.requestedAsOf);
+  const resolvedAsOf = instant(value.resolvedAsOf);
+  if (requestedAsOf === null || resolvedAsOf === null || requestedAsOf !== resolvedAsOf) return null;
+  if (typeof value.configVersion !== "string" || value.configVersion.trim().length === 0) return null;
+  if (!validEvidenceWindow(value.sourceWindow)) return null;
+  if (Date.parse(value.sourceWindow.requestedTo) !== resolvedAsOf) return null;
+  if (!Array.isArray(value.inputs) || value.inputs.some((input) => !isStrictEvidenceSourceRef(input))) return null;
+  return value as unknown as EvidenceReceipt;
 }
 
 export function isEvidenceSourceRef(value: unknown): value is EvidenceSourceRef {
@@ -121,6 +133,48 @@ export function isEvidenceSourceRef(value: unknown): value is EvidenceSourceRef 
     && (source.sourceUpdatedAt === null || typeof source.sourceUpdatedAt === "string")
     && typeof source.payloadHash === "string" && source.payloadHash.length > 0
     && typeof source.payloadBytes === "number" && Number.isInteger(source.payloadBytes) && source.payloadBytes >= 0;
+}
+
+function isStrictEvidenceSourceRef(value: unknown): value is EvidenceSourceRef {
+  if (!hasExactKeys(value, ["fixtureId", "effectiveAt", "observedAt", "sourceUpdatedAt", "payloadHash", "payloadBytes"])) return false;
+  return typeof value.fixtureId === "string" && value.fixtureId.length > 0
+    && typeof value.effectiveAt === "string"
+    && typeof value.observedAt === "string"
+    && instant(value.effectiveAt) !== null
+    && instant(value.observedAt) !== null
+    && Date.parse(value.effectiveAt) <= Date.parse(value.observedAt)
+    && (value.sourceUpdatedAt === null || instant(value.sourceUpdatedAt) !== null)
+    && typeof value.payloadHash === "string" && value.payloadHash.length > 0
+    && typeof value.payloadBytes === "number" && Number.isSafeInteger(value.payloadBytes) && value.payloadBytes >= 0;
+}
+
+function validEvidenceWindow(value: unknown): value is EvidenceWindow {
+  if (!hasExactKeys(value, ["requestedFrom", "requestedTo", "returnedFrom", "returnedTo"])) return false;
+  const requestedFrom = value.requestedFrom === null ? null : instant(value.requestedFrom);
+  const requestedTo = instant(value.requestedTo);
+  const returnedFrom = value.returnedFrom === null ? null : instant(value.returnedFrom);
+  const returnedTo = value.returnedTo === null ? null : instant(value.returnedTo);
+  if (requestedTo === null || (value.requestedFrom !== null && requestedFrom === null)) return false;
+  if ((returnedFrom === null) !== (returnedTo === null)) return false;
+  if (requestedFrom !== null && requestedFrom > requestedTo) return false;
+  if (returnedFrom !== null && returnedTo !== null) {
+    if (returnedFrom > returnedTo || returnedTo > requestedTo) return false;
+    if (requestedFrom !== null && returnedFrom < requestedFrom) return false;
+  }
+  return true;
+}
+
+function instant(value: unknown): number | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function hasExactKeys<T extends readonly string[]>(value: unknown, keys: T): value is Record<T[number], unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
 }
 
 function validComponentValue(kind: EvidenceComponentKind, value: unknown): boolean {

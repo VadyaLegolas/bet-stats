@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   createPrismaClient,
   createReplayProviderPolicyRepository,
+  DEFAULT_REPLAY_PROVIDER_POLICIES,
   type PrismaClient,
 } from "@bet-stats/database";
 import {
@@ -62,11 +63,11 @@ describe("durable bounded replay", () => {
     for (let attempt = 0; attempt < 60; attempt += 1) { try { docker("exec", redisName, "redis-cli", "ping"); break; } catch (error) { if (attempt === 59) throw error; Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250); } }
     const redisPort = docker("port", redisName, "6379/tcp").split(":").at(-1); if (!redisPort) throw new Error("Redis port missing"); redisUrl = `redis://127.0.0.1:${redisPort}`;
   }, 120_000);
-  afterAll(async () => { await prisma?.$disconnect(); for (const name of [containerName, redisName]) try { docker("rm", "--force", name); } catch { /* best effort */ } });
+  afterAll(async () => { await prisma?.$disconnect(); for (const name of [containerName, redisName]) try { docker("rm", "--force", name); } catch { /* best effort */ } }, 30_000);
 
   it("reads one durable provider-policy snapshot with a stable complete fingerprint", async () => {
-    const now = new Date("2026-08-31T12:00:00.000Z");
-    const updatedAt = new Date("2026-08-31T11:59:00.000Z");
+    const now = new Date("2026-09-30T12:00:00.000Z");
+    const updatedAt = new Date("2026-09-30T11:59:00.000Z");
     await prisma.providerCircuitState.upsert({
       where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
       create: { id: randomUUID(), provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily, state: "CLOSED", updatedAt },
@@ -92,7 +93,7 @@ describe("durable bounded replay", () => {
       provider: resultsPolicy.provider,
       endpointFamily: resultsPolicy.endpointFamily,
       lane: "standard",
-      resetDate: "2026-08-31",
+      resetDate: "2026-09-30",
       resetTimezone: "UTC",
       configuredAllowance: 10,
       criticalHeadroom: 3,
@@ -106,11 +107,11 @@ describe("durable bounded replay", () => {
         probeLeaseExpiresAt: null,
       },
       observedAt: now.toISOString(),
-      validUntil: "2026-08-31T12:04:00.000Z",
+      validUntil: "2026-09-30T12:04:00.000Z",
       blockedReason: null,
     });
     expect(second).toEqual(first);
-    expect(fingerprintReplayProviderPolicy(first)).toBe("cae54e3f25a03a2ccc1e012ecb3213ef12c42f52d95d49c728e14e1d55cbf136");
+    expect(fingerprintReplayProviderPolicy(first)).toBe("fa46cb991ab1b9146339b188b9efd6d766eb3022a54371504d29ecd94cf1f930");
     expect(fingerprintReplayProviderPolicy(second)).toBe(fingerprintReplayProviderPolicy(first));
     expect(evaluateReplayProviderPolicy(first, 5, now)).toEqual({ allowed: true, remainingAfter: 0 });
   });
@@ -171,8 +172,8 @@ describe("durable bounded replay", () => {
   });
 
   it("persists the exact approved policy and classifies durable policy changes in status", async () => {
-    const policyNow = new Date("2026-08-31T14:00:00.000Z");
-    const updatedAt = new Date("2026-08-31T13:59:00.000Z");
+    const policyNow = new Date("2026-09-30T14:00:00.000Z");
+    const updatedAt = new Date("2026-09-30T13:59:00.000Z");
     await prisma.providerRequestReservation.deleteMany({ where: { provider: resultsPolicy.provider, requestDate: policyNow } });
     await prisma.providerCircuitState.upsert({
       where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
@@ -182,7 +183,7 @@ describe("durable bounded replay", () => {
     const repository = createReplayProviderPolicyRepository({ database: prisma, policies: [resultsPolicy], now: () => policyNow });
     const expectedApproved = await repository.read(resultsPolicy.provider, resultsPolicy.endpointFamily);
     const service = createReplayService({ database: prisma, providerPolicyRepository: repository, now: () => policyNow });
-    const preview = await service.preview({ ...request, from: "2026-08-25T00:00:00.000Z", to: "2026-08-25T00:00:00.000Z" });
+    const preview = await service.preview({ ...request, from: "2026-08-25T00:00:00.000Z", to: "2026-08-25T00:00:00.000Z" }, "integration-operator");
 
     expect(preview.providerPolicy).toEqual({
       fingerprint: fingerprintReplayProviderPolicy(expectedApproved),
@@ -211,7 +212,7 @@ describe("durable bounded replay", () => {
       where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
       data: { state: "CLOSED", openedAt: null, updatedAt },
     });
-    const stalePreview = await service.preview({ ...request, from: "2026-08-26T00:00:00.000Z", to: "2026-08-26T00:00:00.000Z" });
+    const stalePreview = await service.preview({ ...request, from: "2026-08-26T00:00:00.000Z", to: "2026-08-26T00:00:00.000Z" }, "integration-operator");
     await prisma.providerCircuitState.update({
       where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
       data: { state: "OPEN", openedAt: policyNow, updatedAt: policyNow },
@@ -221,7 +222,7 @@ describe("durable bounded replay", () => {
   });
 
   it("rejects every fail-closed provider policy before queue delivery", async () => {
-    const policyNow = new Date("2026-08-31T16:00:00.000Z");
+    const policyNow = new Date("2026-09-30T16:00:00.000Z");
     const enqueuer = { enqueue: vi.fn(async () => undefined) };
     const setCircuit = async (state: "CLOSED" | "OPEN") => prisma.providerCircuitState.upsert({
       where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
@@ -231,7 +232,7 @@ describe("durable bounded replay", () => {
     const expectDenied = async (policy: typeof resultsPolicy, reason: string, offset: number) => {
       const repository = createReplayProviderPolicyRepository({ database: prisma, policies: [policy], now: () => policyNow });
       const service = createReplayService({ database: prisma, enqueuer, providerPolicyRepository: repository, now: () => policyNow });
-      await expect(service.preview({ ...request, from: `2026-08-${27 + offset}T00:00:00.000Z`, to: `2026-08-${27 + offset}T00:00:00.000Z` }))
+      await expect(service.preview({ ...request, from: `2026-08-${27 + offset}T00:00:00.000Z`, to: `2026-08-${27 + offset}T00:00:00.000Z` }, "integration-operator"))
         .rejects.toMatchObject({ code: reason, status: 409 });
     };
 
@@ -250,18 +251,18 @@ describe("durable bounded replay", () => {
 
   it("freezes preview/version and loads them after service reconstruction", async () => {
     const first = createReplayService({ database: prisma, actor: "operator-a" });
-    const preview = await first.preview(request);
+    const preview = await first.preview(request, "operator-a");
     expect(preview).toMatchObject({ dryRun: true, bounded: true, calls: 3, builds: 3 });
     const restartedDatabase = createPrismaClient(databaseUrl);
     const restarted = createReplayService({ database: restartedDatabase, actor: "operator-a" });
-    expect(await restarted.preview(request)).toEqual(preview);
+    expect(await restarted.preview(request, "operator-a")).toEqual(preview);
     await expect(restarted.queue({ previewId: preview.previewId, previewVersion: "stale" })).rejects.toMatchObject({ code: "STALE_PREVIEW", status: 409 });
     await restartedDatabase.$disconnect();
   });
 
   it("atomically creates versioned runs, consumes once, and reconstructs status", async () => {
     const service = createReplayService({ database: prisma, actor: "operator-b" });
-    const preview = await service.preview({ ...request, from: "2026-08-05T00:00:00.000Z", to: "2026-08-06T00:00:00.000Z" });
+    const preview = await service.preview({ ...request, from: "2026-08-05T00:00:00.000Z", to: "2026-08-06T00:00:00.000Z" }, "operator-b");
     const queued = await service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
     expect(queued).toMatchObject({ queued: true, duplicate: false, revision: 1 });
     expect(await service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion })).toMatchObject({ queued: false, duplicate: true, replayPlanId: queued.replayPlanId });
@@ -299,14 +300,15 @@ describe("durable bounded replay", () => {
   });
 
   it("treats a fresh preview with the same logical key as duplicate work", async () => {
-    const input = { ...request, from: "2026-08-26T00:00:00.000Z", to: "2026-08-26T00:00:00.000Z" };
+    const input = { ...request, seasonId: `logical-${randomUUID()}`, from: "2026-08-26T00:00:00.000Z", to: "2026-08-26T00:00:00.000Z" };
     await prisma.providerCircuitState.upsert({
       where: { provider_endpointFamily: { provider: input.provider, endpointFamily: input.endpointFamily } },
       create: { id: randomUUID(), provider: input.provider, endpointFamily: input.endpointFamily, state: "CLOSED", updatedAt: new Date() },
       update: { state: "CLOSED", openedAt: null, nextProbeAt: null, probeLeaseToken: null, probeLeaseExpiresAt: null, updatedAt: new Date() },
     });
+    const approvedPolicy = await createReplayProviderPolicyRepository({ database: prisma, policies: DEFAULT_REPLAY_PROVIDER_POLICIES }).read(input.provider, input.endpointFamily);
     const enqueuer = { enqueue: vi.fn(async () => undefined) };
-    const service = createReplayService({ database: prisma, enqueuer });
+    const service = createReplayService({ database: prisma, enqueuer, providerPolicyRepository: { read: async () => approvedPolicy } });
     const firstPreview = await service.preview(input, "operator-logical-key");
     const first = await service.queue({ previewId: firstPreview.previewId, previewVersion: firstPreview.previewVersion });
     const secondPreview = await service.preview(input, "operator-logical-key");
@@ -341,7 +343,7 @@ describe("durable bounded replay", () => {
       },
     };
     const service = createReplayService({ database: prisma, enqueuer: faultingEnqueuer });
-    const preview = await service.preview({ ...request, from: "2026-08-07T00:00:00.000Z", to: "2026-08-08T00:00:00.000Z" });
+    const preview = await service.preview({ ...request, from: "2026-08-07T00:00:00.000Z", to: "2026-08-08T00:00:00.000Z" }, "integration-operator");
     await expect(service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion })).rejects.toMatchObject({ code: "QUEUE_DELIVERY_FAILED" });
     const plan = await prisma.replayPlan.findUniqueOrThrow({ where: { previewId: preview.previewId } });
     expect(await service.status(plan.id)).toMatchObject({
@@ -390,7 +392,7 @@ describe("durable bounded replay", () => {
 
   it("serializes concurrent dispatchers and reclaims an expired delivery lease", async () => {
     const seed = createReplayService({ database: prisma });
-    const preview = await seed.preview({ ...request, from: "2026-08-09T00:00:00.000Z", to: "2026-08-09T00:00:00.000Z" });
+    const preview = await seed.preview({ ...request, from: "2026-08-09T00:00:00.000Z", to: "2026-08-09T00:00:00.000Z" }, "integration-operator");
     const queued = await seed.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
     let enqueues = 0;
     const enqueuer = { async enqueue() { enqueues += 1; await new Promise((resolveWait) => setTimeout(resolveWait, 75)); } };
@@ -402,7 +404,7 @@ describe("durable bounded replay", () => {
     ]);
     expect(enqueues).toBe(1);
 
-    const expiredPreview = await seed.preview({ ...request, from: "2026-08-13T00:00:00.000Z", to: "2026-08-13T00:00:00.000Z" });
+    const expiredPreview = await seed.preview({ ...request, from: "2026-08-13T00:00:00.000Z", to: "2026-08-13T00:00:00.000Z" }, "integration-operator");
     const expired = await seed.queue({ previewId: expiredPreview.previewId, previewVersion: expiredPreview.previewVersion });
     await prisma.$executeRawUnsafe(
       `UPDATE "ReplayDelivery" d SET state='CLAIMED',"attemptCount"=1,"leaseToken"=$2,"leaseExpiresAt"=CURRENT_TIMESTAMP - INTERVAL '1 second',"updatedAt"=CURRENT_TIMESTAMP
@@ -422,7 +424,7 @@ describe("durable bounded replay", () => {
   });
 
   it("requires audited reason and rejects zero headroom", async () => {
-    const policyNow = new Date("2026-08-31T17:00:00.000Z");
+    const policyNow = new Date("2026-09-30T17:00:00.000Z");
     await prisma.providerCircuitState.update({
       where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
       data: { state: "CLOSED", openedAt: null, updatedAt: policyNow },
@@ -432,9 +434,9 @@ describe("durable bounded replay", () => {
       policies: [{ ...resultsPolicy, configuredAllowance: 0, criticalHeadroom: 0 }],
       now: () => policyNow,
     });
-    await expect(createReplayService({ database: prisma, providerPolicyRepository: zeroHeadroom, now: () => policyNow }).preview({ ...request, from: "2026-08-10T00:00:00.000Z", to: "2026-08-10T00:00:00.000Z" })).rejects.toMatchObject({ code: "ALLOWANCE_EXHAUSTED" });
+    await expect(createReplayService({ database: prisma, providerPolicyRepository: zeroHeadroom, now: () => policyNow }).preview({ ...request, from: "2026-08-10T00:00:00.000Z", to: "2026-08-10T00:00:00.000Z" }, "integration-operator")).rejects.toMatchObject({ code: "ALLOWANCE_EXHAUSTED" });
     const service = createReplayService({ database: prisma });
-    const preview = await service.preview({ ...request, from: "2026-08-11T00:00:00.000Z", to: "2026-08-11T00:00:00.000Z" });
+    const preview = await service.preview({ ...request, from: "2026-08-11T00:00:00.000Z", to: "2026-08-11T00:00:00.000Z" }, "integration-operator");
     await expect(service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion, newRevision: true, reason: "" })).rejects.toMatchObject({ code: "REVISION_REASON_REQUIRED" });
   });
 
@@ -480,7 +482,7 @@ describe("durable bounded replay", () => {
     expect(() => guard.authorize("wrong-secret")).toThrowError("Not found");
     const service = createReplayService({ database: prisma });
     const controller = new ReplayController(service as never);
-    const preview = await controller.preview({ ...request, from: "2026-08-12T00:00:00.000Z", to: "2026-08-12T00:00:00.000Z" });
+    const preview = await controller.preview({ ...request, from: "2026-08-12T00:00:00.000Z", to: "2026-08-12T00:00:00.000Z" }, { operator: { actor: "integration-operator" } });
     const queued = await controller.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
     const status = await controller.status(queued.replayPlanId);
     expect(status).toMatchObject({ state: "QUEUED", outcome: "PENDING", lane: "critical" });
@@ -578,14 +580,14 @@ describe("durable bounded replay", () => {
     const worker = createReplayWorker({ redisUrl, database: prisma, prefix, execute: async (data) => { executions.set(data.logicalId, (executions.get(data.logicalId) ?? 0) + 1); if (data.input.seasonId === "fail") throw Object.assign(new Error("provider"), { code: "PROVIDER_TIMEOUT" }); } });
     const queue = createReplayQueue({ redisUrl, prefix, database: prisma });
     const service = createReplayService({ database: prisma, enqueuer: queue });
-    const preview = await service.preview({ ...request, seasonId: "success", from: "2026-08-20T00:00:00.000Z", to: "2026-08-20T00:00:00.000Z" });
+    const preview = await service.preview({ ...request, seasonId: "success", from: "2026-08-20T00:00:00.000Z", to: "2026-08-20T00:00:00.000Z" }, "integration-operator");
     const queued = await service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
     for (let i = 0; i < 80 && (await service.status(queued.replayPlanId)).state !== "SUCCEEDED"; i += 1) await new Promise((resolveWait) => setTimeout(resolveWait, 100));
     expect(await service.status(queued.replayPlanId)).toMatchObject({ state: "SUCCEEDED", outcome: "COMPLETED", attempts: [{ state: "SUCCEEDED", attemptNumber: 1 }] });
     await service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
     expect([...executions.values()]).toEqual([1]);
 
-    const failedPreview = await service.preview({ ...request, seasonId: "fail", from: "2026-08-21T00:00:00.000Z", to: "2026-08-21T00:00:00.000Z" });
+    const failedPreview = await service.preview({ ...request, seasonId: "fail", from: "2026-08-21T00:00:00.000Z", to: "2026-08-21T00:00:00.000Z" }, "integration-operator");
     const failed = await service.queue({ previewId: failedPreview.previewId, previewVersion: failedPreview.previewVersion });
     for (let i = 0; i < 120 && (await service.status(failed.replayPlanId)).state !== "FAILED"; i += 1) await new Promise((resolveWait) => setTimeout(resolveWait, 100));
     expect(await service.status(failed.replayPlanId)).toMatchObject({ state: "FAILED", outcome: "DEAD_LETTER", attempts: [{ classifiedReason: "PROVIDER_TIMEOUT" }, { classifiedReason: "PROVIDER_TIMEOUT" }, { classifiedReason: "PROVIDER_TIMEOUT" }] });

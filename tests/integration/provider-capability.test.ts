@@ -93,6 +93,27 @@ describe("guarded fixture ingestion", () => {
     expect(providerFactory).not.toHaveBeenCalled();
   });
 
+  it("rejects an invalid configured competition before reservation or provider construction", async () => {
+    await database.providerCapability.upsert({
+      where: { provider_leagueId_seasonId_endpoint: { provider: "football-data.org", leagueId: "league-pl", seasonId: "season-2026", endpoint: "FIXTURES" } },
+      create: { provider: "football-data.org", leagueId: "league-pl", seasonId: "season-2026", endpoint: "FIXTURES", supported: true, verifiedAt: new Date("2026-08-28T00:00:00Z"), expiresAt: new Date("2026-09-30T00:00:00Z") },
+      update: { supported: true, expiresAt: new Date("2026-09-30T00:00:00Z") },
+    });
+    const providerFactory = vi.fn<() => FixtureProvider>();
+    await expect(runFixtureSyncJob({
+      database,
+      leagueId: "league-pl",
+      seasonId: "season-2026",
+      jobKey: "fixtures-invalid-competition",
+      allowance: 10,
+      now: new Date("2026-08-29T10:00:00Z"),
+      providerFactory,
+      scope: { competitionExternalId: "INVALID", seasonExternalId: "2287", from: "2026-08-30T00:00:00.000Z", to: "2026-08-30T23:59:59.999Z" },
+    })).rejects.toMatchObject({ code: "INVALID_FIXTURE_SCOPE" });
+    expect(providerFactory).not.toHaveBeenCalled();
+    expect(await database.providerRequestReservation.count({ where: { jobKey: "fixtures-invalid-competition" } })).toBe(0);
+  });
+
   it("reserves before I/O and reruns without duplicate canonical facts", async () => {
     await database.providerCapability.upsert({
       where: { provider_leagueId_seasonId_endpoint: { provider: "football-data.org", leagueId: "league-pl", seasonId: "season-2026", endpoint: "FIXTURES" } },
@@ -105,18 +126,28 @@ describe("guarded fixture ingestion", () => {
     }
     const events: string[] = [];
     const providerFactory = () => ({
-      fetchPremierLeagueFixtures: async () => {
+      fetchCompetitionFixtures: async () => {
         const reservations = await database.providerRequestReservation.count({ where: { provider: "football-data.org", requestDate: new Date("2026-08-29"), endpoint: "FIXTURES", jobKey: "fixtures-2026-08-29" } });
         events.push(`fetch-after-${reservations}`);
         return [{ provider: "football-data.org", externalId: "497410", competitionExternalId: "PL", seasonExternalId: "2287", homeTeamExternalId: "57", homeTeamName: "Arsenal FC", awayTeamExternalId: "61", awayTeamName: "Chelsea FC", kickoffUtc: "2026-08-30T14:00:00Z", status: "SCHEDULED", capturedAt: "2026-08-29T10:00:00.000Z", sourceUpdatedAt: null, raw: { id: 497410, lastUpdated: null } }];
       },
     } satisfies FixtureProvider);
-    const input = { database, leagueId: "league-pl", seasonId: "season-2026", jobKey: "fixtures-2026-08-29", allowance: 10, now: new Date("2026-08-29T10:00:00Z"), providerFactory };
+    const input = {
+      database,
+      leagueId: "league-pl",
+      seasonId: "season-2026",
+      jobKey: "fixtures-2026-08-29",
+      allowance: 10,
+      now: new Date("2026-08-29T10:00:00Z"),
+      providerFactory,
+      scope: { competitionExternalId: "PL", seasonExternalId: "2287", from: "2026-08-30T00:00:00.000Z", to: "2026-08-30T23:59:59.999Z" },
+    };
     await runFixtureSyncJob(input);
     await runFixtureSyncJob(input);
     expect(events).toEqual(["fetch-after-1", "fetch-after-1"]);
     expect(await database.providerRequestReservation.count({ where: { jobKey: input.jobKey } })).toBe(1);
     expect(await database.fixtureExternalRef.count({ where: { provider: "football-data.org", externalId: "497410" } })).toBe(1);
     expect(await database.fixture.count({ where: { externalRefs: { some: { provider: "football-data.org", externalId: "497410" } } } })).toBe(1);
+    expect(await database.fixtureProvenance.count({ where: { provider: "football-data.org", fixture: { externalRefs: { some: { externalId: "497410" } } } } })).toBe(1);
   });
 });

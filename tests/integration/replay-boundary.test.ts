@@ -234,7 +234,7 @@ describe("production replay proxy boundary", () => {
     await app?.close();
     await prisma?.$disconnect();
     for (const name of [postgresName, redisName]) try { docker("rm", "--force", name); } catch { /* best effort */ }
-  });
+  }, 30_000);
 
   afterEach(async () => {
     await Promise.all(workers.splice(0).map((worker) => worker.close()));
@@ -332,6 +332,7 @@ describe("production replay proxy boundary", () => {
       to: "2026-09-02T23:59:59.999Z",
     };
     const preview = await proxy(["preview"], "POST", input);
+    expect(preview.response.status, JSON.stringify(preview.json)).toBe(201);
     const previewFingerprint = (preview.json.providerPolicy as { fingerprint?: string }).fingerprint;
     expect(previewFingerprint).toEqual(expect.any(String));
     const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
@@ -368,6 +369,7 @@ describe("production replay proxy boundary", () => {
       to: "2026-09-02T23:59:59.999Z",
     };
     const preview = await proxy(["preview"], "POST", input);
+    expect(preview.response.status, JSON.stringify(preview.json)).toBe(201);
     const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
     const terminal = await waitForPlan(String(queued.json.replayPlanId), "SUCCEEDED");
 
@@ -376,6 +378,60 @@ describe("production replay proxy boundary", () => {
     expect(await prisma.fixtureExternalRef.count({ where: { provider: "football-data.org", externalId: "fixture-replay" } })).toBe(1);
     expect(await prisma.fixtureProvenance.count({ where: { provider: "football-data.org" } })).toBe(1);
   }, 30_000);
+
+  it.each([
+    ["competition mismatch", "2026-09-08", { competitionExternalId: "PL", kickoffUtc: "2026-09-08T20:00:00.000Z" }],
+    ["out-of-unit fixture", "2026-09-09", { competitionExternalId: "PD", kickoffUtc: "2026-09-10T00:00:00.000Z" }],
+  ] as const)("classifies %s and persists no fixture", async (_case, unitDate, returned) => {
+    const calls: string[] = [];
+    const externalId = `rejected-${returned.competitionExternalId}-${returned.kickoffUtc}`;
+    const base = replayProvider(calls);
+    const runtime = startReplayWorker({
+      databaseUrl,
+      redisUrl,
+      apiToken: "test-token",
+      prefix: queuePrefix,
+      providerFactory: () => ({
+        ...base,
+        fetchCompetitionFixtures: async (window: { competitionCode: "PL" | "PD"; dateFrom: string; dateTo: string }) => {
+          calls.push(`FIXTURES:${window.competitionCode}:${window.dateFrom}:${window.dateTo}`);
+          return [{
+            provider: "football-data.org" as const,
+            externalId,
+            competitionExternalId: returned.competitionExternalId,
+            seasonExternalId: "2026-pd",
+            homeTeamExternalId: "home-1",
+            homeTeamName: "Replay Home",
+            awayTeamExternalId: "away-1",
+            awayTeamName: "Replay Away",
+            kickoffUtc: returned.kickoffUtc,
+            status: "SCHEDULED" as const,
+            capturedAt: "2026-09-08T12:00:00.000Z",
+            sourceUpdatedAt: null,
+            raw: { id: externalId },
+          }];
+        },
+      }),
+    });
+    workers.push(runtime);
+    const input = {
+      provider: "football-data.org",
+      competitionId: "PD",
+      seasonId: "2026-pd",
+      endpointFamily: "FIXTURES" as const,
+      from: `${unitDate}T00:00:00.000Z`,
+      to: `${unitDate}T23:59:59.999Z`,
+    };
+    const preview = await proxy(["preview"], "POST", input);
+    const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
+    const terminal = await waitForPlan(String(queued.json.replayPlanId), "FAILED");
+
+    expect(terminal.json).toMatchObject({ state: "FAILED", outcome: "DEAD_LETTER" });
+    expect((terminal.json.attempts as Array<Record<string, unknown>>)[0]).toMatchObject({ classifiedReason: "FIXTURE_SCOPE_MISMATCH" });
+    expect(calls).toEqual([`FIXTURES:PD:${unitDate}:${unitDate}`]);
+    expect(await prisma.fixtureExternalRef.count({ where: { provider: "football-data.org", externalId } })).toBe(0);
+    expect(await prisma.fixtureProvenance.count({ where: { provider: "football-data.org", rawPayload: { equals: { id: externalId } } } })).toBe(0);
+  }, 45_000);
 
   it.each([
     ["OPEN", "RESULTS"],

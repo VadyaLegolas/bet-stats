@@ -90,4 +90,29 @@ describe("cutoff-aware evidence API", () => {
       },
     });
   });
+
+  it.each([
+    ["mixed valid and malformed inputs", { ...receipt, inputs: [...receipt.inputs, { ...receipt.inputs[0], payloadBytes: -1 }] }],
+    ["unexpected receipt members", { ...receipt, repaired: true }],
+    ["incoherent source window", { ...receipt, sourceWindow: { ...receipt.sourceWindow, returnedFrom: "2026-08-25T00:00:00.000Z", returnedTo: "2026-08-24T00:00:00.000Z" } }],
+    ["invalid source update instant", { ...receipt, inputs: [{ ...receipt.inputs[0], sourceUpdatedAt: "not-an-instant" }] }],
+  ])("rejects the entire immutable receipt for %s", async (_case, malformedReceipt) => {
+    const { resolveTeamEvidence } = await phase2Evidence();
+    const result = await resolveTeamEvidence(
+      { teamId: "team", asOf: receipt.requestedAsOf },
+      { findPublished: async () => published({
+        components: [
+          { component: "receipt", value: malformedReceipt, sampleSize: 1, limitation: null, sourceTimes: receipt.inputs },
+          { component: "form5", value: 2.4, sampleSize: 1, limitation: null, sourceTimes: receipt.inputs },
+        ],
+      }) },
+    );
+
+    expect(result).toMatchObject({
+      state: "LIMITED",
+      receipt: null,
+      coverage: null,
+      components: { form5: { value: null, limitation: "MISSING_TIMESTAMP", sourceRefs: [] } },
+    });
+  });
 });

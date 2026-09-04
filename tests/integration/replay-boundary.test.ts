@@ -124,18 +124,37 @@ async function seedReplayReferences() {
     status: "SCHEDULED",
   } });
   await prisma.fixtureExternalRef.create({ data: { fixtureId: fixture.id, provider: "football-data.org", externalId: "result-fixture" } });
+
+  const pdLeague = await prisma.league.create({ data: { name: "La Liga", countryCode: "ES" } });
+  const pdSeason = await prisma.season.create({ data: {
+    leagueId: pdLeague.id,
+    label: "2026",
+    startsOn: new Date("2026-08-01T00:00:00.000Z"),
+    endsOn: new Date("2027-05-31T00:00:00.000Z"),
+  } });
+  await prisma.leagueExternalRef.create({ data: { leagueId: pdLeague.id, provider: "football-data.org", externalId: "PD" } });
+  await prisma.seasonExternalRef.create({ data: { seasonId: pdSeason.id, provider: "football-data.org", externalId: "2026-pd" } });
+  await prisma.providerCapability.create({ data: {
+    provider: "football-data.org",
+    leagueId: pdLeague.id,
+    seasonId: pdSeason.id,
+    endpoint: "FIXTURES",
+    supported: true,
+    verifiedAt: new Date(),
+    expiresAt: new Date("2027-01-01T00:00:00.000Z"),
+  } });
 }
 
 function replayProvider(calls: string[]) {
   const capturedAt = "2026-09-02T12:00:00.000Z";
   return {
-    async fetchPremierLeagueFixtures() {
-      calls.push("FIXTURES");
+    async fetchCompetitionFixtures(window: { competitionCode: "PL" | "PD"; dateFrom: string; dateTo: string }) {
+      calls.push(`FIXTURES:${window.competitionCode}:${window.dateFrom}:${window.dateTo}`);
       return [{
         provider: "football-data.org" as const,
         externalId: "fixture-replay",
-        competitionExternalId: "PL",
-        seasonExternalId: "2026",
+        competitionExternalId: window.competitionCode,
+        seasonExternalId: window.competitionCode === "PD" ? "2026-pd" : "2026",
         homeTeamExternalId: "home-1",
         homeTeamName: "Replay Home",
         awayTeamExternalId: "away-1",
@@ -321,13 +340,41 @@ describe("production replay proxy boundary", () => {
     expect(terminal.json).toMatchObject({ state: "SUCCEEDED", outcome: "COMPLETED", attempts: [{ state: "SUCCEEDED" }] });
     expect((terminal.json.providerPolicy as { approved?: { fingerprint?: string } }).approved?.fingerprint).toBe(previewFingerprint);
     expect(terminal.json.runs).toEqual([expect.objectContaining({ lane: endpointFamily === "STANDINGS" ? "standard" : "critical" })]);
-    expect(calls).toEqual([endpointFamily]);
+    expect(calls).toEqual([endpointFamily === "FIXTURES" ? "FIXTURES:PL:2026-09-02:2026-09-02" : endpointFamily]);
     if (endpointFamily === "FIXTURES") {
       expect(await prisma.fixtureExternalRef.findUnique({
         where: { provider_externalId: { provider: "football-data.org", externalId: "fixture-replay" } },
         include: { fixture: { include: { provenance: true } } },
       })).toMatchObject({ fixture: { status: "SCHEDULED", provenance: [{ provider: "football-data.org" }] } });
     }
+  }, 30_000);
+
+  it("routes a PD FIXTURES unit through the generalized provider and persists it once", async () => {
+    const calls: string[] = [];
+    const runtime = startReplayWorker({
+      databaseUrl,
+      redisUrl,
+      apiToken: "test-token",
+      prefix: queuePrefix,
+      providerFactory: () => replayProvider(calls),
+    });
+    workers.push(runtime);
+    const input = {
+      provider: "football-data.org",
+      competitionId: "PD",
+      seasonId: "2026-pd",
+      endpointFamily: "FIXTURES" as const,
+      from: "2026-09-02T00:00:00.000Z",
+      to: "2026-09-02T23:59:59.999Z",
+    };
+    const preview = await proxy(["preview"], "POST", input);
+    const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
+    const terminal = await waitForPlan(String(queued.json.replayPlanId), "SUCCEEDED");
+
+    expect(terminal.json).toMatchObject({ state: "SUCCEEDED", outcome: "COMPLETED" });
+    expect(calls).toEqual(["FIXTURES:PD:2026-09-02:2026-09-02"]);
+    expect(await prisma.fixtureExternalRef.count({ where: { provider: "football-data.org", externalId: "fixture-replay" } })).toBe(1);
+    expect(await prisma.fixtureProvenance.count({ where: { provider: "football-data.org" } })).toBe(1);
   }, 30_000);
 
   it.each([

@@ -99,13 +99,13 @@ Plans:
 
 **Wave 19** *(gap closure; blocked on Wave 18 completion)*
 
-- [ ] 02-23-PLAN.md
-- [ ] 02-24-PLAN.md
-- [ ] 02-25-PLAN.md
+- [x] 02-23-PLAN.md
+- [x] 02-24-PLAN.md
+- [x] 02-25-PLAN.md
 
 **Wave 20** *(blocked on Wave 19 completion)*
 
-- [ ] 02-26-PLAN.md
+- [x] 02-26-PLAN.md
 
 - [x] 02-11-PLAN.md
 - [x] 02-12-PLAN.md
@@ -225,7 +225,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Trustworthy Fixture Discovery | 12/12 | Complete    | 2026-08-29 |
-| 2. Historical Evidence Pipeline | 22/22 | In Progress|  |
+| 2. Historical Evidence Pipeline | 26/26 | In Progress|  |
 | 3. Forecast and Manual Value Workbench | 0/TBD | Not started | - |
 | 4. Settlement and Evidence Scorecard | 0/TBD | Not started | - |
 | 5. Provider-Aware Coverage and Enrichment | 0/TBD | Not started | - |

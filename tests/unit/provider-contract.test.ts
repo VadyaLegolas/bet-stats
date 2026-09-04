@@ -74,15 +74,16 @@ describe("football-data.org provider contract", () => {
     const token = "TEST_VALUE_A";
     const fetcher = vi.fn(async () => { throw new Error(`network failed for ${token}`); });
     const client = new FootballDataOrgClient({ apiToken: token, fetcher, timeoutMs: 5 });
-    await expect(client.fetchPremierLeagueFixtures()).rejects.toThrow("football-data.org request failed");
-    await expect(client.fetchPremierLeagueFixtures()).rejects.not.toThrow(token);
+    const window = { competitionCode: "PL" as const, dateFrom: "2026-08-29", dateTo: "2026-08-29" };
+    await expect(client.fetchCompetitionFixtures(window)).rejects.toThrow("football-data.org request failed");
+    await expect(client.fetchCompetitionFixtures(window)).rejects.not.toThrow(token);
     expect(fetcher).toHaveBeenCalledWith(expect.stringContaining("/competitions/PL/matches"), expect.objectContaining({ signal: expect.any(AbortSignal) }));
   });
 
   it("does not retain credential-bearing provider errors as a public cause", async () => {
     const token = "TEST_VALUE_B";
     const client = new FootballDataOrgClient({ apiToken: token, fetcher: async () => { throw new Error(token); } });
-    const error = await client.fetchPremierLeagueFixtures().catch((caught: unknown) => caught);
+    const error = await client.fetchCompetitionFixtures({ competitionCode: "PL", dateFrom: "2026-08-29", dateTo: "2026-08-29" }).catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(Error);
     expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
     expect(JSON.stringify(error)).not.toContain(token);

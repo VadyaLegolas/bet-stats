@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import type { PrismaClient, ReplayProviderPolicyRepository } from "@bet-stats/database";
 import { evaluateCapability, reservePriorityRequest, type CapabilityDecision } from "@bet-stats/domain";
-import type { FixtureProvider, NormalizedFixture } from "@bet-stats/football-data";
+import { isConfiguredCompetitionCode, type FixtureProvider, type NormalizedFixture, type RequestedDateWindow } from "@bet-stats/football-data";
 
 import { runGatedIngestion, type CircuitProbeRegistry, type IngestionLane } from "../ingestion/runner.js";
 import type { ReplayJobData } from "../queues/index.js";
@@ -49,6 +49,8 @@ export async function runFixtureSyncJob(input: FixtureSyncJobInput): Promise<Fix
   const decision = evaluateCapability(capability, key, now);
   if (!decision.allowed) return { status: "denied", reason: decision.reason };
 
+  const window = fixtureRequestWindow(input.scope);
+
   const lane = input.lane ?? "critical";
   const result = await runGatedIngestion({
     provider: PROVIDER,
@@ -73,14 +75,17 @@ export async function runFixtureSyncJob(input: FixtureSyncJobInput): Promise<Fix
     }),
     providerFactory: input.providerFactory,
     callProvider: async (provider) => {
-      const fetched = await provider.fetchPremierLeagueFixtures();
-      return input.scope ? fetched.filter((fixture) => {
+      const fetched = await provider.fetchCompetitionFixtures(window);
+      const mismatch = fetched.find((fixture) => {
         const kickoff = Date.parse(fixture.kickoffUtc);
-        return fixture.competitionExternalId === input.scope!.competitionExternalId
-          && fixture.seasonExternalId === input.scope!.seasonExternalId
-          && kickoff >= Date.parse(input.scope!.from)
-          && kickoff <= Date.parse(input.scope!.to);
-      }) : fetched;
+        return fixture.competitionExternalId !== input.scope!.competitionExternalId
+          || fixture.seasonExternalId !== input.scope!.seasonExternalId
+          || !Number.isFinite(kickoff)
+          || kickoff < Date.parse(input.scope!.from)
+          || kickoff > Date.parse(input.scope!.to);
+      });
+      if (mismatch) throw classifiedFixtureError("FIXTURE_SCOPE_MISMATCH");
+      return fetched;
     },
     persist: async (fixtures) => {
       for (const fixture of fixtures) await persistCanonicalFixture(input.database, input.leagueId, input.seasonId, fixture);
@@ -89,6 +94,26 @@ export async function runFixtureSyncJob(input: FixtureSyncJobInput): Promise<Fix
   if (result.status === "completed") return { status: "completed", fixturesProcessed: result.value.length, reservationReused: result.reservationReused };
   if (result.status === "denied") return { status: "denied", reason: result.reason };
   return { status: "completed", fixturesProcessed: result.value?.length ?? 0, reservationReused: false };
+}
+
+function fixtureRequestWindow(scope: FixtureSyncJobInput["scope"]): RequestedDateWindow {
+  if (!scope || !isConfiguredCompetitionCode(scope.competitionExternalId)) {
+    throw classifiedFixtureError("INVALID_FIXTURE_SCOPE");
+  }
+  const from = Date.parse(scope.from);
+  const to = Date.parse(scope.to);
+  if (!Number.isFinite(from) || !Number.isFinite(to) || from > to) {
+    throw classifiedFixtureError("INVALID_FIXTURE_SCOPE");
+  }
+  return {
+    competitionCode: scope.competitionExternalId,
+    dateFrom: new Date(from).toISOString().slice(0, 10),
+    dateTo: new Date(to).toISOString().slice(0, 10),
+  };
+}
+
+function classifiedFixtureError(code: "INVALID_FIXTURE_SCOPE" | "FIXTURE_SCOPE_MISMATCH"): Error {
+  return Object.assign(new Error(code), { code });
 }
 
 export async function runReplayFixtureJob(

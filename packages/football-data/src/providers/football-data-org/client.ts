@@ -46,12 +46,6 @@ export class FootballDataOrgClient implements FixtureProvider, ResultProvider, S
     }
   }
 
-  fetchPremierLeagueFixtures(): Promise<readonly NormalizedFixture[]> {
-    const date = this.#now().toISOString().slice(0, 10);
-    return this.fetchCompetitionFixtures({ competitionCode: "PL", dateFrom: date, dateTo: date });
-  }
-
-
   async fetchCompetitionResults(window: RequestedDateWindow): Promise<readonly NormalizedResult[]> {
     try {
       assertConfiguredCompetition(window.competitionCode);

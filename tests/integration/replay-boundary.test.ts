@@ -240,6 +240,29 @@ describe("production replay proxy boundary", () => {
     await Promise.all(workers.splice(0).map((worker) => worker.close()));
   });
 
+  it("runs three sequential multi-unit days under one policy identity", async () => {
+    const before = await prisma.providerRequestReservation.count();
+    const reservations: number[] = [];
+    const calls: string[] = [];
+    const provider = replayProvider(calls);
+    const runtime = startReplayWorker({ databaseUrl, redisUrl, apiToken: "test-token", prefix: queuePrefix,
+      providerFactory: () => ({ ...provider, async fetchCompetitionResults(window) {
+        reservations.push(await prisma.providerRequestReservation.count());
+        calls.push(window.dateFrom);
+        return [];
+      } }),
+    });
+    workers.push(runtime);
+    const preview = await proxy(["preview"], "POST", { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-20T00:00:00.000Z", to: "2026-08-22T23:59:59.999Z" });
+    expect(preview.response.status, JSON.stringify(preview.json)).toBe(201);
+    const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
+    const terminal = await waitForPlan(String(queued.json.replayPlanId), "SUCCEEDED");
+    expect(terminal.json).toMatchObject({ providerPolicy: { classification: "UNCHANGED" } });
+    expect(calls).toEqual(["2026-08-20", "2026-08-21", "2026-08-22"]);
+    expect(reservations).toEqual([before + 1, before + 2, before + 3]);
+    expect(await prisma.syncRun.count({ where: { replayPlanId: String(queued.json.replayPlanId), state: "SUCCEEDED" } })).toBe(3);
+  }, 30_000);
+
   it("rejects unsigned, stale, altered, and unlisted ingress assertions before upstream invocation", async () => {
     const input = { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-28T10:15:00.000Z", to: "2026-08-28T10:15:00.000Z" };
     const fetchSpy = vi.spyOn(globalThis, "fetch");

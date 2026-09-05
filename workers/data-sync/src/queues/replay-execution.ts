@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@bet-stats/database";
 
 export const DEFAULT_REPLAY_EXECUTION_LEASE = Object.freeze({ leaseMs: 30_000, heartbeatMs: 5_000, deadlineMs: 120_000, maxClaims: 3 });
-export type ReplayExecutionLeaseOptions = typeof DEFAULT_REPLAY_EXECUTION_LEASE;
+export interface ReplayExecutionLeaseOptions { leaseMs: number; heartbeatMs: number; deadlineMs: number; maxClaims: number }
 type Db = PrismaClient;
 type Tx = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 

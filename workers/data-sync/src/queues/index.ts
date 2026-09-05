@@ -67,6 +67,8 @@ export function createReplayWorker(input: {
   execute: (data: ReplayJobData, context: ReplayExecutionContext) => Promise<void>;
   concurrency?: number;
   executionLease?: Partial<ReplayExecutionLeaseOptions>;
+  lockDuration?: number;
+  stalledInterval?: number;
 }) {
   const worker = new Worker<ReplayJobData>(standardQueue(input.prefix), async (job: Job<ReplayJobData>) => {
     let claim = await claimReplayExecution(input.database, job.data, input.executionLease);
@@ -95,7 +97,7 @@ export function createReplayWorker(input: {
       clearInterval(heartbeat);
     }
     return { duplicate: false };
-  }, { connection: redisConnection(input.redisUrl), concurrency: input.concurrency ?? 2, maxStalledCount: 3 });
+  }, { connection: redisConnection(input.redisUrl), concurrency: input.concurrency ?? 2, maxStalledCount: 3, lockDuration: input.lockDuration ?? 30_000, stalledInterval: input.stalledInterval ?? 30_000 });
   return worker;
 }
 

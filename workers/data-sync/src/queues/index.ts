@@ -60,20 +60,10 @@ function classifyFailure(error: unknown): string {
   return typeof code === "string" && /^[A-Z0-9_]{1,64}$/.test(code) ? code : "PROVIDER_FAILURE";
 }
 
-async function reconcileFailedDelivery(database: PrismaClient, data: ReplayJobData): Promise<void> {
-  await database.$transaction(async (tx) => {
-    const rows = await tx.$queryRawUnsafe<Array<{ state: string; executionLeaseExpiresAt: Date | null; now: Date }>>(`SELECT state,"executionLeaseExpiresAt",clock_timestamp() AS now FROM "SyncRun" WHERE id=$1 AND "replayPlanId"=$2 FOR UPDATE`, data.syncRunId, data.replayPlanId);
-    const run = rows[0];
-    if (!run || ["SUCCEEDED", "FAILED", "CANCELLED"].includes(run.state)) return;
-    if (run.state === "RUNNING" && run.executionLeaseExpiresAt && run.executionLeaseExpiresAt > run.now) return;
-    if (run.state === "PENDING") {
-      const attempt = await tx.$queryRawUnsafe<Array<{ next: number }>>(`SELECT COALESCE(MAX("attemptNumber"),0)+1 AS next FROM "SyncAttempt" WHERE "syncRunId"=$1`, data.syncRunId);
-      await tx.$executeRawUnsafe(`UPDATE "SyncRun" SET state='RUNNING',"executionLeaseToken"=$2,"executionLeaseExpiresAt"=clock_timestamp(),"executionDeadlineAt"=clock_timestamp() WHERE id=$1`, data.syncRunId, `delivery-${data.revision}-${attempt[0]?.next ?? 1}`);
-      await tx.$executeRawUnsafe(`INSERT INTO "SyncAttempt" (id,"syncRunId","attemptNumber",state,"startedAt") VALUES (gen_random_uuid()::text,$1,$2,'RUNNING',clock_timestamp())`, data.syncRunId, attempt[0]?.next ?? 1);
-    }
-    await tx.$executeRawUnsafe(`UPDATE "SyncAttempt" SET state='FAILED',"classifiedReason"='QUEUE_DELIVERY_EXHAUSTED',"finishedAt"=clock_timestamp() WHERE "syncRunId"=$1 AND state='RUNNING'`, data.syncRunId);
-    await tx.$executeRawUnsafe(`UPDATE "SyncRun" SET state='FAILED',"terminalAt"=clock_timestamp(),"executionLeaseToken"=NULL,"executionLeaseExpiresAt"=NULL,"executionDeadlineAt"=NULL WHERE id=$1 AND state='RUNNING'`, data.syncRunId);
-  });
+async function reconcileFailedDelivery(database: PrismaClient, data: ReplayJobData, maxClaims = SYNC_MAX_ATTEMPTS): Promise<void> {
+  const attempts = await database.syncAttempt.count({ where: { syncRunId: data.syncRunId } });
+  if (attempts < maxClaims) return;
+  await claimReplayExecution(database, data, { maxClaims });
 }
 
 export function createReplayWorker(input: {
@@ -116,14 +106,19 @@ export function createReplayWorker(input: {
   }, { connection: redisConnection(input.redisUrl), concurrency: input.concurrency ?? 2, maxStalledCount: 3, lockDuration: input.lockDuration ?? 30_000, stalledInterval: input.stalledInterval ?? 30_000 });
   const inspector = new Queue<ReplayJobData>(standardQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
   const reconcile = async () => {
-    const failed = await inspector.getFailed(0, 99);
-    await Promise.all(failed.map((job) => reconcileFailedDelivery(input.database, job.data)));
+    const pageSize = 100;
+    for (let start = 0; ; start += pageSize) {
+      const failed = await inspector.getFailed(start, start + pageSize - 1);
+      await Promise.all(failed.map((job) => reconcileFailedDelivery(input.database, job.data, job.opts.attempts ?? SYNC_MAX_ATTEMPTS)));
+      if (failed.length < pageSize) break;
+    }
   };
+  const scheduleReconcile = () => { void reconcile().catch(() => undefined); };
   worker.on("failed", (job) => {
-    if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) void reconcileFailedDelivery(input.database, job.data);
+    if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) void reconcileFailedDelivery(input.database, job.data, job.opts.attempts ?? SYNC_MAX_ATTEMPTS).catch(() => undefined);
   });
-  void reconcile();
-  const reconciliationTimer = setInterval(() => { void reconcile(); }, 5_000);
+  scheduleReconcile();
+  const reconciliationTimer = setInterval(scheduleReconcile, 5_000);
   const closeWorker = worker.close.bind(worker);
   worker.close = async (force?: boolean) => { clearInterval(reconciliationTimer); await inspector.close(); await closeWorker(force); };
   return worker;

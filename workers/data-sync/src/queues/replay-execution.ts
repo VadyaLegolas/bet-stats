@@ -52,7 +52,11 @@ export async function claimReplayExecution(database: Db, job: { syncRunId: strin
       await tx.$executeRawUnsafe(`UPDATE "SyncAttempt" SET state='FAILED', "classifiedReason"='WORKER_LEASE_EXPIRED', "finishedAt"=clock_timestamp() WHERE "syncRunId"=$1 AND state='RUNNING'`, run.id);
     }
     if (attempts.length >= options.maxClaims) {
-      if (run.state === "RUNNING") await tx.$executeRawUnsafe(`UPDATE "SyncRun" SET state='FAILED', "terminalAt"=clock_timestamp(), "executionLeaseToken"=NULL, "executionLeaseExpiresAt"=NULL, "executionDeadlineAt"=NULL WHERE id=$1`, run.id);
+      if (run.state === "PENDING") {
+        const exhaustionToken = randomUUID();
+        await tx.$executeRawUnsafe(`UPDATE "SyncRun" SET state='RUNNING', "executionLeaseToken"=$2, "executionLeaseExpiresAt"=clock_timestamp(), "executionDeadlineAt"=clock_timestamp() WHERE id=$1 AND state='PENDING'`, run.id, exhaustionToken);
+      }
+      await tx.$executeRawUnsafe(`UPDATE "SyncRun" SET state='FAILED', "terminalAt"=clock_timestamp(), "executionLeaseToken"=NULL, "executionLeaseExpiresAt"=NULL, "executionDeadlineAt"=NULL WHERE id=$1 AND state='RUNNING'`, run.id);
       return { status: "exhausted" } as const;
     }
     const attemptNumber = (attempts[0]?.attemptNumber ?? 0) + 1;

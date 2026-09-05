@@ -1,9 +1,10 @@
-import Decimal from "decimal.js";
+import { Decimal } from "decimal.js";
 
 import type { ForecastDraft, ForecastSelection } from "../forecast/model.js";
 import type { NormalizedOddsBook } from "../odds/normalize.js";
+import type { ValueCommand } from "./contract.js";
 
-export interface ValueInput { readonly forecast: ForecastDraft; readonly odds: NormalizedOddsBook; readonly selection: ForecastSelection }
+export interface ValueInput extends Pick<ValueCommand, "selection"> { readonly forecast: ForecastDraft; readonly odds: NormalizedOddsBook }
 
 export function decideValue(input: ValueInput) {
   const reasons: string[] = [...input.forecast.limitations];

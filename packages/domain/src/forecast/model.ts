@@ -1,9 +1,7 @@
 import { createHash } from "node:crypto";
-import Decimal from "decimal.js";
-
 import type { EvidenceProjectionDto, EvidenceSourceRef } from "../evidence/contract.js";
-
-Decimal.set({ precision: 40, rounding: Decimal.ROUND_HALF_EVEN });
+import { calculateConfidence } from "./confidence.js";
+import { fairOddsForProbability, FORECAST_CONFIG } from "./config.js";
 
 export type ForecastMarket = "ONE_X_TWO" | "OVER_UNDER_2_5" | "BTTS";
 export type ForecastSelection = "HOME" | "DRAW" | "AWAY" | "OVER_2_5" | "UNDER_2_5" | "YES" | "NO";
@@ -46,18 +44,6 @@ export interface ForecastDraft {
   readonly assumptions: readonly string[];
 }
 
-const CONFIG = {
-  version: "forecast-config-v1",
-  probabilityTolerance: 1e-12,
-  tailWarningThreshold: 0.01,
-  baselineGoals: { home: 1.45, away: 1.15 },
-  coefficients: { goalRates: 0.35, elo: 0.18, form: 0.12, venue: 0.1, rest: 0.05, h2h: 0.03 },
-  transformBounds: [-0.2, 0.2],
-  h2hBounds: [-0.03, 0.03],
-  multiplierBounds: [0.65, 1.35],
-  lambdaBounds: [0.2, 4],
-} as const;
-
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   if (value && typeof value === "object") return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(",")}}`;
@@ -97,12 +83,12 @@ function adjustment(team: EvidenceProjectionDto, opponent: EvidenceProjectionDto
   const venueSignal = ((numeric(team, venueKind) ?? 1.5) - 1.5) / 1.5;
   const restSignal = ((numeric(team, "restDays") ?? 5) - (numeric(opponent, "restDays") ?? 5)) / 7;
   const h2hSignal = ((h2h(team) ?? 1.5) - 1.5) / 1.5;
-  return clamp(goalSignal * CONFIG.coefficients.goalRates, CONFIG.transformBounds)
-    + clamp(eloSignal * CONFIG.coefficients.elo, CONFIG.transformBounds)
-    + clamp(formSignal * CONFIG.coefficients.form, CONFIG.transformBounds)
-    + clamp(venueSignal * CONFIG.coefficients.venue, CONFIG.transformBounds)
-    + clamp(restSignal * CONFIG.coefficients.rest, CONFIG.transformBounds)
-    + clamp(h2hSignal * CONFIG.coefficients.h2h, CONFIG.h2hBounds);
+  return clamp(goalSignal * FORECAST_CONFIG.coefficients.goalRates, FORECAST_CONFIG.transformBounds)
+    + clamp(eloSignal * FORECAST_CONFIG.coefficients.elo, FORECAST_CONFIG.transformBounds)
+    + clamp(formSignal * FORECAST_CONFIG.coefficients.form, FORECAST_CONFIG.transformBounds)
+    + clamp(venueSignal * FORECAST_CONFIG.coefficients.venue, FORECAST_CONFIG.transformBounds)
+    + clamp(restSignal * FORECAST_CONFIG.coefficients.rest, FORECAST_CONFIG.transformBounds)
+    + clamp(h2hSignal * FORECAST_CONFIG.coefficients.h2h, FORECAST_CONFIG.h2hBounds);
 }
 
 function poisson(goals: number, lambda: number): number {
@@ -112,7 +98,7 @@ function poisson(goals: number, lambda: number): number {
 }
 
 function event(selection: ForecastSelection, probability: number): ForecastEvent {
-  return { selection, probability, fairOdds: probability <= 0 ? null : new Decimal(1).div(probability).toString() };
+  return { selection, probability, fairOdds: fairOddsForProbability(probability) };
 }
 
 export function createForecast(input: ForecastInput): ForecastDraft {
@@ -128,9 +114,9 @@ export function createForecast(input: ForecastInput): ForecastDraft {
     if (projection.freshness !== "FRESH") limitations.push(`${side}_EVIDENCE_${projection.freshness}`);
     if (!projection.buildId) limitations.push(`MISSING_${side}_BUILD_ID`);
   }
-  const homeMultiplier = clamp(1 + adjustment(input.home, input.away, "home"), CONFIG.multiplierBounds);
-  const awayMultiplier = clamp(1 + adjustment(input.away, input.home, "away"), CONFIG.multiplierBounds);
-  const expectedGoals = { home: clamp(CONFIG.baselineGoals.home * homeMultiplier, CONFIG.lambdaBounds), away: clamp(CONFIG.baselineGoals.away * awayMultiplier, CONFIG.lambdaBounds) };
+  const homeMultiplier = clamp(1 + adjustment(input.home, input.away, "home"), FORECAST_CONFIG.multiplierBounds);
+  const awayMultiplier = clamp(1 + adjustment(input.away, input.home, "away"), FORECAST_CONFIG.multiplierBounds);
+  const expectedGoals = { home: clamp(FORECAST_CONFIG.baselineGoals.home * homeMultiplier, FORECAST_CONFIG.lambdaBounds), away: clamp(FORECAST_CONFIG.baselineGoals.away * awayMultiplier, FORECAST_CONFIG.lambdaBounds) };
   const raw: Array<{ homeGoals: number; awayGoals: number; probability: number }> = [];
   for (let homeGoals = 0; homeGoals <= 7; homeGoals += 1) for (let awayGoals = 0; awayGoals <= 7; awayGoals += 1) raw.push({ homeGoals, awayGoals, probability: poisson(homeGoals, expectedGoals.home) * poisson(awayGoals, expectedGoals.away) });
   const retainedMass = raw.reduce((sum, cell) => sum + cell.probability, 0);
@@ -147,15 +133,16 @@ export function createForecast(input: ForecastInput): ForecastDraft {
     sourceReliability: input.sourceReliability,
     modelStability: 1,
   };
-  const confidenceScore = components.completeness * 0.3 + components.lineupAvailability * 0.1 + components.freshness * 0.25 + components.sourceReliability * 0.2 + components.modelStability * 0.15;
+  const confidence = calculateConfidence(components);
   const sources = [...(input.home.receipt?.inputs ?? []), ...(input.away.receipt?.inputs ?? [])].sort((a, b) => canonical(a).localeCompare(canonical(b)));
   const evidenceBuildIds = [input.home.buildId, input.away.buildId].filter((value): value is string => value !== null).sort();
+  const canonicalInput = { fixtureId: input.fixtureId, forecastSnapshotId: input.forecastSnapshotId, cutoff: input.cutoff, canonicalIdentityState: input.canonicalIdentityState, lineupAvailable: input.lineupAvailable, sourceReliability: input.sourceReliability, evidenceBuildIds, sources };
   return {
     fixtureId: input.fixtureId, forecastSnapshotId: input.forecastSnapshotId, cutoff: input.cutoff,
-    modelVersion: "poisson-ensemble-v1", configVersion: "forecast-config-v1", configHash: hash(CONFIG), inputHash: hash({ ...input, sources }), evidenceBuildIds,
-    expectedGoals, scoreMatrix, retainedMass, tailMass: Math.max(0, 1 - retainedMass), tailWarning: 1 - retainedMass > CONFIG.tailWarningThreshold,
+    modelVersion: "poisson-ensemble-v1", configVersion: "forecast-config-v1", configHash: hash(FORECAST_CONFIG), inputHash: hash(canonicalInput), evidenceBuildIds,
+    expectedGoals, scoreMatrix, retainedMass, tailMass: Math.max(0, 1 - retainedMass), tailWarning: 1 - retainedMass > FORECAST_CONFIG.tailWarningThreshold,
     markets: { ONE_X_TWO: [event("HOME", home), event("DRAW", draw), event("AWAY", 1 - home - draw)], OVER_UNDER_2_5: [event("OVER_2_5", over), event("UNDER_2_5", 1 - over)], BTTS: [event("YES", yes), event("NO", 1 - yes)] },
-    confidence: { version: "confidence-v1", score: confidenceScore, components }, limitations, sources,
+    confidence, limitations, sources,
     assumptions: ["independent Poisson goal counts", "0..7 score grid normalized by retained mass", "starting policy pending Phase 4 calibration"],
   };
 }

@@ -40,9 +40,15 @@ describe("historical pipeline job contract", () => {
   });
 
   it("uses the same bounded transient retry policy for fixture and result work", async () => {
-    const { createSyncJobOptions } = await import("../../workers/data-sync/src/queues/index.js");
+    const { createSyncJobOptions, isUnrecoverableReplayFailure } = await import("../../workers/data-sync/src/queues/index.js");
     expect(createSyncJobOptions("fixtures")).toEqual(createSyncJobOptions("results"));
     expect(createSyncJobOptions("fixtures")).toMatchObject({ attempts: 3, backoff: { type: "exponential" } });
+    for (const reason of ["INVALID_REPLAY_WINDOW", "IDENTITY_UNRESOLVED", "REPLAY_POLICY_CHANGED", "MALFORMED_POLICY", "RUN_NOT_FOUND", "UNSUPPORTED_REPLAY_ENDPOINT"]) {
+      expect(isUnrecoverableReplayFailure(reason)).toBe(true);
+    }
+    for (const reason of ["PROVIDER_TIMEOUT", "CIRCUIT_OPEN", "ALLOWANCE_EXHAUSTED"]) {
+      expect(isUnrecoverableReplayFailure(reason)).toBe(false);
+    }
   });
 
   it("execution lease claims, waits, reclaims, and fences stale owners", async () => {

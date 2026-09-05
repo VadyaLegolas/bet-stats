@@ -17,6 +17,7 @@ import { createBullReplayEnqueuer, createReplayService } from "../../apps/api/sr
 import { ReplayController } from "../../apps/api/src/modules/replay/replay.controller.js";
 import { OperatorGuard } from "../../apps/api/src/modules/reconciliation/operator.guard.js";
 import { createReplayQueue, createReplayWorker } from "../../workers/data-sync/src/queues/index.js";
+import { claimReplayExecution } from "../../workers/data-sync/src/queues/replay-execution.js";
 import { createDurableProviderCircuitRegistry } from "../../workers/data-sync/src/resilience/circuits.js";
 import { NestFactory } from "../../apps/api/node_modules/@nestjs/core/index.js";
 import { AppModule } from "../../apps/api/src/app.module.js";
@@ -111,7 +112,7 @@ describe("durable bounded replay", () => {
       blockedReason: null,
     });
     expect(second).toEqual(first);
-    expect(fingerprintReplayProviderPolicy(first)).toBe("fa46cb991ab1b9146339b188b9efd6d766eb3022a54371504d29ecd94cf1f930");
+    expect(fingerprintReplayProviderPolicy(first)).toMatch(/^identity-v2:[a-f0-9]{64}$/);
     expect(fingerprintReplayProviderPolicy(second)).toBe(fingerprintReplayProviderPolicy(first));
     expect(evaluateReplayProviderPolicy(first, 5, now)).toEqual({ allowed: true, remainingAfter: 0 });
   });
@@ -202,7 +203,7 @@ describe("durable bounded replay", () => {
     const expectedCurrent = await repository.read(resultsPolicy.provider, resultsPolicy.endpointFamily);
     expect(await service.status(queued.replayPlanId)).toMatchObject({
       providerPolicy: {
-        classification: "CHANGED",
+        classification: "UNCHANGED",
         approved: { fingerprint: fingerprintReplayProviderPolicy(expectedApproved), snapshot: expectedApproved },
         current: { fingerprint: fingerprintReplayProviderPolicy(expectedCurrent), snapshot: expectedCurrent },
       },
@@ -218,7 +219,7 @@ describe("durable bounded replay", () => {
       data: { state: "OPEN", openedAt: policyNow, updatedAt: policyNow },
     });
     await expect(service.queue({ previewId: stalePreview.previewId, previewVersion: stalePreview.previewVersion }))
-      .rejects.toMatchObject({ code: "STALE_PREVIEW", status: 409 });
+      .rejects.toMatchObject({ code: "CIRCUIT_OPEN", status: 409 });
   });
 
   it("rejects every fail-closed provider policy before queue delivery", async () => {
@@ -370,8 +371,9 @@ describe("durable bounded replay", () => {
     expect(attemptedJobIds[1]).toBe(attemptedJobIds[2]);
 
     const executions = new Map<string, number>();
-    const worker = createReplayWorker({ redisUrl, database: prisma, prefix, execute: async (data) => {
+    const worker = createReplayWorker({ redisUrl, database: prisma, prefix, execute: async (data, context) => {
       executions.set(data.logicalId, (executions.get(data.logicalId) ?? 0) + 1);
+      await context.publish(async () => undefined);
     } });
     try {
       for (let poll = 0; poll < 100 && (await restarted.status(plan.id)).state !== "SUCCEEDED"; poll += 1) {
@@ -498,7 +500,7 @@ describe("durable bounded replay", () => {
       lane: "standard",
       windowFrom: new Date(request.from),
       windowTo: new Date(request.to),
-      state: "RUNNING",
+      state: "PENDING",
       correlationId: randomUUID(),
     } });
     const startedAt = new Date("2026-08-19T10:00:00.000Z");
@@ -543,7 +545,7 @@ describe("durable bounded replay", () => {
     } });
     const logicalId = `terminal-${state.toLowerCase()}-${randomUUID()}`;
     const syncRun = await prisma.syncRun.create({ data: {
-      logicalKey: logicalId,
+      logicalKey: `${logicalId}:replay`,
       revision: 1,
       provider: request.provider,
       endpointFamily: request.endpointFamily,
@@ -575,9 +577,65 @@ describe("durable bounded replay", () => {
     }
   });
 
+  it("rejects stale failure after the execution lease expires", async () => {
+    const logicalId = `expired-fail-${randomUUID()}`;
+    const replayPlan = await prisma.replayPlan.create({ data: {
+      logicalKey: logicalId, revision: 1, provider: request.provider,
+      competitionId: request.competitionId, endpointFamily: request.endpointFamily,
+      windowFrom: new Date(request.from), windowTo: new Date(request.to),
+      previewVersion: randomUUID(), actor: "integration-test",
+    } });
+    const run = await prisma.syncRun.create({ data: {
+      logicalKey: `${logicalId}:replay`, revision: 1, provider: request.provider,
+      endpointFamily: request.endpointFamily, lane: "standard",
+      windowFrom: new Date(request.from), windowTo: new Date(request.to),
+      correlationId: randomUUID(), replayPlanId: replayPlan.id,
+    } });
+    const claim = await claimReplayExecution(prisma, {
+      syncRunId: run.id, replayPlanId: replayPlan.id, logicalId, revision: 1,
+    }, { leaseMs: 100, heartbeatMs: 10, deadlineMs: 100 });
+    expect(claim.status).toBe("claimed");
+    if (claim.status !== "claimed") throw new Error("expected claim");
+    await new Promise((resolveWait) => setTimeout(resolveWait, 150));
+    await expect(claim.context.fail("PROVIDER_TIMEOUT", true)).resolves.toBe(false);
+    expect(await prisma.syncRun.findUniqueOrThrow({ where: { id: run.id } })).toMatchObject({ state: "RUNNING" });
+    expect(await prisma.syncAttempt.findFirstOrThrow({ where: { syncRunId: run.id } })).toMatchObject({ state: "RUNNING", classifiedReason: null });
+  });
+
+  it("terminalizes an exhausted pending run inside the claim transaction", async () => {
+    const logicalId = `exhausted-pending-${randomUUID()}`;
+    const replayPlan = await prisma.replayPlan.create({ data: {
+      logicalKey: logicalId, revision: 1, provider: request.provider,
+      competitionId: request.competitionId, endpointFamily: request.endpointFamily,
+      windowFrom: new Date(request.from), windowTo: new Date(request.to),
+      previewVersion: randomUUID(), actor: "integration-test",
+    } });
+    const run = await prisma.syncRun.create({ data: {
+      logicalKey: `${logicalId}:replay`, revision: 1, provider: request.provider,
+      endpointFamily: request.endpointFamily, lane: "standard",
+      windowFrom: new Date(request.from), windowTo: new Date(request.to),
+      correlationId: randomUUID(), replayPlanId: replayPlan.id,
+    } });
+    for (let attemptNumber = 1; attemptNumber <= 3; attemptNumber += 1) {
+      await prisma.syncAttempt.create({ data: {
+        syncRunId: run.id, attemptNumber, state: "FAILED", startedAt: new Date(),
+        finishedAt: new Date(), classifiedReason: "PROVIDER_TIMEOUT",
+      } });
+    }
+    await expect(claimReplayExecution(prisma, {
+      syncRunId: run.id, replayPlanId: replayPlan.id, logicalId, revision: 1,
+    })).resolves.toEqual({ status: "exhausted" });
+    expect(await prisma.syncRun.findUniqueOrThrow({ where: { id: run.id } })).toMatchObject({ state: "FAILED", terminalAt: expect.any(Date) });
+    expect(await prisma.syncAttempt.count({ where: { syncRunId: run.id } })).toBe(3);
+  });
+
   it("uses a real BullMQ worker for terminal, duplicate, retry and dead-letter lifecycle", async () => {
     const prefix = `replay-${process.pid}`; const executions = new Map<string, number>();
-    const worker = createReplayWorker({ redisUrl, database: prisma, prefix, execute: async (data) => { executions.set(data.logicalId, (executions.get(data.logicalId) ?? 0) + 1); if (data.input.seasonId === "fail") throw Object.assign(new Error("provider"), { code: "PROVIDER_TIMEOUT" }); } });
+    const worker = createReplayWorker({ redisUrl, database: prisma, prefix, execute: async (data, context) => {
+      executions.set(data.logicalId, (executions.get(data.logicalId) ?? 0) + 1);
+      if (data.input.seasonId === "fail") throw Object.assign(new Error("provider"), { code: "PROVIDER_TIMEOUT" });
+      await context.publish(async () => undefined);
+    } });
     const queue = createReplayQueue({ redisUrl, prefix, database: prisma });
     const service = createReplayService({ database: prisma, enqueuer: queue });
     const preview = await service.preview({ ...request, seasonId: "success", from: "2026-08-20T00:00:00.000Z", to: "2026-08-20T00:00:00.000Z" }, "integration-operator");

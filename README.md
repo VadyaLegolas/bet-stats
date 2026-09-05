@@ -38,6 +38,7 @@ infra/docker-compose.yml  локальные PostgreSQL и Redis
 pnpm install --frozen-lockfile
 Copy-Item .env.example .env
 docker compose -f infra/docker-compose.yml up -d
+pnpm build
 pnpm dev
 ```
 
@@ -105,6 +106,7 @@ You need Node.js `>=24 <25`, pnpm `10.34.5`, and Docker Compose.
 pnpm install --frozen-lockfile
 Copy-Item .env.example .env
 docker compose -f infra/docker-compose.yml up -d
+pnpm build
 pnpm dev
 ```
 

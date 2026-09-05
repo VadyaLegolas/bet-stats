@@ -274,21 +274,21 @@ The exact precision and rounding mode above are discretionary initial defaults a
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | Initial Decimal precision 40 and ROUND_HALF_EVEN | Code Examples | Receipt numbers/config hash change; must be locked before production snapshots |
-| A2 | Database triggers should enforce issued-row immutability | Pitfall 6 | Prisma-only enforcement may be chosen instead; weaker defense-in-depth |
+| A1 | Decimal precision 40 and ROUND_HALF_EVEN | Resolved Planning Questions | Resolved: locked in `forecast-config-v1` and receipt/config hash |
+| A2 | Database triggers enforce issued-row immutability | Resolved Planning Questions | Resolved: triggers plus repository restrictions and PostgreSQL mutation tests |
 | A3 | Gate precedence is quality, confidence, then edge/EV | Pattern 3 | Changes classification/microcopy for multi-failure cases |
-| A4 | Forecast expected-goal weights and candidate thresholds | User discretion | Must be research-backed and versioned before implementation; no product defaults are yet authoritative |
+| A4 | Forecast expected-goal weights and candidate thresholds | Resolved Planning Questions | Resolved as transparent `forecast-config-v1`/`value-policy-v1` starting policies pending Phase 4 evaluation |
 
-## Open Questions
+## Resolved Planning Questions
 
-1. **What are the initial versioned numeric defaults?**
-   - Known: weights, tolerance, tail warning, confidence weights and value thresholds are discretionary.
-   - Recommendation: create `forecast-config-v1` as an explicit reviewed artifact; test bounds and expose every value in receipts. Do not claim calibration before Phase 4.
-2. **How are INITIAL and PRE_MATCH cutoffs scheduled?**
-   - Known: kinds and semantics are locked; no exact lead time is locked.
-   - Recommendation: choose named configurable durations and include cutoff-policy version; LINEUP_CONFIRMED remains dormant until official evidence exists.
-3. **Should immutable enforcement include PostgreSQL triggers?**
-   - Recommendation: yes for issued snapshots/receipts, plus repository restrictions and mutation integration tests; planner may split this into a migration hardening task.
+1. **Initial versioned numeric defaults — RESOLVED in Plans 03-01/03-02.**
+   - `forecast-config-v1` uses Decimal precision 40 with ROUND_HALF_EVEN, probability tolerance `1e-12`, and tail warning threshold `0.01`.
+   - Expected-goal adjustment coefficients are goal rates `0.35`, Elo `0.18`, recent form `0.12`, venue strength `0.10`, rest `0.05`, and H2H `0.03`; each transform is clamped to `[-0.20, 0.20]`, H2H to `[-0.03, 0.03]`, aggregate lambda multiplier to `[0.65, 1.35]`, and final lambda to `[0.20, 4.00]`.
+   - `confidence-v1` weights completeness `0.30`, lineup availability `0.10`, freshness `0.25`, source reliability `0.20`, and model stability `0.15`. `value-policy-v1` requires confidence `0.65`, edge `0.03`, and EV `0.05`, in addition to every quality gate. These are transparent starting policies, not calibration claims; Phase 4 evaluates them.
+2. **INITIAL/PRE_MATCH scheduling — RESOLVED in Plan 03-04.**
+   - `cutoff-policy-v1`: INITIAL is event-driven at the first eligible published evidence pair and retains that resolved cutoff; PRE_MATCH is scheduled at kickoff minus 6 hours and uses the newest evidence whose effective/observed times are at or before that exact cutoff. Retries use the same logical identity. LINEUP_CONFIRMED remains dormant without an official confirmed observation.
+3. **PostgreSQL triggers — RESOLVED in Plan 03-03.**
+   - Yes. Issued forecasts, submitted odds/selections, and value receipts reject UPDATE/DELETE in PostgreSQL. A BUILDING forecast may transition once to PUBLISHED/FAILED while identity/input fields remain immutable; repository restrictions and real mutation integration tests provide additional enforcement.
 
 ## Environment Availability
 
@@ -378,14 +378,14 @@ ASVS 5.0.0 is the latest stable release (May 2025). [CITED: https://github.com/O
 - https://github.com/OWASP/ASVS — ASVS 5.0.0 status and controls.
 
 ### Tertiary (LOW confidence)
-- Initial numeric model/gate defaults remain assumptions pending review and Phase 4 evaluation.
+- Initial numeric model/gate defaults are now locked as versioned, tested starting policies; their predictive calibration remains unproven until Phase 4 evaluation.
 
 ## Metadata
 
 **Confidence breakdown:**
 - Standard stack: HIGH — mostly installed stack; decimal.js verified via official docs, npm registry and legitimacy gate.
 - Architecture: HIGH — constrained by CONTEXT.md and established Phase 2 boundaries.
-- Numeric defaults: LOW — intentionally not locked; must be a versioned planning decision.
+- Numeric defaults: LOW empirical confidence — locked as versioned planning decisions, explicitly not calibration claims until Phase 4.
 - Pitfalls: HIGH for cutoff/snapshot/rounding issues; MEDIUM for database trigger recommendation.
 
 **Research date:** 2026-09-05  

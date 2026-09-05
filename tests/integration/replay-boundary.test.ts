@@ -482,6 +482,7 @@ describe("production replay proxy boundary", () => {
 
     expect(terminal.json).toMatchObject({ state: "FAILED", outcome: "DEAD_LETTER" });
     expect((terminal.json.attempts as Array<Record<string, unknown>>)[0]).toMatchObject({ classifiedReason: "FIXTURE_SCOPE_MISMATCH" });
+    expect(terminal.json.attempts).toHaveLength(1);
     expect(calls).toEqual([`FIXTURES:PD:${unitDate}:${unitDate}`]);
     expect(await prisma.fixtureExternalRef.count({ where: { provider: "football-data.org", externalId } })).toBe(0);
     expect(await prisma.fixtureProvenance.count({ where: { provider: "football-data.org", rawPayload: { equals: { id: externalId } } } })).toBe(0);

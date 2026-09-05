@@ -2,6 +2,7 @@ import type { PrismaClient, ReplayProviderPolicyRepository } from "@bet-stats/da
 import {
   evaluateReplayProviderPolicy,
   fingerprintReplayProviderPolicy,
+  verifyPersistedReplayProviderPolicyFingerprint,
   type ReplayProviderPolicySnapshot,
 } from "@bet-stats/domain";
 
@@ -62,7 +63,8 @@ export async function readReplayWorkerProviderPolicy(input: {
   const approved = planRows[0];
   if (!approved || !isPersistedSnapshot(approved.impact)) throw policyError("MALFORMED_POLICY");
   const approvedSnapshot = approved.impact.providerPolicy;
-  if (approved.providerPolicyFingerprint !== fingerprintReplayProviderPolicy(approvedSnapshot)) throw policyError("MALFORMED_POLICY");
+  const approvedIdentity = verifyPersistedReplayProviderPolicyFingerprint(approvedSnapshot, approved.providerPolicyFingerprint);
+  if (!approvedIdentity) throw policyError("MALFORMED_POLICY");
 
   let snapshot: ReplayProviderPolicySnapshot;
   try {
@@ -71,7 +73,7 @@ export async function readReplayWorkerProviderPolicy(input: {
     throw policyError("MALFORMED_POLICY");
   }
   const fingerprint = fingerprintReplayProviderPolicy(snapshot);
-  if (fingerprint !== approved.providerPolicyFingerprint) throw policyError("REPLAY_POLICY_CHANGED");
+  if (fingerprint !== approvedIdentity) throw policyError("REPLAY_POLICY_CHANGED");
   const decision = evaluateReplayProviderPolicy(snapshot, 1, input.now?.() ?? new Date());
   if (!decision.allowed) throw policyError(decision.reason);
   return { snapshot, fingerprint };

@@ -10,6 +10,7 @@ import {
 import {
   evaluateReplayProviderPolicy,
   fingerprintReplayProviderPolicy,
+  verifyPersistedReplayProviderPolicyFingerprint,
   type ReplayProviderPolicySnapshot,
 } from "@bet-stats/domain";
 import { Queue } from "bullmq";
@@ -127,11 +128,12 @@ export function createReplayService(options: { database: PrismaClient; enqueuer?
         if (!preview || preview.previewVersion !== previewVersion || preview.expiresAt <= now()) throw replayError("STALE_PREVIEW", 409);
         await tx.$executeRawUnsafe("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", `replay-confirm-logical:${preview.logicalKey}`);
         const approvedPolicy = snapshotFromImpact(preview.impact.providerPolicy);
-        if (!approvedPolicy || preview.providerPolicyFingerprint !== fingerprintReplayProviderPolicy(approvedPolicy)) throw replayError("STALE_PREVIEW", 409);
+        const approvedIdentity = approvedPolicy && verifyPersistedReplayProviderPolicyFingerprint(approvedPolicy, preview.providerPolicyFingerprint);
+        if (!approvedPolicy || !approvedIdentity) throw replayError("STALE_PREVIEW", 409);
         let currentPolicy: ReplayProviderPolicySnapshot;
         try { currentPolicy = await providerPolicyRepository.read(preview.normalizedInput.provider, preview.normalizedInput.endpointFamily); }
         catch { throw replayError("STALE_PREVIEW", 409); }
-        if (preview.providerPolicyFingerprint !== fingerprintReplayProviderPolicy(currentPolicy)) throw replayError("STALE_PREVIEW", 409);
+        if (approvedIdentity !== fingerprintReplayProviderPolicy(currentPolicy)) throw replayError("STALE_PREVIEW", 409);
         const currentDecision = evaluateReplayProviderPolicy(currentPolicy, preview.impact.calls, now());
         if (!currentDecision.allowed) throw replayError(currentDecision.reason, 409);
         const duplicate = await tx.$queryRawUnsafe<Array<{ id: string; revision: number }>>(`SELECT id,revision FROM "ReplayPlan" WHERE "previewId"=$1`, previewId);
@@ -178,7 +180,7 @@ export function createReplayService(options: { database: PrismaClient; enqueuer?
       const approvedSnapshot = snapshotFromImpact(plan.impact.providerPolicy);
       let currentSnapshot: ReplayProviderPolicySnapshot | null = null;
       try { currentSnapshot = await providerPolicyRepository.read(plan.provider, plan.endpointFamily); } catch { /* status remains safely unavailable */ }
-      const approved = approvedSnapshot && plan.providerPolicyFingerprint === fingerprintReplayProviderPolicy(approvedSnapshot)
+      const approved = approvedSnapshot && verifyPersistedReplayProviderPolicyFingerprint(approvedSnapshot, plan.providerPolicyFingerprint)
         ? publicPolicy(approvedSnapshot)
         : null;
       const current = currentSnapshot ? publicPolicy(currentSnapshot) : null;

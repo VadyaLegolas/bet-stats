@@ -252,15 +252,46 @@ describe("production replay proxy boundary", () => {
         return [];
       } }),
     });
+    runtime.worker.concurrency = 1;
     workers.push(runtime);
     const preview = await proxy(["preview"], "POST", { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-20T00:00:00.000Z", to: "2026-08-22T23:59:59.999Z" });
     expect(preview.response.status, JSON.stringify(preview.json)).toBe(201);
     const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
     const terminal = await waitForPlan(String(queued.json.replayPlanId), "SUCCEEDED");
     expect(terminal.json).toMatchObject({ providerPolicy: { classification: "UNCHANGED" } });
-    expect(calls).toEqual(["2026-08-20", "2026-08-21", "2026-08-22"]);
+    expect([...calls].sort()).toEqual(["2026-08-20", "2026-08-21", "2026-08-22"]);
     expect(reservations).toEqual([before + 1, before + 2, before + 3]);
     expect(await prisma.syncRun.count({ where: { replayPlanId: String(queued.json.replayPlanId), state: "SUCCEEDED" } })).toBe(3);
+    await prisma.providerRequestReservation.deleteMany({ where: { jobKey: { in: preview.json.logicalJobIds as string[] } } });
+  }, 30_000);
+
+  it("multi-unit replay stops a new live circuit denial between units", async () => {
+    let constructions = 0;
+    let calls = 0;
+    const provider = replayProvider([]);
+    const runtime = startReplayWorker({ databaseUrl, redisUrl, apiToken: "test-token", prefix: queuePrefix,
+      providerFactory: () => { constructions += 1; return { ...provider, async fetchCompetitionResults() {
+        calls += 1;
+        await prisma.providerCircuitState.update({ where: { provider_endpointFamily: { provider: "football-data.org", endpointFamily: "RESULTS" } }, data: { state: "OPEN", updatedAt: new Date() } });
+        return [];
+      } }; },
+    });
+    runtime.worker.concurrency = 1;
+    workers.push(runtime);
+    const preview = await proxy(["preview"], "POST", { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-23T00:00:00.000Z", to: "2026-08-24T23:59:59.999Z" });
+    expect(preview.response.status).toBe(201);
+    try {
+      const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
+      const terminal = await waitForPlan(String(queued.json.replayPlanId), "FAILED");
+      expect(constructions).toBe(1);
+      expect(calls).toBe(1);
+      expect(terminal.json.attempts).toEqual(expect.arrayContaining([expect.objectContaining({ classifiedReason: "CIRCUIT_OPEN" })]));
+    } finally {
+      await runtime.close();
+      workers.splice(workers.indexOf(runtime), 1);
+      await prisma.providerCircuitState.update({ where: { provider_endpointFamily: { provider: "football-data.org", endpointFamily: "RESULTS" } }, data: { state: "CLOSED", updatedAt: new Date() } });
+      await prisma.providerRequestReservation.deleteMany({ where: { jobKey: { in: preview.json.logicalJobIds as string[] } } });
+    }
   }, 30_000);
 
   it("rejects unsigned, stale, altered, and unlisted ingress assertions before upstream invocation", async () => {

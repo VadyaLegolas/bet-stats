@@ -42,9 +42,30 @@ export type ReplayProviderPolicyDecision =
   | { readonly allowed: true; readonly remainingAfter: number }
   | { readonly allowed: false; readonly reason: ReplayProviderPolicyDenialReason };
 
+export type ReplayProviderPolicyIdentity = Pick<ReplayProviderPolicySnapshot,
+  "version" | "provider" | "endpointFamily" | "lane" | "configuredAllowance" | "criticalHeadroom" | "resetTimezone">;
+
+export function projectReplayProviderPolicyIdentity(snapshot: ReplayProviderPolicySnapshot): ReplayProviderPolicyIdentity {
+  const { version, provider, endpointFamily, lane, configuredAllowance, criticalHeadroom, resetTimezone } = snapshot;
+  return { version, provider, endpointFamily, lane, configuredAllowance, criticalHeadroom, resetTimezone };
+}
+
 export function fingerprintReplayProviderPolicy(snapshot: ReplayProviderPolicySnapshot): string {
-  const { observedAt: _observedAt, ...policy } = snapshot;
-  return createHash("sha256").update(canonicalJson(policy)).digest("hex");
+  return `identity-v2:${createHash("sha256").update(canonicalJson(projectReplayProviderPolicyIdentity(snapshot))).digest("hex")}`;
+}
+
+/** Validate the stored format before deriving its current identity; never rewrite approval hashes. */
+export function verifyPersistedReplayProviderPolicyFingerprint(snapshot: ReplayProviderPolicySnapshot, fingerprint: string): string | null {
+  try {
+    if (!isSnapshotEnvelopeValid(snapshot)) return null;
+    const identity = fingerprintReplayProviderPolicy(snapshot);
+    if (fingerprint.startsWith("identity-v2:")) return fingerprint === identity ? identity : null;
+    if (!/^[a-f0-9]{64}$/.test(fingerprint)) return null;
+    const { observedAt: _observedAt, ...legacy } = snapshot;
+    return createHash("sha256").update(canonicalJson(legacy)).digest("hex") === fingerprint ? identity : null;
+  } catch {
+    return null;
+  }
 }
 
 export function evaluateReplayProviderPolicy(

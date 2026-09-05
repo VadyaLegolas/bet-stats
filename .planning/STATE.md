@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 02
 current_phase_name: Historical Evidence Pipeline
-current_plan: 27
-status: ready_to_execute
-stopped_at: Phase 02 plan 02-27 complete; 02-28 ready to execute
-last_updated: "2026-09-05T02:06:33.804Z"
+current_plan: 28
+status: ready_to_verify
+stopped_at: Completed 02-28-PLAN.md; final Phase 02 verification pending
+last_updated: "2026-09-05T07:47:02.928Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 02 plan 02-27 complete — 02-28 ready
+last_activity_desc: Phase 02 plan 02-28 complete — final phase verification pending
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 40
-  completed_plans: 39
+  completed_plans: 40
   percent: 17
 ---
 
@@ -27,14 +27,14 @@ See: .planning/PROJECT.md (updated 2026-08-29)
 
 ## Current Position
 
-Phase: 02 (Historical Evidence Pipeline) — READY TO EXECUTE
-Current Plan: 27
+Phase: 02 (Historical Evidence Pipeline) — READY TO VERIFY
+Current Plan: 28
 Total Plans in Phase: 28
-Status: Ready to execute
-Last Activity: 2026-09-05 — Phase 02 plan 02-27 complete
-Last Activity Description: Phase 02 plan 02-27 complete — 02-28 ready
+Status: Ready to verify
+Last Activity: 2026-09-05 — Phase 02 plan 02-28 complete
+Last Activity Description: Phase 02 plan 02-28 complete — final phase verification pending
 
-Progress: 27/28 phase plans executed (96%); 02-28 pending. Phase verification remains gaps_found until implementation is verified.
+Progress: 28/28 phase plans executed (100%). Final Phase 02 verification is pending.
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Progress: 27/28 phase plans executed (96%); 02-28 pending. Phase verification re
 | Phase 01 P12 | 34min | 2 tasks | 7 files |
 | Phase 02 P21 | 9min | 2 tasks | 5 files |
 | Phase 02 P22 | 19min | 2 tasks | 3 files |
+| Phase 02 P28 | 18min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 2]: Malformed receipt inputs are discarded at projection time so only dependent components fail closed while valid siblings remain visible.
 - [Phase 2]: The live evidence gate owns a uniquely named PostgreSQL container and exact child PIDs, and cleanup targets only those recorded resources.
 - [Phase 2]: Browser assertions compare the production Nest payload with the Next DOM without installing any request interception.
+- [Phase 02]: PostgreSQL clock and row locks own replay execution lease decisions.
+- [Phase 02]: Every possible remote dispatch receives a distinct attempt-specific budget reservation.
+- [Phase 02]: Canonical publication and durable success commit under the same fencing-token transaction.
 
 ### Pending Todos
 
@@ -108,6 +112,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-01T06:49:59.826Z
-Stopped at: Completed 02-22-PLAN.md
+Last session: 2026-09-05T07:47:02.835Z
+Stopped at: Completed 02-28-PLAN.md; final Phase 02 verification pending
 Resume file: None

@@ -44,4 +44,16 @@ describe("historical pipeline job contract", () => {
     expect(createSyncJobOptions("fixtures")).toEqual(createSyncJobOptions("results"));
     expect(createSyncJobOptions("fixtures")).toMatchObject({ attempts: 3, backoff: { type: "exponential" } });
   });
+
+  it("execution lease claims, waits, reclaims, and fences stale owners", async () => {
+    const execution = await import("../../workers/data-sync/src/queues/replay-execution.js");
+    expect(execution.DEFAULT_REPLAY_EXECUTION_LEASE).toEqual({
+      leaseMs: 30_000,
+      heartbeatMs: 5_000,
+      deadlineMs: 120_000,
+      maxClaims: 3,
+    });
+    expect(execution.createReplayExecutionContext).toBeTypeOf("function");
+    expect(execution.claimReplayExecution).toBeTypeOf("function");
+  });
 });

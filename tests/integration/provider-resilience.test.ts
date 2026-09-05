@@ -1,6 +1,73 @@
 import { describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
+import { evaluateReplayProviderPolicy, fingerprintReplayProviderPolicy, projectReplayProviderPolicyIdentity, verifyPersistedReplayProviderPolicyFingerprint, type ReplayProviderPolicySnapshot } from "@bet-stats/domain";
+import type { PrismaClient } from "@bet-stats/database";
+import { readReplayWorkerProviderPolicy } from "../../workers/data-sync/src/resilience/provider-policy.js";
 
 import { runGatedIngestion } from "../../workers/data-sync/src/ingestion/runner.js";
+
+const now = new Date("2026-09-05T12:00:00Z");
+function snapshot(): ReplayProviderPolicySnapshot {
+  return { version: "replay-provider-policy/v1", provider: "football-data.org", endpointFamily: "RESULTS", lane: "critical", resetTimezone: "UTC", configuredAllowance: 10, criticalHeadroom: 3, resetDate: "2026-09-05", reserved: 0, remaining: 10, availableForLane: 10, circuit: { state: "CLOSED", updatedAt: now.toISOString(), nextProbeAt: null, probeLeaseExpiresAt: null }, observedAt: now.toISOString(), validUntil: "2026-09-05T12:05:00Z", blockedReason: null };
+}
+function legacyHash(value: ReplayProviderPolicySnapshot): string {
+  const { observedAt: _ignored, ...legacy } = value;
+  function canonical(value: unknown): string {
+    if (value && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([k,v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`;
+    return JSON.stringify(value);
+  }
+  return createHash("sha256").update(canonical(legacy)).digest("hex");
+}
+
+describe("replay policy identity boundary", () => {
+  const stable = { version: "replay-provider-policy/v2", provider: "other", endpointFamily: "STANDINGS", lane: "standard", configuredAllowance: 9, criticalHeadroom: 2, resetTimezone: "Europe/Warsaw" };
+  const volatile = { resetDate: "2026-09-06", reserved: 1, remaining: 9, availableForLane: 9, circuit: { ...snapshot().circuit, state: "OPEN" }, observedAt: "2026-09-05T12:01:00Z", validUntil: "2026-09-05T12:06:00Z", blockedReason: "CRITICAL_HEADROOM" };
+  it("classifies every snapshot field explicitly", () => {
+    expect([...Object.keys(stable), ...Object.keys(volatile)].sort()).toEqual(Object.keys(snapshot()).sort());
+    expect(Object.keys(projectReplayProviderPolicyIdentity(snapshot())).sort()).toEqual(Object.keys(stable).sort());
+  });
+  it.each(Object.entries(stable))("invalidates configured %s before provider construction", async (field, value) => {
+    const approved = snapshot(); const changed = { ...approved, [field]: value } as ReplayProviderPolicySnapshot;
+    expect(fingerprintReplayProviderPolicy(changed)).not.toBe(fingerprintReplayProviderPolicy(approved));
+    const database = { $queryRawUnsafe: async () => [{ impact: { providerPolicy: approved }, providerPolicyFingerprint: fingerprintReplayProviderPolicy(approved) }] } as unknown as PrismaClient;
+    const construct = vi.fn();
+    await expect(readReplayWorkerProviderPolicy({ database, replayPlanId: "plan", provider: approved.provider, endpointFamily: approved.endpointFamily, providerPolicyRepository: { read: async () => changed }, now: () => now }).then(construct)).rejects.toMatchObject({ code: "REPLAY_POLICY_CHANGED" });
+    expect(construct).not.toHaveBeenCalled();
+  });
+  it.each(Object.entries(volatile))("excludes observed %s from identity", (field, value) => {
+    expect(fingerprintReplayProviderPolicy({ ...snapshot(), [field]: value } as ReplayProviderPolicySnapshot)).toBe(fingerprintReplayProviderPolicy(snapshot()));
+  });
+  it("verifies both immutable hash versions with canonical property order", () => {
+    const value = snapshot(); const reversed = Object.fromEntries(Object.entries(value).reverse()) as unknown as ReplayProviderPolicySnapshot;
+    const identity = fingerprintReplayProviderPolicy(value);
+    expect(identity).toMatch(/^identity-v2:[a-f0-9]{64}$/);
+    expect(fingerprintReplayProviderPolicy(reversed)).toBe(identity);
+    expect(verifyPersistedReplayProviderPolicyFingerprint(reversed, legacyHash(value))).toBe(identity);
+    expect(verifyPersistedReplayProviderPolicyFingerprint(reversed, identity)).toBe(identity);
+    for (const hash of ["identity-v3:" + identity.split(":")[1], "0".repeat(64), identity.slice(0,-1), "unknown"]) expect(verifyPersistedReplayProviderPolicyFingerprint(value, hash)).toBeNull();
+    expect(verifyPersistedReplayProviderPolicyFingerprint({ ...value, reserved: 1 }, legacyHash(value))).toBeNull();
+  });
+  it.each([
+    { lane: "admin" }, { criticalHeadroom: 11 }, { configuredAllowance: -1 }, { provider: null },
+    { remaining: 100 }, { availableForLane: 100 }, { circuit: null }, { blockedReason: "ALLOW" },
+  ])("fails closed for malformed identity/observation %j", (changed) => {
+    expect(evaluateReplayProviderPolicy({ ...snapshot(), ...changed } as unknown as ReplayProviderPolicySnapshot, 1, now)).toEqual({ allowed: false, reason: "MALFORMED_POLICY" });
+  });
+  it.each([
+    [{ circuit: { ...snapshot().circuit, state: "OPEN" } }, "CIRCUIT_OPEN"],
+    [{ circuit: { ...snapshot().circuit, state: "HALF_OPEN" } }, "CIRCUIT_HALF_OPEN"],
+    [{ circuit: { ...snapshot().circuit, state: null } }, "MISSING_CIRCUIT_STATE"],
+    [{ validUntil: "2026-09-05T11:59:00Z" }, "STALE_CIRCUIT_STATE"],
+    [{ reserved: 10, remaining: 0, availableForLane: 0 }, "ALLOWANCE_EXHAUSTED"],
+    [{ blockedReason: "CRITICAL_HEADROOM" }, "CRITICAL_HEADROOM"],
+  ])("enforces live denial %j with zero construction", async (change, reason) => {
+    const approved = snapshot(); const changed = { ...approved, ...change as object } as ReplayProviderPolicySnapshot;
+    const database = { $queryRawUnsafe: async () => [{ impact: { providerPolicy: approved }, providerPolicyFingerprint: legacyHash(approved) }] } as unknown as PrismaClient;
+    const construct = vi.fn();
+    await expect(readReplayWorkerProviderPolicy({ database, replayPlanId: "plan", provider: approved.provider, endpointFamily: approved.endpointFamily, providerPolicyRepository: { read: async () => changed }, now: () => now }).then(construct)).rejects.toMatchObject({ code: reason });
+    expect(construct).not.toHaveBeenCalled();
+  });
+});
 
 async function resiliencePolicy(): Promise<Record<string, unknown>> {
   try {

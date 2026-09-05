@@ -60,6 +60,21 @@ function classifyFailure(error: unknown): string {
   return typeof code === "string" && /^[A-Z0-9_]{1,64}$/.test(code) ? code : "PROVIDER_FAILURE";
 }
 
+const UNRECOVERABLE_REPLAY_REASONS = new Set([
+  "FIXTURE_SCOPE_MISMATCH",
+  "IDENTITY_UNRESOLVED",
+  "INVALID_FIXTURE_SCOPE",
+  "INVALID_REPLAY_WINDOW",
+  "MALFORMED_POLICY",
+  "REPLAY_POLICY_CHANGED",
+  "RUN_NOT_FOUND",
+  "UNSUPPORTED_REPLAY_ENDPOINT",
+]);
+
+export function isUnrecoverableReplayFailure(reason: string): boolean {
+  return UNRECOVERABLE_REPLAY_REASONS.has(reason);
+}
+
 async function reconcileFailedDelivery(database: PrismaClient, data: ReplayJobData, maxClaims = SYNC_MAX_ATTEMPTS): Promise<void> {
   const attempts = await database.syncAttempt.count({ where: { syncRunId: data.syncRunId } });
   if (attempts < maxClaims) return;
@@ -77,11 +92,24 @@ export function createReplayWorker(input: {
   stalledInterval?: number;
 }) {
   const worker = new Worker<ReplayJobData>(standardQueue(input.prefix), async (job: Job<ReplayJobData>) => {
-    let claim = await claimReplayExecution(input.database, job.data, input.executionLease);
+    let claim;
+    try {
+      claim = await claimReplayExecution(input.database, job.data, input.executionLease);
+    } catch (error) {
+      const reason = classifyFailure(error);
+      if (isUnrecoverableReplayFailure(reason)) throw new UnrecoverableError(reason);
+      throw error;
+    }
     while (claim.status === "wait") {
       const delay = Math.max(100, Math.min(1_000, claim.retryAt.getTime() - Date.now()));
       await new Promise((resolve) => setTimeout(resolve, delay));
-      claim = await claimReplayExecution(input.database, job.data, input.executionLease);
+      try {
+        claim = await claimReplayExecution(input.database, job.data, input.executionLease);
+      } catch (error) {
+        const reason = classifyFailure(error);
+        if (isUnrecoverableReplayFailure(reason)) throw new UnrecoverableError(reason);
+        throw error;
+      }
     }
     if (claim.status === "terminal") return { duplicate: true, terminal: claim.state };
     if (claim.status === "exhausted") throw new UnrecoverableError("EXECUTION_ATTEMPTS_EXHAUSTED");
@@ -95,7 +123,7 @@ export function createReplayWorker(input: {
       if (!published) throw Object.assign(new Error("REPLAY_PUBLICATION_INCOMPLETE"), { code: "REPLAY_PUBLICATION_INCOMPLETE" });
     } catch (error) {
       const reason = classifyFailure(error);
-      const nonRetryable = reason === "FIXTURE_SCOPE_MISMATCH" || reason === "INVALID_FIXTURE_SCOPE";
+      const nonRetryable = isUnrecoverableReplayFailure(reason);
       await context.fail(reason, !nonRetryable);
       if (nonRetryable) throw new UnrecoverableError(reason);
       throw error;

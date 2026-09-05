@@ -194,5 +194,11 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
        ORDER BY column_name;`,
     );
     expect(circuitProbeLeaseColumns).toEqual(["probeLeaseExpiresAt", "probeLeaseToken"]);
+
+    const executionLeaseColumns = sql(
+      `SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='SyncRun'
+       AND column_name IN ('executionLeaseToken','executionLeaseExpiresAt','executionDeadlineAt') ORDER BY column_name;`,
+    );
+    expect(executionLeaseColumns).toEqual(["executionDeadlineAt", "executionLeaseExpiresAt", "executionLeaseToken"]);
   });
 });

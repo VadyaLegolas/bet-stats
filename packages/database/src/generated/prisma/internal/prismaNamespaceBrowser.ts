@@ -293,6 +293,9 @@ export const SyncRunScalarFieldEnum = {
   completedCaptures: 'completedCaptures',
   completionManifest: 'completionManifest',
   terminalAt: 'terminalAt',
+  executionLeaseToken: 'executionLeaseToken',
+  executionLeaseExpiresAt: 'executionLeaseExpiresAt',
+  executionDeadlineAt: 'executionDeadlineAt',
   createdAt: 'createdAt'
 } as const
 

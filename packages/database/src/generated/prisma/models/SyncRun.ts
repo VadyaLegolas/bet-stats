@@ -60,6 +60,9 @@ export type SyncRunMinAggregateOutputType = {
   expectedCaptures: number | null
   completedCaptures: number | null
   terminalAt: Date | null
+  executionLeaseToken: string | null
+  executionLeaseExpiresAt: Date | null
+  executionDeadlineAt: Date | null
   createdAt: Date | null
 }
 
@@ -80,6 +83,9 @@ export type SyncRunMaxAggregateOutputType = {
   expectedCaptures: number | null
   completedCaptures: number | null
   terminalAt: Date | null
+  executionLeaseToken: string | null
+  executionLeaseExpiresAt: Date | null
+  executionDeadlineAt: Date | null
   createdAt: Date | null
 }
 
@@ -101,6 +107,9 @@ export type SyncRunCountAggregateOutputType = {
   completedCaptures: number
   completionManifest: number
   terminalAt: number
+  executionLeaseToken: number
+  executionLeaseExpiresAt: number
+  executionDeadlineAt: number
   createdAt: number
   _all: number
 }
@@ -139,6 +148,9 @@ export type SyncRunMinAggregateInputType = {
   expectedCaptures?: true
   completedCaptures?: true
   terminalAt?: true
+  executionLeaseToken?: true
+  executionLeaseExpiresAt?: true
+  executionDeadlineAt?: true
   createdAt?: true
 }
 
@@ -159,6 +171,9 @@ export type SyncRunMaxAggregateInputType = {
   expectedCaptures?: true
   completedCaptures?: true
   terminalAt?: true
+  executionLeaseToken?: true
+  executionLeaseExpiresAt?: true
+  executionDeadlineAt?: true
   createdAt?: true
 }
 
@@ -180,6 +195,9 @@ export type SyncRunCountAggregateInputType = {
   completedCaptures?: true
   completionManifest?: true
   terminalAt?: true
+  executionLeaseToken?: true
+  executionLeaseExpiresAt?: true
+  executionDeadlineAt?: true
   createdAt?: true
   _all?: true
 }
@@ -288,6 +306,9 @@ export type SyncRunGroupByOutputType = {
   completedCaptures: number
   completionManifest: runtime.JsonValue
   terminalAt: Date | null
+  executionLeaseToken: string | null
+  executionLeaseExpiresAt: Date | null
+  executionDeadlineAt: Date | null
   createdAt: Date
   _count: SyncRunCountAggregateOutputType | null
   _avg: SyncRunAvgAggregateOutputType | null
@@ -332,6 +353,9 @@ export type SyncRunWhereInput = {
   completedCaptures?: Prisma.IntFilter<"SyncRun"> | number
   completionManifest?: Prisma.JsonFilter<"SyncRun">
   terminalAt?: Prisma.DateTimeNullableFilter<"SyncRun"> | Date | string | null
+  executionLeaseToken?: Prisma.StringNullableFilter<"SyncRun"> | string | null
+  executionLeaseExpiresAt?: Prisma.DateTimeNullableFilter<"SyncRun"> | Date | string | null
+  executionDeadlineAt?: Prisma.DateTimeNullableFilter<"SyncRun"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"SyncRun"> | Date | string
   replayPlan?: Prisma.XOR<Prisma.ReplayPlanNullableScalarRelationFilter, Prisma.ReplayPlanWhereInput> | null
   attempts?: Prisma.SyncAttemptListRelationFilter
@@ -357,6 +381,9 @@ export type SyncRunOrderByWithRelationInput = {
   completedCaptures?: Prisma.SortOrder
   completionManifest?: Prisma.SortOrder
   terminalAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  executionLeaseToken?: Prisma.SortOrderInput | Prisma.SortOrder
+  executionLeaseExpiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  executionDeadlineAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   replayPlan?: Prisma.ReplayPlanOrderByWithRelationInput
   attempts?: Prisma.SyncAttemptOrderByRelationAggregateInput
@@ -386,6 +413,9 @@ export type SyncRunWhereUniqueInput = Prisma.AtLeast<{
   completedCaptures?: Prisma.IntFilter<"SyncRun"> | number
   completionManifest?: Prisma.JsonFilter<"SyncRun">
   terminalAt?: Prisma.DateTimeNullableFilter<"SyncRun"> | Date | string | null
+  executionLeaseToken?: Prisma.StringNullableFilter<"SyncRun"> | string | null
+  executionLeaseExpiresAt?: Prisma.DateTimeNullableFilter<"SyncRun"> | Date | string | null
+  executionDeadlineAt?: Prisma.DateTimeNullableFilter<"SyncRun"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"SyncRun"> | Date | string
   replayPlan?: Prisma.XOR<Prisma.ReplayPlanNullableScalarRelationFilter, Prisma.ReplayPlanWhereInput> | null
   attempts?: Prisma.SyncAttemptListRelationFilter
@@ -411,6 +441,9 @@ export type SyncRunOrderByWithAggregationInput = {
   completedCaptures?: Prisma.SortOrder
   completionManifest?: Prisma.SortOrder
   terminalAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  executionLeaseToken?: Prisma.SortOrderInput | Prisma.SortOrder
+  executionLeaseExpiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  executionDeadlineAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.SyncRunCountOrderByAggregateInput
   _avg?: Prisma.SyncRunAvgOrderByAggregateInput
@@ -440,6 +473,9 @@ export type SyncRunScalarWhereWithAggregatesInput = {
   completedCaptures?: Prisma.IntWithAggregatesFilter<"SyncRun"> | number
   completionManifest?: Prisma.JsonWithAggregatesFilter<"SyncRun">
   terminalAt?: Prisma.DateTimeNullableWithAggregatesFilter<"SyncRun"> | Date | string | null
+  executionLeaseToken?: Prisma.StringNullableWithAggregatesFilter<"SyncRun"> | string | null
+  executionLeaseExpiresAt?: Prisma.DateTimeNullableWithAggregatesFilter<"SyncRun"> | Date | string | null
+  executionDeadlineAt?: Prisma.DateTimeNullableWithAggregatesFilter<"SyncRun"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"SyncRun"> | Date | string
 }
 
@@ -460,6 +496,9 @@ export type SyncRunCreateInput = {
   completedCaptures?: number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
+  executionLeaseToken?: string | null
+  executionLeaseExpiresAt?: Date | string | null
+  executionDeadlineAt?: Date | string | null
   createdAt?: Date | string
   replayPlan?: Prisma.ReplayPlanCreateNestedOneWithoutSyncRunsInput
   attempts?: Prisma.SyncAttemptCreateNestedManyWithoutSyncRunInput
@@ -485,6 +524,9 @@ export type SyncRunUncheckedCreateInput = {
   completedCaptures?: number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
+  executionLeaseToken?: string | null
+  executionLeaseExpiresAt?: Date | string | null
+  executionDeadlineAt?: Date | string | null
   createdAt?: Date | string
   attempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutSyncRunInput
   delivery?: Prisma.ReplayDeliveryUncheckedCreateNestedOneWithoutSyncRunInput
@@ -508,6 +550,9 @@ export type SyncRunUpdateInput = {
   completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  executionLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionDeadlineAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replayPlan?: Prisma.ReplayPlanUpdateOneWithoutSyncRunsNestedInput
   attempts?: Prisma.SyncAttemptUpdateManyWithoutSyncRunNestedInput
@@ -533,6 +578,9 @@ export type SyncRunUncheckedUpdateInput = {
   completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  executionLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionDeadlineAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutSyncRunNestedInput
   delivery?: Prisma.ReplayDeliveryUncheckedUpdateOneWithoutSyncRunNestedInput
@@ -557,6 +605,9 @@ export type SyncRunCreateManyInput = {
   completedCaptures?: number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
+  executionLeaseToken?: string | null
+  executionLeaseExpiresAt?: Date | string | null
+  executionDeadlineAt?: Date | string | null
   createdAt?: Date | string
 }
 
@@ -577,6 +628,9 @@ export type SyncRunUpdateManyMutationInput = {
   completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  executionLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionDeadlineAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -598,6 +652,9 @@ export type SyncRunUncheckedUpdateManyInput = {
   completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  executionLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionDeadlineAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -634,6 +691,9 @@ export type SyncRunCountOrderByAggregateInput = {
   completedCaptures?: Prisma.SortOrder
   completionManifest?: Prisma.SortOrder
   terminalAt?: Prisma.SortOrder
+  executionLeaseToken?: Prisma.SortOrder
+  executionLeaseExpiresAt?: Prisma.SortOrder
+  executionDeadlineAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -662,6 +722,9 @@ export type SyncRunMaxOrderByAggregateInput = {
   expectedCaptures?: Prisma.SortOrder
   completedCaptures?: Prisma.SortOrder
   terminalAt?: Prisma.SortOrder
+  executionLeaseToken?: Prisma.SortOrder
+  executionLeaseExpiresAt?: Prisma.SortOrder
+  executionDeadlineAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -682,6 +745,9 @@ export type SyncRunMinOrderByAggregateInput = {
   expectedCaptures?: Prisma.SortOrder
   completedCaptures?: Prisma.SortOrder
   terminalAt?: Prisma.SortOrder
+  executionLeaseToken?: Prisma.SortOrder
+  executionLeaseExpiresAt?: Prisma.SortOrder
+  executionDeadlineAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -803,6 +869,9 @@ export type SyncRunCreateWithoutReplayPlanInput = {
   completedCaptures?: number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
+  executionLeaseToken?: string | null
+  executionLeaseExpiresAt?: Date | string | null
+  executionDeadlineAt?: Date | string | null
   createdAt?: Date | string
   attempts?: Prisma.SyncAttemptCreateNestedManyWithoutSyncRunInput
   delivery?: Prisma.ReplayDeliveryCreateNestedOneWithoutSyncRunInput
@@ -826,6 +895,9 @@ export type SyncRunUncheckedCreateWithoutReplayPlanInput = {
   completedCaptures?: number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
+  executionLeaseToken?: string | null
+  executionLeaseExpiresAt?: Date | string | null
+  executionDeadlineAt?: Date | string | null
   createdAt?: Date | string
   attempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutSyncRunInput
   delivery?: Prisma.ReplayDeliveryUncheckedCreateNestedOneWithoutSyncRunInput
@@ -879,6 +951,9 @@ export type SyncRunScalarWhereInput = {
   completedCaptures?: Prisma.IntFilter<"SyncRun"> | number
   completionManifest?: Prisma.JsonFilter<"SyncRun">
   terminalAt?: Prisma.DateTimeNullableFilter<"SyncRun"> | Date | string | null
+  executionLeaseToken?: Prisma.StringNullableFilter<"SyncRun"> | string | null
+  executionLeaseExpiresAt?: Prisma.DateTimeNullableFilter<"SyncRun"> | Date | string | null
+  executionDeadlineAt?: Prisma.DateTimeNullableFilter<"SyncRun"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"SyncRun"> | Date | string
 }
 
@@ -899,6 +974,9 @@ export type SyncRunCreateWithoutDeliveryInput = {
   completedCaptures?: number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
+  executionLeaseToken?: string | null
+  executionLeaseExpiresAt?: Date | string | null
+  executionDeadlineAt?: Date | string | null
   createdAt?: Date | string
   replayPlan?: Prisma.ReplayPlanCreateNestedOneWithoutSyncRunsInput
   attempts?: Prisma.SyncAttemptCreateNestedManyWithoutSyncRunInput
@@ -923,6 +1001,9 @@ export type SyncRunUncheckedCreateWithoutDeliveryInput = {
   completedCaptures?: number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
+  executionLeaseToken?: string | null
+  executionLeaseExpiresAt?: Date | string | null
+  executionDeadlineAt?: Date | string | null
   createdAt?: Date | string
   attempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutSyncRunInput
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedCreateNestedManyWithoutSyncRunInput
@@ -961,6 +1042,9 @@ export type SyncRunUpdateWithoutDeliveryInput = {
   completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  executionLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionDeadlineAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replayPlan?: Prisma.ReplayPlanUpdateOneWithoutSyncRunsNestedInput
   attempts?: Prisma.SyncAttemptUpdateManyWithoutSyncRunNestedInput
@@ -985,6 +1069,9 @@ export type SyncRunUncheckedUpdateWithoutDeliveryInput = {
   completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  executionLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionDeadlineAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutSyncRunNestedInput
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedUpdateManyWithoutSyncRunNestedInput
@@ -1007,6 +1094,9 @@ export type SyncRunCreateWithoutAttemptsInput = {
   completedCaptures?: number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
+  executionLeaseToken?: string | null
+  executionLeaseExpiresAt?: Date | string | null
+  executionDeadlineAt?: Date | string | null
   createdAt?: Date | string
   replayPlan?: Prisma.ReplayPlanCreateNestedOneWithoutSyncRunsInput
   delivery?: Prisma.ReplayDeliveryCreateNestedOneWithoutSyncRunInput
@@ -1031,6 +1121,9 @@ export type SyncRunUncheckedCreateWithoutAttemptsInput = {
   completedCaptures?: number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
+  executionLeaseToken?: string | null
+  executionLeaseExpiresAt?: Date | string | null
+  executionDeadlineAt?: Date | string | null
   createdAt?: Date | string
   delivery?: Prisma.ReplayDeliveryUncheckedCreateNestedOneWithoutSyncRunInput
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedCreateNestedManyWithoutSyncRunInput
@@ -1069,6 +1162,9 @@ export type SyncRunUpdateWithoutAttemptsInput = {
   completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  executionLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionDeadlineAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replayPlan?: Prisma.ReplayPlanUpdateOneWithoutSyncRunsNestedInput
   delivery?: Prisma.ReplayDeliveryUpdateOneWithoutSyncRunNestedInput
@@ -1093,6 +1189,9 @@ export type SyncRunUncheckedUpdateWithoutAttemptsInput = {
   completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  executionLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionDeadlineAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   delivery?: Prisma.ReplayDeliveryUncheckedUpdateOneWithoutSyncRunNestedInput
   evidenceBuilds?: Prisma.EvidenceBuildUncheckedUpdateManyWithoutSyncRunNestedInput
@@ -1115,6 +1214,9 @@ export type SyncRunCreateWithoutEvidenceBuildsInput = {
   completedCaptures?: number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
+  executionLeaseToken?: string | null
+  executionLeaseExpiresAt?: Date | string | null
+  executionDeadlineAt?: Date | string | null
   createdAt?: Date | string
   replayPlan?: Prisma.ReplayPlanCreateNestedOneWithoutSyncRunsInput
   attempts?: Prisma.SyncAttemptCreateNestedManyWithoutSyncRunInput
@@ -1139,6 +1241,9 @@ export type SyncRunUncheckedCreateWithoutEvidenceBuildsInput = {
   completedCaptures?: number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
+  executionLeaseToken?: string | null
+  executionLeaseExpiresAt?: Date | string | null
+  executionDeadlineAt?: Date | string | null
   createdAt?: Date | string
   attempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutSyncRunInput
   delivery?: Prisma.ReplayDeliveryUncheckedCreateNestedOneWithoutSyncRunInput
@@ -1177,6 +1282,9 @@ export type SyncRunUpdateWithoutEvidenceBuildsInput = {
   completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  executionLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionDeadlineAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replayPlan?: Prisma.ReplayPlanUpdateOneWithoutSyncRunsNestedInput
   attempts?: Prisma.SyncAttemptUpdateManyWithoutSyncRunNestedInput
@@ -1201,6 +1309,9 @@ export type SyncRunUncheckedUpdateWithoutEvidenceBuildsInput = {
   completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  executionLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionDeadlineAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutSyncRunNestedInput
   delivery?: Prisma.ReplayDeliveryUncheckedUpdateOneWithoutSyncRunNestedInput
@@ -1223,6 +1334,9 @@ export type SyncRunCreateManyReplayPlanInput = {
   completedCaptures?: number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Date | string | null
+  executionLeaseToken?: string | null
+  executionLeaseExpiresAt?: Date | string | null
+  executionDeadlineAt?: Date | string | null
   createdAt?: Date | string
 }
 
@@ -1243,6 +1357,9 @@ export type SyncRunUpdateWithoutReplayPlanInput = {
   completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  executionLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionDeadlineAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attempts?: Prisma.SyncAttemptUpdateManyWithoutSyncRunNestedInput
   delivery?: Prisma.ReplayDeliveryUpdateOneWithoutSyncRunNestedInput
@@ -1266,6 +1383,9 @@ export type SyncRunUncheckedUpdateWithoutReplayPlanInput = {
   completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  executionLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionDeadlineAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   attempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutSyncRunNestedInput
   delivery?: Prisma.ReplayDeliveryUncheckedUpdateOneWithoutSyncRunNestedInput
@@ -1289,6 +1409,9 @@ export type SyncRunUncheckedUpdateManyWithoutReplayPlanInput = {
   completedCaptures?: Prisma.IntFieldUpdateOperationsInput | number
   completionManifest?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   terminalAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionLeaseToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  executionLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  executionDeadlineAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -1350,6 +1473,9 @@ export type SyncRunSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   completedCaptures?: boolean
   completionManifest?: boolean
   terminalAt?: boolean
+  executionLeaseToken?: boolean
+  executionLeaseExpiresAt?: boolean
+  executionDeadlineAt?: boolean
   createdAt?: boolean
   replayPlan?: boolean | Prisma.SyncRun$replayPlanArgs<ExtArgs>
   attempts?: boolean | Prisma.SyncRun$attemptsArgs<ExtArgs>
@@ -1376,6 +1502,9 @@ export type SyncRunSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   completedCaptures?: boolean
   completionManifest?: boolean
   terminalAt?: boolean
+  executionLeaseToken?: boolean
+  executionLeaseExpiresAt?: boolean
+  executionDeadlineAt?: boolean
   createdAt?: boolean
   replayPlan?: boolean | Prisma.SyncRun$replayPlanArgs<ExtArgs>
 }, ExtArgs["result"]["syncRun"]>
@@ -1398,6 +1527,9 @@ export type SyncRunSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   completedCaptures?: boolean
   completionManifest?: boolean
   terminalAt?: boolean
+  executionLeaseToken?: boolean
+  executionLeaseExpiresAt?: boolean
+  executionDeadlineAt?: boolean
   createdAt?: boolean
   replayPlan?: boolean | Prisma.SyncRun$replayPlanArgs<ExtArgs>
 }, ExtArgs["result"]["syncRun"]>
@@ -1420,10 +1552,13 @@ export type SyncRunSelectScalar = {
   completedCaptures?: boolean
   completionManifest?: boolean
   terminalAt?: boolean
+  executionLeaseToken?: boolean
+  executionLeaseExpiresAt?: boolean
+  executionDeadlineAt?: boolean
   createdAt?: boolean
 }
 
-export type SyncRunOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logicalKey" | "revision" | "provider" | "endpointFamily" | "lane" | "windowFrom" | "windowTo" | "state" | "correlationId" | "replayPlanId" | "expectedUnits" | "completedUnits" | "expectedCaptures" | "completedCaptures" | "completionManifest" | "terminalAt" | "createdAt", ExtArgs["result"]["syncRun"]>
+export type SyncRunOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logicalKey" | "revision" | "provider" | "endpointFamily" | "lane" | "windowFrom" | "windowTo" | "state" | "correlationId" | "replayPlanId" | "expectedUnits" | "completedUnits" | "expectedCaptures" | "completedCaptures" | "completionManifest" | "terminalAt" | "executionLeaseToken" | "executionLeaseExpiresAt" | "executionDeadlineAt" | "createdAt", ExtArgs["result"]["syncRun"]>
 export type SyncRunInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   replayPlan?: boolean | Prisma.SyncRun$replayPlanArgs<ExtArgs>
   attempts?: boolean | Prisma.SyncRun$attemptsArgs<ExtArgs>
@@ -1464,6 +1599,9 @@ export type $SyncRunPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     completedCaptures: number
     completionManifest: runtime.JsonValue
     terminalAt: Date | null
+    executionLeaseToken: string | null
+    executionLeaseExpiresAt: Date | null
+    executionDeadlineAt: Date | null
     createdAt: Date
   }, ExtArgs["result"]["syncRun"]>
   composites: {}
@@ -1909,6 +2047,9 @@ export interface SyncRunFieldRefs {
   readonly completedCaptures: Prisma.FieldRef<"SyncRun", 'Int'>
   readonly completionManifest: Prisma.FieldRef<"SyncRun", 'Json'>
   readonly terminalAt: Prisma.FieldRef<"SyncRun", 'DateTime'>
+  readonly executionLeaseToken: Prisma.FieldRef<"SyncRun", 'String'>
+  readonly executionLeaseExpiresAt: Prisma.FieldRef<"SyncRun", 'DateTime'>
+  readonly executionDeadlineAt: Prisma.FieldRef<"SyncRun", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"SyncRun", 'DateTime'>
 }
     

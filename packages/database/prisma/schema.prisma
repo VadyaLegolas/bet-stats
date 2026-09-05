@@ -295,6 +295,9 @@ model SyncRun {
   completedCaptures   Int             @default(0)
   completionManifest Json             @default("{\"expectedUnits\":[],\"completedUnits\":[],\"expectedCaptures\":[],\"completedCaptures\":[]}")
   terminalAt          DateTime?       @db.Timestamptz(3)
+  executionLeaseToken String?
+  executionLeaseExpiresAt DateTime?   @db.Timestamptz(3)
+  executionDeadlineAt DateTime?       @db.Timestamptz(3)
   createdAt           DateTime        @default(now()) @db.Timestamptz(3)
   replayPlan     ReplayPlan?     @relation(fields: [replayPlanId], references: [id], onDelete: Restrict)
   attempts       SyncAttempt[]
@@ -303,6 +306,7 @@ model SyncRun {
 
   @@unique([logicalKey, revision])
   @@index([provider, endpointFamily, state])
+  @@index([state, executionLeaseExpiresAt])
 }
 
 /// Durable per-run outbox. PostgreSQL owns delivery truth; BullMQ job identity

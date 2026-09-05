@@ -1,5 +1,6 @@
 import { Queue, Worker, UnrecoverableError, type Job, type JobsOptions, type Processor } from "bullmq";
 import type { PrismaClient } from "@bet-stats/database";
+import { claimReplayExecution, type ReplayExecutionContext, type ReplayExecutionLeaseOptions } from "./replay-execution.js";
 
 export type SyncLane = "critical" | "standard" | "optional";
 export type CriticalJobName = "fixtures" | "results";
@@ -63,93 +64,38 @@ export function createReplayWorker(input: {
   redisUrl: string;
   database: PrismaClient;
   prefix?: string;
-  execute: (data: ReplayJobData) => Promise<void>;
+  execute: (data: ReplayJobData, context: ReplayExecutionContext) => Promise<void>;
   concurrency?: number;
+  executionLease?: Partial<ReplayExecutionLeaseOptions>;
 }) {
   const worker = new Worker<ReplayJobData>(standardQueue(input.prefix), async (job: Job<ReplayJobData>) => {
-    const attemptNumber = job.attemptsMade + 1;
-    const claimed = await input.database.$transaction(async (tx) => {
-      const rows = await tx.$queryRawUnsafe<Array<{ id: string; replayPlanId: string | null; state: string }>>(
-        `SELECT id, "replayPlanId", state FROM "SyncRun" WHERE id=$1 FOR UPDATE`,
-        job.data.syncRunId,
-      );
-      const current = rows[0];
-      if (!current || current.replayPlanId !== job.data.replayPlanId) {
-        throw Object.assign(new Error("RUN_NOT_FOUND"), { code: "RUN_NOT_FOUND" });
-      }
-      if (current.state !== "PENDING") return false;
-      const transition = await tx.syncRun.updateMany({
-        where: { id: current.id, state: "PENDING" },
-        data: { state: "RUNNING" },
-      });
-      if (transition.count !== 1) return false;
-      await tx.syncAttempt.create({ data: { syncRunId: current.id, attemptNumber, state: "RUNNING" } });
-      return true;
-    });
-    if (!claimed) return { duplicate: true };
+    let claim = await claimReplayExecution(input.database, job.data, input.executionLease);
+    while (claim.status === "wait") {
+      const delay = Math.max(100, Math.min(1_000, claim.retryAt.getTime() - Date.now()));
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      claim = await claimReplayExecution(input.database, job.data, input.executionLease);
+    }
+    if (claim.status === "terminal") return { duplicate: true, terminal: claim.state };
+    if (claim.status === "exhausted") throw new UnrecoverableError("EXECUTION_ATTEMPTS_EXHAUSTED");
+    const context = claim.context;
+    let published = false;
+    const executionContext: ReplayExecutionContext = { ...context, publish: async (writer, manifest) => { await context.publish(writer, manifest); published = true; } };
+    const heartbeat = setInterval(() => { void context.heartbeat(); }, input.executionLease?.heartbeatMs ?? 5_000);
 
     try {
-      await input.execute(job.data);
+      await input.execute(job.data, executionContext);
+      if (!published) throw Object.assign(new Error("REPLAY_PUBLICATION_INCOMPLETE"), { code: "REPLAY_PUBLICATION_INCOMPLETE" });
     } catch (error) {
       const reason = classifyFailure(error);
       const nonRetryable = reason === "FIXTURE_SCOPE_MISMATCH" || reason === "INVALID_FIXTURE_SCOPE";
-      const exhausted = nonRetryable || attemptNumber >= SYNC_MAX_ATTEMPTS;
-      await input.database.$transaction(async (tx) => {
-        const locked = await tx.$queryRawUnsafe<Array<{ state: string }>>(
-          `SELECT state FROM "SyncRun" WHERE id=$1 FOR UPDATE`,
-          job.data.syncRunId,
-        );
-        if (locked[0]?.state !== "RUNNING") return;
-        const finishedAt = new Date();
-        const attempt = await tx.syncAttempt.updateMany({
-          where: { syncRunId: job.data.syncRunId, attemptNumber, state: "RUNNING", finishedAt: null },
-          data: { state: "FAILED", classifiedReason: reason, finishedAt },
-        });
-        if (attempt.count !== 1) throw Object.assign(new Error("ATTEMPT_NOT_RUNNING"), { code: "ATTEMPT_NOT_RUNNING" });
-        const run = await tx.syncRun.updateMany({
-          where: { id: job.data.syncRunId, state: "RUNNING" },
-          data: { state: exhausted ? "FAILED" : "PENDING", terminalAt: exhausted ? finishedAt : null },
-        });
-        if (run.count !== 1) throw Object.assign(new Error("RUN_NOT_RUNNING"), { code: "RUN_NOT_RUNNING" });
-      });
+      await context.fail(reason, !nonRetryable);
       if (nonRetryable) throw new UnrecoverableError(reason);
       throw error;
+    } finally {
+      clearInterval(heartbeat);
     }
-
-    await input.database.$transaction(async (tx) => {
-      const locked = await tx.$queryRawUnsafe<Array<{ state: string }>>(
-        `SELECT state FROM "SyncRun" WHERE id=$1 FOR UPDATE`,
-        job.data.syncRunId,
-      );
-      if (locked[0]?.state !== "RUNNING") {
-        throw Object.assign(new Error("RUN_NOT_RUNNING"), { code: "RUN_NOT_RUNNING" });
-      }
-      const finishedAt = new Date();
-      const attempt = await tx.syncAttempt.updateMany({
-        where: { syncRunId: job.data.syncRunId, attemptNumber, state: "RUNNING", finishedAt: null },
-        data: { state: "SUCCEEDED", finishedAt },
-      });
-      if (attempt.count !== 1) throw Object.assign(new Error("ATTEMPT_NOT_RUNNING"), { code: "ATTEMPT_NOT_RUNNING" });
-      const run = await tx.syncRun.updateMany({
-        where: { id: job.data.syncRunId, state: "RUNNING" },
-        data: {
-          state: "SUCCEEDED",
-          completedUnits: 1,
-          completedCaptures: 1,
-          terminalAt: finishedAt,
-          completionManifest: {
-            expectedUnits: [job.data.logicalId],
-            completedUnits: [job.data.logicalId],
-            expectedCaptures: [job.data.logicalId],
-            completedCaptures: [job.data.logicalId],
-            delivery: "DELIVERED",
-          },
-        },
-      });
-      if (run.count !== 1) throw Object.assign(new Error("RUN_NOT_RUNNING"), { code: "RUN_NOT_RUNNING" });
-    });
     return { duplicate: false };
-  }, { connection: redisConnection(input.redisUrl), concurrency: input.concurrency ?? 2, maxStartedAttempts: SYNC_MAX_ATTEMPTS });
+  }, { connection: redisConnection(input.redisUrl), concurrency: input.concurrency ?? 2, maxStalledCount: 3 });
   return worker;
 }
 

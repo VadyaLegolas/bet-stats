@@ -35,8 +35,9 @@ function docker(...args: string[]) {
 function applyCheckedInMigrations() {
   const migrationsRoot = resolve(databaseRoot, "prisma/migrations");
   for (const migration of readdirSync(migrationsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort()) {
-    const sql = readFileSync(resolve(migrationsRoot, migration, "migration.sql"));
-    execFileSync("docker", ["exec", "-i", postgresName, "psql", "-h", "127.0.0.1", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats"], { input: sql, stdio: ["pipe", "pipe", "pipe"] });
+    const sql = readFileSync(resolve(migrationsRoot, migration, "migration.sql"), "utf8");
+    const input = sql.includes("LOCK TABLE") ? `BEGIN;\n${sql}\nCOMMIT;\n` : sql;
+    execFileSync("docker", ["exec", "-i", postgresName, "psql", "-h", "127.0.0.1", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats"], { input, stdio: ["pipe", "pipe", "pipe"] });
   }
 }
 

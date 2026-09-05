@@ -47,6 +47,16 @@ describe("replay policy identity boundary", () => {
     for (const hash of ["identity-v3:" + identity.split(":")[1], "0".repeat(64), identity.slice(0,-1), "unknown"]) expect(verifyPersistedReplayProviderPolicyFingerprint(value, hash)).toBeNull();
     expect(verifyPersistedReplayProviderPolicyFingerprint({ ...value, reserved: 1 }, legacyHash(value))).toBeNull();
   });
+  it.each(["updatedAt", "nextProbeAt", "probeLeaseExpiresAt"] as const)("excludes circuit observation %s", (field) => {
+    const approved = snapshot();
+    expect(fingerprintReplayProviderPolicy({ ...approved, circuit: { ...approved.circuit, [field]: "2026-09-05T12:01:00Z" } })).toBe(fingerprintReplayProviderPolicy(approved));
+  });
+  it.each(["legacy", "identity-v2"])("admits valid %s approval after quota consumption", async (version) => {
+    const approved = snapshot();
+    const database = { $queryRawUnsafe: async () => [{ impact: { providerPolicy: approved }, providerPolicyFingerprint: version === "legacy" ? legacyHash(approved) : fingerprintReplayProviderPolicy(approved) }] } as unknown as PrismaClient;
+    const current = { ...approved, reserved: 1, remaining: 9, availableForLane: 9 };
+    await expect(readReplayWorkerProviderPolicy({ database, replayPlanId: "plan", provider: approved.provider, endpointFamily: approved.endpointFamily, providerPolicyRepository: { read: async () => current }, now: () => now })).resolves.toMatchObject({ snapshot: current, fingerprint: fingerprintReplayProviderPolicy(approved) });
+  });
   it.each([
     { lane: "admin" }, { criticalHeadroom: 11 }, { configuredAllowance: -1 }, { provider: null },
     { remaining: 100 }, { availableForLane: 100 }, { circuit: null }, { blockedReason: "ALLOW" },

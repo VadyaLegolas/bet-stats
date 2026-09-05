@@ -2,7 +2,7 @@
 // copy lets this root-level boundary test bootstrap Nest before decorators load.
 import "../../apps/api/node_modules/reflect-metadata/Reflect.js";
 
-import { createHash, createHmac } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
@@ -240,7 +240,7 @@ describe("production replay proxy boundary", () => {
     await Promise.all(workers.splice(0).map((worker) => worker.close()));
   });
 
-  it("runs three sequential multi-unit days under one policy identity", async () => {
+  it.each(["identity-v2", "legacy"])("runs three sequential multi-unit days under one %s policy identity", async (format) => {
     const before = await prisma.providerRequestReservation.count();
     const reservations: number[] = [];
     const calls: string[] = [];
@@ -256,7 +256,20 @@ describe("production replay proxy boundary", () => {
     workers.push(runtime);
     const preview = await proxy(["preview"], "POST", { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-20T00:00:00.000Z", to: "2026-08-22T23:59:59.999Z" });
     expect(preview.response.status, JSON.stringify(preview.json)).toBe(201);
-    const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion });
+    let previewId = String(preview.json.previewId);
+    let previewVersion = String(preview.json.previewVersion);
+    if (format === "legacy") {
+      const original = await prisma.replayPreview.findUniqueOrThrow({ where: { id: previewId } });
+      const impact = original.impact as { providerPolicy: Record<string, unknown> };
+      const { observedAt: _observedAt, ...oldSnapshot } = impact.providerPolicy;
+      const canonical = (value: unknown): string => value && typeof value === "object"
+        ? `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(",")}}`
+        : JSON.stringify(value);
+      previewId = randomUUID(); previewVersion = randomUUID();
+      await prisma.replayPreview.create({ data: { ...original, id: previewId, version: original.version + 1, previewVersion, consumedAt: null, providerPolicyFingerprint: createHash("sha256").update(canonical(oldSnapshot)).digest("hex") } });
+    }
+    const queued = await proxy(["queue"], "POST", { previewId, previewVersion, ...(format === "legacy" ? { newRevision: true, reason: "legacy compatibility witness" } : {}) });
+    expect(queued.response.status, JSON.stringify(queued.json)).toBe(201);
     const terminal = await waitForPlan(String(queued.json.replayPlanId), "SUCCEEDED");
     expect(terminal.json).toMatchObject({ providerPolicy: { classification: "UNCHANGED" } });
     expect([...calls].sort()).toEqual(["2026-08-20", "2026-08-21", "2026-08-22"]);

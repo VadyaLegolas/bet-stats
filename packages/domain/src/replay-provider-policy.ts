@@ -57,7 +57,7 @@ export function fingerprintReplayProviderPolicy(snapshot: ReplayProviderPolicySn
 /** Validate the stored format before deriving its current identity; never rewrite approval hashes. */
 export function verifyPersistedReplayProviderPolicyFingerprint(snapshot: ReplayProviderPolicySnapshot, fingerprint: string): string | null {
   try {
-    if (!isSnapshotEnvelopeValid(snapshot)) return null;
+    if (!isSnapshotEnvelopeValid(snapshot) || !hasCompleteQuota(snapshot)) return null;
     const identity = fingerprintReplayProviderPolicy(snapshot);
     if (fingerprint.startsWith("identity-v2:")) return fingerprint === identity ? identity : null;
     if (!/^[a-f0-9]{64}$/.test(fingerprint)) return null;
@@ -98,18 +98,26 @@ function hasCompleteQuota(snapshot: ReplayProviderPolicySnapshot): snapshot is R
   remaining: number;
   availableForLane: number;
 } {
-  return snapshot.lane !== null
+  return ["critical", "standard", "optional"].includes(snapshot.lane ?? "")
     && nonNegativeInteger(snapshot.configuredAllowance)
     && nonNegativeInteger(snapshot.criticalHeadroom)
     && nonNegativeInteger(snapshot.reserved)
     && nonNegativeInteger(snapshot.remaining)
-    && nonNegativeInteger(snapshot.availableForLane);
+    && nonNegativeInteger(snapshot.availableForLane)
+    && snapshot.criticalHeadroom <= snapshot.configuredAllowance
+    && snapshot.remaining <= Math.max(0, snapshot.configuredAllowance - snapshot.reserved)
+    && snapshot.availableForLane <= snapshot.remaining
+    && snapshot.availableForLane <= Math.max(0, snapshot.configuredAllowance - snapshot.reserved - (snapshot.lane === "critical" ? 0 : snapshot.criticalHeadroom));
 }
 
 function isSnapshotEnvelopeValid(snapshot: ReplayProviderPolicySnapshot): boolean {
-  return snapshot.version === REPLAY_PROVIDER_POLICY_VERSION
-    && snapshot.provider.length > 0
-    && snapshot.endpointFamily.length > 0
+  return !!snapshot && typeof snapshot === "object"
+    && snapshot.version === REPLAY_PROVIDER_POLICY_VERSION
+    && typeof snapshot.provider === "string" && snapshot.provider.length > 0
+    && typeof snapshot.endpointFamily === "string" && snapshot.endpointFamily.length > 0
+    && !!snapshot.circuit && typeof snapshot.circuit === "object"
+    && [null, "CLOSED", "OPEN", "HALF_OPEN"].includes(snapshot.circuit.state)
+    && (snapshot.blockedReason === null || ["MISSING_POLICY", "MALFORMED_POLICY", "MISSING_CIRCUIT_STATE", "STALE_CIRCUIT_STATE", "UNKNOWN_RESET_SEMANTICS", "CIRCUIT_OPEN", "CIRCUIT_HALF_OPEN", "ALLOWANCE_EXHAUSTED", "CRITICAL_HEADROOM"].includes(snapshot.blockedReason))
     && Number.isFinite(Date.parse(snapshot.observedAt))
     && (snapshot.validUntil === null || Number.isFinite(Date.parse(snapshot.validUntil)))
     && (snapshot.circuit.updatedAt === null || Number.isFinite(Date.parse(snapshot.circuit.updatedAt)))

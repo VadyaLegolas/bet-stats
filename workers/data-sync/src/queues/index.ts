@@ -1,4 +1,4 @@
-import { Queue, Worker, type Job, type JobsOptions, type Processor } from "bullmq";
+import { Queue, Worker, UnrecoverableError, type Job, type JobsOptions, type Processor } from "bullmq";
 import type { PrismaClient } from "@bet-stats/database";
 
 export type SyncLane = "critical" | "standard" | "optional";
@@ -91,7 +91,9 @@ export function createReplayWorker(input: {
     try {
       await input.execute(job.data);
     } catch (error) {
-      const exhausted = attemptNumber >= SYNC_MAX_ATTEMPTS; const reason = classifyFailure(error);
+      const reason = classifyFailure(error);
+      const nonRetryable = reason === "FIXTURE_SCOPE_MISMATCH" || reason === "INVALID_FIXTURE_SCOPE";
+      const exhausted = nonRetryable || attemptNumber >= SYNC_MAX_ATTEMPTS;
       await input.database.$transaction(async (tx) => {
         const locked = await tx.$queryRawUnsafe<Array<{ state: string }>>(
           `SELECT state FROM "SyncRun" WHERE id=$1 FOR UPDATE`,
@@ -110,6 +112,7 @@ export function createReplayWorker(input: {
         });
         if (run.count !== 1) throw Object.assign(new Error("RUN_NOT_RUNNING"), { code: "RUN_NOT_RUNNING" });
       });
+      if (nonRetryable) throw new UnrecoverableError(reason);
       throw error;
     }
 

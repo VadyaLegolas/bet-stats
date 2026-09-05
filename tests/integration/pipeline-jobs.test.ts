@@ -56,4 +56,20 @@ describe("historical pipeline job contract", () => {
     expect(execution.createReplayExecutionContext).toBeTypeOf("function");
     expect(execution.claimReplayExecution).toBeTypeOf("function");
   });
+
+  it("fences provider admission and delegates replay publication", async () => {
+    const { runGatedIngestion } = await import("../../workers/data-sync/src/ingestion/runner.js");
+    const events: string[] = [];
+    const result = await runGatedIngestion({
+      provider: "football-data.org", endpoint: "RESULTS", capability: "SUPPORTED", circuit: "CLOSED",
+      lane: "standard", allowance: 10, resetTimezone: "UTC", jobKey: "replay:1:attempt:1:request:1",
+      reserve: async () => ({ reserved: true }),
+      providerFactory: () => { events.push("provider"); return {}; },
+      admitRequest: async () => { events.push("admit"); },
+      callProvider: async () => { events.push("dispatch"); return ["fact"]; },
+      publish: async (value: unknown) => { events.push(`publish:${(value as string[])[0]}`); },
+    } as never);
+    expect(result.status).toBe("completed");
+    expect(events).toEqual(["admit", "provider", "dispatch", "publish:fact"]);
+  });
 });

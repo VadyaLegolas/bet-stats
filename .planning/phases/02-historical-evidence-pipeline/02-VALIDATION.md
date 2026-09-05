@@ -15,8 +15,8 @@ Earlier green evidence below applies to the original execution. Plans 02-27 and 
 
 | Task | Required witness | Status |
 |------|------------------|--------|
-| 02-27-1 | Three sequential replay units with fresh quota/circuit admission | pending |
-| 02-27-2 | Stable/volatile field classification and legacy/new API fingerprint compatibility | pending |
+| 02-27-1 | Three sequential replay units with fresh quota/circuit admission | green (61-test combined suite) |
+| 02-27-2 | Stable/volatile field classification and legacy/new API fingerprint compatibility | green (61-test combined suite) |
 | 02-28-1 | Lease claim, active-delivery waiting, bounded exhaustion and migration from empty | pending |
 | 02-28-2 | Fenced admission and atomic facts/provenance/success publication for all replay endpoints | pending |
 | 02-28-3 | Real hard crash, early stalled delivery, stale publication and populated migration upgrade | pending |

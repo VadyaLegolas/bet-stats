@@ -87,7 +87,7 @@ Plans:
   4. A user can view recent team history plus five- and ten-match weighted form as known at a selected point in time.
   5. Elo, home/away strength, goal rates, rest days, and low-weight H2H are chronological and exclude facts captured after the requested cutoff.
 
-**Plans**: 26/28 plans executed; 02-27 and 02-28 verified and ready to execute
+**Plans**: 27/28 plans executed; 02-28 verified and ready to execute
 
 - [x] 02-16-PLAN.md
 - [x] 02-17-PLAN.md
@@ -109,7 +109,7 @@ Plans:
 
 **Wave 22** *(gap closure; depends on 02-26, effective DAG wave 21)*
 
-- [ ] 02-27-PLAN.md — Stable replay policy identity with fresh per-unit admission.
+- [x] 02-27-PLAN.md — Stable replay policy identity with fresh per-unit admission.
 
 **Wave 23** *(blocked on 02-27 completion)*
 
@@ -233,7 +233,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Trustworthy Fixture Discovery | 12/12 | Complete    | 2026-08-29 |
-| 2. Historical Evidence Pipeline | 26/28 | Ready to execute |  |
+| 2. Historical Evidence Pipeline | 27/28 | In Progress |  |
 | 3. Forecast and Manual Value Workbench | 0/TBD | Not started | - |
 | 4. Settlement and Evidence Scorecard | 0/TBD | Not started | - |
 | 5. Provider-Aware Coverage and Enrichment | 0/TBD | Not started | - |

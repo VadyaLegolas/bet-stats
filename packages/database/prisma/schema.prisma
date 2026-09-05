@@ -1,0 +1,543 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ReconciliationEntityType {
+  LEAGUE
+  SEASON
+  TEAM
+  PLAYER
+  FIXTURE
+}
+
+enum ReconciliationCaseStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+enum ReconciliationCandidateStatus {
+  SUGGESTED
+  ACCEPTED
+  REJECTED
+}
+
+enum ReconciliationAction {
+  LINK
+  CREATE
+  QUARANTINE
+  REJECT
+}
+
+enum ReconciliationMethod {
+  EXACT_EXTERNAL_REF
+  UNIQUE_CONSERVATIVE_MATCH
+  MANUAL_REVIEW
+  OPERATOR_CONFIRMED
+}
+
+enum LedgerState {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum ReplayDeliveryState {
+  PENDING
+  CLAIMED
+  RETRYABLE
+  DELIVERED
+}
+
+enum CircuitState {
+  CLOSED
+  OPEN
+  HALF_OPEN
+}
+
+enum EvidenceBuildState {
+  BUILDING
+  PUBLISHED
+  FAILED
+}
+
+model League {
+  id                   String               @id @default(cuid())
+  name                 String
+  countryCode          String
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  seasons              Season[]
+  fixtures             Fixture[]
+  externalRefs         LeagueExternalRef[]
+  providerCapabilities ProviderCapability[]
+
+  @@index([countryCode, name])
+}
+
+model Season {
+  id                   String               @id @default(cuid())
+  leagueId             String
+  label                String
+  startsOn             DateTime             @db.Date
+  endsOn               DateTime             @db.Date
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  league               League               @relation(fields: [leagueId], references: [id], onDelete: Restrict)
+  fixtures             Fixture[]
+  externalRefs         SeasonExternalRef[]
+  providerCapabilities ProviderCapability[]
+
+  @@unique([leagueId, label])
+}
+
+model ProviderCapability {
+  id         String    @id @default(cuid())
+  provider   String
+  leagueId   String
+  seasonId   String
+  endpoint   String
+  supported  Boolean
+  verifiedAt DateTime
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  league     League    @relation(fields: [leagueId], references: [id], onDelete: Restrict)
+  season     Season    @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, leagueId, seasonId, endpoint])
+  @@index([provider, endpoint, verifiedAt])
+}
+
+model ProviderRequestReservation {
+  id          String   @id @default(cuid())
+  provider    String
+  requestDate DateTime @db.Date
+  endpoint    String
+  jobKey      String
+  reservedAt  DateTime @default(now())
+
+  @@unique([provider, requestDate, endpoint, jobKey])
+  @@index([provider, requestDate, endpoint])
+}
+
+model Team {
+  id             String            @id @default(cuid())
+  name           String
+  normalizedName String
+  countryCode    String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  homeFixtures   Fixture[]         @relation("HomeTeamFixtures")
+  awayFixtures   Fixture[]         @relation("AwayTeamFixtures")
+  players        Player[]
+  externalRefs   TeamExternalRef[]
+
+  @@index([countryCode, normalizedName])
+}
+
+model Player {
+  id             String              @id @default(cuid())
+  currentTeamId  String?
+  name           String
+  normalizedName String
+  countryCode    String?
+  dateOfBirth    DateTime?           @db.Date
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  currentTeam    Team?               @relation(fields: [currentTeamId], references: [id], onDelete: SetNull)
+  externalRefs   PlayerExternalRef[]
+
+  @@index([normalizedName, countryCode])
+}
+
+model Fixture {
+  id             String               @id @default(cuid())
+  leagueId       String
+  seasonId       String
+  homeTeamId     String
+  awayTeamId     String
+  kickoffUtc     DateTime
+  status         String
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  league         League               @relation(fields: [leagueId], references: [id], onDelete: Restrict)
+  season         Season               @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  homeTeam       Team                 @relation("HomeTeamFixtures", fields: [homeTeamId], references: [id], onDelete: Restrict)
+  awayTeam       Team                 @relation("AwayTeamFixtures", fields: [awayTeamId], references: [id], onDelete: Restrict)
+  externalRefs   FixtureExternalRef[]
+  provenance     FixtureProvenance[]
+  resultVersions ResultVersion[]
+
+  // D-10: deliberately non-unique; this index finds ±36h candidates only.
+  @@index([homeTeamId, awayTeamId, kickoffUtc])
+  @@index([leagueId, kickoffUtc])
+}
+
+model SourceObservation {
+  id                String             @id @default(cuid())
+  provider          String
+  endpointFamily    String
+  externalIdentity  String
+  requestedFrom     DateTime?          @db.Timestamptz(3)
+  requestedTo       DateTime?          @db.Timestamptz(3)
+  returnedFrom      DateTime?          @db.Timestamptz(3)
+  returnedTo        DateTime?          @db.Timestamptz(3)
+  observedAt        DateTime           @db.Timestamptz(3)
+  sourceUpdatedAt   DateTime?          @db.Timestamptz(3)
+  payloadHash       String
+  rawPayload        Json
+  payloadBytes      Int
+  createdAt         DateTime           @default(now()) @db.Timestamptz(3)
+  resultVersions    ResultVersion[]
+  standingSnapshots StandingSnapshot[]
+  syncAttempts      SyncAttempt[]
+
+  @@unique([provider, endpointFamily, payloadHash])
+  @@index([provider, endpointFamily, observedAt])
+  @@index([externalIdentity, observedAt])
+}
+
+model StandingSnapshot {
+  id            String                @id @default(cuid())
+  leagueId      String
+  seasonId      String
+  observationId String
+  effectiveAt   DateTime              @db.Timestamptz(3)
+  observedAt    DateTime              @db.Timestamptz(3)
+  isComplete    Boolean
+  rowCount      Int
+  createdAt     DateTime              @default(now()) @db.Timestamptz(3)
+  observation   SourceObservation     @relation(fields: [observationId], references: [id], onDelete: Restrict)
+  rows          StandingSnapshotRow[]
+
+  @@unique([leagueId, seasonId, observationId])
+  @@index([leagueId, seasonId, effectiveAt, observedAt])
+}
+
+model StandingSnapshotRow {
+  id           String           @id @default(cuid())
+  snapshotId   String
+  teamId       String
+  position     Int
+  played       Int
+  points       Int
+  goalsFor     Int
+  goalsAgainst Int
+  snapshot     StandingSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+
+  @@unique([snapshotId, teamId])
+}
+
+model ReplayPlan {
+  id             String          @id @default(cuid())
+  logicalKey     String
+  revision       Int
+  provider       String
+  competitionId  String
+  endpointFamily String
+  windowFrom     DateTime        @db.Timestamptz(3)
+  windowTo       DateTime        @db.Timestamptz(3)
+  previewVersion String
+  reason         String?
+  actor          String
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  syncRuns       SyncRun[]
+  evidenceBuilds EvidenceBuild[]
+  preview        ReplayPreview? @relation(fields: [previewId], references: [id], onDelete: Restrict)
+  previewId      String?        @unique
+
+  @@unique([logicalKey, revision])
+}
+
+model ReplayPreview {
+  id                        String       @id @default(cuid())
+  logicalKey                String
+  version                   Int
+  previewVersion            String       @unique
+  normalizedInput           Json
+  unitManifest              Json
+  impact                    Json
+  providerPolicyFingerprint String
+  expiresAt                 DateTime     @db.Timestamptz(3)
+  consumedAt                DateTime?    @db.Timestamptz(3)
+  actor                     String
+  createdAt                 DateTime     @default(now()) @db.Timestamptz(3)
+  replayPlan                ReplayPlan?
+
+  @@unique([logicalKey, version])
+  @@index([logicalKey, expiresAt])
+}
+
+/// Operational replay state is guarded in PostgreSQL: PENDING -> RUNNING,
+/// RUNNING -> PENDING|SUCCEEDED|FAILED, with terminal rows immutable.
+model SyncRun {
+  id             String          @id @default(cuid())
+  logicalKey     String
+  revision       Int
+  provider       String
+  endpointFamily String
+  lane           String
+  windowFrom     DateTime        @db.Timestamptz(3)
+  windowTo       DateTime        @db.Timestamptz(3)
+  state          LedgerState     @default(PENDING)
+  correlationId  String
+  replayPlanId   String?
+  expectedUnits       Int             @default(0)
+  completedUnits      Int             @default(0)
+  expectedCaptures    Int             @default(0)
+  completedCaptures   Int             @default(0)
+  completionManifest Json             @default("{\"expectedUnits\":[],\"completedUnits\":[],\"expectedCaptures\":[],\"completedCaptures\":[]}")
+  terminalAt          DateTime?       @db.Timestamptz(3)
+  executionLeaseToken String?
+  executionLeaseExpiresAt DateTime?   @db.Timestamptz(3)
+  executionDeadlineAt DateTime?       @db.Timestamptz(3)
+  createdAt           DateTime        @default(now()) @db.Timestamptz(3)
+  replayPlan     ReplayPlan?     @relation(fields: [replayPlanId], references: [id], onDelete: Restrict)
+  attempts       SyncAttempt[]
+  delivery       ReplayDelivery?
+  evidenceBuilds EvidenceBuild[]
+
+  @@unique([logicalKey, revision])
+  @@index([provider, endpointFamily, state])
+  @@index([state, executionLeaseExpiresAt])
+}
+
+/// Durable per-run outbox. PostgreSQL owns delivery truth; BullMQ job identity
+/// remains deterministic and every claim is protected by a bounded lease.
+model ReplayDelivery {
+  id               String              @id @default(cuid())
+  syncRunId        String              @unique
+  jobId            String              @unique
+  state            ReplayDeliveryState @default(PENDING)
+  attemptCount     Int                 @default(0)
+  classifiedReason String?
+  leaseToken       String?
+  leaseExpiresAt   DateTime?           @db.Timestamptz(3)
+  deliveredAt      DateTime?           @db.Timestamptz(3)
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
+  syncRun          SyncRun             @relation(fields: [syncRunId], references: [id], onDelete: Restrict)
+
+  @@index([state, leaseExpiresAt, createdAt])
+}
+
+/// Attempt identity/start data is immutable; a RUNNING attempt may receive one
+/// terminal SUCCEEDED or FAILED outcome with a matching finishedAt.
+model SyncAttempt {
+  id               String             @id @default(cuid())
+  syncRunId        String
+  attemptNumber    Int
+  observationId    String?
+  state            LedgerState
+  classifiedReason String?
+  startedAt        DateTime           @default(now()) @db.Timestamptz(3)
+  finishedAt       DateTime?          @db.Timestamptz(3)
+  syncRun          SyncRun            @relation(fields: [syncRunId], references: [id], onDelete: Restrict)
+  observation      SourceObservation? @relation(fields: [observationId], references: [id], onDelete: Restrict)
+
+  @@unique([syncRunId, attemptNumber])
+}
+
+model ProviderCircuitState {
+  id             String       @id @default(cuid())
+  provider       String
+  endpointFamily String
+  state          CircuitState @default(CLOSED)
+  failureCount   Int          @default(0)
+  openedAt       DateTime?    @db.Timestamptz(3)
+  nextProbeAt    DateTime?    @db.Timestamptz(3)
+  probeLeaseToken String?
+  probeLeaseExpiresAt DateTime? @db.Timestamptz(3)
+  lastError      String?
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+
+  @@unique([provider, endpointFamily])
+  @@index([provider, endpointFamily, state, nextProbeAt, probeLeaseExpiresAt])
+}
+
+model EvidenceBuild {
+  id            String              @id @default(cuid())
+  teamId        String
+  cutoff        DateTime            @db.Timestamptz(3)
+  configVersion String
+  configHash    String
+  syncRunId     String
+  replayPlanId  String?
+  state         EvidenceBuildState  @default(BUILDING)
+  publishedAt   DateTime?           @db.Timestamptz(3)
+  createdAt     DateTime            @default(now()) @db.Timestamptz(3)
+  syncRun       SyncRun             @relation(fields: [syncRunId], references: [id], onDelete: Restrict)
+  replayPlan    ReplayPlan?         @relation(fields: [replayPlanId], references: [id], onDelete: Restrict)
+  components    EvidenceComponent[]
+
+  @@unique([teamId, cutoff, configHash, syncRunId])
+  @@index([teamId, cutoff, state])
+}
+
+model EvidenceComponent {
+  id          String        @id @default(cuid())
+  buildId     String
+  component   String
+  value       Json?
+  sampleSize  Int
+  limitation  String?
+  sourceTimes Json
+  build       EvidenceBuild @relation(fields: [buildId], references: [id], onDelete: Restrict)
+
+  @@unique([buildId, component])
+}
+
+model ResultVersion {
+  id                        String            @id @default(cuid())
+  fixtureId                 String
+  observationId             String
+  effectiveAt               DateTime          @db.Timestamptz(3)
+  observedAt                DateTime          @db.Timestamptz(3)
+  homeGoals                 Int?
+  awayGoals                 Int?
+  status                    String
+  revision                  Int
+  supersedesResultVersionId String?           @unique
+  createdAt                 DateTime          @default(now()) @db.Timestamptz(3)
+  fixture                   Fixture           @relation(fields: [fixtureId], references: [id], onDelete: Restrict)
+  observation               SourceObservation @relation(fields: [observationId], references: [id], onDelete: Restrict)
+  supersedesResultVersion   ResultVersion?    @relation("ResultSupersession", fields: [supersedesResultVersionId], references: [id], onDelete: Restrict)
+  supersededBy              ResultVersion?    @relation("ResultSupersession")
+
+  @@unique([fixtureId, revision])
+  @@unique([fixtureId, observationId])
+  @@index([fixtureId, effectiveAt, observedAt])
+  @@index([effectiveAt, observedAt])
+}
+
+model LeagueExternalRef {
+  id         String   @id @default(cuid())
+  leagueId   String
+  provider   String
+  externalId String
+  createdAt  DateTime @default(now())
+  league     League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalId])
+  @@index([leagueId])
+}
+
+model SeasonExternalRef {
+  id         String   @id @default(cuid())
+  seasonId   String
+  provider   String
+  externalId String
+  createdAt  DateTime @default(now())
+  season     Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalId])
+  @@index([seasonId])
+}
+
+model TeamExternalRef {
+  id         String   @id @default(cuid())
+  teamId     String
+  provider   String
+  externalId String
+  createdAt  DateTime @default(now())
+  team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalId])
+  @@index([teamId])
+}
+
+model PlayerExternalRef {
+  id         String   @id @default(cuid())
+  playerId   String
+  provider   String
+  externalId String
+  createdAt  DateTime @default(now())
+  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalId])
+  @@index([playerId])
+}
+
+model FixtureExternalRef {
+  id         String   @id @default(cuid())
+  fixtureId  String
+  provider   String
+  externalId String
+  createdAt  DateTime @default(now())
+  fixture    Fixture  @relation(fields: [fixtureId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalId])
+  @@index([fixtureId])
+}
+
+model FixtureProvenance {
+  id              String    @id @default(cuid())
+  fixtureId       String
+  provider        String
+  observedAt      DateTime  @default(now())
+  sourceUpdatedAt DateTime?
+  payloadHash     String
+  rawPayload      Json
+  fixture         Fixture   @relation(fields: [fixtureId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, payloadHash])
+  @@index([fixtureId, observedAt])
+}
+
+model ReconciliationCase {
+  id               String                    @id @default(cuid())
+  entityType       ReconciliationEntityType
+  provider         String
+  externalId       String
+  status           ReconciliationCaseStatus  @default(OPEN)
+  version          Int                       @default(1)
+  incomingSnapshot Json
+  openedAt         DateTime                  @default(now())
+  resolvedAt       DateTime?
+  candidates       ReconciliationCandidate[]
+  decisions        ReconciliationDecision[]
+
+  @@index([status, entityType])
+  @@index([provider, externalId])
+}
+
+model ReconciliationCandidate {
+  id                 String                        @id @default(cuid())
+  caseId             String
+  canonicalEntityId  String
+  status             ReconciliationCandidateStatus @default(SUGGESTED)
+  method             ReconciliationMethod
+  confidence         Decimal                       @db.Decimal(5, 4)
+  evidence           Json
+  createdAt          DateTime                      @default(now())
+  reconciliationCase ReconciliationCase            @relation(fields: [caseId], references: [id], onDelete: Restrict)
+
+  @@unique([caseId, canonicalEntityId])
+  @@index([canonicalEntityId])
+}
+
+model ReconciliationDecision {
+  id                   String                  @id @default(cuid())
+  caseId               String
+  action               ReconciliationAction
+  method               ReconciliationMethod
+  canonicalEntityId    String?
+  evidence             Json
+  confidence           Decimal                 @db.Decimal(5, 4)
+  actor                String
+  decidedAt            DateTime                @default(now())
+  supersedesDecisionId String?                 @unique
+  reconciliationCase   ReconciliationCase      @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  supersedesDecision   ReconciliationDecision? @relation("DecisionSupersession", fields: [supersedesDecisionId], references: [id], onDelete: Restrict)
+  supersededBy         ReconciliationDecision? @relation("DecisionSupersession")
+
+  @@index([caseId, decidedAt])
+  @@index([canonicalEntityId])
+}

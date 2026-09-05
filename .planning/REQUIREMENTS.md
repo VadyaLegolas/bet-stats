@@ -7,34 +7,34 @@
 
 ### Foundation and Guardrails
 
-- [ ] **FOUND-01**: A developer can install, build, lint, test, and run the web, API, worker, and shared packages from one pnpm/Turborepo workspace.
-- [ ] **FOUND-02**: An operator can start PostgreSQL and Redis locally and verify health for the web, API, worker, database, and queue dependencies.
-- [ ] **FOUND-03**: The system validates required configuration and secrets at startup without exposing secret values to clients or logs.
-- [ ] **FOUND-04**: A user sees probabilistic language and a persistent betting-risk disclaimer anywhere a forecast or value result is displayed.
-- [ ] **FOUND-05**: The API enforces a configurable jurisdiction and age-eligibility policy before exposing betting-related analytics.
-- [ ] **FOUND-06**: Automated tests reject prohibited guaranteed-profit, guaranteed-win, urgency, or certainty claims in user-facing content.
+- [x] **FOUND-01**: A developer can install, build, lint, test, and run the web, API, worker, and shared packages from one pnpm/Turborepo workspace.
+- [x] **FOUND-02**: An operator can start PostgreSQL and Redis locally and verify health for the web, API, worker, database, and queue dependencies.
+- [x] **FOUND-03**: The system validates required configuration and secrets at startup without exposing secret values to clients or logs.
+- [x] **FOUND-04**: A user sees probabilistic language and a persistent betting-risk disclaimer anywhere a forecast or value result is displayed.
+- [x] **FOUND-05**: The API enforces a configurable jurisdiction and age-eligibility policy before exposing betting-related analytics.
+- [x] **FOUND-06**: Automated tests reject prohibited guaranteed-profit, guaranteed-win, urgency, or certainty claims in user-facing content.
 
 ### Canonical Football Data
 
-- [ ] **DATA-01**: A user can view upcoming fixtures for the initial supported competition, filtered by date and competition.
-- [ ] **DATA-02**: A user can open a fixture and see canonical teams, competition, season, kickoff, status, source provenance, and freshness.
-- [ ] **DATA-03**: The system maps each provider league, team, player, and fixture reference to a canonical entity without coupling canonical IDs to a provider.
-- [ ] **DATA-04**: The system reconciles a fixture across providers using canonical teams and a defined kickoff window without creating a duplicate fixture.
-- [ ] **DATA-05**: An administrator can review ambiguous entity matches and approve, reject, or correct them with an auditable decision history.
-- [ ] **DATA-06**: The system blocks forecasting for fixtures whose required canonical identity remains ambiguous.
-- [ ] **DATA-07**: A user can see when fixture data is incomplete, stale, unsupported, or limited rather than seeing missing values represented as zero.
-- [ ] **DATA-08**: The system records provider capabilities by competition, season, and endpoint before requesting conditionally available data.
+- [x] **DATA-01**: A user can view upcoming fixtures for the initial supported competition, filtered by date and competition.
+- [x] **DATA-02**: A user can open a fixture and see canonical teams, competition, season, kickoff, status, source provenance, and freshness.
+- [x] **DATA-03**: The system maps each provider league, team, player, and fixture reference to a canonical entity without coupling canonical IDs to a provider.
+- [x] **DATA-04**: The system reconciles a fixture across providers using canonical teams and a defined kickoff window without creating a duplicate fixture.
+- [x] **DATA-05**: An administrator can review ambiguous entity matches and approve, reject, or correct them with an auditable decision history.
+- [x] **DATA-06**: The system blocks forecasting for fixtures whose required canonical identity remains ambiguous.
+- [x] **DATA-07**: A user can see when fixture data is incomplete, stale, unsupported, or limited rather than seeing missing values represented as zero.
+- [x] **DATA-08**: The system records provider capabilities by competition, season, and endpoint before requesting conditionally available data.
 
 ### Resilient Historical Pipeline
 
-- [ ] **PIPE-01**: The worker synchronizes upcoming fixtures, completed results, and standings through idempotent, retryable jobs.
-- [ ] **PIPE-02**: The system persists raw-source provenance and capture timestamps needed to audit normalized football facts.
-- [ ] **PIPE-03**: The system atomically reserves and records request budget per provider, date, and endpoint type before each external call.
-- [ ] **PIPE-04**: Critical fixture and result calls retain budget priority over lineups, injuries, odds, and secondary statistics.
-- [ ] **PIPE-05**: The worker uses bounded retries, backoff, and circuit breaking, and exposes degraded provider state without corrupting durable data.
-- [ ] **PIPE-06**: An operator can replay failed or historical jobs without duplicating canonical facts, ratings, or snapshots.
-- [ ] **PIPE-07**: A user can view a team's recent match history and its five-match and ten-match weighted form as known at a requested point in time.
-- [ ] **PIPE-08**: The system calculates chronological Elo, home/away strength, goal rates, rest days, and low-weight H2H without using facts captured after the evaluation cutoff.
+- [x] **PIPE-01**: The worker synchronizes upcoming fixtures, completed results, and standings through idempotent, retryable jobs.
+- [x] **PIPE-02**: The system persists raw-source provenance and capture timestamps needed to audit normalized football facts.
+- [x] **PIPE-03**: The system atomically reserves and records request budget per provider, date, and endpoint type before each external call.
+- [x] **PIPE-04**: Critical fixture and result calls retain budget priority over lineups, injuries, odds, and secondary statistics.
+- [x] **PIPE-05**: The worker uses bounded retries, backoff, and circuit breaking, and exposes degraded provider state without corrupting durable data.
+- [x] **PIPE-06**: An operator can replay failed or historical jobs without duplicating canonical facts, ratings, or snapshots.
+- [x] **PIPE-07**: A user can view a team's recent match history and its five-match and ten-match weighted form as known at a requested point in time.
+- [x] **PIPE-08**: The system calculates chronological Elo, home/away strength, goal rates, rest days, and low-weight H2H without using facts captured after the evaluation cutoff.
 
 ### Forecasting and Value Analysis
 
@@ -121,28 +121,28 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 1 | Pending |
-| FOUND-02 | Phase 1 | Pending |
-| FOUND-03 | Phase 1 | Pending |
-| FOUND-04 | Phase 1 | Pending |
-| FOUND-05 | Phase 1 | Pending |
-| FOUND-06 | Phase 1 | Pending |
-| DATA-01 | Phase 1 | Pending |
-| DATA-02 | Phase 1 | Pending |
-| DATA-03 | Phase 1 | Pending |
-| DATA-04 | Phase 1 | Pending |
-| DATA-05 | Phase 1 | Pending |
-| DATA-06 | Phase 1 | Pending |
-| DATA-07 | Phase 1 | Pending |
-| DATA-08 | Phase 1 | Pending |
-| PIPE-01 | Phase 2 | Pending |
-| PIPE-02 | Phase 2 | Pending |
-| PIPE-03 | Phase 2 | Pending |
-| PIPE-04 | Phase 2 | Pending |
-| PIPE-05 | Phase 2 | Pending |
-| PIPE-06 | Phase 2 | Pending |
-| PIPE-07 | Phase 2 | Pending |
-| PIPE-08 | Phase 2 | Pending |
+| FOUND-01 | Phase 1 | Complete |
+| FOUND-02 | Phase 1 | Complete |
+| FOUND-03 | Phase 1 | Complete |
+| FOUND-04 | Phase 1 | Complete |
+| FOUND-05 | Phase 1 | Complete |
+| FOUND-06 | Phase 1 | Complete |
+| DATA-01 | Phase 1 | Complete |
+| DATA-02 | Phase 1 | Complete |
+| DATA-03 | Phase 1 | Complete |
+| DATA-04 | Phase 1 | Complete |
+| DATA-05 | Phase 1 | Complete |
+| DATA-06 | Phase 1 | Complete |
+| DATA-07 | Phase 1 | Complete |
+| DATA-08 | Phase 1 | Complete |
+| PIPE-01 | Phase 2 | Complete |
+| PIPE-02 | Phase 2 | Complete |
+| PIPE-03 | Phase 2 | Complete |
+| PIPE-04 | Phase 2 | Complete |
+| PIPE-05 | Phase 2 | Complete |
+| PIPE-06 | Phase 2 | Complete |
+| PIPE-07 | Phase 2 | Complete |
+| PIPE-08 | Phase 2 | Complete |
 | PRED-01 | Phase 3 | Pending |
 | PRED-02 | Phase 3 | Pending |
 | PRED-03 | Phase 3 | Pending |
@@ -179,6 +179,7 @@
 | PRIV-01 | Phase 6 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 56 total
 - Mapped to phases: 56
 - Unmapped: 0 ✓

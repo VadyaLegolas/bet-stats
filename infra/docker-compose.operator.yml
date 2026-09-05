@@ -1,0 +1,154 @@
+name: football-prediction-operator
+
+x-app: &app
+  image: bet-stats-app:operator
+  build:
+    context: ..
+    dockerfile: infra/Dockerfile.app
+  init: true
+  networks: [internal]
+
+x-database-environment: &database-environment
+  DATABASE_URL: postgresql://football_prediction:${POSTGRES_PASSWORD}@postgres:5432/football_prediction
+
+services:
+  operator-gateway:
+    build: ./operator-gateway
+    ports: ["8080:8080"]
+    environment:
+      WEB_ORIGIN: http://web:3000
+      OPERATOR_BASIC_USERNAME: ${OPERATOR_BASIC_USERNAME}
+      OPERATOR_BASIC_PASSWORD: ${OPERATOR_BASIC_PASSWORD}
+      OPERATOR_SUBJECT: ${OPERATOR_SUBJECT}
+      OPERATOR_PROXY_SIGNING_SECRET: ${OPERATOR_PROXY_SIGNING_SECRET}
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/fixtures').then(r=>{if(!r.ok)throw new Error(String(r.status))})"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    networks: [edge, internal]
+
+  web:
+    <<: *app
+    command: ["pnpm", "--filter", "@bet-stats/web", "start"]
+    expose: ["3000"]
+    environment:
+      API_ORIGIN: http://api:3001
+      OPERATOR_PROXY_SIGNING_SECRET: ${OPERATOR_PROXY_SIGNING_SECRET}
+      OPERATOR_AUTHORIZED_SUBJECTS: ${OPERATOR_SUBJECT}
+      OPERATOR_CREDENTIAL: ${OPERATOR_CREDENTIAL}
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/fixtures').then(r=>{if(!r.ok)throw new Error(String(r.status))})"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  api:
+    <<: *app
+    command: ["node", "apps/api/dist/main.js"]
+    expose: ["3001"]
+    environment:
+      <<: *database-environment
+      API_HOST: 0.0.0.0
+      API_PORT: 3001
+      DATA_PROVIDER_MODE: live
+      FOOTBALL_DATA_API_TOKEN: ${FOOTBALL_DATA_API_TOKEN}
+      REDIS_URL: redis://redis:6379
+      OPERATOR_CREDENTIAL: ${OPERATOR_CREDENTIAL}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health/live').then(r=>{if(!r.ok)throw new Error(String(r.status))})"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  worker:
+    <<: *app
+    command: ["node", "workers/data-sync/dist/main.js"]
+    environment:
+      <<: *database-environment
+      DATA_PROVIDER_MODE: live
+      REDIS_URL: redis://redis:6379
+      FOOTBALL_DATA_API_TOKEN: ${FOOTBALL_DATA_API_TOKEN}
+      POSTGRES_READY: "true"
+      REDIS_READY: "true"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  migrate:
+    <<: *app
+    command: ["pnpm", "--filter", "@bet-stats/database", "prisma", "migrate", "deploy"]
+    environment:
+      <<: *database-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  postgres:
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_DB: football_prediction
+      POSTGRES_USER: football_prediction
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    expose: ["5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U football_prediction -d football_prediction"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - operator_postgres_data:/var/lib/postgresql
+    restart: unless-stopped
+    networks: [internal]
+
+  redis:
+    image: redis:8.2.1-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    expose: ["6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    volumes:
+      - operator_redis_data:/data
+    restart: unless-stopped
+    networks: [internal]
+
+networks:
+  edge:
+  internal:
+    internal: true
+
+volumes:
+  operator_postgres_data:
+  operator_redis_data:

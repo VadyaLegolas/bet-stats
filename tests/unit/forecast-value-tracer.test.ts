@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { createForecast } from "../../packages/domain/src/forecast/model.js";
+import { FORECAST_CONFIG, fairOddsForProbability } from "../../packages/domain/src/forecast/config.js";
+import { calculateConfidence } from "../../packages/domain/src/forecast/confidence.js";
+import { parseOddsBook } from "../../packages/domain/src/odds/contract.js";
 import { normalizeOddsBook } from "../../packages/domain/src/odds/normalize.js";
+import { parseValueCommand } from "../../packages/domain/src/value/contract.js";
 import { decideValue } from "../../packages/domain/src/value/decision.js";
 
 const cutoff = "2026-09-12T12:00:00.000Z";
@@ -69,5 +73,35 @@ describe("forecast to manual value tracer", () => {
     const result = decideValue({ forecast, odds, selection: "HOME" });
     expect(result.outcome).toBe("INSUFFICIENT_EVIDENCE");
     expect(result.reasons.slice(0, 2)).toEqual(["UNRESOLVED_CANONICAL_IDENTITY", "MISSING_AWAY_GOAL_RATES"]);
+  });
+
+  it("locks versioned numeric policy and keeps confidence separate", () => {
+    expect(FORECAST_CONFIG).toMatchObject({ version: "forecast-config-v1", decimalPrecision: 40, probabilityTolerance: 1e-12, tailWarningThreshold: 0.01, multiplierBounds: [0.65, 1.35], lambdaBounds: [0.2, 4] });
+    expect(fairOddsForProbability(0)).toBeNull();
+    expect(fairOddsForProbability(Number.NaN)).toBeNull();
+    expect(calculateConfidence({ completeness: 1, lineupAvailability: 0, freshness: 1, sourceReliability: 1, modelStability: 1 })).toEqual({ version: "confidence-v1", score: 0.9, components: { completeness: 1, lineupAvailability: 0, freshness: 1, sourceReliability: 1, modelStability: 1 } });
+  });
+
+  it.each([
+    [{ fixtureId: "f", oddsSnapshotId: "o", market: "ONE_X_TWO", sourceLabel: "book", capturedAt: cutoff, selections: [{ selection: "HOME", decimalOdds: "2" }] }, "INCOMPLETE_ODDS_BOOK"],
+    [{ fixtureId: "f", oddsSnapshotId: "o", market: "BTTS", sourceLabel: "book", capturedAt: cutoff, selections: [{ selection: "YES", decimalOdds: "2" }, { selection: "YES", decimalOdds: "3" }] }, "DUPLICATE_ODDS_SELECTION"],
+    [{ fixtureId: "f", oddsSnapshotId: "o", market: "BTTS", sourceLabel: "book", capturedAt: cutoff, selections: [{ selection: "YES", decimalOdds: "Infinity" }, { selection: "NO", decimalOdds: "2" }] }, "INVALID_DECIMAL_ODDS"],
+  ])("rejects malformed odds with stable codes", (value, code) => {
+    expect(() => parseOddsBook(value)).toThrow(code);
+  });
+
+  it("rejects unknown keys and mismatched value markets", () => {
+    expect(() => parseOddsBook({ fixtureId: "f", oddsSnapshotId: "o", market: "BTTS", sourceLabel: "book", capturedAt: cutoff, selections: [{ selection: "YES", decimalOdds: "2" }, { selection: "NO", decimalOdds: "2" }], extra: true })).toThrow("INVALID_ODDS_BOOK_KEYS");
+    expect(() => parseValueCommand({ forecastSnapshotId: "forecast-1", oddsSnapshotId: "odds-1", fixtureId: "fixture-1", market: "BTTS", selection: "HOME" })).toThrow("MARKET_SELECTION_MISMATCH");
+  });
+
+  it("is deterministic under complete-book and source permutation", () => {
+    const input = { fixtureId: "fixture-1", oddsSnapshotId: "odds-1", market: "ONE_X_TWO" as const, sourceLabel: "manual-test", capturedAt: cutoff, selections: [{ selection: "HOME" as const, decimalOdds: "2.40" }, { selection: "DRAW" as const, decimalOdds: "3.40" }, { selection: "AWAY" as const, decimalOdds: "3.10" }] };
+    expect(normalizeOddsBook(input)).toEqual(normalizeOddsBook({ ...input, selections: [...input.selections].reverse() }));
+    const home = projection("home", "build-home");
+    const permutedHome = { ...home, receipt: { ...home.receipt, inputs: [...home.receipt.inputs].reverse() } };
+    const base = createForecast({ fixtureId: "fixture-1", forecastSnapshotId: "forecast-1", cutoff, canonicalIdentityState: "RESOLVED", home, away: projection("away", "build-away"), lineupAvailable: false, sourceReliability: 0.95 });
+    const permuted = createForecast({ fixtureId: "fixture-1", forecastSnapshotId: "forecast-1", cutoff, canonicalIdentityState: "RESOLVED", home: permutedHome, away: projection("away", "build-away"), lineupAvailable: false, sourceReliability: 0.95 });
+    expect(permuted).toEqual(base);
   });
 });

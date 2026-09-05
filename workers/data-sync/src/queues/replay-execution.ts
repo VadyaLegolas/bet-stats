@@ -42,7 +42,8 @@ export async function claimReplayExecution(database: Db, job: { syncRunId: strin
   const options = validateOptions(configuration);
   return database.$transaction(async (tx) => {
     const run = await lockRun(tx, job.syncRunId);
-    if (!run || run.replayPlanId !== job.replayPlanId || run.logicalKey !== job.logicalId || run.revision !== job.revision) throw Object.assign(new Error("RUN_NOT_FOUND"), { code: "RUN_NOT_FOUND" });
+    const persistedLogicalKey = `${job.logicalId}:replay`;
+    if (!run || run.replayPlanId !== job.replayPlanId || run.logicalKey !== persistedLogicalKey || run.revision !== job.revision) throw Object.assign(new Error("RUN_NOT_FOUND"), { code: "RUN_NOT_FOUND" });
     if (["SUCCEEDED", "FAILED", "CANCELLED"].includes(run.state)) return { status: "terminal", state: run.state } as const;
     if (run.state === "RUNNING" && run.executionLeaseExpiresAt && run.executionLeaseExpiresAt > run.now && run.executionDeadlineAt && run.executionDeadlineAt > run.now) return { status: "wait", retryAt: run.executionLeaseExpiresAt } as const;
 

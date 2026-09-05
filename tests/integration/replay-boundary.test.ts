@@ -330,7 +330,10 @@ describe("production replay proxy boundary", () => {
 
   it("crosses Next proxy, guarded Nest, BullMQ Worker and durable PostgreSQL terminal state", async () => {
     const executions = new Map<string, number>();
-    const worker = createReplayWorker({ redisUrl, database: prisma, prefix: queuePrefix, execute: async (data) => { executions.set(data.logicalId, (executions.get(data.logicalId) ?? 0) + 1); } });
+    const worker = createReplayWorker({ redisUrl, database: prisma, prefix: queuePrefix, execute: async (data, context) => {
+      executions.set(data.logicalId, (executions.get(data.logicalId) ?? 0) + 1);
+      await context.publish(async () => undefined);
+    } });
     workers.push(worker);
     const input = { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-30T10:15:00.000Z", to: "2026-08-30T10:15:00.000Z" };
     const preview = await proxy(["preview"], "POST", input);

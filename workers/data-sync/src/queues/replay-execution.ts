@@ -18,6 +18,7 @@ export interface ReplayExecutionContext {
   readonly attemptNumber: number;
   heartbeat(): Promise<boolean>;
   assertOwner(): Promise<void>;
+  admitRequest<T>(operation: (transaction: Tx) => Promise<T>): Promise<T>;
   publish(writer: (transaction: Tx) => Promise<void>, manifest?: unknown): Promise<void>;
   fail(reason: string, retryable: boolean): Promise<boolean>;
 }
@@ -69,6 +70,13 @@ export function createReplayExecutionContext(database: Db, syncRunId: string, to
   };
   return {
     syncRunId, token, attemptNumber, assertOwner,
+    async admitRequest(operation) {
+      return database.$transaction(async (tx) => {
+        const run = await lockRun(tx, syncRunId);
+        if (!run || run.state !== "RUNNING" || run.executionLeaseToken !== token || !run.executionLeaseExpiresAt || run.executionLeaseExpiresAt <= run.now || !run.executionDeadlineAt || run.executionDeadlineAt <= run.now) throw Object.assign(new Error("EXECUTION_LEASE_LOST"), { code: "EXECUTION_LEASE_LOST" });
+        return operation(tx);
+      });
+    },
     async heartbeat() {
       const changed = await database.$executeRawUnsafe(`UPDATE "SyncRun" SET "executionLeaseExpiresAt"=LEAST(clock_timestamp()+($3::int*interval '1 millisecond'),"executionDeadlineAt") WHERE id=$1 AND state='RUNNING' AND "executionLeaseToken"=$2 AND "executionLeaseExpiresAt">clock_timestamp() AND "executionDeadlineAt">clock_timestamp()`, syncRunId, token, options.leaseMs);
       return changed === 1;

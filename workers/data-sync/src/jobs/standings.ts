@@ -6,6 +6,7 @@ import type { NormalizedStandingSnapshot, StandingsProvider, StandingsRequestCov
 
 import { runGatedIngestion, type CircuitProbeRegistry, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
 import type { ReplayJobData } from "../queues/index.js";
+import type { ReplayExecutionContext } from "../queues/replay-execution.js";
 import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js";
 
 export interface StandingsSyncInput {
@@ -28,6 +29,8 @@ export interface StandingsSyncInput {
   leagueId?: string;
   seasonId?: string;
   now?: Date;
+  beforeDispatch?: () => Promise<void>;
+  publish?: (snapshot: NormalizedStandingSnapshot) => Promise<void>;
 }
 
 export function runStandingsSync(input: StandingsSyncInput): Promise<GatedIngestionResult<NormalizedStandingSnapshot>> {
@@ -62,9 +65,11 @@ export function runStandingsSync(input: StandingsSyncInput): Promise<GatedIngest
     resetTimezone: input.resetTimezone === undefined ? "UTC" : input.resetTimezone,
     jobKey: input.jobKey,
     reserve,
+    beforeDispatch: input.beforeDispatch,
     providerFactory: input.providerFactory,
     callProvider: (provider) => provider.fetchCompetitionStandings(input.coverage),
     persist,
+    publish: input.publish,
   });
 }
 
@@ -73,7 +78,7 @@ export async function runReplayStandingsJob(input: ReplayJobData, dependencies: 
   providerFactory: StandingsSyncInput["providerFactory"];
   providerPolicyRepository: ReplayProviderPolicyRepository;
   circuitRegistry: CircuitProbeRegistry;
-}): Promise<void> {
+}, context: ReplayExecutionContext): Promise<void> {
   const policy = await readReplayWorkerProviderPolicy({
     database: dependencies.database,
     providerPolicyRepository: dependencies.providerPolicyRepository,
@@ -84,7 +89,8 @@ export async function runReplayStandingsJob(input: ReplayJobData, dependencies: 
   const snapshot = policy.snapshot;
   const refs = await dependencies.database.$queryRawUnsafe<Array<{ leagueId: string; seasonId: string }>>(`SELECT l."leagueId",s."seasonId" FROM "LeagueExternalRef" l JOIN "SeasonExternalRef" s ON s.provider=l.provider JOIN "Season" season ON season.id=s."seasonId" AND season."leagueId"=l."leagueId" WHERE l.provider=$1 AND l."externalId"=$2 AND s."externalId"=$3 LIMIT 1`, input.input.provider, input.input.competitionId, input.input.seasonId);
   const ref = refs[0]; if (!ref) throw Object.assign(new Error("IDENTITY_UNRESOLVED"), { code: "IDENTITY_UNRESOLVED" });
-  const result = await runStandingsSync({ provider: input.input.provider, endpoint: "STANDINGS", capability: "SUPPORTED", circuit: snapshot.circuit.state!, circuitRegistry: dependencies.circuitRegistry, lane: snapshot.lane!, allowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, resetTimezone: snapshot.resetTimezone, resetDate: snapshot.resetDate!, jobKey: input.logicalId, coverage: { competitionCode: input.input.competitionId as StandingsRequestCoverage["competitionCode"] }, providerFactory: dependencies.providerFactory, database: dependencies.database, leagueId: ref.leagueId, seasonId: ref.seasonId });
+  const jobKey = `${input.logicalId}:${input.revision}:${context.attemptNumber}:request:1`;
+  const result = await runStandingsSync({ provider: input.input.provider, endpoint: "STANDINGS", capability: "SUPPORTED", circuit: snapshot.circuit.state!, circuitRegistry: dependencies.circuitRegistry, lane: snapshot.lane!, allowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, resetTimezone: snapshot.resetTimezone, resetDate: snapshot.resetDate!, jobKey, coverage: { competitionCode: input.input.competitionId as StandingsRequestCoverage["competitionCode"] }, providerFactory: dependencies.providerFactory, database: dependencies.database, leagueId: ref.leagueId, seasonId: ref.seasonId, reserve: () => context.admitRequest((transaction) => reservePriorityRequest({ database: transaction as unknown as PrismaClient, provider: input.input.provider, resetDate: snapshot.resetDate!, resetTimezone: snapshot.resetTimezone, endpointFamily: "STANDINGS", lane: snapshot.lane!, configuredAllowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, jobKey })), beforeDispatch: context.assertOwner, publish: (standing) => context.publish((transaction) => persistStandingSnapshot(transaction as unknown as PrismaClient, ref.leagueId, ref.seasonId, standing, true), completionManifest(input)) });
   if (result.status !== "completed") {
     const code = result.status === "denied" ? result.reason : result.status.toUpperCase();
     throw Object.assign(new Error(code), { code });
@@ -96,8 +102,9 @@ async function persistStandingSnapshot(
   leagueId: string,
   seasonId: string,
   snapshot: NormalizedStandingSnapshot,
+  transactionOwned = false,
 ): Promise<void> {
-  await database.$transaction(async (transaction) => {
+  const write = async (transaction: PrismaClient) => {
     const rawPayload = JSON.stringify(snapshot.raw);
     const payloadHash = createHash("sha256").update(rawPayload).digest("hex");
     await transaction.$executeRawUnsafe("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", `${snapshot.provider}:standings:${leagueId}:${seasonId}:${payloadHash}`);
@@ -145,5 +152,9 @@ async function persistStandingSnapshot(
         randomUUID(), snapshotId, teamIds.get(row.teamExternalId), row.position, row.playedGames, row.points, row.goalsFor, row.goalsAgainst,
       );
     }
-  });
+  };
+  if (transactionOwned) await write(database);
+  else await database.$transaction((transaction) => write(transaction as unknown as PrismaClient));
 }
+
+function completionManifest(input: ReplayJobData) { return { expectedUnits: [input.logicalId], completedUnits: [input.logicalId], expectedCaptures: [input.logicalId], completedCaptures: [input.logicalId], delivery: "DELIVERED" }; }

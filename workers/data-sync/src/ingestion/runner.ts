@@ -38,10 +38,13 @@ export interface GatedIngestionInput<TProvider, TValue> {
     allowance: number;
     jobKey: string;
   }) => Promise<ReservationDecision>;
+  admitRequest?: (() => Promise<void>) | undefined;
+  beforeDispatch?: (() => Promise<void>) | undefined;
   providerFactory: () => TProvider;
   callProvider: (provider: TProvider) => Promise<TValue | { data: TValue; quota?: unknown }>;
   observeQuota?: ((quota: unknown) => void | Promise<void>) | undefined;
   persist?: ((value: TValue) => Promise<void>) | undefined;
+  publish?: ((value: TValue) => Promise<void>) | undefined;
   complete?: (() => Promise<void>) | undefined;
 }
 
@@ -84,11 +87,14 @@ export async function runGatedIngestion<TProvider, TValue>(
       return { status: "denied", reason: reservation.reason ?? "ALLOWANCE_EXHAUSTED" };
     }
 
+    await input.admitRequest?.();
+    await input.beforeDispatch?.();
     const response = await input.callProvider(input.providerFactory());
     const wrapped = isWrappedResponse<TValue>(response);
     const value = wrapped ? response.data : response;
     if (wrapped && response.quota !== undefined) await input.observeQuota?.(response.quota);
-    await input.persist?.(value);
+    if (input.publish) await input.publish(value);
+    else await input.persist?.(value);
     await input.complete?.();
     return { status: "completed", value, reservationReused: reservation.reused === true };
   } finally {

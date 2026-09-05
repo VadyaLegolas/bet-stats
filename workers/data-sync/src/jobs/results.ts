@@ -6,6 +6,7 @@ import type { NormalizedResult, RequestedDateWindow, ResultProvider } from "@bet
 
 import { runGatedIngestion, type CircuitProbeRegistry, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
 import type { ReplayJobData } from "../queues/index.js";
+import type { ReplayExecutionContext } from "../queues/replay-execution.js";
 import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js";
 
 interface ResultProviderCompatibility extends Partial<ResultProvider> {
@@ -32,6 +33,8 @@ export interface ResultSyncJobInput {
   database?: PrismaClient;
   window?: RequestedDateWindow;
   now?: Date;
+  beforeDispatch?: () => Promise<void>;
+  publish?: (results: readonly NormalizedResult[]) => Promise<void>;
 }
 
 export function runResultSyncJob(input: ResultSyncJobInput): Promise<GatedIngestionResult<readonly NormalizedResult[]>> {
@@ -64,6 +67,7 @@ export function runResultSyncJob(input: ResultSyncJobInput): Promise<GatedIngest
     jobKey: input.jobKey,
     cache: input.cache,
     reserve,
+    beforeDispatch: input.beforeDispatch,
     providerFactory: input.providerFactory,
     callProvider: async (provider) => {
       if (provider.fetchResults) return provider.fetchResults();
@@ -72,6 +76,7 @@ export function runResultSyncJob(input: ResultSyncJobInput): Promise<GatedIngest
     },
     observeQuota: input.observeQuota,
     persist: input.database ? async (results) => persistResults(input.database!, results) : undefined,
+    publish: input.publish,
   });
 }
 
@@ -80,7 +85,7 @@ export async function runReplayResultJob(input: ReplayJobData, dependencies: {
   providerFactory: ResultSyncJobInput["providerFactory"];
   providerPolicyRepository: ReplayProviderPolicyRepository;
   circuitRegistry: CircuitProbeRegistry;
-}): Promise<void> {
+}, context: ReplayExecutionContext): Promise<void> {
   const policy = await readReplayWorkerProviderPolicy({
     database: dependencies.database,
     providerPolicyRepository: dependencies.providerPolicyRepository,
@@ -100,10 +105,13 @@ export async function runReplayResultJob(input: ReplayJobData, dependencies: {
     criticalHeadroom: snapshot.criticalHeadroom!,
     resetTimezone: snapshot.resetTimezone,
     resetDate: snapshot.resetDate!,
-    jobKey: input.logicalId,
+    jobKey: `${input.logicalId}:${input.revision}:${context.attemptNumber}:request:1`,
     providerFactory: dependencies.providerFactory,
     database: dependencies.database,
     window: { competitionCode: input.input.competitionId as RequestedDateWindow["competitionCode"], dateFrom: input.unit.from.slice(0, 10), dateTo: input.unit.to.slice(0, 10) },
+    reserve: () => context.admitRequest((transaction) => reservePriorityRequest({ database: transaction as unknown as PrismaClient, provider: input.input.provider, resetDate: snapshot.resetDate!, resetTimezone: snapshot.resetTimezone, endpointFamily: "RESULTS", lane: snapshot.lane!, configuredAllowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, jobKey: `${input.logicalId}:${input.revision}:${context.attemptNumber}:request:1` })),
+    beforeDispatch: context.assertOwner,
+    publish: (results) => context.publish((transaction) => persistResultsInTransaction(transaction as unknown as PrismaClient, results), completionManifest(input)),
   });
   if (result.status !== "completed") {
     const code = result.status === "denied" ? result.reason : result.status.toUpperCase();
@@ -112,8 +120,11 @@ export async function runReplayResultJob(input: ReplayJobData, dependencies: {
 }
 
 async function persistResults(database: PrismaClient, results: readonly NormalizedResult[]): Promise<void> {
+  await database.$transaction((transaction) => persistResultsInTransaction(transaction as unknown as PrismaClient, results));
+}
+
+async function persistResultsInTransaction(transaction: PrismaClient, results: readonly NormalizedResult[]): Promise<void> {
   for (const result of results) {
-    await database.$transaction(async (transaction) => {
       await transaction.$executeRawUnsafe(
         "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
         `${result.provider}:result:${result.externalId}`,
@@ -179,6 +190,7 @@ async function persistResults(database: PrismaClient, results: readonly Normaliz
         (existing[0]?.revision ?? 0) + 1,
         existing[0]?.id ?? null,
       );
-    });
   }
 }
+
+function completionManifest(input: ReplayJobData) { return { expectedUnits: [input.logicalId], completedUnits: [input.logicalId], expectedCaptures: [input.logicalId], completedCaptures: [input.logicalId], delivery: "DELIVERED" }; }

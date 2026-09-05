@@ -6,6 +6,7 @@ import { isConfiguredCompetitionCode, type FixtureProvider, type NormalizedFixtu
 
 import { runGatedIngestion, type CircuitProbeRegistry, type IngestionLane } from "../ingestion/runner.js";
 import type { ReplayJobData } from "../queues/index.js";
+import type { ReplayExecutionContext } from "../queues/replay-execution.js";
 import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js";
 
 const PROVIDER = "football-data.org";
@@ -31,6 +32,9 @@ export interface FixtureSyncJobInput {
     to: string;
   };
   now?: Date;
+  reserve?: () => ReturnType<typeof reservePriorityRequest>;
+  beforeDispatch?: () => Promise<void>;
+  publish?: (fixtures: readonly NormalizedFixture[]) => Promise<void>;
 }
 
 export type FixtureSyncJobResult =
@@ -62,7 +66,7 @@ export async function runFixtureSyncJob(input: FixtureSyncJobInput): Promise<Fix
     allowance: input.allowance,
     resetTimezone: input.resetTimezone === undefined ? "UTC" : input.resetTimezone,
     jobKey: input.jobKey,
-    reserve: () => reservePriorityRequest({
+    reserve: input.reserve ?? (() => reservePriorityRequest({
       database: input.database,
       provider: PROVIDER,
       resetDate: input.resetDate ?? now.toISOString().slice(0, 10),
@@ -72,7 +76,8 @@ export async function runFixtureSyncJob(input: FixtureSyncJobInput): Promise<Fix
       configuredAllowance: input.allowance,
       criticalHeadroom: input.criticalHeadroom ?? 0,
       jobKey: input.jobKey,
-    }),
+    })),
+    beforeDispatch: input.beforeDispatch,
     providerFactory: input.providerFactory,
     callProvider: async (provider) => {
       const fetched = await provider.fetchCompetitionFixtures(window);
@@ -90,6 +95,7 @@ export async function runFixtureSyncJob(input: FixtureSyncJobInput): Promise<Fix
     persist: async (fixtures) => {
       for (const fixture of fixtures) await persistCanonicalFixture(input.database, input.leagueId, input.seasonId, fixture);
     },
+    publish: input.publish,
   });
   if (result.status === "completed") return { status: "completed", fixturesProcessed: result.value.length, reservationReused: result.reservationReused };
   if (result.status === "denied") return { status: "denied", reason: result.reason };
@@ -124,6 +130,7 @@ export async function runReplayFixtureJob(
     providerPolicyRepository: ReplayProviderPolicyRepository;
     circuitRegistry: CircuitProbeRegistry;
   },
+  context: ReplayExecutionContext,
 ): Promise<void> {
   const from = Date.parse(input.unit.from);
   const to = Date.parse(input.unit.to);
@@ -158,7 +165,7 @@ export async function runReplayFixtureJob(
     database: dependencies.database,
     leagueId: ref.leagueId,
     seasonId: ref.seasonId,
-    jobKey: input.logicalId,
+    jobKey: `${input.logicalId}:${input.revision}:${context.attemptNumber}:request:1`,
     allowance: snapshot.configuredAllowance!,
     providerFactory: dependencies.providerFactory,
     circuit: snapshot.circuit.state!,
@@ -173,6 +180,11 @@ export async function runReplayFixtureJob(
       from: input.unit.from,
       to: input.unit.to,
     },
+    reserve: () => context.admitRequest((transaction) => reservePriorityRequest({ database: transaction as unknown as PrismaClient, provider: input.input.provider, resetDate: snapshot.resetDate!, resetTimezone: snapshot.resetTimezone, endpointFamily: "FIXTURES", lane: snapshot.lane!, configuredAllowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, jobKey: `${input.logicalId}:${input.revision}:${context.attemptNumber}:request:1` })),
+    beforeDispatch: context.assertOwner,
+    publish: (fixtures) => context.publish(async (transaction) => {
+      for (const fixture of fixtures) await persistCanonicalFixture(transaction as unknown as PrismaClient, ref.leagueId, ref.seasonId, fixture, true);
+    }, completionManifest(input)),
   });
   if (result.status !== "completed") {
     const code = result.reason;
@@ -180,8 +192,8 @@ export async function runReplayFixtureJob(
   }
 }
 
-async function persistCanonicalFixture(database: PrismaClient, leagueId: string, seasonId: string, fixture: NormalizedFixture): Promise<void> {
-  await database.$transaction(async (transaction) => {
+async function persistCanonicalFixture(database: PrismaClient, leagueId: string, seasonId: string, fixture: NormalizedFixture, transactionOwned = false): Promise<void> {
+  const write = async (transaction: PrismaClient) => {
     await transaction.$executeRawUnsafe(
       "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
       `${fixture.provider}:fixture:${fixture.externalId}`,
@@ -221,5 +233,9 @@ async function persistCanonicalFixture(database: PrismaClient, leagueId: string,
       `INSERT INTO "FixtureProvenance" (id, "fixtureId", provider, "observedAt", "sourceUpdatedAt", "payloadHash", "rawPayload") VALUES ($1, $2, $3, $4::timestamptz, $5::timestamptz, $6, $7::jsonb) ON CONFLICT (provider, "payloadHash") DO NOTHING`,
       randomUUID(), fixtureId, fixture.provider, fixture.capturedAt, fixture.sourceUpdatedAt, payloadHash, rawPayload,
     );
-  });
+  };
+  if (transactionOwned) await write(database);
+  else await database.$transaction((transaction) => write(transaction as unknown as PrismaClient));
 }
+
+function completionManifest(input: ReplayJobData) { return { expectedUnits: [input.logicalId], completedUnits: [input.logicalId], expectedCaptures: [input.logicalId], completedCaptures: [input.logicalId], delivery: "DELIVERED" }; }

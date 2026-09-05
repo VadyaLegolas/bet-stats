@@ -175,6 +175,15 @@ Plans:
   5. The exact forecast and odds snapshots produce edge and expected value, with a candidate shown only when all gates pass and an explicit no-value or insufficient-evidence result otherwise.
 
 **Plans**: TBD
+
+- [x] 03-01-PLAN.md
+- [ ] 03-02-PLAN.md
+- [ ] 03-03-PLAN.md
+- [ ] 03-04-PLAN.md
+- [ ] 03-05-PLAN.md
+- [ ] 03-06-PLAN.md
+- [ ] 03-07-PLAN.md
+
 **UI hint**: yes
 
 ### Phase 4: Settlement and Evidence Scorecard
@@ -234,7 +243,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Trustworthy Fixture Discovery | 12/12 | Complete    | 2026-08-29 |
 | 2. Historical Evidence Pipeline | 28/28 | Complete    | 2026-09-05 |
-| 3. Forecast and Manual Value Workbench | 0/TBD | Not started | - |
+| 3. Forecast and Manual Value Workbench | 1/7 | In Progress|  |
 | 4. Settlement and Evidence Scorecard | 0/TBD | Not started | - |
 | 5. Provider-Aware Coverage and Enrichment | 0/TBD | Not started | - |
 | 6. Release Experience and Operations | 0/TBD | Not started | - |

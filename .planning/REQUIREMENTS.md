@@ -38,19 +38,19 @@
 
 ### Forecasting and Value Analysis
 
-- [ ] **PRED-01**: A user can view normalized home, draw, and away probabilities whose sum satisfies the configured probability invariant.
-- [ ] **PRED-02**: A user can view Over/Under 2.5 and BTTS Yes/No probabilities derived from a Poisson score matrix covering at least 0:0 through 7:7.
-- [ ] **PRED-03**: A user can view fair decimal odds corresponding to each supported model probability.
+- [x] **PRED-01**: A user can view normalized home, draw, and away probabilities whose sum satisfies the configured probability invariant.
+- [x] **PRED-02**: A user can view Over/Under 2.5 and BTTS Yes/No probabilities derived from a Poisson score matrix covering at least 0:0 through 7:7.
+- [x] **PRED-03**: A user can view fair decimal odds corresponding to each supported model probability.
 - [ ] **PRED-04**: Every forecast is stored as an immutable snapshot linked to its fixture, model version, configuration, as-of cutoff, feature inputs, and source timestamps.
-- [ ] **PRED-05**: A user can distinguish event probability from confidence and inspect the completeness, lineup, freshness, source-reliability, and model-stability confidence components.
+- [x] **PRED-05**: A user can distinguish event probability from confidence and inspect the completeness, lineup, freshness, source-reliability, and model-stability confidence components.
 - [ ] **PRED-06**: The system creates INITIAL and PRE_MATCH snapshots and creates LINEUP_CONFIRMED only when an official confirmed lineup exists.
-- [ ] **ODDS-01**: A user can enter a complete mutually exclusive set of positive decimal odds for a supported market and receives actionable validation errors for invalid or incomplete input.
+- [x] **ODDS-01**: A user can enter a complete mutually exclusive set of positive decimal odds for a supported market and receives actionable validation errors for invalid or incomplete input.
 - [ ] **ODDS-02**: The system stores manual odds immutably with fixture, market, selection, source, and capture time.
-- [ ] **ODDS-03**: A user can view multiplicatively normalized no-vig market probabilities for a complete odds book.
-- [ ] **VALUE-01**: A user can view edge and expected value calculated from one exact prediction snapshot and one exact odds snapshot.
-- [ ] **VALUE-02**: A user sees a value candidate only when configurable edge, expected-value, confidence, and data-quality gates pass.
-- [ ] **VALUE-03**: A user sees an explicit no-value or insufficient-evidence state when thresholds or data-quality gates do not pass.
-- [ ] **VALUE-04**: A user can inspect a reproducible prediction receipt showing the model version, input cutoff, source provenance, assumptions, and odds used for the value result.
+- [x] **ODDS-03**: A user can view multiplicatively normalized no-vig market probabilities for a complete odds book.
+- [x] **VALUE-01**: A user can view edge and expected value calculated from one exact prediction snapshot and one exact odds snapshot.
+- [x] **VALUE-02**: A user sees a value candidate only when configurable edge, expected-value, confidence, and data-quality gates pass.
+- [x] **VALUE-03**: A user sees an explicit no-value or insufficient-evidence state when thresholds or data-quality gates do not pass.
+- [x] **VALUE-04**: A user can inspect a reproducible prediction receipt showing the model version, input cutoff, source provenance, assumptions, and odds used for the value result.
 
 ### Settlement, Backtesting, and Calibration
 
@@ -143,19 +143,19 @@
 | PIPE-06 | Phase 2 | Complete |
 | PIPE-07 | Phase 2 | Complete |
 | PIPE-08 | Phase 2 | Complete |
-| PRED-01 | Phase 3 | Pending |
-| PRED-02 | Phase 3 | Pending |
-| PRED-03 | Phase 3 | Pending |
+| PRED-01 | Phase 3 | Complete |
+| PRED-02 | Phase 3 | Complete |
+| PRED-03 | Phase 3 | Complete |
 | PRED-04 | Phase 3 | Pending |
-| PRED-05 | Phase 3 | Pending |
+| PRED-05 | Phase 3 | Complete |
 | PRED-06 | Phase 3 | Pending |
-| ODDS-01 | Phase 3 | Pending |
+| ODDS-01 | Phase 3 | Complete |
 | ODDS-02 | Phase 3 | Pending |
-| ODDS-03 | Phase 3 | Pending |
-| VALUE-01 | Phase 3 | Pending |
-| VALUE-02 | Phase 3 | Pending |
-| VALUE-03 | Phase 3 | Pending |
-| VALUE-04 | Phase 3 | Pending |
+| ODDS-03 | Phase 3 | Complete |
+| VALUE-01 | Phase 3 | Complete |
+| VALUE-02 | Phase 3 | Complete |
+| VALUE-03 | Phase 3 | Complete |
+| VALUE-04 | Phase 3 | Complete |
 | EVAL-01 | Phase 4 | Pending |
 | EVAL-02 | Phase 4 | Pending |
 | EVAL-03 | Phase 4 | Pending |

@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 4
+open_count: 5
 waived_count: 0
 fixed_count: 0
-total_count: 4
-last_updated: 2026-08-30T06:20:26.411Z
+total_count: 5
+last_updated: 2026-09-05T19:04:48.253Z
 ---
 
 # Broken Windows Ledger
@@ -19,6 +19,7 @@ last_updated: 2026-08-30T06:20:26.411Z
 | 2 | 02 | unrun-verify | tests/integration/temporal-provenance.test.ts |  | Plan 02-06 temporal provenance verification could not start because Docker Desktop was not running | open |  | 2026-08-30T05:42:22.684Z |  |
 | 3 | 2 | unrun-verify | tests/integration/temporal-provenance.test.ts |  | Docker-backed temporal provenance verification could not run because Docker Desktop was unavailable and startup was cancelled | open |  | 2026-08-30T06:10:47.471Z |  |
 | 4 | 02 | deviation | tests/integration/phase-01-security.test.ts | 48 | Phase 1 deny-list was narrowed because Phase 2 intentionally added results and standings ingestion | open |  | 2026-08-30T06:20:26.411Z |  |
+| 5 | 03 | deviation | .planning/STATE.md |  | state.advance-plan could not parse the initial Not started plan position; state was recorded directly | open |  | 2026-09-05T19:04:48.253Z |  |
 
 ````json
 [
@@ -68,6 +69,18 @@ last_updated: 2026-08-30T06:20:26.411Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-08-30T06:20:26.411Z",
+    "resolved_at": null
+  },
+  {
+    "id": 5,
+    "kind": "deviation",
+    "phase": "03",
+    "file": ".planning/STATE.md",
+    "line": null,
+    "description": "state.advance-plan could not parse the initial Not started plan position; state was recorded directly",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-05T19:04:48.253Z",
     "resolved_at": null
   }
 ]

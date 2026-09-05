@@ -60,6 +60,17 @@ All replay endpoints carry the execution context through provider admission and 
 - Crash, lease, publication and upgrade integration suite passed: 8/8 tests. The crash test kills a separately built worker after its durable claim, starts the replacement before lease expiry, relies on the same stalled BullMQ delivery, and observes one replacement execution plus one terminal success.
 - Tests ran on Node 25.2.1 and emitted the repository engine warning (`>=24 <25`); compilation and assertions passed.
 
+## Final Review Fixes
+
+- `353ed7b` aligns production replay logical identity with lease claims and exercises publication through the production boundary.
+- `e8bdce7` fences failure after lease or deadline expiry.
+- `e76f6d7` terminalizes exhausted PENDING/RUNNING claims atomically and removes the fixed-window reconciliation hole.
+- `6c10a5d` classifies demonstrated deterministic worker failures as unrecoverable while retaining bounded transient retries.
+- `9cf9890` uses verified forced process termination and exact-owned cleanup on Windows/POSIX.
+- `aafcabd` adds regression coverage; `37c88ce` makes the checked-in migration boundary witness execute lock-taking migrations transactionally.
+
+Final evidence: replay/lifecycle/hard-crash 27/27, empty/populated migration 2/2, production proxy/outbox/worker terminal witness passed, Prisma validate passed, workspace typecheck 7/7 and build 7/7 passed.
+
 ## Deviations from Plan
 
 ### Auto-fixed Issues

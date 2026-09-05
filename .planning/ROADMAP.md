@@ -7,7 +7,7 @@ The MVP grows from one trustworthy, policy-compliant fixture path into an audita
 ## Phases
 
 - [x] **Phase 1: Trustworthy Fixture Discovery** - Users can browse one supported competition through a healthy, policy-compliant system with canonical identities and visible data quality. (completed 2026-08-29)
-- [ ] **Phase 2: Historical Evidence Pipeline** - Users and operators can rely on replayable chronological history and leakage-safe team features.
+- [x] **Phase 2: Historical Evidence Pipeline** - Users and operators can rely on replayable chronological history and leakage-safe team features. (completed 2026-09-05)
 - [ ] **Phase 3: Forecast and Manual Value Workbench** - Users can inspect frozen probabilities, enter odds, and receive reproducible value or abstention results.
 - [ ] **Phase 4: Settlement and Evidence Scorecard** - Users can see how frozen forecasts and value candidates performed under chronological evaluation.
 - [ ] **Phase 5: Provider-Aware Coverage and Enrichment** - Users gain fallback competitions and evidence updates without losing canonical identity or visibility into limitations.
@@ -233,7 +233,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Trustworthy Fixture Discovery | 12/12 | Complete    | 2026-08-29 |
-| 2. Historical Evidence Pipeline | 28/28 | In Progress|  |
+| 2. Historical Evidence Pipeline | 28/28 | Complete    | 2026-09-05 |
 | 3. Forecast and Manual Value Workbench | 0/TBD | Not started | - |
 | 4. Settlement and Evidence Scorecard | 0/TBD | Not started | - |
 | 5. Provider-Aware Coverage and Enrichment | 0/TBD | Not started | - |

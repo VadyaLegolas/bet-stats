@@ -27,14 +27,14 @@
 
 ### Resilient Historical Pipeline
 
-- [ ] **PIPE-01**: The worker synchronizes upcoming fixtures, completed results, and standings through idempotent, retryable jobs.
-- [ ] **PIPE-02**: The system persists raw-source provenance and capture timestamps needed to audit normalized football facts.
-- [ ] **PIPE-03**: The system atomically reserves and records request budget per provider, date, and endpoint type before each external call.
-- [ ] **PIPE-04**: Critical fixture and result calls retain budget priority over lineups, injuries, odds, and secondary statistics.
-- [ ] **PIPE-05**: The worker uses bounded retries, backoff, and circuit breaking, and exposes degraded provider state without corrupting durable data.
-- [ ] **PIPE-06**: An operator can replay failed or historical jobs without duplicating canonical facts, ratings, or snapshots.
-- [ ] **PIPE-07**: A user can view a team's recent match history and its five-match and ten-match weighted form as known at a requested point in time.
-- [ ] **PIPE-08**: The system calculates chronological Elo, home/away strength, goal rates, rest days, and low-weight H2H without using facts captured after the evaluation cutoff.
+- [x] **PIPE-01**: The worker synchronizes upcoming fixtures, completed results, and standings through idempotent, retryable jobs.
+- [x] **PIPE-02**: The system persists raw-source provenance and capture timestamps needed to audit normalized football facts.
+- [x] **PIPE-03**: The system atomically reserves and records request budget per provider, date, and endpoint type before each external call.
+- [x] **PIPE-04**: Critical fixture and result calls retain budget priority over lineups, injuries, odds, and secondary statistics.
+- [x] **PIPE-05**: The worker uses bounded retries, backoff, and circuit breaking, and exposes degraded provider state without corrupting durable data.
+- [x] **PIPE-06**: An operator can replay failed or historical jobs without duplicating canonical facts, ratings, or snapshots.
+- [x] **PIPE-07**: A user can view a team's recent match history and its five-match and ten-match weighted form as known at a requested point in time.
+- [x] **PIPE-08**: The system calculates chronological Elo, home/away strength, goal rates, rest days, and low-weight H2H without using facts captured after the evaluation cutoff.
 
 ### Forecasting and Value Analysis
 
@@ -135,14 +135,14 @@
 | DATA-06 | Phase 1 | Complete |
 | DATA-07 | Phase 1 | Complete |
 | DATA-08 | Phase 1 | Complete |
-| PIPE-01 | Phase 2 | Pending |
-| PIPE-02 | Phase 2 | Gaps Found |
-| PIPE-03 | Phase 2 | Pending |
-| PIPE-04 | Phase 2 | Pending |
-| PIPE-05 | Phase 2 | Pending |
-| PIPE-06 | Phase 2 | Pending |
-| PIPE-07 | Phase 2 | Gaps Found |
-| PIPE-08 | Phase 2 | Gaps Found |
+| PIPE-01 | Phase 2 | Complete |
+| PIPE-02 | Phase 2 | Complete |
+| PIPE-03 | Phase 2 | Complete |
+| PIPE-04 | Phase 2 | Complete |
+| PIPE-05 | Phase 2 | Complete |
+| PIPE-06 | Phase 2 | Complete |
+| PIPE-07 | Phase 2 | Complete |
+| PIPE-08 | Phase 2 | Complete |
 | PRED-01 | Phase 3 | Pending |
 | PRED-02 | Phase 3 | Pending |
 | PRED-03 | Phase 3 | Pending |

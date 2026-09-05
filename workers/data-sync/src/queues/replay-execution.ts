@@ -95,7 +95,9 @@ export function createReplayExecutionContext(database: Db, syncRunId: string, to
       if (!/^[A-Z0-9_]{1,64}$/.test(reason)) reason = "PROVIDER_FAILURE";
       return database.$transaction(async (tx) => {
         const run = await lockRun(tx, syncRunId);
-        if (!run || run.state !== "RUNNING" || run.executionLeaseToken !== token) return false;
+        if (!run || run.state !== "RUNNING" || run.executionLeaseToken !== token
+          || !run.executionLeaseExpiresAt || run.executionLeaseExpiresAt <= run.now
+          || !run.executionDeadlineAt || run.executionDeadlineAt <= run.now) return false;
         await tx.$executeRawUnsafe(`UPDATE "SyncAttempt" SET state='FAILED',"classifiedReason"=$3,"finishedAt"=clock_timestamp() WHERE "syncRunId"=$1 AND "attemptNumber"=$2 AND state='RUNNING'`, syncRunId, attemptNumber, reason);
         await tx.$executeRawUnsafe(`UPDATE "SyncRun" SET state=$3::"LedgerState","terminalAt"=CASE WHEN $3='FAILED' THEN clock_timestamp() ELSE NULL END,"executionLeaseToken"=NULL,"executionLeaseExpiresAt"=NULL,"executionDeadlineAt"=NULL WHERE id=$1 AND state='RUNNING' AND "executionLeaseToken"=$2`, syncRunId, token, retryable ? "PENDING" : "FAILED");
         return true;

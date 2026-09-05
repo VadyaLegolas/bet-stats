@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 current_phase: 02
 current_phase_name: Historical Evidence Pipeline
 current_plan: 26
-status: needs_review
-stopped_at: Phase 02 verification gaps found after 02-26
-last_updated: "2026-09-04T18:50:23.736Z"
-last_activity: 2026-09-04
-last_activity_desc: Phase 02 verification found 2 replay lifecycle gaps
+status: ready_to_execute
+stopped_at: Phase 02 gap plans 02-27 and 02-28 verified; ready to execute
+last_updated: "2026-09-05T02:06:33.804Z"
+last_activity: 2026-09-05
+last_activity_desc: Phase 02 planning complete — 28 plans ready
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 38
+  total_plans: 40
   completed_plans: 38
   percent: 17
 ---
@@ -27,14 +27,14 @@ See: .planning/PROJECT.md (updated 2026-08-29)
 
 ## Current Position
 
-Phase: 02 (Historical Evidence Pipeline) — NEEDS REVIEW
+Phase: 02 (Historical Evidence Pipeline) — READY TO EXECUTE
 Current Plan: 26
-Total Plans in Phase: 26
-Status: Needs Review
-Last Activity: 2026-09-04
-Last Activity Description: Phase 02 verification found 2 replay lifecycle gaps
+Total Plans in Phase: 28
+Status: Ready to execute
+Last Activity: 2026-09-05 — Phase 02 planning complete
+Last Activity Description: Phase 02 planning complete — 28 plans ready
 
-Progress: [██████████] 100%
+Progress: 26/28 phase plans executed (93%); 02-27 and 02-28 pending. Phase verification remains gaps_found until implementation is verified.
 
 ## Performance Metrics
 

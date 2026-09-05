@@ -1,13 +1,27 @@
 ---
 phase: 02
 slug: historical-evidence-pipeline
-status: complete
+status: in_progress
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-08-29
 ---
 
 # Phase 02 — Validation Strategy
+
+## Replay lifecycle gap validation (2026-09-05)
+
+Earlier green evidence below applies to the original execution. Plans 02-27 and 02-28 are verified plans, not completed implementation.
+
+| Task | Required witness | Status |
+|------|------------------|--------|
+| 02-27-1 | Three sequential replay units with fresh quota/circuit admission | pending |
+| 02-27-2 | Stable/volatile field classification and legacy/new API fingerprint compatibility | pending |
+| 02-28-1 | Lease claim, active-delivery waiting, bounded exhaustion and migration from empty | pending |
+| 02-28-2 | Fenced admission and atomic facts/provenance/success publication for all replay endpoints | pending |
+| 02-28-3 | Real hard crash, early stalled delivery, stale publication and populated migration upgrade | pending |
+
+Run the automated commands in each plan. Process/container tests may exceed the original 30-second feedback target; report actual duration and nonzero executed test counts.
 
 > Per-phase validation contract for feedback sampling during execution.
 

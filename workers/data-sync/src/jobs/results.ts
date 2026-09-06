@@ -24,6 +24,7 @@ export interface ResultSyncJobInput {
   providerFactory: () => ResultProviderCompatibility;
   lane?: IngestionLane;
   resetTimezone?: string | null;
+  alreadyAuthorized?: boolean;
   resetDate?: string;
   criticalHeadroom?: number;
   runtimeAllowance?: number;
@@ -64,6 +65,7 @@ export function runResultSyncJob(input: ResultSyncJobInput): Promise<GatedIngest
     lane,
     allowance: input.allowance,
     resetTimezone: input.resetTimezone === undefined ? "UTC" : input.resetTimezone,
+    alreadyAuthorized: input.alreadyAuthorized,
     jobKey: input.jobKey,
     cache: input.cache,
     reserve,

@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 3
 current_phase_name: Forecast and Manual Value Workbench
-current_plan: 1
-status: "Phase 03 in progress — 1/7 plans complete"
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-09-05T19:04:16.438Z"
+current_plan: 2
+status: Phase 03 in progress — 1/7 plans complete
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-09-06T01:54:30.235Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 3 Plan 01 complete — forecast and manual value tracer
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 47
-  completed_plans: 41
+  completed_plans: 42
   percent: 33
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-29)
 ## Current Position
 
 Phase: 3 (Forecast and Manual Value Workbench) — IN PROGRESS
-Current Plan: 1
+Current Plan: 2
 Total Plans in Phase: 7
 Status: Phase 03 in progress — 1/7 plans complete
 Last Activity: 2026-09-05 — Phase 3 Plan 01 complete
@@ -76,6 +76,7 @@ Progress: [███░░░░░░░] 33%
 | Phase 02 P22 | 19min | 2 tasks | 3 files |
 | Phase 02 P28 | 18min | 3 tasks | 18 files |
 | Phase 03 P01 | 9min | 2 tasks | 10 files |
+| Phase 03 P02 | 17min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 02]: Canonical publication and durable success commit under the same fencing-token transaction.
 - [Phase 3]: Phase 03: Normalize all supported markets from one retained 64-cell score matrix and disclose tail mass separately.
 - [Phase 3]: Phase 03: Treat evidence and confidence failures as ordered tagged abstentions while reserving exceptions for malformed calculation contracts.
+- [Phase 3]: Phase 03: Use forecast-config-v1 minimum samples of goal rates 5, Elo 1, form 3, venue 3, rest 1, and optional H2H 3 as transparent starting policy.
+- [Phase 3]: Phase 03: Order value gates as policy, canonical identity, cutoff, data quality, confidence, edge, then expected value.
 
 ### Pending Todos
 
@@ -116,6 +119,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-05T19:04:16.221Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-09-06T01:54:30.078Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None

@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 7
+open_count: 10
 waived_count: 0
 fixed_count: 0
-total_count: 7
-last_updated: 2026-09-06T03:05:12.636Z
+total_count: 10
+last_updated: 2026-09-06T08:21:45.463Z
 ---
 
 # Broken Windows Ledger
@@ -22,6 +22,9 @@ last_updated: 2026-09-06T03:05:12.636Z
 | 5 | 03 | deviation | .planning/STATE.md |  | state.advance-plan could not parse the initial Not started plan position; state was recorded directly | open |  | 2026-09-05T19:04:48.253Z |  |
 | 6 | 03 | deviation | packages/domain/src/index.ts |  | Exposed existing odds and value contracts through the domain package barrel | open |  | 2026-09-06T03:05:12.209Z |  |
 | 7 | 03 | deviation | packages/domain/src/value/decision.ts |  | Narrowed value calculation input to fields retained by immutable forecast snapshots | open |  | 2026-09-06T03:05:12.636Z |  |
+| 8 | 03 | deviation | tests/integration/phase-03-security.test.ts |  | Phase 3 boundary verification required correctness and concurrency repairs | open |  | 2026-09-06T08:21:44.523Z |  |
+| 9 | 03 | deviation | tests/e2e/forecast-workbench.spec.ts |  | Live workbench verification required exact-pair, responsive, and production-build repairs | open |  | 2026-09-06T08:21:44.998Z |  |
+| 10 | 03 | deviation | tests/integration/replay-boundary.test.ts |  | Repository-wide verification required cross-phase harness isolation repairs | open |  | 2026-09-06T08:21:45.463Z |  |
 
 ````json
 [
@@ -107,6 +110,42 @@ last_updated: 2026-09-06T03:05:12.636Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-06T03:05:12.636Z",
+    "resolved_at": null
+  },
+  {
+    "id": 8,
+    "kind": "deviation",
+    "phase": "03",
+    "file": "tests/integration/phase-03-security.test.ts",
+    "line": null,
+    "description": "Phase 3 boundary verification required correctness and concurrency repairs",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-06T08:21:44.523Z",
+    "resolved_at": null
+  },
+  {
+    "id": 9,
+    "kind": "deviation",
+    "phase": "03",
+    "file": "tests/e2e/forecast-workbench.spec.ts",
+    "line": null,
+    "description": "Live workbench verification required exact-pair, responsive, and production-build repairs",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-06T08:21:44.998Z",
+    "resolved_at": null
+  },
+  {
+    "id": 10,
+    "kind": "deviation",
+    "phase": "03",
+    "file": "tests/integration/replay-boundary.test.ts",
+    "line": null,
+    "description": "Repository-wide verification required cross-phase harness isolation repairs",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-06T08:21:45.463Z",
     "resolved_at": null
   }
 ]

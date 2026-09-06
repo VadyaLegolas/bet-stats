@@ -239,6 +239,7 @@ describe("production replay proxy boundary", () => {
 
   afterEach(async () => {
     await Promise.all(workers.splice(0).map((worker) => worker.close()));
+    await prisma.providerRequestReservation.deleteMany();
   });
 
   it.each(["identity-v2", "legacy"])("runs three sequential multi-unit days under one %s policy identity", async (format) => {

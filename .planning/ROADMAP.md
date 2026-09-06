@@ -162,7 +162,7 @@ Plans:
 
 ### Phase 3: Forecast and Manual Value Workbench
 
-**Goal**: Users can understand a frozen forecast, compare it with a complete manual odds book, and receive a reproducible value or abstention result.
+**Goal**: As a football analytics user, I want to compare a frozen forecast with manual odds, so that I can see a reproducible value or abstention result.
 **Mode:** mvp
 **Depends on**: Phase 2
 **Requirements**: PRED-01, PRED-02, PRED-03, PRED-04, PRED-05, PRED-06, ODDS-01, ODDS-02, ODDS-03, VALUE-01, VALUE-02, VALUE-03, VALUE-04

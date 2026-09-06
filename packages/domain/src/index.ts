@@ -13,6 +13,7 @@ export * from "./evidence/features.js";
 export * from "./forecast/contract.js";
 export * from "./forecast/model.js";
 export * from "./odds/contract.js";
+export * from "./odds/draft.js";
 export * from "./odds/normalize.js";
 export * from "./value/contract.js";
 export * from "./value/decision.js";

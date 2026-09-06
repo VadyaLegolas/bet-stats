@@ -71,13 +71,20 @@ export function createPrismaManualOddsRepository(client: PrismaClient): ManualOd
     },
     append: async (book) => client.$transaction(async (tx) => {
       const existing = await tx.manualOddsSnapshot.findUnique({ where: { id: book.oddsSnapshotId } });
-      if (existing) return toDto(existing);
+      if (existing) {
+        if (existing.inputHash !== book.inputHash) throw failure("ODDS_SNAPSHOT_ID_CONFLICT");
+        return toDto(existing);
+      }
       const row = await tx.manualOddsSnapshot.create({ data: {
         id: book.oddsSnapshotId, fixtureId: book.fixtureId, market: book.market, inputHash: book.inputHash, source: book.sourceLabel,
         replacesOddsId: book.replacementOfOddsSnapshotId, receipt: book as never, submittedAt: new Date(book.submittedAt),
         selections: { create: book.selections.map(({ selection, decimalOdds }) => ({ selection, decimalOdds })) },
       } });
       return toDto(row);
+    }).catch(async (error) => {
+      const collision = await client.manualOddsSnapshot.findUnique({ where: { id: book.oddsSnapshotId } });
+      if (collision?.inputHash === book.inputHash) return toDto(collision);
+      throw error;
     }),
   };
 }

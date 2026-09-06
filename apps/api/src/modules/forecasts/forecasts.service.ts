@@ -119,23 +119,30 @@ export function createPrismaForecastRepository(client: PrismaClient): ForecastPu
       return row ? toDto(row as unknown as StoredForecast) : null;
     },
     publish: async (draft) => {
-      const existing = await client.forecastSnapshot.findFirst({ where: { fixtureId: draft.fixtureId, kind: draft.kind, cutoff: new Date(draft.cutoff), modelHash: draft.modelHash, configHash: draft.configHash, inputHash: draft.inputHash, evidenceFingerprint: draft.evidenceFingerprint, state: "ISSUED" } });
+      const identity = { fixtureId: draft.fixtureId, kind: draft.kind, cutoff: new Date(draft.cutoff), modelHash: draft.modelHash, configHash: draft.configHash, inputHash: draft.inputHash, evidenceFingerprint: draft.evidenceFingerprint, state: "ISSUED" as const };
+      const existing = await client.forecastSnapshot.findFirst({ where: identity });
       if (existing) return toDto(existing as unknown as StoredForecast);
-      return client.$transaction(async (tx) => {
-        const latest = await tx.forecastSnapshot.findFirst({ where: { fixtureId: draft.fixtureId, kind: draft.kind }, orderBy: { revision: "desc" } });
-        const revision = (latest?.revision ?? 0) + 1;
-        const transport = { ...draft, revision };
-        const { officialLineupObservationId, ...response } = transport;
-        await tx.forecastSnapshot.create({ data: {
-          id: response.id, fixtureId: response.fixtureId, kind: response.kind, state: "ISSUED", revision,
-          supersedesForecastId: latest?.id ?? null, officialLineupObservationId, cutoff: new Date(response.cutoff),
-          modelVersion: response.modelVersion, modelHash: response.modelHash, configVersion: response.configVersion, configHash: response.configHash,
-          inputHash: response.inputHash, evidenceFingerprint: response.evidenceFingerprint, sourceRefs: response.receipt.sourceRefs as never,
-          probabilities: response.probabilities as never, confidence: response.confidence as never, assumptions: response.assumptions as never,
-          receipt: response as never, issuedAt: new Date(response.issuedAt), markets: { create: Object.entries(response.probabilities).map(([market, probabilities]) => ({ market, probabilities: probabilities as never })) },
-        } });
-        return parseForecastResponse(response);
-      });
+      try {
+        return await client.$transaction(async (tx) => {
+          const latest = await tx.forecastSnapshot.findFirst({ where: { fixtureId: draft.fixtureId, kind: draft.kind }, orderBy: { revision: "desc" } });
+          const revision = (latest?.revision ?? 0) + 1;
+          const transport = { ...draft, revision };
+          const { officialLineupObservationId, ...response } = transport;
+          await tx.forecastSnapshot.create({ data: {
+            id: response.id, fixtureId: response.fixtureId, kind: response.kind, state: "ISSUED", revision,
+            supersedesForecastId: latest?.id ?? null, officialLineupObservationId, cutoff: new Date(response.cutoff),
+            modelVersion: response.modelVersion, modelHash: response.modelHash, configVersion: response.configVersion, configHash: response.configHash,
+            inputHash: response.inputHash, evidenceFingerprint: response.evidenceFingerprint, sourceRefs: response.receipt.sourceRefs as never,
+            probabilities: response.probabilities as never, confidence: response.confidence as never, assumptions: response.assumptions as never,
+            receipt: response as never, issuedAt: new Date(response.issuedAt), markets: { create: Object.entries(response.probabilities).map(([market, probabilities]) => ({ market, probabilities: probabilities as never })) },
+          } });
+          return parseForecastResponse(response);
+        });
+      } catch (error) {
+        const collision = await client.forecastSnapshot.findFirst({ where: identity });
+        if (collision) return toDto(collision as unknown as StoredForecast);
+        throw error;
+      }
     },
   };
 }

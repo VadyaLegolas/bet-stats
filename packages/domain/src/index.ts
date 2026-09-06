@@ -10,3 +10,5 @@ export * from "./evidence/eligibility.js";
 export * from "./evidence/form.js";
 export * from "./evidence/elo.js";
 export * from "./evidence/features.js";
+export * from "./forecast/contract.js";
+export * from "./forecast/model.js";

@@ -181,7 +181,7 @@ Plans:
 - [x] 03-03-PLAN.md
 - [x] 03-04-PLAN.md
 - [x] 03-05-PLAN.md
-- [ ] 03-06-PLAN.md
+- [x] 03-06-PLAN.md
 - [ ] 03-07-PLAN.md
 
 **UI hint**: yes
@@ -243,7 +243,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Trustworthy Fixture Discovery | 12/12 | Complete    | 2026-08-29 |
 | 2. Historical Evidence Pipeline | 28/28 | Complete    | 2026-09-05 |
-| 3. Forecast and Manual Value Workbench | 5/7 | In Progress|  |
+| 3. Forecast and Manual Value Workbench | 6/7 | In Progress|  |
 | 4. Settlement and Evidence Scorecard | 0/TBD | Not started | - |
 | 5. Provider-Aware Coverage and Enrichment | 0/TBD | Not started | - |
 | 6. Release Experience and Operations | 0/TBD | Not started | - |

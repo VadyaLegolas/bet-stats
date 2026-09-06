@@ -66,7 +66,8 @@ export async function generateForecast(raw: unknown, repository: ForecastPublica
   const awayBuildId = away.buildId;
   if (!homeBuildId || !awayBuildId) throw failure("REQUIRED_EVIDENCE_UNAVAILABLE");
   const evidenceBuildIds = [homeBuildId, awayBuildId].sort();
-  const snapshotId = sha({ fixtureId: fixture.id, kind: request.kind, cutoff: request.cutoff, evidenceBuildIds }).slice(7);
+  const preliminary = createForecast({ fixtureId: fixture.id, forecastSnapshotId: "pending", cutoff: request.cutoff, canonicalIdentityState: "RESOLVED", home, away, lineupAvailable: lineup !== null, sourceReliability: 1 });
+  const snapshotId = sha({ fixtureId: fixture.id, kind: request.kind, cutoff: request.cutoff, modelVersion: preliminary.modelVersion, configHash: preliminary.configHash, evidenceBuildIds }).slice(7);
   const forecast = createForecast({ fixtureId: fixture.id, forecastSnapshotId: snapshotId, cutoff: request.cutoff, canonicalIdentityState: "RESOLVED", home, away, lineupAvailable: lineup !== null, sourceReliability: 1 });
   const issuedAt = new Date().toISOString();
   const draft: ForecastResponseDto & { officialLineupObservationId: string | null } = {

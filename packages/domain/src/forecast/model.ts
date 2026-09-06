@@ -172,7 +172,7 @@ export function createForecast(input: ForecastInput): ForecastDraft {
   const confidence = calculateConfidence(components);
   const sources = [...(input.home.receipt?.inputs ?? []), ...(input.away.receipt?.inputs ?? [])].sort((a, b) => canonical(a).localeCompare(canonical(b)));
   const evidenceBuildIds = [input.home.buildId, input.away.buildId].filter((value): value is string => value !== null).sort();
-  const canonicalInput = { fixtureId: input.fixtureId, forecastSnapshotId: input.forecastSnapshotId, cutoff: input.cutoff, canonicalIdentityState: input.canonicalIdentityState, lineupAvailable: input.lineupAvailable, sourceReliability: input.sourceReliability, evidenceBuildIds, sources };
+  const canonicalInput = { fixtureId: input.fixtureId, cutoff: input.cutoff, canonicalIdentityState: input.canonicalIdentityState, lineupAvailable: input.lineupAvailable, sourceReliability: input.sourceReliability, evidenceBuildIds, sources };
   return {
     fixtureId: input.fixtureId, forecastSnapshotId: input.forecastSnapshotId, cutoff: input.cutoff,
     modelVersion: "poisson-ensemble-v1", configVersion: "forecast-config-v1", configHash: hash(FORECAST_CONFIG), inputHash: hash(canonicalInput), evidenceBuildIds,

@@ -113,7 +113,7 @@ export function createPrismaForecastRepository(client: PrismaClient): ForecastPu
       const { resolveTeamEvidence } = await import("../evidence/evidence.service.js");
       return resolveTeamEvidence({ teamId, asOf: cutoff }, { findPublished: async () => build });
     },
-    findOfficialLineup: async (fixtureId, cutoff) => client.lineupObservation.findFirst({ where: { fixtureId, status: "CONFIRMED", confirmedAt: { lte: new Date(cutoff) } }, orderBy: { confirmedAt: "desc" }, select: { id: true } }),
+    findOfficialLineup: async (fixtureId, cutoff) => client.lineupObservation.findFirst({ where: { fixtureId, status: "OFFICIAL_CONFIRMED", confirmedAt: { lte: new Date(cutoff) } }, orderBy: { confirmedAt: "desc" }, select: { id: true } }),
     findIssued: async (fixtureId, kind, cutoff) => {
       const row = await client.forecastSnapshot.findFirst({ where: { fixtureId, kind, cutoff: new Date(cutoff), state: "ISSUED" }, orderBy: { revision: "desc" } });
       return row ? toDto(row as unknown as StoredForecast) : null;

@@ -23,7 +23,7 @@ describe("protected analytics internal routes", () => {
   });
 
   it("forwards only allowlisted forecast query and body fields with server eligibility", async () => {
-    const fetchStub = vi.fn().mockResolvedValue(new Response('{"id":"forecast-1"}', {
+    const fetchStub = vi.fn().mockImplementation(async () => new Response('{"id":"forecast-1"}', {
       status: 201,
       headers: { "content-type": "application/json", "x-eligibility-region": "must-not-leak" },
     }));

@@ -345,6 +345,40 @@ export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
   _max?: Prisma.NestedJsonNullableFilter<$PrismaModel>
 }
 
+export type EnumForecastKindFilter<$PrismaModel = never> = {
+  equals?: $Enums.ForecastKind | Prisma.EnumForecastKindFieldRefInput<$PrismaModel>
+  in?: $Enums.ForecastKind[] | Prisma.ListEnumForecastKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ForecastKind[] | Prisma.ListEnumForecastKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumForecastKindFilter<$PrismaModel> | $Enums.ForecastKind
+}
+
+export type EnumForecastSnapshotStateFilter<$PrismaModel = never> = {
+  equals?: $Enums.ForecastSnapshotState | Prisma.EnumForecastSnapshotStateFieldRefInput<$PrismaModel>
+  in?: $Enums.ForecastSnapshotState[] | Prisma.ListEnumForecastSnapshotStateFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ForecastSnapshotState[] | Prisma.ListEnumForecastSnapshotStateFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel> | $Enums.ForecastSnapshotState
+}
+
+export type EnumForecastKindWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ForecastKind | Prisma.EnumForecastKindFieldRefInput<$PrismaModel>
+  in?: $Enums.ForecastKind[] | Prisma.ListEnumForecastKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ForecastKind[] | Prisma.ListEnumForecastKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumForecastKindWithAggregatesFilter<$PrismaModel> | $Enums.ForecastKind
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumForecastKindFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumForecastKindFilter<$PrismaModel>
+}
+
+export type EnumForecastSnapshotStateWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ForecastSnapshotState | Prisma.EnumForecastSnapshotStateFieldRefInput<$PrismaModel>
+  in?: $Enums.ForecastSnapshotState[] | Prisma.ListEnumForecastSnapshotStateFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ForecastSnapshotState[] | Prisma.ListEnumForecastSnapshotStateFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumForecastSnapshotStateWithAggregatesFilter<$PrismaModel> | $Enums.ForecastSnapshotState
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel>
+}
+
 export type IntNullableFilter<$PrismaModel = never> = {
   equals?: number | Prisma.IntFieldRefInput<$PrismaModel> | null
   in?: number[] | Prisma.ListIntFieldRefInput<$PrismaModel> | null
@@ -772,6 +806,40 @@ export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
   gt?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel>
   gte?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel>
   not?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel> | Prisma.JsonNullValueFilter
+}
+
+export type NestedEnumForecastKindFilter<$PrismaModel = never> = {
+  equals?: $Enums.ForecastKind | Prisma.EnumForecastKindFieldRefInput<$PrismaModel>
+  in?: $Enums.ForecastKind[] | Prisma.ListEnumForecastKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ForecastKind[] | Prisma.ListEnumForecastKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumForecastKindFilter<$PrismaModel> | $Enums.ForecastKind
+}
+
+export type NestedEnumForecastSnapshotStateFilter<$PrismaModel = never> = {
+  equals?: $Enums.ForecastSnapshotState | Prisma.EnumForecastSnapshotStateFieldRefInput<$PrismaModel>
+  in?: $Enums.ForecastSnapshotState[] | Prisma.ListEnumForecastSnapshotStateFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ForecastSnapshotState[] | Prisma.ListEnumForecastSnapshotStateFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel> | $Enums.ForecastSnapshotState
+}
+
+export type NestedEnumForecastKindWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ForecastKind | Prisma.EnumForecastKindFieldRefInput<$PrismaModel>
+  in?: $Enums.ForecastKind[] | Prisma.ListEnumForecastKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ForecastKind[] | Prisma.ListEnumForecastKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumForecastKindWithAggregatesFilter<$PrismaModel> | $Enums.ForecastKind
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumForecastKindFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumForecastKindFilter<$PrismaModel>
+}
+
+export type NestedEnumForecastSnapshotStateWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ForecastSnapshotState | Prisma.EnumForecastSnapshotStateFieldRefInput<$PrismaModel>
+  in?: $Enums.ForecastSnapshotState[] | Prisma.ListEnumForecastSnapshotStateFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ForecastSnapshotState[] | Prisma.ListEnumForecastSnapshotStateFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumForecastSnapshotStateWithAggregatesFilter<$PrismaModel> | $Enums.ForecastSnapshotState
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel>
 }
 
 export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {

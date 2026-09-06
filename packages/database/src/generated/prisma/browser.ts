@@ -111,6 +111,36 @@ export type EvidenceBuild = Prisma.EvidenceBuildModel
  */
 export type EvidenceComponent = Prisma.EvidenceComponentModel
 /**
+ * Model LineupObservation
+ * Durable provider evidence that an official starting lineup was confirmed.
+ */
+export type LineupObservation = Prisma.LineupObservationModel
+/**
+ * Model ForecastSnapshot
+ * Issued forecasts are immutable; corrections append a linked revision.
+ */
+export type ForecastSnapshot = Prisma.ForecastSnapshotModel
+/**
+ * Model ForecastMarket
+ * 
+ */
+export type ForecastMarket = Prisma.ForecastMarketModel
+/**
+ * Model ManualOddsSnapshot
+ * A complete manually submitted bookmaker book; replacements never mutate it.
+ */
+export type ManualOddsSnapshot = Prisma.ManualOddsSnapshotModel
+/**
+ * Model ManualOddsSelection
+ * 
+ */
+export type ManualOddsSelection = Prisma.ManualOddsSelectionModel
+/**
+ * Model ValueReceipt
+ * Exact forecast/odds pairing is checked by PostgreSQL before insertion.
+ */
+export type ValueReceipt = Prisma.ValueReceiptModel
+/**
  * Model ResultVersion
  * 
  */

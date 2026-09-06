@@ -68,6 +68,18 @@ enum EvidenceBuildState {
   FAILED
 }
 
+enum ForecastKind {
+  INITIAL
+  PRE_MATCH
+  LINEUP_CONFIRMED
+}
+
+enum ForecastSnapshotState {
+  BUILDING
+  ISSUED
+  FAILED
+}
+
 model League {
   id                   String               @id @default(cuid())
   name                 String
@@ -174,6 +186,10 @@ model Fixture {
   externalRefs   FixtureExternalRef[]
   provenance     FixtureProvenance[]
   resultVersions ResultVersion[]
+  lineupObservations LineupObservation[]
+  forecastSnapshots ForecastSnapshot[]
+  manualOddsSnapshots ManualOddsSnapshot[]
+  valueReceipts ValueReceipt[]
 
   // D-10: deliberately non-unique; this index finds ±36h candidates only.
   @@index([homeTeamId, awayTeamId, kickoffUtc])
@@ -198,6 +214,7 @@ model SourceObservation {
   resultVersions    ResultVersion[]
   standingSnapshots StandingSnapshot[]
   syncAttempts      SyncAttempt[]
+  lineupObservation LineupObservation?
 
   @@unique([provider, endpointFamily, payloadHash])
   @@index([provider, endpointFamily, observedAt])
@@ -392,6 +409,126 @@ model EvidenceComponent {
   build       EvidenceBuild @relation(fields: [buildId], references: [id], onDelete: Restrict)
 
   @@unique([buildId, component])
+}
+
+/// Durable provider evidence that an official starting lineup was confirmed.
+model LineupObservation {
+  id            String            @id @default(cuid())
+  fixtureId     String
+  observationId String            @unique
+  status        String
+  confirmedAt   DateTime          @db.Timestamptz(3)
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+  fixture       Fixture           @relation(fields: [fixtureId], references: [id], onDelete: Restrict)
+  observation   SourceObservation @relation(fields: [observationId], references: [id], onDelete: Restrict)
+  forecasts     ForecastSnapshot[]
+
+  @@index([fixtureId, confirmedAt])
+}
+
+/// Issued forecasts are immutable; corrections append a linked revision.
+model ForecastSnapshot {
+  id                          String                @id @default(cuid())
+  fixtureId                   String
+  kind                        ForecastKind
+  state                       ForecastSnapshotState @default(BUILDING)
+  revision                    Int
+  supersedesForecastId        String?               @unique
+  officialLineupObservationId String?
+  cutoff                      DateTime              @db.Timestamptz(3)
+  modelVersion                String
+  modelHash                   String
+  configVersion               String
+  configHash                  String
+  inputHash                   String
+  evidenceFingerprint         String
+  sourceRefs                  Json
+  probabilities               Json
+  confidence                  Json
+  assumptions                 Json
+  receipt                     Json
+  issuedAt                    DateTime?             @db.Timestamptz(3)
+  createdAt                   DateTime              @default(now()) @db.Timestamptz(3)
+  fixture                     Fixture               @relation(fields: [fixtureId], references: [id], onDelete: Restrict)
+  officialLineupObservation   LineupObservation?    @relation(fields: [officialLineupObservationId], references: [id], onDelete: Restrict)
+  supersedesForecast          ForecastSnapshot?     @relation("ForecastSupersession", fields: [supersedesForecastId], references: [id], onDelete: Restrict)
+  supersededBy                ForecastSnapshot?     @relation("ForecastSupersession")
+  markets                     ForecastMarket[]
+  valueReceipts               ValueReceipt[]
+
+  @@unique([fixtureId, kind, cutoff, modelHash, configHash, inputHash, evidenceFingerprint])
+  @@unique([fixtureId, kind, revision])
+  @@index([fixtureId, cutoff, kind, state])
+}
+
+model ForecastMarket {
+  id                 String           @id @default(cuid())
+  forecastSnapshotId String
+  market             String
+  probabilities      Json
+  createdAt          DateTime         @default(now()) @db.Timestamptz(3)
+  forecastSnapshot   ForecastSnapshot @relation(fields: [forecastSnapshotId], references: [id], onDelete: Restrict)
+
+  @@unique([forecastSnapshotId, market])
+}
+
+/// A complete manually submitted bookmaker book; replacements never mutate it.
+model ManualOddsSnapshot {
+  id             String                @id @default(cuid())
+  fixtureId      String
+  market         String
+  inputHash      String
+  source         String
+  replacesOddsId String?               @unique
+  receipt        Json
+  submittedAt    DateTime              @default(now()) @db.Timestamptz(3)
+  createdAt      DateTime              @default(now()) @db.Timestamptz(3)
+  fixture        Fixture               @relation(fields: [fixtureId], references: [id], onDelete: Restrict)
+  replacesOdds   ManualOddsSnapshot?   @relation("OddsReplacement", fields: [replacesOddsId], references: [id], onDelete: Restrict)
+  replacedBy     ManualOddsSnapshot?   @relation("OddsReplacement")
+  selections     ManualOddsSelection[]
+  valueReceipts  ValueReceipt[]
+
+  @@unique([fixtureId, market, inputHash])
+  @@index([fixtureId, market, submittedAt])
+}
+
+model ManualOddsSelection {
+  id             String             @id @default(cuid())
+  oddsSnapshotId String
+  selection      String
+  decimalOdds    String             @db.VarChar(128)
+  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+  oddsSnapshot   ManualOddsSnapshot @relation(fields: [oddsSnapshotId], references: [id], onDelete: Restrict)
+
+  @@unique([oddsSnapshotId, selection])
+}
+
+/// Exact forecast/odds pairing is checked by PostgreSQL before insertion.
+model ValueReceipt {
+  id                      String             @id @default(cuid())
+  fixtureId               String
+  market                  String
+  forecastSnapshotId      String
+  oddsSnapshotId          String
+  outcome                 String
+  selection               String?
+  modelProbability        String?            @db.VarChar(128)
+  noVigProbability        String?            @db.VarChar(128)
+  fairOdds                String?            @db.VarChar(128)
+  edge                    String?            @db.VarChar(128)
+  expectedValue           String?            @db.VarChar(128)
+  supersedesValueReceiptId String?            @unique
+  receipt                 Json
+  createdAt               DateTime           @default(now()) @db.Timestamptz(3)
+  fixture                 Fixture            @relation(fields: [fixtureId], references: [id], onDelete: Restrict)
+  forecastSnapshot        ForecastSnapshot   @relation(fields: [forecastSnapshotId], references: [id], onDelete: Restrict)
+  oddsSnapshot            ManualOddsSnapshot @relation(fields: [oddsSnapshotId], references: [id], onDelete: Restrict)
+  supersedesValueReceipt  ValueReceipt?       @relation("ValueSupersession", fields: [supersedesValueReceiptId], references: [id], onDelete: Restrict)
+  supersededBy            ValueReceipt?       @relation("ValueSupersession")
+
+  @@unique([forecastSnapshotId, oddsSnapshotId])
+  @@index([fixtureId, market, createdAt])
 }
 
 model ResultVersion {

@@ -69,6 +69,12 @@ export const ModelName = {
   ProviderCircuitState: 'ProviderCircuitState',
   EvidenceBuild: 'EvidenceBuild',
   EvidenceComponent: 'EvidenceComponent',
+  LineupObservation: 'LineupObservation',
+  ForecastSnapshot: 'ForecastSnapshot',
+  ForecastMarket: 'ForecastMarket',
+  ManualOddsSnapshot: 'ManualOddsSnapshot',
+  ManualOddsSelection: 'ManualOddsSelection',
+  ValueReceipt: 'ValueReceipt',
   ResultVersion: 'ResultVersion',
   LeagueExternalRef: 'LeagueExternalRef',
   SeasonExternalRef: 'SeasonExternalRef',
@@ -377,6 +383,103 @@ export const EvidenceComponentScalarFieldEnum = {
 } as const
 
 export type EvidenceComponentScalarFieldEnum = (typeof EvidenceComponentScalarFieldEnum)[keyof typeof EvidenceComponentScalarFieldEnum]
+
+
+export const LineupObservationScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  observationId: 'observationId',
+  status: 'status',
+  confirmedAt: 'confirmedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type LineupObservationScalarFieldEnum = (typeof LineupObservationScalarFieldEnum)[keyof typeof LineupObservationScalarFieldEnum]
+
+
+export const ForecastSnapshotScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  kind: 'kind',
+  state: 'state',
+  revision: 'revision',
+  supersedesForecastId: 'supersedesForecastId',
+  officialLineupObservationId: 'officialLineupObservationId',
+  cutoff: 'cutoff',
+  modelVersion: 'modelVersion',
+  modelHash: 'modelHash',
+  configVersion: 'configVersion',
+  configHash: 'configHash',
+  inputHash: 'inputHash',
+  evidenceFingerprint: 'evidenceFingerprint',
+  sourceRefs: 'sourceRefs',
+  probabilities: 'probabilities',
+  confidence: 'confidence',
+  assumptions: 'assumptions',
+  receipt: 'receipt',
+  issuedAt: 'issuedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ForecastSnapshotScalarFieldEnum = (typeof ForecastSnapshotScalarFieldEnum)[keyof typeof ForecastSnapshotScalarFieldEnum]
+
+
+export const ForecastMarketScalarFieldEnum = {
+  id: 'id',
+  forecastSnapshotId: 'forecastSnapshotId',
+  market: 'market',
+  probabilities: 'probabilities',
+  createdAt: 'createdAt'
+} as const
+
+export type ForecastMarketScalarFieldEnum = (typeof ForecastMarketScalarFieldEnum)[keyof typeof ForecastMarketScalarFieldEnum]
+
+
+export const ManualOddsSnapshotScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  market: 'market',
+  inputHash: 'inputHash',
+  source: 'source',
+  replacesOddsId: 'replacesOddsId',
+  receipt: 'receipt',
+  submittedAt: 'submittedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ManualOddsSnapshotScalarFieldEnum = (typeof ManualOddsSnapshotScalarFieldEnum)[keyof typeof ManualOddsSnapshotScalarFieldEnum]
+
+
+export const ManualOddsSelectionScalarFieldEnum = {
+  id: 'id',
+  oddsSnapshotId: 'oddsSnapshotId',
+  selection: 'selection',
+  decimalOdds: 'decimalOdds',
+  createdAt: 'createdAt'
+} as const
+
+export type ManualOddsSelectionScalarFieldEnum = (typeof ManualOddsSelectionScalarFieldEnum)[keyof typeof ManualOddsSelectionScalarFieldEnum]
+
+
+export const ValueReceiptScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  market: 'market',
+  forecastSnapshotId: 'forecastSnapshotId',
+  oddsSnapshotId: 'oddsSnapshotId',
+  outcome: 'outcome',
+  selection: 'selection',
+  modelProbability: 'modelProbability',
+  noVigProbability: 'noVigProbability',
+  fairOdds: 'fairOdds',
+  edge: 'edge',
+  expectedValue: 'expectedValue',
+  supersedesValueReceiptId: 'supersedesValueReceiptId',
+  receipt: 'receipt',
+  createdAt: 'createdAt'
+} as const
+
+export type ValueReceiptScalarFieldEnum = (typeof ValueReceiptScalarFieldEnum)[keyof typeof ValueReceiptScalarFieldEnum]
 
 
 export const ResultVersionScalarFieldEnum = {

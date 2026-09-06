@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { BadRequestException, ConflictException, Injectable, type OnModuleDestroy } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import {
   createForecast,
@@ -149,20 +149,25 @@ export function createPrismaForecastRepository(client: PrismaClient): ForecastPu
 
 @Injectable()
 export class ForecastsService implements OnModuleDestroy {
-  private readonly client: PrismaClient;
-  private readonly repository: ForecastPublicationRepository;
+  private readonly client: PrismaClient | null;
+  private readonly repository: ForecastPublicationRepository | null;
 
   constructor() {
-    this.client = createPrismaClient();
-    this.repository = createPrismaForecastRepository(this.client);
+    this.client = process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null;
+    this.repository = this.client ? createPrismaForecastRepository(this.client) : null;
   }
 
-  generate(input: unknown): Promise<ForecastResponseDto> { return generateForecast(input, this.repository); }
+  private db(): ForecastPublicationRepository {
+    if (!this.repository) throw Object.assign(new ServiceUnavailableException({ code: "DATABASE_UNAVAILABLE" }), { code: "DATABASE_UNAVAILABLE" });
+    return this.repository;
+  }
+
+  generate(input: unknown): Promise<ForecastResponseDto> { return generateForecast(input, this.db()); }
   async get(fixtureId: string, kind: unknown, cutoff: unknown): Promise<ForecastResponseDto> {
     const request = parseForecastRequest({ fixtureId, kind, cutoff });
-    const existing = await this.repository.findIssued?.(request.fixtureId, request.kind, request.cutoff);
+    const existing = await this.db().findIssued?.(request.fixtureId, request.kind, request.cutoff);
     if (!existing) throw failure("FORECAST_NOT_FOUND");
     return existing;
   }
-  async onModuleDestroy(): Promise<void> { await this.client.$disconnect(); }
+  async onModuleDestroy(): Promise<void> { await this.client?.$disconnect(); }
 }

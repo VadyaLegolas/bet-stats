@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { BadRequestException, ConflictException, Injectable, NotFoundException, type OnModuleDestroy } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import { decideValue, parseForecastResponse, parseValueCommand, type ForecastResponseDto, type ValueCommand } from "@bet-stats/domain";
 
@@ -104,10 +104,11 @@ export function createPrismaValueRepository(client: PrismaClient): ValueReposito
 
 @Injectable()
 export class ValueService implements OnModuleDestroy {
-  private readonly client = createPrismaClient();
-  private readonly repository = createPrismaValueRepository(this.client);
-  compare(input: unknown): Promise<ValueReceiptDto> { return compareValue(input, this.repository); }
-  async get(id: string): Promise<ValueReceiptDto> { const value = await this.repository.findReceiptById?.(id); if (!value) throw new NotFoundException({ code: "VALUE_RECEIPT_NOT_FOUND" }); return value; }
-  download(id: string): Promise<{ filename: string; contentType: string; body: string }> { return receiptDownload(id, this.repository); }
-  async onModuleDestroy(): Promise<void> { await this.client.$disconnect(); }
+  private readonly client: PrismaClient | null = process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null;
+  private readonly repository = this.client ? createPrismaValueRepository(this.client) : null;
+  private db(): ValueRepository { if (!this.repository) throw Object.assign(new ServiceUnavailableException({ code: "DATABASE_UNAVAILABLE" }), { code: "DATABASE_UNAVAILABLE" }); return this.repository; }
+  compare(input: unknown): Promise<ValueReceiptDto> { return compareValue(input, this.db()); }
+  async get(id: string): Promise<ValueReceiptDto> { const value = await this.db().findReceiptById?.(id); if (!value) throw new NotFoundException({ code: "VALUE_RECEIPT_NOT_FOUND" }); return value; }
+  download(id: string): Promise<{ filename: string; contentType: string; body: string }> { return receiptDownload(id, this.db()); }
+  async onModuleDestroy(): Promise<void> { await this.client?.$disconnect(); }
 }

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { BadRequestException, ConflictException, Injectable, NotFoundException, type OnModuleDestroy } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import { normalizeOddsBook, type NormalizedOddsBook, type OddsBookInput } from "@bet-stats/domain";
 
@@ -91,9 +91,10 @@ export function createPrismaManualOddsRepository(client: PrismaClient): ManualOd
 
 @Injectable()
 export class OddsService implements OnModuleDestroy {
-  private readonly client = createPrismaClient();
-  private readonly repository = createPrismaManualOddsRepository(this.client);
-  submit(input: unknown): Promise<ManualOddsSnapshotDto> { return submitManualOdds(input, this.repository); }
-  async get(id: string): Promise<ManualOddsSnapshotDto> { const value = await this.repository.get(id); if (!value) throw new NotFoundException({ code: "ODDS_SNAPSHOT_NOT_FOUND" }); return value; }
-  async onModuleDestroy(): Promise<void> { await this.client.$disconnect(); }
+  private readonly client: PrismaClient | null = process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null;
+  private readonly repository = this.client ? createPrismaManualOddsRepository(this.client) : null;
+  private db() { if (!this.repository) throw Object.assign(new ServiceUnavailableException({ code: "DATABASE_UNAVAILABLE" }), { code: "DATABASE_UNAVAILABLE" }); return this.repository; }
+  submit(input: unknown): Promise<ManualOddsSnapshotDto> { return submitManualOdds(input, this.db()); }
+  async get(id: string): Promise<ManualOddsSnapshotDto> { const value = await this.db().get(id); if (!value) throw new NotFoundException({ code: "ODDS_SNAPSHOT_NOT_FOUND" }); return value; }
+  async onModuleDestroy(): Promise<void> { await this.client?.$disconnect(); }
 }

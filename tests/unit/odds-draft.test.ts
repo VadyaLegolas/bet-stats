@@ -8,14 +8,14 @@ const cutoff = "2026-09-13T12:00:00.000Z";
 
 describe("complete manual odds books", () => {
   it.each([
-    ["ONE_X_TWO", [["HOME", "2.4"], ["DRAW", "3.4"], ["AWAY", "3.1"]]],
-    ["OVER_UNDER_2_5", [["OVER_2_5", "1.9"], ["UNDER_2_5", "2.05"]]],
-    ["BTTS", [["YES", "1.8"], ["NO", "2.1"]]],
-  ] as const)("normalizes %s multiplicatively", (market, entries) => {
+    ["ONE_X_TWO", [["HOME", "2.4"], ["DRAW", "3.4"], ["AWAY", "3.1"]], "0.0333649588867805187"],
+    ["OVER_UNDER_2_5", [["OVER_2_5", "1.9"], ["UNDER_2_5", "2.05"]], "0.0141206675224646983"],
+    ["BTTS", [["YES", "1.8"], ["NO", "2.1"]], "0.031746031746031746"],
+  ] as const)("normalizes %s multiplicatively", (market, entries, expectedOverround) => {
     const result = normalizeOddsBook({ fixtureId: "fixture-1", oddsSnapshotId: "odds-1", market, sourceLabel: "book", capturedAt: cutoff, selections: entries.map(([selection, decimalOdds]) => ({ selection, decimalOdds })) });
     expect(result.normalizationVersion).toBe("multiplicative-v1");
     expect(result.selections.reduce((sum, row) => sum + Number(row.noVigProbability), 0)).toBeCloseTo(1, 12);
-    expect(result.overround).toBe(String(result.selections.reduce((sum, row) => sum + Number(row.impliedProbability), 0) - 1));
+    expect(result.overround).toBe(expectedOverround);
   });
 
   it.each([

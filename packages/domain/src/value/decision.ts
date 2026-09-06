@@ -25,7 +25,6 @@ export function decideValue(input: ValueInput) {
   const cutoffReasons: string[] = input.forecast.limitations.filter((reason) => reason.includes("CUTOFF_MISMATCH"));
   const qualityReasons: string[] = input.forecast.limitations.filter((reason) => !canonicalReasons.includes(reason) && !cutoffReasons.includes(reason));
   if (input.forecast.configVersion !== VALUE_POLICY.forecastConfigVersion || input.odds.schemaVersion !== VALUE_POLICY.oddsSchemaVersion || input.odds.normalizationVersion !== VALUE_POLICY.oddsNormalizationVersion) policyReasons.push("POLICY_CONFIG_MISMATCH");
-  if (input.forecast.cutoff !== input.odds.capturedAt && !cutoffReasons.includes("CUTOFF_MISMATCH")) cutoffReasons.push("CUTOFF_MISMATCH");
   if (input.forecast.fixtureId !== input.odds.fixtureId) qualityReasons.push("FIXTURE_MISMATCH");
   const event = Object.values(input.forecast.markets).flat().find(({ selection }) => selection === input.selection);
   const odd = input.odds.selections.find(({ selection }) => selection === input.selection);

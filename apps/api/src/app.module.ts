@@ -6,6 +6,7 @@ import { FixturesController } from "./modules/fixtures/fixtures.controller.js";
 import { FixturesService } from "./modules/fixtures/fixtures.service.js";
 import { ForecastsModule } from "./modules/forecasts/forecasts.module.js";
 import { OddsModule } from "./modules/odds/odds.module.js";
+import { ValueModule } from "./modules/value/value.module.js";
 import { EligibilityController } from "./modules/eligibility/eligibility.controller.js";
 import { EligibilityGuard } from "./modules/eligibility/eligibility.guard.js";
 import { HealthController } from "./modules/health/health.controller.js";
@@ -16,7 +17,7 @@ import { ReplayController } from "./modules/replay/replay.controller.js";
 import { ReplayService } from "./modules/replay/replay.service.js";
 
 @Module({
-  imports: [ForecastsModule, OddsModule],
+  imports: [ForecastsModule, OddsModule, ValueModule],
   controllers: [EligibilityController, EvidenceController, FixturesController, HealthController, ReconciliationController, ReplayController],
   providers: [EligibilityGuard, EvidenceService, FixturesService, OperatorGuard, ReconciliationService, ReplayService],
 })

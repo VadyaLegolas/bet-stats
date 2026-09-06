@@ -4,7 +4,12 @@ import type { ForecastDraft, ForecastSelection } from "../forecast/model.js";
 import type { NormalizedOddsBook } from "../odds/normalize.js";
 import type { ValueCommand } from "./contract.js";
 
-export interface ValueInput extends Pick<ValueCommand, "selection"> { readonly forecast: ForecastDraft; readonly odds: NormalizedOddsBook }
+type ValueForecast = Pick<ForecastDraft,
+  "fixtureId" | "forecastSnapshotId" | "cutoff" | "modelVersion" | "configVersion" | "configHash" | "inputHash" |
+  "evidenceBuildIds" | "markets" | "confidence" | "limitations" | "sources" | "assumptions"
+>;
+
+export interface ValueInput extends Pick<ValueCommand, "selection"> { readonly forecast: ValueForecast; readonly odds: NormalizedOddsBook }
 
 export const VALUE_POLICY = Object.freeze({
   version: "value-policy-v1" as const,

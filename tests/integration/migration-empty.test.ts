@@ -108,6 +108,12 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
         "ReplayDelivery",
         "EvidenceBuild",
         "EvidenceComponent",
+        "LineupObservation",
+        "ForecastSnapshot",
+        "ForecastMarket",
+        "ManualOddsSnapshot",
+        "ManualOddsSelection",
+        "ValueReceipt",
       ]),
     );
 
@@ -200,5 +206,17 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
        AND column_name IN ('executionLeaseToken','executionLeaseExpiresAt','executionDeadlineAt') ORDER BY column_name;`,
     );
     expect(executionLeaseColumns).toEqual(["executionDeadlineAt", "executionLeaseExpiresAt", "executionLeaseToken"]);
+
+    const snapshotTriggers = sql(
+      `SELECT event_object_table || ':' || trigger_name FROM information_schema.triggers
+       WHERE event_object_schema='public' AND event_object_table IN ('ForecastSnapshot','ForecastMarket','ManualOddsSnapshot','ManualOddsSelection','ValueReceipt') ORDER BY 1;`,
+    );
+    expect(snapshotTriggers).toEqual(expect.arrayContaining([
+      "ForecastSnapshot:ForecastSnapshot_guarded_immutable",
+      "ForecastMarket:ForecastMarket_append_only",
+      "ManualOddsSnapshot:ManualOddsSnapshot_append_only",
+      "ManualOddsSelection:ManualOddsSelection_append_only",
+      "ValueReceipt:ValueReceipt_append_only",
+    ]));
   });
 });

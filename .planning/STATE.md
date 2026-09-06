@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 3
 current_phase_name: Forecast and Manual Value Workbench
-current_plan: 3
+current_plan: 4
 status: Phase 03 in progress — 1/7 plans complete
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-09-06T02:45:14.852Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-09-06T02:56:40.669Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 3 Plan 01 complete — forecast and manual value tracer
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 47
-  completed_plans: 43
+  completed_plans: 44
   percent: 33
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-29)
 ## Current Position
 
 Phase: 3 (Forecast and Manual Value Workbench) — IN PROGRESS
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 7
 Status: Phase 03 in progress — 1/7 plans complete
 Last Activity: 2026-09-05 — Phase 3 Plan 01 complete
@@ -78,6 +78,7 @@ Progress: [███░░░░░░░] 33%
 | Phase 03 P01 | 9min | 2 tasks | 10 files |
 | Phase 03 P02 | 17min | 2 tasks | 9 files |
 | Phase 03 P03 | 32min | 3 tasks | 22 files |
+| Phase 03 P04 | 9min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 3]: Phase 03: Order value gates as policy, canonical identity, cutoff, data quality, confidence, edge, then expected value.
 - [Phase 3]: Phase 03: Treat issued forecast identity and input facts as permanent; corrections append linked revisions.
 - [Phase 3]: Phase 03: Require exact fixture- and market-compatible forecast and odds snapshot IDs for each value receipt.
+- [Phase 3]: Phase 03: Use one strict forecast DTO across API and worker boundaries.
+- [Phase 3]: Phase 03: Derive forecast and job identities from exact cutoff, model/config, and sorted evidence fingerprints.
 
 ### Pending Todos
 
@@ -122,6 +125,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-06T02:45:14.703Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-09-06T02:56:40.522Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None

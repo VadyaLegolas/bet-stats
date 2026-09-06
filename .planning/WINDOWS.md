@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 5
+open_count: 7
 waived_count: 0
 fixed_count: 0
-total_count: 5
-last_updated: 2026-09-05T19:04:48.253Z
+total_count: 7
+last_updated: 2026-09-06T03:05:12.636Z
 ---
 
 # Broken Windows Ledger
@@ -20,6 +20,8 @@ last_updated: 2026-09-05T19:04:48.253Z
 | 3 | 2 | unrun-verify | tests/integration/temporal-provenance.test.ts |  | Docker-backed temporal provenance verification could not run because Docker Desktop was unavailable and startup was cancelled | open |  | 2026-08-30T06:10:47.471Z |  |
 | 4 | 02 | deviation | tests/integration/phase-01-security.test.ts | 48 | Phase 1 deny-list was narrowed because Phase 2 intentionally added results and standings ingestion | open |  | 2026-08-30T06:20:26.411Z |  |
 | 5 | 03 | deviation | .planning/STATE.md |  | state.advance-plan could not parse the initial Not started plan position; state was recorded directly | open |  | 2026-09-05T19:04:48.253Z |  |
+| 6 | 03 | deviation | packages/domain/src/index.ts |  | Exposed existing odds and value contracts through the domain package barrel | open |  | 2026-09-06T03:05:12.209Z |  |
+| 7 | 03 | deviation | packages/domain/src/value/decision.ts |  | Narrowed value calculation input to fields retained by immutable forecast snapshots | open |  | 2026-09-06T03:05:12.636Z |  |
 
 ````json
 [
@@ -81,6 +83,30 @@ last_updated: 2026-09-05T19:04:48.253Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-05T19:04:48.253Z",
+    "resolved_at": null
+  },
+  {
+    "id": 6,
+    "kind": "deviation",
+    "phase": "03",
+    "file": "packages/domain/src/index.ts",
+    "line": null,
+    "description": "Exposed existing odds and value contracts through the domain package barrel",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-06T03:05:12.209Z",
+    "resolved_at": null
+  },
+  {
+    "id": 7,
+    "kind": "deviation",
+    "phase": "03",
+    "file": "packages/domain/src/value/decision.ts",
+    "line": null,
+    "description": "Narrowed value calculation input to fields retained by immutable forecast snapshots",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-06T03:05:12.636Z",
     "resolved_at": null
   }
 ]

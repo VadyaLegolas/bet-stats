@@ -91,7 +91,7 @@ describe("forecast mathematical and evidence invariants", () => {
     const withLineup = createForecast({ fixtureId: "fixture-1", forecastSnapshotId: "forecast-1", cutoff, canonicalIdentityState: "RESOLVED", home: projection("home"), away: projection("away"), lineupAvailable: true, sourceReliability: 1 });
     expect(withLineup.markets).toEqual(withoutLineup.markets);
     expect(withLineup.confidence.score).toBeGreaterThan(withoutLineup.confidence.score);
-    expect(withLineup.confidence.configVersion).toBe(CONFIDENCE_CONFIG.version);
+    expect(withLineup.confidence.version).toBe(CONFIDENCE_CONFIG.version);
     expect(CONFIDENCE_CONFIG.weights).toEqual({ completeness: 0.3, lineupAvailability: 0.1, freshness: 0.25, sourceReliability: 0.2, modelStability: 0.15 });
   });
 

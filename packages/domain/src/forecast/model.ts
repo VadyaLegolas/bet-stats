@@ -37,12 +37,19 @@ export interface ForecastDraft {
   readonly retainedMass: number;
   readonly tailMass: number;
   readonly tailWarning: boolean;
+  readonly normalizationVersion: "retained-mass-v1";
+  readonly rawMarginals: Readonly<Record<ForecastMarket, readonly ForecastEvent[]>>;
   readonly markets: Readonly<Record<ForecastMarket, readonly ForecastEvent[]>>;
+  readonly adjustments: Readonly<Record<"home" | "away", AdjustmentReceipt>>;
   readonly confidence: Readonly<{ version: "confidence-v1"; score: number; components: Readonly<Record<"completeness" | "lineupAvailability" | "freshness" | "sourceReliability" | "modelStability", number>> }>;
   readonly limitations: readonly string[];
   readonly sources: readonly EvidenceSourceRef[];
   readonly assumptions: readonly string[];
 }
+
+type AdjustmentKind = "goalRates" | "elo" | "form" | "venue" | "rest" | "h2h";
+interface AdjustmentComponent { readonly signal: number; readonly weight: number; readonly applied: number; readonly bounds: readonly [number, number] }
+interface AdjustmentReceipt { readonly multiplier: number; readonly components: Readonly<Record<AdjustmentKind, AdjustmentComponent>> }
 
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
@@ -73,7 +80,7 @@ function h2h(projection: EvidenceProjectionDto): number | null {
   return value && typeof value === "object" && "pointsPerMatch" in value ? (value as { pointsPerMatch: number }).pointsPerMatch : null;
 }
 
-function adjustment(team: EvidenceProjectionDto, opponent: EvidenceProjectionDto, venue: "home" | "away"): number {
+function adjustment(team: EvidenceProjectionDto, opponent: EvidenceProjectionDto, venue: "home" | "away"): AdjustmentReceipt {
   const teamRate = rate(team);
   const opponentRate = rate(opponent);
   const goalSignal = teamRate && opponentRate ? ((teamRate.for + opponentRate.against) / 2 - 1.35) / 1.35 : 0;
@@ -83,12 +90,17 @@ function adjustment(team: EvidenceProjectionDto, opponent: EvidenceProjectionDto
   const venueSignal = ((numeric(team, venueKind) ?? 1.5) - 1.5) / 1.5;
   const restSignal = ((numeric(team, "restDays") ?? 5) - (numeric(opponent, "restDays") ?? 5)) / 7;
   const h2hSignal = ((h2h(team) ?? 1.5) - 1.5) / 1.5;
-  return clamp(goalSignal * FORECAST_CONFIG.coefficients.goalRates, FORECAST_CONFIG.transformBounds)
-    + clamp(eloSignal * FORECAST_CONFIG.coefficients.elo, FORECAST_CONFIG.transformBounds)
-    + clamp(formSignal * FORECAST_CONFIG.coefficients.form, FORECAST_CONFIG.transformBounds)
-    + clamp(venueSignal * FORECAST_CONFIG.coefficients.venue, FORECAST_CONFIG.transformBounds)
-    + clamp(restSignal * FORECAST_CONFIG.coefficients.rest, FORECAST_CONFIG.transformBounds)
-    + clamp(h2hSignal * FORECAST_CONFIG.coefficients.h2h, FORECAST_CONFIG.h2hBounds);
+  const entry = (signal: number, weight: number, bounds: readonly [number, number]): AdjustmentComponent => ({ signal, weight, applied: clamp(signal * weight, bounds), bounds });
+  const components = {
+    goalRates: entry(goalSignal, FORECAST_CONFIG.coefficients.goalRates, FORECAST_CONFIG.transformBounds),
+    elo: entry(eloSignal, FORECAST_CONFIG.coefficients.elo, FORECAST_CONFIG.transformBounds),
+    form: entry(formSignal, FORECAST_CONFIG.coefficients.form, FORECAST_CONFIG.transformBounds),
+    venue: entry(venueSignal, FORECAST_CONFIG.coefficients.venue, FORECAST_CONFIG.transformBounds),
+    rest: entry(restSignal, FORECAST_CONFIG.coefficients.rest, FORECAST_CONFIG.transformBounds),
+    h2h: entry(h2hSignal, FORECAST_CONFIG.coefficients.h2h, FORECAST_CONFIG.h2hBounds),
+  };
+  const total = Object.values(components).reduce((sum, component) => sum + component.applied, 0);
+  return { multiplier: clamp(1 + total, FORECAST_CONFIG.multiplierBounds), components };
 }
 
 function poisson(goals: number, lambda: number): number {
@@ -113,19 +125,43 @@ export function createForecast(input: ForecastInput): ForecastDraft {
     if (projection.state !== "COMPLETE") limitations.push(`${side}_EVIDENCE_${projection.state}`);
     if (projection.freshness !== "FRESH") limitations.push(`${side}_EVIDENCE_${projection.freshness}`);
     if (!projection.buildId) limitations.push(`MISSING_${side}_BUILD_ID`);
+    const required = [
+      ["goalRates", FORECAST_CONFIG.minimumSamples.goalRates], ["elo", FORECAST_CONFIG.minimumSamples.elo],
+      ["form5", FORECAST_CONFIG.minimumSamples.form5], [side === "HOME" ? "homeStrength" : "awayStrength", FORECAST_CONFIG.minimumSamples.venue],
+      ["restDays", FORECAST_CONFIG.minimumSamples.restDays],
+    ] as const;
+    for (const [kind, minimum] of required) {
+      const component = projection.components[kind];
+      if (!component || component.value === null) {
+        const reason = `MISSING_${side}_${kind.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase()}`;
+        if (!limitations.includes(reason)) limitations.push(reason);
+      } else if (component.sampleSize < minimum) limitations.push(`WEAK_${side}_${kind.replace(/([a-z])([A-Z])/g, "$1_$2").toUpperCase()}`);
+    }
   }
-  const homeMultiplier = clamp(1 + adjustment(input.home, input.away, "home"), FORECAST_CONFIG.multiplierBounds);
-  const awayMultiplier = clamp(1 + adjustment(input.away, input.home, "away"), FORECAST_CONFIG.multiplierBounds);
+  const homeAdjustment = adjustment(input.home, input.away, "home");
+  const awayAdjustment = adjustment(input.away, input.home, "away");
+  const homeMultiplier = homeAdjustment.multiplier;
+  const awayMultiplier = awayAdjustment.multiplier;
   const expectedGoals = { home: clamp(FORECAST_CONFIG.baselineGoals.home * homeMultiplier, FORECAST_CONFIG.lambdaBounds), away: clamp(FORECAST_CONFIG.baselineGoals.away * awayMultiplier, FORECAST_CONFIG.lambdaBounds) };
   const raw: Array<{ homeGoals: number; awayGoals: number; probability: number }> = [];
   for (let homeGoals = 0; homeGoals <= 7; homeGoals += 1) for (let awayGoals = 0; awayGoals <= 7; awayGoals += 1) raw.push({ homeGoals, awayGoals, probability: poisson(homeGoals, expectedGoals.home) * poisson(awayGoals, expectedGoals.away) });
   const retainedMass = raw.reduce((sum, cell) => sum + cell.probability, 0);
   const scoreMatrix = raw.map((cell) => ({ ...cell, probability: cell.probability / retainedMass }));
-  const probability = (predicate: (cell: (typeof scoreMatrix)[number]) => boolean) => scoreMatrix.filter(predicate).reduce((sum, cell) => sum + cell.probability, 0);
+  const sumWhere = (matrix: typeof scoreMatrix | typeof raw, predicate: (cell: (typeof scoreMatrix)[number]) => boolean) => matrix.filter(predicate).reduce((sum, cell) => sum + cell.probability, 0);
+  const probability = (predicate: (cell: (typeof scoreMatrix)[number]) => boolean) => sumWhere(scoreMatrix, predicate);
   const home = probability((cell) => cell.homeGoals > cell.awayGoals);
   const draw = probability((cell) => cell.homeGoals === cell.awayGoals);
   const over = probability((cell) => cell.homeGoals + cell.awayGoals > 2);
   const yes = probability((cell) => cell.homeGoals > 0 && cell.awayGoals > 0);
+  const rawHome = sumWhere(raw, (cell) => cell.homeGoals > cell.awayGoals);
+  const rawDraw = sumWhere(raw, (cell) => cell.homeGoals === cell.awayGoals);
+  const rawOver = sumWhere(raw, (cell) => cell.homeGoals + cell.awayGoals > 2);
+  const rawYes = sumWhere(raw, (cell) => cell.homeGoals > 0 && cell.awayGoals > 0);
+  const rawMarginals = {
+    ONE_X_TWO: [event("HOME", rawHome), event("DRAW", rawDraw), event("AWAY", retainedMass - rawHome - rawDraw)],
+    OVER_UNDER_2_5: [event("OVER_2_5", rawOver), event("UNDER_2_5", retainedMass - rawOver)],
+    BTTS: [event("YES", rawYes), event("NO", retainedMass - rawYes)],
+  } as const;
   const components = {
     completeness: limitations.filter((reason) => reason.includes("MISSING") || reason.includes("EVIDENCE_")).length === 0 ? 1 : 0,
     lineupAvailability: input.lineupAvailable ? 1 : 0,
@@ -141,6 +177,7 @@ export function createForecast(input: ForecastInput): ForecastDraft {
     fixtureId: input.fixtureId, forecastSnapshotId: input.forecastSnapshotId, cutoff: input.cutoff,
     modelVersion: "poisson-ensemble-v1", configVersion: "forecast-config-v1", configHash: hash(FORECAST_CONFIG), inputHash: hash(canonicalInput), evidenceBuildIds,
     expectedGoals, scoreMatrix, retainedMass, tailMass: Math.max(0, 1 - retainedMass), tailWarning: 1 - retainedMass > FORECAST_CONFIG.tailWarningThreshold,
+    normalizationVersion: "retained-mass-v1", rawMarginals, adjustments: { home: homeAdjustment, away: awayAdjustment },
     markets: { ONE_X_TWO: [event("HOME", home), event("DRAW", draw), event("AWAY", 1 - home - draw)], OVER_UNDER_2_5: [event("OVER_2_5", over), event("UNDER_2_5", 1 - over)], BTTS: [event("YES", yes), event("NO", 1 - yes)] },
     confidence, limitations, sources,
     assumptions: ["independent Poisson goal counts", "0..7 score grid normalized by retained mass", "starting policy pending Phase 4 calibration"],

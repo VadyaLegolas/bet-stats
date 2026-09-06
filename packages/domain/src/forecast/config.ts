@@ -12,6 +12,7 @@ export const FORECAST_CONFIG = Object.freeze({
   h2hBounds: Object.freeze([-0.03, 0.03] as const),
   multiplierBounds: Object.freeze([0.65, 1.35] as const),
   lambdaBounds: Object.freeze([0.2, 4] as const),
+  minimumSamples: Object.freeze({ goalRates: 5, elo: 1, form5: 3, venue: 3, restDays: 1, h2h: 3 }),
 });
 
 Decimal.set({ precision: FORECAST_CONFIG.decimalPrecision, rounding: Decimal.ROUND_HALF_EVEN });

@@ -7,8 +7,8 @@ import {
   generateForecast,
   type ForecastPublicationRepository,
 } from "../../apps/api/src/modules/forecasts/forecasts.service.js";
-import { submitManualOdds } from "../../apps/api/src/modules/odds/odds.service.js";
-import { compareValue, receiptDownload } from "../../apps/api/src/modules/value/value.service.js";
+import { createPrismaManualOddsRepository, submitManualOdds } from "../../apps/api/src/modules/odds/odds.service.js";
+import { compareValue, createPrismaValueRepository, receiptDownload } from "../../apps/api/src/modules/value/value.service.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required");
@@ -137,5 +137,43 @@ describe("Phase 3 trust boundaries", () => {
     expect(download.filename).toBe("value-receipt-receipt-safe.json");
     expect(download.filename).not.toContain("evil");
     expect(mutations).toBe(0);
+  });
+
+  it("converges concurrent identical forecast, odds, and value commands on one durable identity", async () => {
+    const fixtureId = id("security-fixture");
+    const forecastId = id("concurrent-forecast");
+    const oddsId = id("concurrent-odds");
+    const forecast = {
+      id: forecastId, fixtureId, kind: "PRE_MATCH" as const, revision: 1, cutoff,
+      modelVersion: "poisson-ensemble-v1" as const, modelHash: id("model"), configVersion: "forecast-config-v1" as const,
+      configHash: id("config"), inputHash: id("forecast-input"), evidenceFingerprint: id("evidence"), evidenceBuildIds: [id("away-build"), id("home-build")],
+      probabilities: {
+        ONE_X_TWO: [{ selection: "HOME" as const, probability: 0.6, fairOdds: "1.6666666666666667" }, { selection: "DRAW" as const, probability: 0.2, fairOdds: "5" }, { selection: "AWAY" as const, probability: 0.2, fairOdds: "5" }],
+        OVER_UNDER_2_5: [{ selection: "OVER_2_5" as const, probability: 0.5, fairOdds: "2" }, { selection: "UNDER_2_5" as const, probability: 0.5, fairOdds: "2" }],
+        BTTS: [{ selection: "YES" as const, probability: 0.5, fairOdds: "2" }, { selection: "NO" as const, probability: 0.5, fairOdds: "2" }],
+      },
+      confidence: { version: "confidence-v1" as const, score: 0.8, components: { completeness: 1, lineupAvailability: 0, freshness: 1, sourceReliability: 1, modelStability: 1 } },
+      limitations: [] as string[], tail: { retainedMass: 0.999, tailMass: 0.001, warning: false, normalizationVersion: "retained-mass-v1" as const },
+      assumptions: ["independent Poisson"],
+      receipt: { forecastSnapshotId: forecastId, evidenceBuildIds: [id("away-build"), id("home-build")], sourceRefs: [source], expectedGoals: { home: 1.5, away: 1 }, adjustments: { home: { multiplier: 1, components: {} }, away: { multiplier: 1, components: {} } } },
+      issuedAt: "2026-09-10T12:00:01.000Z", officialLineupObservationId: null,
+    };
+    const forecastRepository = createPrismaForecastRepository(prisma);
+    const forecastResults = await Promise.all([forecastRepository.publish(forecast), forecastRepository.publish(forecast)]);
+    expect(forecastResults.map(({ id }) => id)).toEqual([forecastId, forecastId]);
+
+    const book = {
+      fixtureId, oddsSnapshotId: oddsId, market: "ONE_X_TWO" as const, sourceLabel: "Manual source", capturedAt: cutoff,
+      selections: [{ selection: "HOME" as const, decimalOdds: "2" }, { selection: "DRAW" as const, decimalOdds: "3.5" }, { selection: "AWAY" as const, decimalOdds: "5" }],
+    };
+    const oddsRepository = createPrismaManualOddsRepository(prisma);
+    const oddsResults = await Promise.all([submitManualOdds(book, oddsRepository), submitManualOdds(book, oddsRepository)]);
+    expect(oddsResults.map(({ oddsSnapshotId }) => oddsSnapshotId)).toEqual([oddsId, oddsId]);
+
+    const command = { fixtureId, forecastSnapshotId: forecastId, oddsSnapshotId: oddsId, market: "ONE_X_TWO" as const, selection: "HOME" as const };
+    const valueRepository = createPrismaValueRepository(prisma);
+    const valueResults = await Promise.all([compareValue(command, valueRepository), compareValue(command, valueRepository)]);
+    expect(new Set(valueResults.map(({ id }) => id))).toHaveLength(1);
+    await expect(prisma.valueReceipt.count({ where: { forecastSnapshotId: forecastId, oddsSnapshotId: oddsId } })).resolves.toBe(1);
   });
 });

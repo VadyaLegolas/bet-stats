@@ -94,8 +94,10 @@ export default function TeamEvidencePage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    setData(null); setFailed(false);
-    void fetch(`/internal-api/teams/${encodeURIComponent(params.teamId)}/evidence?asOf=${encodeURIComponent(asOf)}`, { cache: "no-store", signal: controller.signal })
+    void Promise.resolve().then(() => {
+      setData(null); setFailed(false);
+      return fetch(`/internal-api/teams/${encodeURIComponent(params.teamId)}/evidence?asOf=${encodeURIComponent(asOf)}`, { cache: "no-store", signal: controller.signal });
+    })
       .then(async (response) => {
         if (!response.ok) throw new Error("evidence unavailable");
         const body = await response.json() as Evidence;

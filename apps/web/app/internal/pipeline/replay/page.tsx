@@ -41,12 +41,11 @@ export default function PipelineReplayPage() {
   const [forceRevision, setForceRevision] = useState(false);
   const [revisionReason, setRevisionReason] = useState("");
   const [purpose, setPurpose] = useState("Restore historical evidence after a bounded provider outage");
-  const [displayTimeZone, setDisplayTimeZone] = useState("browser local time");
+  const [displayTimeZone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "browser local time");
   const submitLock = useRef(false);
   const previewButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => { void fetch("/internal-api/pipeline/replay", { cache: "no-store" }).then(async (response) => response.ok ? response.json() as Promise<ProviderState> : {}, () => ({})).then(setProviderState); }, []);
-  useEffect(() => { setDisplayTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone || "browser local time"); }, []);
   useEffect(() => { const stale = () => { setPreview((value) => value ? { ...value, stale: true } : value); setError("The replay preview changed and is stale. Preview replay again before queueing."); previewButton.current?.focus(); }; window.addEventListener("replay-preview-stale", stale); return () => window.removeEventListener("replay-preview-stale", stale); }, []);
 
   const previewReplay = async (event: FormEvent<HTMLFormElement>) => {

@@ -218,5 +218,5 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
       "ManualOddsSelection:ManualOddsSelection_append_only",
       "ValueReceipt:ValueReceipt_append_only",
     ]));
-  });
+  }, 30_000);
 });

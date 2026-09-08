@@ -11,7 +11,7 @@ const fixtureId = `live-workbench-fixture-${run}`;
 const homeTeamId = `live-workbench-home-${run}`;
 const awayTeamId = `live-workbench-away-${run}`;
 const kickoff = "2026-09-12T18:00:00.000Z";
-const initialCutoff = "2026-09-11T18:00:00.000Z";
+const initialCutoff = "2026-09-11T17:43:21.123Z";
 const preMatchCutoff = "2026-09-12T12:00:00.000Z";
 let issuedForecast: ForecastResponseDto;
 
@@ -99,9 +99,9 @@ async function publishForecast(request: APIRequestContext): Promise<void> {
   } finally { await prisma.$disconnect(); }
 }
 
-async function submitBook(page: Page, market: OddsMarket, odds: readonly string[]): Promise<string> {
+async function submitBook(page: Page, market: OddsMarket, odds: readonly string[], sourceLabel = `Live source ${market}`): Promise<string> {
   await page.getByLabel("Market").selectOption(market);
-  await page.getByLabel("Bookmaker or source label").fill(`Live source ${market}`);
+  await page.getByLabel("Bookmaker or source label").fill(sourceLabel);
   const selections: Readonly<Record<OddsMarket, readonly OddsSelection[]>> = {
     ONE_X_TWO: ["HOME", "DRAW", "AWAY"], OVER_UNDER_2_5: ["OVER_2_5", "UNDER_2_5"], BTTS: ["YES", "NO"],
   };
@@ -133,6 +133,7 @@ test.describe("forecast and manual value workbench", () => {
   test("matches production JSON to the DOM, clipboard, and fixed-name download for the exact pair", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://127.0.0.1:3000" });
     await page.goto(`/fixtures/${fixtureId}`);
+    await expect(page.getByLabel("Forecast snapshot").locator("option").filter({ hasText: initialCutoff })).toHaveCount(1);
     await page.getByText("Evidence, model, and limitations").click();
     await expect(page.getByText("limited history", { exact: false })).toBeVisible();
     await expect(page.getByText("lineup not confirmed", { exact: false })).toBeVisible();
@@ -146,7 +147,8 @@ test.describe("forecast and manual value workbench", () => {
     await page.getByRole("button", { name: "Compare exact snapshots" }).click();
     await expect(page.getByRole("heading", { level: 3, name: "No value" })).toBeVisible();
 
-    const candidateOddsId = await submitBook(page, "ONE_X_TWO", ["4", "2", "2"]);
+    const originalOddsId = await submitBook(page, "ONE_X_TWO", ["3.8", "2.1", "2.2"], "Live source original");
+    const candidateOddsId = await submitBook(page, "ONE_X_TWO", ["4", "2", "2"], "Live source replacement");
     await page.getByLabel("Odds snapshot").selectOption(candidateOddsId);
     const responsePromise = page.waitForResponse((response) => response.url().includes(`/internal-api/fixtures/${fixtureId}/value`) && response.request().method() === "POST");
     await page.getByRole("button", { name: "Compare exact snapshots" }).click();
@@ -167,6 +169,28 @@ test.describe("forecast and manual value workbench", () => {
     const chunks: Buffer[] = [];
     for await (const chunk of stream) chunks.push(Buffer.from(chunk));
     expect(JSON.parse(Buffer.concat(chunks).toString("utf8"))).toEqual(receipt);
+    await page.getByLabel("Selection to evaluate").selectOption("DRAW");
+    const drawResponsePromise = page.waitForResponse((response) => response.url().includes(`/internal-api/fixtures/${fixtureId}/value`) && response.request().method() === "POST");
+    await page.getByRole("button", { name: "Compare exact snapshots" }).click();
+    const drawResponse = await drawResponsePromise;
+    expect(drawResponse.ok()).toBeTruthy();
+    const drawReceipt = await drawResponse.json() as typeof receipt & { selection: string; modelProbability: string; expectedValue: string };
+    expect(drawReceipt).toMatchObject({ forecastSnapshotId: issuedForecast.id, oddsSnapshotId: candidateOddsId, selection: "DRAW" });
+    expect(drawReceipt.id).not.toBe(receipt.id);
+    expect(drawReceipt.modelProbability).not.toBe((receipt as typeof drawReceipt).modelProbability);
+    expect(drawReceipt.expectedValue).not.toBe((receipt as typeof drawReceipt).expectedValue);
+    await expect(page.locator("pre").filter({ hasText: `"id": "${drawReceipt.id}"` })).toHaveText(JSON.stringify(drawReceipt, null, 2));
+    await page.getByRole("button", { name: "Copy exact receipt JSON" }).click();
+    expect(JSON.parse(await page.evaluate(() => navigator.clipboard.readText()))).toEqual(drawReceipt);
+    const drawDownloadPromise = page.waitForEvent("download");
+    await page.getByRole("link", { name: "Download exact receipt JSON" }).click();
+    const drawDownload = await drawDownloadPromise;
+    expect(drawDownload.suggestedFilename()).toBe(`value-receipt-${drawReceipt.id}.json`);
+    const drawStream = await drawDownload.createReadStream();
+    const drawChunks: Buffer[] = [];
+    for await (const chunk of drawStream) drawChunks.push(Buffer.from(chunk));
+    expect(JSON.parse(Buffer.concat(drawChunks).toString("utf8"))).toEqual(drawReceipt);
+    expect(originalOddsId).not.toBe(candidateOddsId);
     await submitBook(page, "OVER_UNDER_2_5", ["2", "2"]);
     await submitBook(page, "BTTS", ["2", "2"]);
     expect(insufficientOddsId).not.toBe(candidateOddsId);
@@ -177,6 +201,9 @@ test.describe("forecast and manual value workbench", () => {
     expect(denied.status()).toBe(403);
     await page.setViewportSize({ width: 360, height: 900 });
     await page.goto(`/fixtures/${fixtureId}`);
+    await page.getByText("Confidence components", { exact: false }).click();
+    for (const component of ["completeness", "lineup availability", "freshness", "source reliability", "model stability"]) await expect(page.getByText(component, { exact: false })).toBeVisible();
+    await expect(page.getByText("Confidence qualifies probability evidence; it is not a probability of the result.")).toBeVisible();
     await page.evaluate(() => { document.body.style.fontSize = "200%"; });
     await expect(page.getByRole("heading", { level: 2, name: "Forecast and manual value workbench" })).toBeVisible();
     const overflow = await page.evaluate(() => ({

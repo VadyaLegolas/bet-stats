@@ -23,7 +23,7 @@ export interface ForecastPublicationRepository {
   findFixture(fixtureId: string): Promise<ForecastFixture | null>;
   findEvidence(teamId: string, cutoff: string): Promise<EvidenceProjectionDto | null>;
   findOfficialLineup(fixtureId: string, cutoff: string): Promise<{ id: string } | null>;
-  publish(draft: ForecastResponseDto & { readonly officialLineupObservationId: string | null }): Promise<ForecastResponseDto>;
+  publish(draft: ForecastResponseDto): Promise<ForecastResponseDto>;
   findIssued?(fixtureId: string, kind: ForecastRequestDto["kind"], cutoff: string): Promise<ForecastResponseDto | null>;
 }
 
@@ -66,21 +66,24 @@ export async function generateForecast(raw: unknown, repository: ForecastPublica
   const awayBuildId = away.buildId;
   if (!homeBuildId || !awayBuildId) throw failure("REQUIRED_EVIDENCE_UNAVAILABLE");
   const evidenceBuildIds = [homeBuildId, awayBuildId].sort();
+  const officialLineupObservationId = lineup?.id ?? null;
   const preliminary = createForecast({ fixtureId: fixture.id, forecastSnapshotId: "pending", cutoff: request.cutoff, canonicalIdentityState: "RESOLVED", home, away, lineupAvailable: lineup !== null, sourceReliability: 1 });
-  const snapshotId = sha({ fixtureId: fixture.id, kind: request.kind, cutoff: request.cutoff, modelVersion: preliminary.modelVersion, configHash: preliminary.configHash, evidenceBuildIds }).slice(7);
+  const inputHash = sha({ forecastInputHash: preliminary.inputHash, officialLineupObservationId });
+  const snapshotId = sha({ fixtureId: fixture.id, kind: request.kind, cutoff: request.cutoff, modelVersion: preliminary.modelVersion, configHash: preliminary.configHash, inputHash, evidenceBuildIds, officialLineupObservationId }).slice(7);
   const forecast = createForecast({ fixtureId: fixture.id, forecastSnapshotId: snapshotId, cutoff: request.cutoff, canonicalIdentityState: "RESOLVED", home, away, lineupAvailable: lineup !== null, sourceReliability: 1 });
   const issuedAt = new Date().toISOString();
-  const draft: ForecastResponseDto & { officialLineupObservationId: string | null } = {
+  const draft: ForecastResponseDto = {
     id: snapshotId,
     fixtureId: fixture.id,
     kind: request.kind,
+    officialLineupObservationId,
     revision: 1,
     cutoff: request.cutoff,
     modelVersion: forecast.modelVersion,
     modelHash: sha({ version: forecast.modelVersion }),
     configVersion: forecast.configVersion,
     configHash: forecast.configHash,
-    inputHash: forecast.inputHash,
+    inputHash,
     evidenceFingerprint: sha(evidenceBuildIds),
     evidenceBuildIds,
     probabilities: forecast.markets,
@@ -88,12 +91,10 @@ export async function generateForecast(raw: unknown, repository: ForecastPublica
     limitations: forecast.limitations,
     tail: { retainedMass: forecast.retainedMass, tailMass: forecast.tailMass, warning: forecast.tailWarning, normalizationVersion: forecast.normalizationVersion },
     assumptions: forecast.assumptions,
-    receipt: { forecastSnapshotId: snapshotId, evidenceBuildIds, sourceRefs: forecast.sources, expectedGoals: forecast.expectedGoals, adjustments: forecast.adjustments },
+    receipt: { forecastSnapshotId: snapshotId, officialLineupObservationId, evidenceBuildIds, sourceRefs: forecast.sources, expectedGoals: forecast.expectedGoals, adjustments: forecast.adjustments },
     issuedAt,
-    officialLineupObservationId: lineup?.id ?? null,
   };
-  const { officialLineupObservationId: _lineup, ...transport } = draft;
-  parseForecastResponse(transport);
+  parseForecastResponse(draft);
   return repository.publish(draft);
 }
 
@@ -127,7 +128,8 @@ export function createPrismaForecastRepository(client: PrismaClient): ForecastPu
           const latest = await tx.forecastSnapshot.findFirst({ where: { fixtureId: draft.fixtureId, kind: draft.kind }, orderBy: { revision: "desc" } });
           const revision = (latest?.revision ?? 0) + 1;
           const transport = { ...draft, revision };
-          const { officialLineupObservationId, ...response } = transport;
+          const { officialLineupObservationId } = transport;
+          const response = transport;
           await tx.forecastSnapshot.create({ data: {
             id: response.id, fixtureId: response.fixtureId, kind: response.kind, state: "ISSUED", revision,
             supersedesForecastId: latest?.id ?? null, officialLineupObservationId, cutoff: new Date(response.cutoff),

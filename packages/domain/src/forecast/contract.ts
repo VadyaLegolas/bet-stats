@@ -11,6 +11,7 @@ export interface ForecastRequestDto {
 
 export interface ForecastReceiptDto {
   readonly forecastSnapshotId: string;
+  readonly officialLineupObservationId: string | null;
   readonly evidenceBuildIds: readonly string[];
   readonly sourceRefs: ForecastDraft["sources"];
   readonly expectedGoals: ForecastDraft["expectedGoals"];
@@ -21,6 +22,7 @@ export interface ForecastResponseDto {
   readonly id: string;
   readonly fixtureId: string;
   readonly kind: ForecastKind;
+  readonly officialLineupObservationId: string | null;
   readonly revision: number;
   readonly cutoff: string;
   readonly modelVersion: ForecastDraft["modelVersion"];
@@ -111,9 +113,11 @@ function confidence(value: unknown): asserts value is ForecastDraft["confidence"
 
 export function parseForecastResponse(value: unknown): ForecastResponseDto {
   const dto = record(value, "INVALID_FORECAST_RESPONSE");
-  exactKeys(dto, ["id", "fixtureId", "kind", "revision", "cutoff", "modelVersion", "modelHash", "configVersion", "configHash", "inputHash", "evidenceFingerprint", "evidenceBuildIds", "probabilities", "confidence", "limitations", "tail", "assumptions", "receipt", "issuedAt"], "UNKNOWN_FORECAST_RESPONSE_KEY");
+  exactKeys(dto, ["id", "fixtureId", "kind", "officialLineupObservationId", "revision", "cutoff", "modelVersion", "modelHash", "configVersion", "configHash", "inputHash", "evidenceFingerprint", "evidenceBuildIds", "probabilities", "confidence", "limitations", "tail", "assumptions", "receipt", "issuedAt"], "UNKNOWN_FORECAST_RESPONSE_KEY");
   for (const key of ["id", "fixtureId", "modelHash", "configHash", "inputHash", "evidenceFingerprint"] as const) nonEmptyString(dto[key], "INVALID_FORECAST_RESPONSE");
   kind(dto.kind);
+  if (dto.officialLineupObservationId !== null) nonEmptyString(dto.officialLineupObservationId, "INVALID_FORECAST_LINEUP_PROVENANCE");
+  if ((dto.kind === "LINEUP_CONFIRMED") !== (dto.officialLineupObservationId !== null)) throw new Error("INVALID_FORECAST_LINEUP_PROVENANCE");
   instant(dto.cutoff, "INVALID_FORECAST_CUTOFF");
   instant(dto.issuedAt, "INVALID_FORECAST_ISSUED_AT");
   if (!Number.isInteger(dto.revision) || (dto.revision as number) < 1 || dto.modelVersion !== "poisson-ensemble-v1" || dto.configVersion !== "forecast-config-v1") throw new Error("INVALID_FORECAST_RESPONSE");
@@ -125,7 +129,7 @@ export function parseForecastResponse(value: unknown): ForecastResponseDto {
   exactKeys(tail, ["retainedMass", "tailMass", "warning", "normalizationVersion"], "INVALID_FORECAST_TAIL");
   if (typeof tail.retainedMass !== "number" || typeof tail.tailMass !== "number" || typeof tail.warning !== "boolean" || tail.normalizationVersion !== "retained-mass-v1") throw new Error("INVALID_FORECAST_TAIL");
   const receipt = record(dto.receipt, "INVALID_FORECAST_RECEIPT");
-  exactKeys(receipt, ["forecastSnapshotId", "evidenceBuildIds", "sourceRefs", "expectedGoals", "adjustments"], "INVALID_FORECAST_RECEIPT");
-  if (receipt.forecastSnapshotId !== dto.id || JSON.stringify(receipt.evidenceBuildIds) !== JSON.stringify(dto.evidenceBuildIds) || !Array.isArray(receipt.sourceRefs)) throw new Error("INVALID_FORECAST_RECEIPT");
+  exactKeys(receipt, ["forecastSnapshotId", "officialLineupObservationId", "evidenceBuildIds", "sourceRefs", "expectedGoals", "adjustments"], "INVALID_FORECAST_RECEIPT");
+  if (receipt.forecastSnapshotId !== dto.id || receipt.officialLineupObservationId !== dto.officialLineupObservationId || JSON.stringify(receipt.evidenceBuildIds) !== JSON.stringify(dto.evidenceBuildIds) || !Array.isArray(receipt.sourceRefs)) throw new Error("INVALID_FORECAST_RECEIPT");
   return dto as unknown as ForecastResponseDto;
 }

@@ -14,6 +14,7 @@ const validResponse = {
   id: "forecast-1",
   fixtureId: "fixture-1",
   kind: "PRE_MATCH",
+  officialLineupObservationId: null,
   revision: 1,
   cutoff: "2026-09-06T12:00:00.000Z",
   modelVersion: "poisson-ensemble-v1",
@@ -48,6 +49,7 @@ const validResponse = {
   assumptions: ["independent Poisson goal counts"],
   receipt: {
     forecastSnapshotId: "forecast-1",
+    officialLineupObservationId: null,
     evidenceBuildIds: ["away-build", "home-build"],
     sourceRefs: [],
     expectedGoals: { home: 1.4, away: 1.1 },

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 const forecast = {
-  id: "forecast-1", fixtureId: "fixture-1", kind: "PRE_MATCH", revision: 1,
+  id: "forecast-1", fixtureId: "fixture-1", kind: "PRE_MATCH", officialLineupObservationId: null, revision: 1,
   cutoff: "2026-09-06T12:00:00.000Z", modelVersion: "poisson-ensemble-v1", modelHash: "model",
   configVersion: "forecast-config-v1", configHash: "config", inputHash: "input", evidenceFingerprint: "evidence", evidenceBuildIds: ["away", "home"],
   probabilities: {
@@ -11,7 +11,7 @@ const forecast = {
   },
   confidence: { version: "confidence-v1", score: 0.8, components: { completeness: 1, lineupAvailability: 0, freshness: 1, sourceReliability: 1, modelStability: 1 } },
   limitations: [], tail: { retainedMass: 0.999, tailMass: 0.001, warning: false, normalizationVersion: "retained-mass-v1" }, assumptions: ["independent Poisson"],
-  receipt: { forecastSnapshotId: "forecast-1", evidenceBuildIds: ["away", "home"], sourceRefs: [], expectedGoals: { home: 1.5, away: 1 }, adjustments: { home: { multiplier: 1, components: {} }, away: { multiplier: 1, components: {} } } },
+  receipt: { forecastSnapshotId: "forecast-1", officialLineupObservationId: null, evidenceBuildIds: ["away", "home"], sourceRefs: [], expectedGoals: { home: 1.5, away: 1 }, adjustments: { home: { multiplier: 1, components: {} }, away: { multiplier: 1, components: {} } } },
   issuedAt: "2026-09-06T12:00:01.000Z",
 };
 const odds = {

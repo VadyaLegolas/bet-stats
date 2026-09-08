@@ -155,7 +155,7 @@ describe("Phase 3 trust boundaries", () => {
       confidence: { version: "confidence-v1" as const, score: 0.8, components: { completeness: 1, lineupAvailability: 0, freshness: 1, sourceReliability: 1, modelStability: 1 } },
       limitations: [] as string[], tail: { retainedMass: 0.999, tailMass: 0.001, warning: false, normalizationVersion: "retained-mass-v1" as const },
       assumptions: ["independent Poisson"],
-      receipt: { forecastSnapshotId: forecastId, evidenceBuildIds: [id("away-build"), id("home-build")], sourceRefs: [source], expectedGoals: { home: 1.5, away: 1 }, adjustments: { home: { multiplier: 1, components: {} }, away: { multiplier: 1, components: {} } } },
+      receipt: { forecastSnapshotId: forecastId, officialLineupObservationId: null, evidenceBuildIds: [id("away-build"), id("home-build")], sourceRefs: [source], expectedGoals: { home: 1.5, away: 1 }, adjustments: { home: { multiplier: 1, components: {} }, away: { multiplier: 1, components: {} } } },
       issuedAt: "2026-09-10T12:00:01.000Z", officialLineupObservationId: null,
     };
     const forecastRepository = createPrismaForecastRepository(prisma);

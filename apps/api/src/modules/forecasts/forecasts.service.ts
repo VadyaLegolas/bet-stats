@@ -125,6 +125,10 @@ export function createPrismaForecastRepository(client: PrismaClient): ForecastPu
       if (existing) return toDto(existing as unknown as StoredForecast);
       try {
         return await client.$transaction(async (tx) => {
+          const lockKey = `${draft.fixtureId}\u0000${draft.kind}`;
+          await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`;
+          const converged = await tx.forecastSnapshot.findFirst({ where: identity });
+          if (converged) return toDto(converged as unknown as StoredForecast);
           const latest = await tx.forecastSnapshot.findFirst({ where: { fixtureId: draft.fixtureId, kind: draft.kind }, orderBy: { revision: "desc" } });
           const revision = (latest?.revision ?? 0) + 1;
           const transport = { ...draft, revision };

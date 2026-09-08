@@ -456,7 +456,7 @@ model ForecastSnapshot {
   markets                     ForecastMarket[]
   valueReceipts               ValueReceipt[]
 
-  @@unique([fixtureId, kind, cutoff, modelHash, configHash, inputHash, evidenceFingerprint])
+  @@unique([fixtureId, kind, cutoff, modelHash, configHash, inputHash, evidenceFingerprint, officialLineupObservationId])
   @@unique([fixtureId, kind, revision])
   @@index([fixtureId, cutoff, kind, state])
 }

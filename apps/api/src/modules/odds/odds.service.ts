@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
-import { normalizeOddsBook, type NormalizedOddsBook, type OddsBookInput } from "@bet-stats/domain";
+import { normalizeOddsBook, validateOddsCaptureChronology, type NormalizedOddsBook, type OddsBookInput } from "@bet-stats/domain";
 
 export interface ManualOddsSubmission extends OddsBookInput {
   readonly replacementOfOddsSnapshotId?: string;
@@ -13,6 +13,7 @@ export interface ManualOddsSnapshotDto extends NormalizedOddsBook {
 }
 
 export interface ManualOddsRepository {
+  findFixture(fixtureId: string): Promise<{ kickoffUtc: string } | null>;
   find?(id: string): Promise<{ fixtureId: string; market: string } | null>;
   append(book: ManualOddsSnapshotDto & { inputHash: string }): Promise<ManualOddsSnapshotDto>;
 }
@@ -35,7 +36,11 @@ function splitSubmission(raw: unknown): { book: OddsBookInput; replacementOfOdds
   return { book: book as unknown as OddsBookInput, replacementOfOddsSnapshotId: replacement as string | undefined ?? null };
 }
 
-export async function submitManualOdds(raw: unknown, repository: ManualOddsRepository): Promise<ManualOddsSnapshotDto> {
+function canonicalIdentity(book: ManualOddsSnapshotDto): string {
+  return JSON.stringify({ fixtureId: book.fixtureId, market: book.market, sourceLabel: book.sourceLabel, capturedAt: book.capturedAt, replacementOfOddsSnapshotId: book.replacementOfOddsSnapshotId, schemaVersion: book.schemaVersion, normalizationVersion: book.normalizationVersion, selections: book.selections.map(({ selection, decimalOdds }) => ({ selection, decimalOdds })) });
+}
+
+export async function submitManualOdds(raw: unknown, repository: ManualOddsRepository, serverNow = new Date()): Promise<ManualOddsSnapshotDto> {
   let normalized: NormalizedOddsBook;
   let replacementOfOddsSnapshotId: string | null;
   try {
@@ -47,13 +52,17 @@ export async function submitManualOdds(raw: unknown, repository: ManualOddsRepos
     const code = error instanceof Error ? error.message : "INVALID_ODDS_BOOK";
     throw failure(code, code === "INVALID_DECIMAL_ODDS" ? "selections.decimalOdds" : code.includes("SELECTION") || code === "INCOMPLETE_ODDS_BOOK" ? "selections" : undefined);
   }
+  const fixture = await repository.findFixture(normalized.fixtureId);
+  if (!fixture) throw failure("ODDS_FIXTURE_NOT_FOUND", "fixtureId");
+  try { validateOddsCaptureChronology(normalized.capturedAt, fixture.kickoffUtc, serverNow); }
+  catch (error) { throw failure(error instanceof Error ? error.message : "INVALID_ODDS_CAPTURED_AT", "capturedAt"); }
   if (replacementOfOddsSnapshotId) {
     const prior = await repository.find?.(replacementOfOddsSnapshotId) ?? null;
     if (!prior || prior.fixtureId !== normalized.fixtureId || prior.market !== normalized.market) throw failure("ODDS_REPLACEMENT_MISMATCH", "replacementOfOddsSnapshotId");
   }
   const submittedAt = new Date().toISOString();
-  const snapshot: ManualOddsSnapshotDto = { ...normalized, replacementOfOddsSnapshotId, submittedAt };
-  const inputHash = createHash("sha256").update(JSON.stringify({ fixtureId: normalized.fixtureId, market: normalized.market, capturedAt: normalized.capturedAt, selections: normalized.selections.map(({ selection, decimalOdds }) => ({ selection, decimalOdds })) })).digest("hex");
+  const snapshot: ManualOddsSnapshotDto = { ...normalized, sourceLabel: normalized.sourceLabel.trim(), replacementOfOddsSnapshotId, submittedAt };
+  const inputHash = createHash("sha256").update(canonicalIdentity(snapshot)).digest("hex");
   return repository.append({ ...snapshot, inputHash });
 }
 
@@ -64,6 +73,10 @@ function toDto(row: { id: string; fixtureId: string; market: string; source: str
 
 export function createPrismaManualOddsRepository(client: PrismaClient): ManualOddsRepository & { get(id: string): Promise<ManualOddsSnapshotDto | null> } {
   return {
+    findFixture: async (fixtureId) => {
+      const fixture = await client.fixture.findUnique({ where: { id: fixtureId }, select: { kickoffUtc: true } });
+      return fixture ? { kickoffUtc: fixture.kickoffUtc.toISOString() } : null;
+    },
     find: (id) => client.manualOddsSnapshot.findUnique({ where: { id }, select: { fixtureId: true, market: true } }),
     get: async (id) => {
       const row = await client.manualOddsSnapshot.findUnique({ where: { id } });
@@ -72,8 +85,9 @@ export function createPrismaManualOddsRepository(client: PrismaClient): ManualOd
     append: async (book) => client.$transaction(async (tx) => {
       const existing = await tx.manualOddsSnapshot.findUnique({ where: { id: book.oddsSnapshotId } });
       if (existing) {
-        if (existing.inputHash !== book.inputHash) throw failure("ODDS_SNAPSHOT_ID_CONFLICT");
-        return toDto(existing);
+        const dto = toDto(existing);
+        if (existing.inputHash !== book.inputHash || canonicalIdentity(dto) !== canonicalIdentity(book)) throw failure("ODDS_SNAPSHOT_ID_CONFLICT");
+        return dto;
       }
       const row = await tx.manualOddsSnapshot.create({ data: {
         id: book.oddsSnapshotId, fixtureId: book.fixtureId, market: book.market, inputHash: book.inputHash, source: book.sourceLabel,
@@ -83,7 +97,10 @@ export function createPrismaManualOddsRepository(client: PrismaClient): ManualOd
       return toDto(row);
     }).catch(async (error) => {
       const collision = await client.manualOddsSnapshot.findUnique({ where: { id: book.oddsSnapshotId } });
-      if (collision?.inputHash === book.inputHash) return toDto(collision);
+      if (collision?.inputHash === book.inputHash) {
+        const dto = toDto(collision);
+        if (canonicalIdentity(dto) === canonicalIdentity(book)) return dto;
+      }
       throw error;
     }),
   };

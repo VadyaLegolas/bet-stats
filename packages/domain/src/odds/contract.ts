@@ -16,6 +16,8 @@ export const MARKET_SELECTIONS: Readonly<Record<OddsMarket, readonly OddsSelecti
 export const MAX_DECIMAL_ODDS_SCALE = 20;
 export const MAX_DECIMAL_ODDS_INTEGER_DIGITS = 107;
 export const MAX_DECIMAL_ODDS_LENGTH = 128;
+export const ODDS_CAPTURE_WINDOW_DAYS = 30;
+export const ODDS_CAPTURE_CLOCK_SKEW_MS = 5 * 60 * 1000;
 export const CANONICAL_UTC_INSTANT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const PLAIN_DECIMAL_ODDS_PATTERN = /^(?:0|[1-9]\d*)(?:\.\d+)?$/;
 
@@ -54,4 +56,13 @@ export function canonicalizeDecimalOdds(value: string): string {
   const odds = new Decimal(value);
   if (!odds.isFinite() || odds.lte(1)) throw new Error("INVALID_DECIMAL_ODDS");
   return odds.toString();
+}
+
+/** D-09 capture policy: [kickoff - 30 days, kickoff) and no later than serverNow + 5 minutes. */
+export function validateOddsCaptureChronology(capturedAt: string, kickoffUtc: string, serverNow: Date): void {
+  const capturedMs = new Date(capturedAt).getTime();
+  const kickoffMs = new Date(kickoffUtc).getTime();
+  if (capturedMs < kickoffMs - ODDS_CAPTURE_WINDOW_DAYS * 24 * 60 * 60 * 1000) throw new Error("ODDS_CAPTURE_BEFORE_WINDOW");
+  if (capturedMs >= kickoffMs) throw new Error("ODDS_CAPTURE_NOT_BEFORE_KICKOFF");
+  if (capturedMs > serverNow.getTime() + ODDS_CAPTURE_CLOCK_SKEW_MS) throw new Error("ODDS_CAPTURE_AFTER_CLOCK_SKEW");
 }

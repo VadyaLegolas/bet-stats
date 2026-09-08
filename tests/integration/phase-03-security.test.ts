@@ -167,7 +167,7 @@ describe("Phase 3 trust boundaries", () => {
       selections: [{ selection: "HOME" as const, decimalOdds: "2" }, { selection: "DRAW" as const, decimalOdds: "3.5" }, { selection: "AWAY" as const, decimalOdds: "5" }],
     };
     const oddsRepository = createPrismaManualOddsRepository(prisma);
-    const oddsResults = await Promise.all([submitManualOdds(book, oddsRepository), submitManualOdds(book, oddsRepository)]);
+    const oddsResults = await Promise.all([submitManualOdds(book, oddsRepository, new Date(cutoff)), submitManualOdds(book, oddsRepository, new Date(cutoff))]);
     expect(oddsResults.map(({ oddsSnapshotId }) => oddsSnapshotId)).toEqual([oddsId, oddsId]);
 
     const command = { fixtureId, forecastSnapshotId: forecastId, oddsSnapshotId: oddsId, market: "ONE_X_TWO" as const, selection: "HOME" as const };

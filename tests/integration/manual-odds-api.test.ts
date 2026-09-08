@@ -80,9 +80,13 @@ describe("manual odds API", () => {
     expect(mutations).toBe(0);
   });
 
-  it.each(["2026-08-11T18:00:00.000Z", "2026-09-10T17:59:59.999Z", "2026-09-06T12:05:00.000Z"])("accepts capture chronology at an inclusive boundary: %s", async (capturedAt) => {
+  it.each([
+    ["2026-08-11T18:00:00.000Z", "2026-09-06T12:00:00.000Z"],
+    ["2026-09-10T17:59:59.999Z", "2026-09-10T17:55:00.000Z"],
+    ["2026-09-06T12:05:00.000Z", "2026-09-06T12:00:00.000Z"],
+  ])("accepts capture chronology at an inclusive boundary: %s", async (capturedAt, now) => {
     const { submitManualOdds } = await import("../../apps/api/src/modules/odds/odds.service.js");
-    await expect(submitManualOdds({ ...completeBook, capturedAt }, { findFixture: fixture, append: async (book) => book }, serverNow)).resolves.toMatchObject({ capturedAt });
+    await expect(submitManualOdds({ ...completeBook, capturedAt }, { findFixture: fixture, append: async (book) => book }, new Date(now))).resolves.toMatchObject({ capturedAt });
   });
 
   it("rejects a missing canonical fixture before append", async () => {

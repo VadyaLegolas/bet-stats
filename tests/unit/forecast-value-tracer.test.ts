@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createForecast } from "../../packages/domain/src/forecast/model.js";
 import { FORECAST_CONFIG, fairOddsForProbability } from "../../packages/domain/src/forecast/config.js";
 import { calculateConfidence } from "../../packages/domain/src/forecast/confidence.js";
-import { parseOddsBook } from "../../packages/domain/src/odds/contract.js";
+import { MAX_DECIMAL_ODDS_INTEGER_DIGITS, MAX_DECIMAL_ODDS_SCALE, parseOddsBook } from "../../packages/domain/src/odds/contract.js";
 import { normalizeOddsBook } from "../../packages/domain/src/odds/normalize.js";
 import { parseValueCommand } from "../../packages/domain/src/value/contract.js";
 import { decideValue } from "../../packages/domain/src/value/decision.js";
@@ -93,6 +93,27 @@ describe("forecast to manual value tracer", () => {
   it("rejects unknown keys and mismatched value markets", () => {
     expect(() => parseOddsBook({ fixtureId: "f", oddsSnapshotId: "o", market: "BTTS", sourceLabel: "book", capturedAt: cutoff, selections: [{ selection: "YES", decimalOdds: "2" }, { selection: "NO", decimalOdds: "2" }], extra: true })).toThrow("INVALID_ODDS_BOOK_KEYS");
     expect(() => parseValueCommand({ forecastSnapshotId: "forecast-1", oddsSnapshotId: "odds-1", fixtureId: "fixture-1", market: "BTTS", selection: "HOME" })).toThrow("MARKET_SELECTION_MISMATCH");
+  });
+
+  it.each([
+    "1e3",
+    "+2.1",
+    "-2.1",
+    " 2.1",
+    "2.1 ",
+    `2.${"1".repeat(MAX_DECIMAL_ODDS_SCALE + 1)}`,
+    `${"9".repeat(MAX_DECIMAL_ODDS_INTEGER_DIGITS + 1)}.1`,
+  ])("rejects hostile decimal odds before normalization: %s", (decimalOdds) => {
+    expect(() => parseOddsBook({ fixtureId: "f", oddsSnapshotId: "o", market: "BTTS", sourceLabel: "book", capturedAt: cutoff, selections: [{ selection: "YES", decimalOdds }, { selection: "NO", decimalOdds: "2" }] })).toThrow("INVALID_DECIMAL_ODDS");
+  });
+
+  it.each(["2026-09-12T12:00:00Z", "2026-09-12 12:00:00.000Z", "2026-09-12T14:00:00.000+02:00", "not-an-instant"])("rejects non-canonical capture timestamps: %s", (capturedAt) => {
+    expect(() => parseOddsBook({ fixtureId: "f", oddsSnapshotId: "o", market: "BTTS", sourceLabel: "book", capturedAt, selections: [{ selection: "YES", decimalOdds: "2" }, { selection: "NO", decimalOdds: "2" }] })).toThrow("INVALID_ODDS_CAPTURED_AT");
+  });
+
+  it("canonicalizes accepted decimal odds before returning the book", () => {
+    const parsed = parseOddsBook({ fixtureId: "f", oddsSnapshotId: "o", market: "BTTS", sourceLabel: "book", capturedAt: cutoff, selections: [{ selection: "YES", decimalOdds: "2.40" }, { selection: "NO", decimalOdds: "3.00" }] });
+    expect(parsed.selections.map(({ decimalOdds }) => decimalOdds)).toEqual(["2.4", "3"]);
   });
 
   it("is deterministic under complete-book and source permutation", () => {

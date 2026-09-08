@@ -24,6 +24,10 @@ describe("manual odds API", () => {
     await expect(submitManualOdds({ ...completeBook, selections: completeBook.selections.slice(0, 2) }, repository)).rejects.toMatchObject({ code: "INCOMPLETE_ODDS_BOOK" });
     await expect(submitManualOdds({ ...completeBook, selections: [completeBook.selections[0], completeBook.selections[0], completeBook.selections[2]] }, repository)).rejects.toMatchObject({ code: "DUPLICATE_ODDS_SELECTION" });
     await expect(submitManualOdds({ ...completeBook, selections: [{ selection: "HOME", decimalOdds: "NaN" }, ...completeBook.selections.slice(1)] }, repository)).rejects.toMatchObject({ code: "INVALID_DECIMAL_ODDS" });
+    for (const decimalOdds of ["1e100", "+2.1", "2.123456789012345678901", "9".repeat(129)]) {
+      await expect(submitManualOdds({ ...completeBook, selections: [{ selection: "HOME", decimalOdds }, ...completeBook.selections.slice(1)] }, repository)).rejects.toMatchObject({ code: "INVALID_DECIMAL_ODDS", response: expect.objectContaining({ field: "selections.decimalOdds" }) });
+    }
+    await expect(submitManualOdds({ ...completeBook, capturedAt: "2026-09-06T12:00:00Z" }, repository)).rejects.toMatchObject({ code: "INVALID_ODDS_CAPTURED_AT" });
     expect(mutations).toBe(0);
   });
 

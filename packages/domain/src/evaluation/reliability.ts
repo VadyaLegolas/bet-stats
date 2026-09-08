@@ -30,6 +30,7 @@ export interface PersistedBinaryForecastEvent extends BinaryForecastEvent {
   readonly selection: string;
   readonly modelVersion: string;
   readonly kickoffUtc: string;
+  readonly valueReceiptId?: string | null;
 }
 
 export interface CategoricalReliabilitySource {
@@ -42,6 +43,7 @@ export interface CategoricalReliabilitySource {
   readonly kickoffUtc: string;
   readonly outcome: string;
   readonly probabilities: readonly Readonly<{ selection: string; probability: number }>[];
+  readonly valueReceiptId?: string | null;
 }
 
 export interface ReliabilityBucket {
@@ -73,7 +75,12 @@ export function createReliabilityPolicy(input: ReliabilityPolicyInput): Reliabil
   if (!Number.isFinite(input.alignmentTolerance) || input.alignmentTolerance < 0 || input.alignmentTolerance > 1) {
     throw new Error("INVALID_RELIABILITY_ALIGNMENT_TOLERANCE");
   }
-  const receipt = { version: RELIABILITY_POLICY_VERSION, ...input };
+  const receipt = {
+    version: RELIABILITY_POLICY_VERSION,
+    bucketCount: input.bucketCount,
+    minimumBucketCount: input.minimumBucketCount,
+    alignmentTolerance: input.alignmentTolerance,
+  };
   return {
     ...receipt,
     identity: `sha256:${createHash("sha256").update(JSON.stringify(receipt)).digest("hex")}`,
@@ -107,6 +114,7 @@ export function expandCategoricalScore(source: CategoricalReliabilitySource): re
       selection,
       modelVersion: source.modelVersion,
       kickoffUtc: source.kickoffUtc,
+      valueReceiptId: source.valueReceiptId ?? null,
       probability,
       observed: selection === source.outcome ? 1 : 0,
     };

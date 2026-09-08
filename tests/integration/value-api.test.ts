@@ -43,6 +43,32 @@ describe("value API", () => {
     expect(second).toBe(first);
   });
 
+  it("keeps HOME and DRAW receipts distinct while converging each selection", async () => {
+    const { compareValue } = await import("../../apps/api/src/modules/value/value.service.js");
+    const stored = new Map<string, any>();
+    const key = (market: string, selection: string) => `${market}:${selection}`;
+    const repository = {
+      findForecast: async () => forecast,
+      findOdds: async () => odds,
+      findReceipt: async (_forecastId: string, _oddsId: string, market: string, selection: string) => stored.get(key(market, selection)) ?? null,
+      insertReceipt: async (receipt: any) => {
+        const receiptKey = key(receipt.market, receipt.selection);
+        if (stored.has(receiptKey)) throw new Error("duplicate receipt identity");
+        stored.set(receiptKey, receipt);
+        return receipt;
+      },
+    };
+
+    const home = await compareValue(command, repository);
+    const draw = await compareValue({ ...command, selection: "DRAW" }, repository);
+    const repeatedHome = await compareValue(command, repository);
+
+    expect(home.id).not.toBe(draw.id);
+    expect(home).toMatchObject({ selection: "HOME", modelProbability: "0.6", expectedValue: "0.2" });
+    expect(draw).toMatchObject({ selection: "DRAW", modelProbability: "0.2", expectedValue: "-0.4" });
+    expect(repeatedHome).toBe(home);
+  });
+
   it("exports exact immutable JSON with a fixed receipt-id filename", async () => {
     const { receiptDownload } = await import("../../apps/api/src/modules/value/value.service.js");
     const stored = { id: "receipt-123", ...command, outcome: "NO_VALUE", receipt: { safe: true } };

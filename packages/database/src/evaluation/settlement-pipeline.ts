@@ -78,7 +78,7 @@ async function withSerializableRetry<T>(database: PrismaClient, operation: (tran
   }
 }
 
-export function createSettlementPipelineService({ database }: { database: PrismaClient }) {
+export function createSettlementPipelineService({ database, afterSettlement }: { database: PrismaClient; afterSettlement?: (settlementReceiptId: string) => void | Promise<void> }) {
   return {
     policyHash: SETTLEMENT_PIPELINE_POLICY_HASH,
     async process(command: SettlementPipelineCommand): Promise<SettlementPipelineResult> {
@@ -115,7 +115,7 @@ export function createSettlementPipelineService({ database }: { database: Prisma
 
         let targetResult: SettlementPipelineResult | undefined;
         for (const result of chain) {
-          targetResult = await processRevision(transaction, command, result);
+          targetResult = await processRevision(transaction, command, result, afterSettlement);
         }
         if (!targetResult) throw new Error("RESULT_LINEAGE_EMPTY");
         return targetResult;
@@ -124,7 +124,7 @@ export function createSettlementPipelineService({ database }: { database: Prisma
   };
 }
 
-async function processRevision(transaction: PrismaClient, command: SettlementPipelineCommand, result: ResultRow): Promise<SettlementPipelineResult> {
+async function processRevision(transaction: PrismaClient, command: SettlementPipelineCommand, result: ResultRow, afterSettlement?: (settlementReceiptId: string) => void | Promise<void>): Promise<SettlementPipelineResult> {
   const fixture = (await transaction.$queryRawUnsafe<FixtureRow[]>(`SELECT id,"kickoffUtc" FROM "Fixture" WHERE id=$1`, command.fixtureId))[0];
   const forecast = (await transaction.$queryRawUnsafe<ForecastRow[]>(`SELECT id,"fixtureId",kind,state,cutoff,"issuedAt" FROM "ForecastSnapshot" WHERE id=$1`, command.forecastSnapshotId))[0];
   if (!fixture || !forecast) throw Object.assign(new Error("SETTLEMENT_SOURCE_NOT_FOUND"), { code: "SETTLEMENT_SOURCE_NOT_FOUND" });
@@ -154,6 +154,7 @@ async function processRevision(transaction: PrismaClient, command: SettlementPip
     resolved.lifecycle, resolved.scoreability, resolved.financialEligibility, resolved.classOutcome, resolved.reason,
     JSON.stringify(receipt), resolved.settledAt, priorSettlement?.id ?? null,
   ))[0]!;
+  await afterSettlement?.(settlement.id);
 
   const output: SettlementPipelineResult = { settlementReceiptId: settlement.id, forecastScoreIds: [], valueSettlementIds: [], reason: resolved.reason, duplicate: existing.length > 0, correlationId: command.correlationId };
   if (resolved.scoreability !== "SCOREABLE" || result.homeGoals === null || result.awayGoals === null) return output;

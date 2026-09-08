@@ -45,13 +45,13 @@ describe("reliability-policy-v1", () => {
     }));
     const bucket = aggregateReliability(events, RELIABILITY_POLICY).buckets[6]!;
     expect(bucket).toMatchObject({
-      meanForecast: 0.6,
       observedFrequency: 0.65,
       count: 20,
-      gap: 0.05,
       direction: "UNDER_CONFIDENT",
       evidenceState: "SUFFICIENT",
     });
+    expect(bucket.meanForecast).toBeCloseTo(0.6, 12);
+    expect(bucket.gap).toBeCloseTo(0.05, 12);
     expect(aggregateReliability(events.slice(0, 19), RELIABILITY_POLICY).buckets[6])
       .toMatchObject({ count: 19, evidenceState: "INSUFFICIENT" });
   });

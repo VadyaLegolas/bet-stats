@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { createPrismaManualOddsRepository, submitManualOdds } from "../../apps/api/src/modules/odds/odds.service.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required");
@@ -32,5 +33,13 @@ describe("append-only manual odds books", () => {
 
   it("rejects a replacement for another fixture or market", async () => {
     await expect(prisma.$executeRawUnsafe(`INSERT INTO "ManualOddsSnapshot" (id,"fixtureId",market,"inputHash",source,receipt,"replacesOddsId") VALUES ($1,$4,'BTTS',$2,'manual','{}',$3)`, id("odds-invalid"), id("book-invalid"), id("odds-v1"), id("odds-fixture"))).rejects.toThrow(/replacement.*fixture.*market/i);
+  });
+
+  it("persists distinct immutable identities when source provenance changes", async () => {
+    const repository = createPrismaManualOddsRepository(prisma);
+    const base = { fixtureId: id("odds-fixture"), market: "BTTS" as const, capturedAt: "2026-09-06T12:00:00.000Z", selections: [{ selection: "YES" as const, decimalOdds: "2.2" }, { selection: "NO" as const, decimalOdds: "1.8" }] };
+    const first = await submitManualOdds({ ...base, oddsSnapshotId: id("source-a"), sourceLabel: "Book A" }, repository, new Date("2026-09-06T12:00:00.000Z"));
+    const second = await submitManualOdds({ ...base, oddsSnapshotId: id("source-b"), sourceLabel: "Book B" }, repository, new Date("2026-09-06T12:00:00.000Z"));
+    expect(second.oddsSnapshotId).not.toBe(first.oddsSnapshotId);
   });
 });

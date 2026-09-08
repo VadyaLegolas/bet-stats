@@ -1,12 +1,10 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
-import {
-  aggregateFlatOneUnit,
-  calculateComparableClv,
-  FLAT_ONE_UNIT_POLICY_VERSION,
-  ODDS_RATIO_CLV_POLICY_VERSION,
-  settleFlatOneUnit,
-} from "../../packages/domain/src/index.js";
+import { aggregateFlatOneUnit, FLAT_ONE_UNIT_POLICY_VERSION, settleFlatOneUnit } from "../../packages/domain/src/evaluation/financial.js";
+import { calculateComparableClv, ODDS_RATIO_CLV_POLICY_VERSION } from "../../packages/domain/src/evaluation/clv.js";
 
 describe("flat-one-unit-v1", () => {
   it.each([
@@ -62,6 +60,13 @@ describe("flat-one-unit-v1", () => {
       closingObservedAt: "2026-09-10T17:59:00.000Z",
       clv: "0.2",
     });
+  });
+
+  it("keeps financial evidence free of D-08 advice and certainty language", () => {
+    const sources = ["../../packages/domain/src/evaluation/financial.ts", "../../packages/domain/src/evaluation/clv.ts"]
+      .map((path) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), "utf8"))
+      .join("\n");
+    expect(sources).not.toMatch(/bankroll|personalized recommendation|guaranteed profit|automatic wager|stake sizing/i);
   });
 });
 

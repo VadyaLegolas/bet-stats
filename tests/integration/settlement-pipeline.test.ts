@@ -44,11 +44,11 @@ async function seed(): Promise<void> {
       ('pipeline-market-1x2','pipeline-forecast','ONE_X_TWO','[{"selection":"HOME","probability":0.5},{"selection":"DRAW","probability":0.3},{"selection":"AWAY","probability":0.2}]'),
       ('pipeline-market-ou','pipeline-forecast','OVER_UNDER_2_5','[{"selection":"OVER_2_5","probability":0.6},{"selection":"UNDER_2_5","probability":0.4}]'),
       ('pipeline-market-btts','pipeline-forecast','BTTS','[{"selection":"YES","probability":0.7},{"selection":"NO","probability":0.3}]');
-    INSERT INTO "ManualOddsSnapshot" (id,"fixtureId",market,"inputHash",source,receipt,"submittedAt") VALUES ('pipeline-odds','pipeline-fixture','ONE_X_TWO','odds-hash','BOOKMAKER_BACK','{}','2026-09-10T16:00:00Z');
+    INSERT INTO "ManualOddsSnapshot" (id,"fixtureId",market,"inputHash",source,receipt,"submittedAt") VALUES ('pipeline-odds','pipeline-fixture','ONE_X_TWO','odds-hash','BOOKMAKER_BACK','{"selections":[{"selection":"HOME","decimalOdds":"2.4","noVigProbability":"0.45"},{"selection":"AWAY","decimalOdds":"4","noVigProbability":"0.25"}]}','2026-09-10T16:00:00Z');
     INSERT INTO "ManualOddsSelection" (id,"oddsSnapshotId",selection,"decimalOdds") VALUES ('pipeline-odds-home','pipeline-odds','HOME','2.4'),('pipeline-odds-away','pipeline-odds','AWAY','4');
-    INSERT INTO "ValueReceipt" (id,"fixtureId",market,"forecastSnapshotId","oddsSnapshotId",outcome,selection,receipt) VALUES
-      ('pipeline-value','pipeline-fixture','ONE_X_TWO','pipeline-forecast','pipeline-odds','VALUE_CANDIDATE','HOME','{}'),
-      ('pipeline-no-value','pipeline-fixture','ONE_X_TWO','pipeline-forecast','pipeline-odds','NO_VALUE','AWAY','{}');
+    INSERT INTO "ValueReceipt" (id,"fixtureId",market,"forecastSnapshotId","oddsSnapshotId",outcome,selection,"modelProbability","noVigProbability","fairOdds",edge,"expectedValue",receipt) VALUES
+      ('pipeline-value','pipeline-fixture','ONE_X_TWO','pipeline-forecast','pipeline-odds','VALUE_CANDIDATE','HOME','0.5','0.45','2','0.05','0.2','{"market":"ONE_X_TWO","selection":"HOME","decimalOdds":"2.4","modelProbability":"0.5","noVigProbability":"0.45"}'),
+      ('pipeline-no-value','pipeline-fixture','ONE_X_TWO','pipeline-forecast','pipeline-odds','NO_VALUE','AWAY','0.2','0.25','5','-0.05','-0.2','{"market":"ONE_X_TWO","selection":"AWAY","decimalOdds":"4","modelProbability":"0.2","noVigProbability":"0.25"}');
   `);
 }
 

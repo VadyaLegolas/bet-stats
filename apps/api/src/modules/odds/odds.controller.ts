@@ -16,5 +16,5 @@ export class OddsController {
 
   @Get(":oddsSnapshotId")
   @Header("Cache-Control", "private, no-store, max-age=0")
-  get(@Param("oddsSnapshotId") oddsSnapshotId: string): Promise<ManualOddsSnapshotDto> { return this.odds.get(oddsSnapshotId); }
+  get(@Param("fixtureId") fixtureId: string, @Param("oddsSnapshotId") oddsSnapshotId: string): Promise<ManualOddsSnapshotDto> { return this.odds.get(fixtureId, oddsSnapshotId); }
 }

@@ -15,6 +15,7 @@ export interface ManualOddsSnapshotDto extends NormalizedOddsBook {
 export interface ManualOddsRepository {
   findFixture(fixtureId: string): Promise<{ kickoffUtc: string } | null>;
   find?(id: string): Promise<{ fixtureId: string; market: string } | null>;
+  get?(fixtureId: string, id: string): Promise<ManualOddsSnapshotDto | null>;
   append(book: ManualOddsSnapshotDto & { inputHash: string }): Promise<ManualOddsSnapshotDto>;
 }
 
@@ -71,15 +72,21 @@ function toDto(row: { id: string; fixtureId: string; market: string; source: str
   return { ...receipt, oddsSnapshotId: row.id, fixtureId: row.fixtureId, market: row.market as NormalizedOddsBook["market"], sourceLabel: row.source, replacementOfOddsSnapshotId: row.replacesOddsId, submittedAt: row.submittedAt.toISOString() };
 }
 
-export function createPrismaManualOddsRepository(client: PrismaClient): ManualOddsRepository & { get(id: string): Promise<ManualOddsSnapshotDto | null> } {
+export async function getManualOddsSnapshot(fixtureId: string, id: string, repository: Pick<ManualOddsRepository, "get">): Promise<ManualOddsSnapshotDto> {
+  const value = await repository.get?.(fixtureId, id) ?? null;
+  if (!value) throw new NotFoundException({ code: "ODDS_SNAPSHOT_NOT_FOUND" });
+  return value;
+}
+
+export function createPrismaManualOddsRepository(client: PrismaClient): ManualOddsRepository & { get(fixtureId: string, id: string): Promise<ManualOddsSnapshotDto | null> } {
   return {
     findFixture: async (fixtureId) => {
       const fixture = await client.fixture.findUnique({ where: { id: fixtureId }, select: { kickoffUtc: true } });
       return fixture ? { kickoffUtc: fixture.kickoffUtc.toISOString() } : null;
     },
     find: (id) => client.manualOddsSnapshot.findUnique({ where: { id }, select: { fixtureId: true, market: true } }),
-    get: async (id) => {
-      const row = await client.manualOddsSnapshot.findUnique({ where: { id } });
+    get: async (fixtureId, id) => {
+      const row = await client.manualOddsSnapshot.findFirst({ where: { id, fixtureId } });
       return row ? toDto(row) : null;
     },
     append: async (book) => client.$transaction(async (tx) => {
@@ -112,6 +119,6 @@ export class OddsService implements OnModuleDestroy {
   private readonly repository = this.client ? createPrismaManualOddsRepository(this.client) : null;
   private db() { if (!this.repository) throw Object.assign(new ServiceUnavailableException({ code: "DATABASE_UNAVAILABLE" }), { code: "DATABASE_UNAVAILABLE" }); return this.repository; }
   submit(input: unknown): Promise<ManualOddsSnapshotDto> { return submitManualOdds(input, this.db()); }
-  async get(id: string): Promise<ManualOddsSnapshotDto> { const value = await this.db().get(id); if (!value) throw new NotFoundException({ code: "ODDS_SNAPSHOT_NOT_FOUND" }); return value; }
+  get(fixtureId: string, id: string): Promise<ManualOddsSnapshotDto> { return getManualOddsSnapshot(fixtureId, id, this.db()); }
   async onModuleDestroy(): Promise<void> { await this.client?.$disconnect(); }
 }

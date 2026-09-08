@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 4
 current_phase_name: Settlement and Evidence Scorecard
-current_plan: Not started
-status: planning
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-09-08T17:22:38.601Z"
+current_plan: 2
+status: executing
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-09-08T17:41:42.218Z"
 last_activity: 2026-09-08
 last_activity_desc: Phase 03 complete, transitioned to Phase 4
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 60
-  completed_plans: 53
+  completed_plans: 54
   percent: 50
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 4 — Settlement and Evidence Scorecard
-Current Plan: Not started
-Total Plans in Phase: 7
-Status: Ready to plan
+Current Plan: 2 of 8
+Total Plans in Phase: 8
+Status: In Progress
 Last Activity: 2026-09-08
 Last Activity Description: Phase 03 complete, transitioned to Phase 4
 
@@ -84,6 +84,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P06 | 25min | 3 tasks | 12 files |
 | Phase 03 P07 | 47min | 2 tasks | 13 files |
 | Phase 04 P01 | 16min | 2 tasks | 18 files |
+| Phase 04 P02 | 18min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 3]: Phase 3 acceptance evidence uses durable PostgreSQL data and production Nest/Next boundaries rather than mocked analysis responses.
 - [Phase 4]: Phase 04: Settlement identity is the exact ResultVersion, ForecastSnapshot, and policy hash tuple.
 - [Phase 4]: Phase 04: Corrections append linked settlement revisions under a fixture-scoped PostgreSQL advisory lock.
+- [Phase 4]: Phase 04: Use unscaled categorical Brier sum and natural Log Loss clipped at epsilon 1e-15.
+- [Phase 4]: Phase 04: Score corrections append linked facts and current aggregates include only leaf revisions.
 
 ### Pending Todos
 
@@ -138,6 +141,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-08T17:22:38.415Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-09-08T17:41:42.050Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None

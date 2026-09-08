@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 10
+open_count: 13
 waived_count: 0
 fixed_count: 0
-total_count: 10
-last_updated: 2026-09-06T08:21:45.463Z
+total_count: 13
+last_updated: 2026-09-08T07:07:44.088Z
 ---
 
 # Broken Windows Ledger
@@ -25,6 +25,9 @@ last_updated: 2026-09-06T08:21:45.463Z
 | 8 | 03 | deviation | tests/integration/phase-03-security.test.ts |  | Phase 3 boundary verification required correctness and concurrency repairs | open |  | 2026-09-06T08:21:44.523Z |  |
 | 9 | 03 | deviation | tests/e2e/forecast-workbench.spec.ts |  | Live workbench verification required exact-pair, responsive, and production-build repairs | open |  | 2026-09-06T08:21:44.998Z |  |
 | 10 | 03 | deviation | tests/integration/replay-boundary.test.ts |  | Repository-wide verification required cross-phase harness isolation repairs | open |  | 2026-09-06T08:21:45.463Z |  |
+| 11 | 03 | unrun-verify | tests/integration/forecast-snapshots.test.ts |  | PostgreSQL migration and concurrent forecast revision gate unrun because Docker daemon and DATABASE_URL were unavailable | open |  | 2026-09-08T07:06:41.815Z |  |
+| 12 | 03 | unrun-verify | tests/integration/manual-odds.test.ts |  | PostgreSQL manual-odds verification was not run because DATABASE_URL is unset and Docker Engine is unavailable | open |  | 2026-09-08T07:07:43.665Z |  |
+| 13 | 03 | deviation | apps/web/app/fixtures/[fixtureId]/forecast-workbench.tsx |  | Kept client odds validation self-contained so direct web tests do not consume stale package build output | open |  | 2026-09-08T07:07:44.088Z |  |
 
 ````json
 [
@@ -146,6 +149,42 @@ last_updated: 2026-09-06T08:21:45.463Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-06T08:21:45.463Z",
+    "resolved_at": null
+  },
+  {
+    "id": 11,
+    "kind": "unrun-verify",
+    "phase": "03",
+    "file": "tests/integration/forecast-snapshots.test.ts",
+    "line": null,
+    "description": "PostgreSQL migration and concurrent forecast revision gate unrun because Docker daemon and DATABASE_URL were unavailable",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-08T07:06:41.815Z",
+    "resolved_at": null
+  },
+  {
+    "id": 12,
+    "kind": "unrun-verify",
+    "phase": "03",
+    "file": "tests/integration/manual-odds.test.ts",
+    "line": null,
+    "description": "PostgreSQL manual-odds verification was not run because DATABASE_URL is unset and Docker Engine is unavailable",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-08T07:07:43.665Z",
+    "resolved_at": null
+  },
+  {
+    "id": 13,
+    "kind": "deviation",
+    "phase": "03",
+    "file": "apps/web/app/fixtures/[fixtureId]/forecast-workbench.tsx",
+    "line": null,
+    "description": "Kept client odds validation self-contained so direct web tests do not consume stale package build output",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-08T07:07:44.088Z",
     "resolved_at": null
   }
 ]

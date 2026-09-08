@@ -63,11 +63,11 @@ Produce honest, reproducible probability estimates whose quality can be measured
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Build the MVP as a TypeScript monorepo with Next.js, NestJS, Prisma, Redis, and BullMQ | Keeps frontend, backend, workers, domain types, and prediction logic in one coherent toolchain | — Pending |
-| Use Poisson + Elo + weighted form as the V1 model | Transparent, implementable, and measurable before introducing ML complexity | — Pending |
-| Treat manual odds entry as the primary MVP path | Free provider tiers do not reliably include odds | — Pending |
+| Use Poisson + Elo + weighted form as the V1 model | Transparent, implementable, and measurable before introducing ML complexity | ✓ Validated in Phases 2–3 |
+| Treat manual odds entry as the primary MVP path | Free provider tiers do not reliably include odds | ✓ Validated in Phase 3 |
 | Separate canonical entities from provider IDs | Provider failover must not duplicate teams, players, leagues, or matches | — Pending |
 | Keep historical/training sources outside the synchronous production pipeline | Their coverage and freshness do not support live match processing | — Pending |
-| Store confidence components separately from probability and from the aggregate confidence score | Enables transparent UI explanations and later recalibration | — Pending |
+| Store confidence components separately from probability and from the aggregate confidence score | Enables transparent UI explanations and later recalibration | ✓ Validated in Phase 3 |
 | Structure delivery as vertical MVP slices | Each phase should leave an observable, testable capability rather than an unfinished technical layer | — Pending |
 | Use append-only reconciliation decisions with optimistic concurrency | Manual identity corrections must remain auditable and must never overwrite prior evidence | ✓ Validated in Phase 1 |
 | Reserve provider budget atomically before every external call | Retries and concurrent workers must not overspend free-tier allowance or duplicate durable facts | ✓ Validated in Phase 1 |
@@ -90,4 +90,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-29 after Phase 1*
+*Last updated: 2026-09-08 after Phase 3*

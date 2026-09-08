@@ -1,10 +1,11 @@
 import { dependencyReadiness, readServerConfig } from "@bet-stats/config";
-import { createPrismaClient, createReplayProviderPolicyRepository, DEFAULT_REPLAY_PROVIDER_POLICIES } from "@bet-stats/database";
+import { createPrismaClient, createReplayProviderPolicyRepository, createSettlementPipelineService, DEFAULT_REPLAY_PROVIDER_POLICIES } from "@bet-stats/database";
 import { FootballDataOrgClient, type FixtureProvider, type ResultProvider, type StandingsProvider } from "@bet-stats/football-data";
 import { runReplayFixtureJob } from "./jobs/fixtures.js";
 import { runReplayResultJob } from "./jobs/results.js";
 import { runReplayStandingsJob } from "./jobs/standings.js";
-import { createReplayWorker, type ReplayJobData } from "./queues/index.js";
+import { createSettlementJobHandler } from "./jobs/settlement.js";
+import { createReplayWorker, createSettlementQueue, createSettlementWorker, type ReplayJobData } from "./queues/index.js";
 import { createDurableProviderCircuitRegistry } from "./resilience/circuits.js";
 
 export { createSyncWorkers } from "./queues/index.js";
@@ -20,13 +21,15 @@ export function startReplayWorker(input: { databaseUrl: string; redisUrl: string
   const providerFactory = input.providerFactory ?? (() => new FootballDataOrgClient({ apiToken: input.apiToken }));
   const providerPolicyRepository = createReplayProviderPolicyRepository({ database, policies: DEFAULT_REPLAY_PROVIDER_POLICIES });
   const circuitRegistry = createDurableProviderCircuitRegistry({ database });
+  const settlementQueueHandle = createSettlementQueue({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}) });
   const worker = createReplayWorker({ redisUrl: input.redisUrl, database, ...(input.prefix ? { prefix: input.prefix } : {}), execute: async (job: ReplayJobData, context) => {
     if (job.input.endpointFamily === "FIXTURES") return runReplayFixtureJob(job, { database, providerFactory, providerPolicyRepository, circuitRegistry }, context);
-    if (job.input.endpointFamily === "RESULTS") return runReplayResultJob(job, { database, providerFactory, providerPolicyRepository, circuitRegistry }, context);
+    if (job.input.endpointFamily === "RESULTS") return runReplayResultJob(job, { database, providerFactory, providerPolicyRepository, circuitRegistry, settlementQueue: settlementQueueHandle }, context);
     if (job.input.endpointFamily === "STANDINGS") return runReplayStandingsJob(job, { database, providerFactory, providerPolicyRepository, circuitRegistry }, context);
     throw Object.assign(new Error("UNSUPPORTED_REPLAY_ENDPOINT"), { code: "UNSUPPORTED_REPLAY_ENDPOINT" });
   } });
-  return { worker, async close() { await worker.close(); await database.$disconnect(); } };
+  const settlementWorker = createSettlementWorker({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}), execute: createSettlementJobHandler({ service: createSettlementPipelineService({ database }) }) });
+  return { worker, settlementWorker, async close() { await worker.close(); await settlementWorker.close(); await settlementQueueHandle.close(); await database.$disconnect(); } };
 }
 
 function start(): void {

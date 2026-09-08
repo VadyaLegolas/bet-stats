@@ -9,6 +9,18 @@ import {
 
 import type { PrismaClient } from "../client.js";
 
+export const SETTLEMENT_PIPELINE_POLICY_HASH = createHash("sha256").update(JSON.stringify({
+  eligibleForecastKinds: ["LINEUP_CONFIRMED", "PRE_MATCH"],
+  lifecycle: {
+    ABANDONED: ["NON_SCORED", "NON_FINANCIAL", "NON_SCORED", "RESULT_ABANDONED"],
+    CANCELLED: ["NON_SCORED", "NON_FINANCIAL", "NON_SCORED", "RESULT_CANCELLED"],
+    FINISHED: ["SCOREABLE", "ELIGIBLE", "SCORED", "RESULT_FINISHED"],
+    POSTPONED: ["PENDING", "NOT_ELIGIBLE", "PENDING", "RESULT_POSTPONED"],
+    VOID: ["NON_SCORED", "NON_FINANCIAL", "NON_SCORED", "RESULT_VOID"],
+  },
+  version: SETTLEMENT_POLICY_VERSION,
+})).digest("hex");
+
 export interface SettlementPipelineCommand {
   fixtureId: string;
   resultVersionId: string;
@@ -68,6 +80,7 @@ async function withSerializableRetry<T>(database: PrismaClient, operation: (tran
 
 export function createSettlementPipelineService({ database }: { database: PrismaClient }) {
   return {
+    policyHash: SETTLEMENT_PIPELINE_POLICY_HASH,
     async process(command: SettlementPipelineCommand): Promise<SettlementPipelineResult> {
       for (const [value, code] of [
         [command.fixtureId, "INVALID_FIXTURE_ID"],

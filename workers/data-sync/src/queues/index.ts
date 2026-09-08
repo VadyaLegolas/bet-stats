@@ -10,6 +10,45 @@ export const standardQueue = (prefix = "bet-stats") => `${prefix}-sync-standard`
 export const optionalQueue = (prefix = "bet-stats") => `${prefix}-sync-optional`;
 
 export const SYNC_MAX_ATTEMPTS = 3;
+export const SETTLEMENT_MAX_ATTEMPTS = 3;
+
+export interface SettlementJobData {
+  fixtureId: string;
+  resultVersionId: string;
+  forecastSnapshotId: string;
+  policyVersion: string;
+  policyHash: string;
+  correlationId: string;
+}
+
+export function settlementQueue(prefix = "bet-stats"): string {
+  if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) throw new Error("Queue prefix contains unsupported characters");
+  return `${prefix}-settlement`;
+}
+
+export function createSettlementJobId(data: SettlementJobData): string {
+  return `settlement:${data.resultVersionId}:${data.policyHash}:${data.forecastSnapshotId}`;
+}
+
+export function createSettlementQueue(input: { redisUrl: string; prefix?: string }) {
+  const queue = new Queue<SettlementJobData>(settlementQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
+  return {
+    enqueue: (data: SettlementJobData) => queue.add("settlement", data, {
+      attempts: SETTLEMENT_MAX_ATTEMPTS,
+      backoff: { type: "exponential", delay: 1_000, jitter: 0.25 },
+      removeOnComplete: { age: 86_400, count: 1_000 },
+      removeOnFail: { age: 604_800, count: 5_000 },
+      jobId: createSettlementJobId(data).replaceAll(":", "-"),
+    }),
+    close: () => queue.close(),
+  };
+}
+
+export function createSettlementWorker(input: { redisUrl: string; prefix?: string; execute: (data: SettlementJobData) => Promise<unknown> }) {
+  return new Worker<SettlementJobData>(settlementQueue(input.prefix), (job) => input.execute(job.data), {
+    connection: redisConnection(input.redisUrl), concurrency: 2, maxStalledCount: 2, lockDuration: 30_000,
+  });
+}
 
 export function createSyncJobOptions(_name: CriticalJobName): JobsOptions {
   return {

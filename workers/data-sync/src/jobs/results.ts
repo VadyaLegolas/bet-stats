@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import type { PrismaClient, ReplayProviderPolicyRepository } from "@bet-stats/database";
+import { SETTLEMENT_PIPELINE_POLICY_HASH, type PrismaClient, type ReplayProviderPolicyRepository } from "@bet-stats/database";
 import { reservePriorityRequest } from "@bet-stats/domain";
 import type { NormalizedResult, RequestedDateWindow, ResultProvider } from "@bet-stats/football-data";
 
 import { runGatedIngestion, type CircuitProbeRegistry, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
-import type { ReplayJobData } from "../queues/index.js";
+import type { ReplayJobData, SettlementJobData } from "../queues/index.js";
 import type { ReplayExecutionContext } from "../queues/replay-execution.js";
 import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js";
 
@@ -87,6 +87,7 @@ export async function runReplayResultJob(input: ReplayJobData, dependencies: {
   providerFactory: ResultSyncJobInput["providerFactory"];
   providerPolicyRepository: ReplayProviderPolicyRepository;
   circuitRegistry: CircuitProbeRegistry;
+  settlementQueue?: { enqueue(data: SettlementJobData): Promise<unknown> };
 }, context: ReplayExecutionContext): Promise<void> {
   const policy = await readReplayWorkerProviderPolicy({
     database: dependencies.database,
@@ -96,6 +97,7 @@ export async function runReplayResultJob(input: ReplayJobData, dependencies: {
     endpointFamily: "RESULTS",
   });
   const snapshot = policy.snapshot;
+  const published: Array<{ fixtureId: string; resultVersionId: string }> = [];
   const result = await runResultSyncJob({
     provider: input.input.provider,
     endpoint: "RESULTS",
@@ -113,11 +115,17 @@ export async function runReplayResultJob(input: ReplayJobData, dependencies: {
     window: { competitionCode: input.input.competitionId as RequestedDateWindow["competitionCode"], dateFrom: input.unit.from.slice(0, 10), dateTo: input.unit.to.slice(0, 10) },
     reserve: () => context.admitRequest((transaction) => reservePriorityRequest({ database: transaction as unknown as PrismaClient, provider: input.input.provider, resetDate: snapshot.resetDate!, resetTimezone: snapshot.resetTimezone, endpointFamily: "RESULTS", lane: snapshot.lane!, configuredAllowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, jobKey: `${input.logicalId}:${input.revision}:${context.attemptNumber}:request:1` })),
     beforeDispatch: context.assertOwner,
-    publish: (results) => context.publish((transaction) => persistResultsInTransaction(transaction as unknown as PrismaClient, results), completionManifest(input)),
+    publish: (results) => context.publish(async (transaction) => { published.push(...await persistResultsInTransaction(transaction as unknown as PrismaClient, results)); }, completionManifest(input)),
   });
   if (result.status !== "completed") {
     const code = result.status === "denied" ? result.reason : result.status.toUpperCase();
     throw Object.assign(new Error(code), { code });
+  }
+  if (dependencies.settlementQueue) {
+    for (const item of published) {
+      const forecasts = await dependencies.database.$queryRawUnsafe<Array<{ id: string }>>(`SELECT id FROM "ForecastSnapshot" WHERE "fixtureId"=$1 AND state='ISSUED' AND kind IN ('PRE_MATCH','LINEUP_CONFIRMED') ORDER BY id`, item.fixtureId);
+      for (const forecast of forecasts) await dependencies.settlementQueue.enqueue({ fixtureId: item.fixtureId, resultVersionId: item.resultVersionId, forecastSnapshotId: forecast.id, policyVersion: "settlement-policy-v1", policyHash: SETTLEMENT_PIPELINE_POLICY_HASH, correlationId: `${input.logicalId}:${input.revision}` });
+    }
   }
 }
 
@@ -125,7 +133,8 @@ async function persistResults(database: PrismaClient, results: readonly Normaliz
   await database.$transaction((transaction) => persistResultsInTransaction(transaction as unknown as PrismaClient, results));
 }
 
-async function persistResultsInTransaction(transaction: PrismaClient, results: readonly NormalizedResult[]): Promise<void> {
+async function persistResultsInTransaction(transaction: PrismaClient, results: readonly NormalizedResult[]): Promise<Array<{ fixtureId: string; resultVersionId: string }>> {
+  const published: Array<{ fixtureId: string; resultVersionId: string }> = [];
   for (const result of results) {
       await transaction.$executeRawUnsafe(
         "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
@@ -178,11 +187,12 @@ async function persistResultsInTransaction(transaction: PrismaClient, results: r
         `SELECT "observationId", revision, id FROM "ResultVersion" WHERE "fixtureId" = $1 ORDER BY revision DESC LIMIT 1`,
         fixtureId,
       );
-      if (existing[0]?.observationId === durableObservationId) return;
+      if (existing[0]?.observationId === durableObservationId) { published.push({ fixtureId, resultVersionId: existing[0].id }); continue; }
+      const resultVersionId = randomUUID();
       await transaction.$executeRawUnsafe(
         `INSERT INTO "ResultVersion" (id, "fixtureId", "observationId", "effectiveAt", "observedAt", "homeGoals", "awayGoals", status, revision, "supersedesResultVersionId")
          VALUES ($1, $2, $3, $4::timestamptz, $5::timestamptz, $6, $7, 'FINISHED', $8, $9)`,
-        randomUUID(),
+        resultVersionId,
         fixtureId,
         durableObservationId,
         result.kickoffUtc,
@@ -192,7 +202,9 @@ async function persistResultsInTransaction(transaction: PrismaClient, results: r
         (existing[0]?.revision ?? 0) + 1,
         existing[0]?.id ?? null,
       );
+      published.push({ fixtureId, resultVersionId });
   }
+  return published;
 }
 
 function completionManifest(input: ReplayJobData) { return { expectedUnits: [input.logicalId], completedUnits: [input.logicalId], expectedCaptures: [input.logicalId], completedCaptures: [input.logicalId], delivery: "DELIVERED" }; }

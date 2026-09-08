@@ -365,7 +365,7 @@ export type ForecastSnapshotOrderByWithRelationInput = {
 export type ForecastSnapshotWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   supersedesForecastId?: string
-  fixtureId_kind_cutoff_modelHash_configHash_inputHash_evidenceFingerprint?: Prisma.ForecastSnapshotFixtureIdKindCutoffModelHashConfigHashInputHashEvidenceFingerprintCompoundUniqueInput
+  fixtureId_kind_cutoff_modelHash_configHash_inputHash_evidenceFingerprint_officialLineupObservationId?: Prisma.ForecastSnapshotFixtureIdKindCutoffModelHashConfigHashInputHashEvidenceFingerprintOfficialLineupObservationIdCompoundUniqueInput
   fixtureId_kind_revision?: Prisma.ForecastSnapshotFixtureIdKindRevisionCompoundUniqueInput
   AND?: Prisma.ForecastSnapshotWhereInput | Prisma.ForecastSnapshotWhereInput[]
   OR?: Prisma.ForecastSnapshotWhereInput[]
@@ -395,7 +395,7 @@ export type ForecastSnapshotWhereUniqueInput = Prisma.AtLeast<{
   supersededBy?: Prisma.XOR<Prisma.ForecastSnapshotNullableScalarRelationFilter, Prisma.ForecastSnapshotWhereInput> | null
   markets?: Prisma.ForecastMarketListRelationFilter
   valueReceipts?: Prisma.ValueReceiptListRelationFilter
-}, "id" | "supersedesForecastId" | "fixtureId_kind_cutoff_modelHash_configHash_inputHash_evidenceFingerprint" | "fixtureId_kind_revision">
+}, "id" | "supersedesForecastId" | "fixtureId_kind_cutoff_modelHash_configHash_inputHash_evidenceFingerprint_officialLineupObservationId" | "fixtureId_kind_revision">
 
 export type ForecastSnapshotOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -645,7 +645,7 @@ export type ForecastSnapshotNullableScalarRelationFilter = {
   isNot?: Prisma.ForecastSnapshotWhereInput | null
 }
 
-export type ForecastSnapshotFixtureIdKindCutoffModelHashConfigHashInputHashEvidenceFingerprintCompoundUniqueInput = {
+export type ForecastSnapshotFixtureIdKindCutoffModelHashConfigHashInputHashEvidenceFingerprintOfficialLineupObservationIdCompoundUniqueInput = {
   fixtureId: string
   kind: $Enums.ForecastKind
   cutoff: Date | string
@@ -653,6 +653,7 @@ export type ForecastSnapshotFixtureIdKindCutoffModelHashConfigHashInputHashEvide
   configHash: string
   inputHash: string
   evidenceFingerprint: string
+  officialLineupObservationId: string
 }
 
 export type ForecastSnapshotFixtureIdKindRevisionCompoundUniqueInput = {

@@ -512,7 +512,7 @@ model ValueReceipt {
   forecastSnapshotId      String
   oddsSnapshotId          String
   outcome                 String
-  selection               String?
+  selection               String
   modelProbability        String?            @db.VarChar(128)
   noVigProbability        String?            @db.VarChar(128)
   fairOdds                String?            @db.VarChar(128)
@@ -527,7 +527,7 @@ model ValueReceipt {
   supersedesValueReceipt  ValueReceipt?       @relation("ValueSupersession", fields: [supersedesValueReceiptId], references: [id], onDelete: Restrict)
   supersededBy            ValueReceipt?       @relation("ValueSupersession")
 
-  @@unique([forecastSnapshotId, oddsSnapshotId])
+  @@unique([forecastSnapshotId, oddsSnapshotId, market, selection])
   @@index([fixtureId, market, createdAt])
 }
 

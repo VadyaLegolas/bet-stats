@@ -26,7 +26,7 @@ export interface ValueReceiptDto {
 export interface ValueRepository {
   findForecast(id: string): Promise<ForecastResponseDto | null>;
   findOdds(id: string): Promise<ManualOddsSnapshotDto | null>;
-  findReceipt(forecastSnapshotId: string, oddsSnapshotId: string): Promise<ValueReceiptDto | null>;
+  findReceipt(forecastSnapshotId: string, oddsSnapshotId: string, market: string, selection: string): Promise<ValueReceiptDto | null>;
   insertReceipt(receipt: ValueReceiptDto): Promise<ValueReceiptDto>;
   findReceiptById?(id: string): Promise<ValueReceiptDto | null>;
 }
@@ -45,7 +45,7 @@ export async function compareValue(raw: unknown, repository: ValueRepository): P
   const [forecast, odds] = await Promise.all([repository.findForecast(command.forecastSnapshotId), repository.findOdds(command.oddsSnapshotId)]);
   if (!forecast || !odds) throw failure("SNAPSHOT_NOT_FOUND");
   if (forecast.fixtureId !== command.fixtureId || odds.fixtureId !== command.fixtureId || odds.market !== command.market || !forecast.probabilities[command.market]) throw failure("SNAPSHOT_PAIR_MISMATCH");
-  const existing = await repository.findReceipt(command.forecastSnapshotId, command.oddsSnapshotId);
+  const existing = await repository.findReceipt(command.forecastSnapshotId, command.oddsSnapshotId, command.market, command.selection);
   if (existing) return existing;
   const decision = decideValue({
     selection: command.selection,
@@ -60,7 +60,10 @@ export async function compareValue(raw: unknown, repository: ValueRepository): P
   const event = forecast.probabilities[command.market].find(({ selection }) => selection === command.selection)!;
   const odd = odds.selections.find(({ selection }) => selection === command.selection)!;
   const createdAt = new Date().toISOString();
-  const id = createHash("sha256").update(`${command.forecastSnapshotId}:${command.oddsSnapshotId}`).digest("hex").slice(0, 32);
+  const id = createHash("sha256")
+    .update(JSON.stringify([command.forecastSnapshotId, command.oddsSnapshotId, command.market, command.selection]))
+    .digest("hex")
+    .slice(0, 32);
   const value: ValueReceiptDto = {
     id, ...command, outcome: decision.outcome, reasons: decision.reasons,
     modelProbability: String(event.probability), noVigProbability: odd.noVigProbability, fairOdds: event.fairOdds,
@@ -70,8 +73,8 @@ export async function compareValue(raw: unknown, repository: ValueRepository): P
   };
   try { return await repository.insertReceipt(value); }
   catch (error) {
-    const collision = await repository.findReceipt(command.forecastSnapshotId, command.oddsSnapshotId);
-    if (collision) return collision;
+    const collision = await repository.findReceipt(command.forecastSnapshotId, command.oddsSnapshotId, command.market, command.selection);
+    if (collision?.id === value.id) return collision;
     throw error;
   }
 }
@@ -89,7 +92,7 @@ export function createPrismaValueRepository(client: PrismaClient): ValueReposito
   return {
     findForecast: async (id) => { const row = await client.forecastSnapshot.findUnique({ where: { id } }); return row?.state === "ISSUED" ? parseForecastResponse(row.receipt) : null; },
     findOdds: async (id) => { const row = await client.manualOddsSnapshot.findUnique({ where: { id } }); return row ? { ...(row.receipt as unknown as ManualOddsSnapshotDto), oddsSnapshotId: row.id, fixtureId: row.fixtureId, market: row.market as ManualOddsSnapshotDto["market"], sourceLabel: row.source, replacementOfOddsSnapshotId: row.replacesOddsId, submittedAt: row.submittedAt.toISOString() } : null; },
-    findReceipt: async (forecastSnapshotId, oddsSnapshotId) => { const row = await client.valueReceipt.findUnique({ where: { forecastSnapshotId_oddsSnapshotId: { forecastSnapshotId, oddsSnapshotId } } }); return row ? rowToDto(row) : null; },
+    findReceipt: async (forecastSnapshotId, oddsSnapshotId, market, selection) => { const row = await client.valueReceipt.findUnique({ where: { forecastSnapshotId_oddsSnapshotId_market_selection: { forecastSnapshotId, oddsSnapshotId, market, selection } } }); return row ? rowToDto(row) : null; },
     findReceiptById: async (id) => { const row = await client.valueReceipt.findUnique({ where: { id } }); return row ? rowToDto(row) : null; },
     insertReceipt: async (value) => {
       const row = await client.valueReceipt.create({ data: {

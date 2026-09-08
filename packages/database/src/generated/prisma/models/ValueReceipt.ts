@@ -210,7 +210,7 @@ export type ValueReceiptGroupByOutputType = {
   forecastSnapshotId: string
   oddsSnapshotId: string
   outcome: string
-  selection: string | null
+  selection: string
   modelProbability: string | null
   noVigProbability: string | null
   fairOdds: string | null
@@ -249,7 +249,7 @@ export type ValueReceiptWhereInput = {
   forecastSnapshotId?: Prisma.StringFilter<"ValueReceipt"> | string
   oddsSnapshotId?: Prisma.StringFilter<"ValueReceipt"> | string
   outcome?: Prisma.StringFilter<"ValueReceipt"> | string
-  selection?: Prisma.StringNullableFilter<"ValueReceipt"> | string | null
+  selection?: Prisma.StringFilter<"ValueReceipt"> | string
   modelProbability?: Prisma.StringNullableFilter<"ValueReceipt"> | string | null
   noVigProbability?: Prisma.StringNullableFilter<"ValueReceipt"> | string | null
   fairOdds?: Prisma.StringNullableFilter<"ValueReceipt"> | string | null
@@ -272,7 +272,7 @@ export type ValueReceiptOrderByWithRelationInput = {
   forecastSnapshotId?: Prisma.SortOrder
   oddsSnapshotId?: Prisma.SortOrder
   outcome?: Prisma.SortOrder
-  selection?: Prisma.SortOrderInput | Prisma.SortOrder
+  selection?: Prisma.SortOrder
   modelProbability?: Prisma.SortOrderInput | Prisma.SortOrder
   noVigProbability?: Prisma.SortOrderInput | Prisma.SortOrder
   fairOdds?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -291,7 +291,7 @@ export type ValueReceiptOrderByWithRelationInput = {
 export type ValueReceiptWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   supersedesValueReceiptId?: string
-  forecastSnapshotId_oddsSnapshotId?: Prisma.ValueReceiptForecastSnapshotIdOddsSnapshotIdCompoundUniqueInput
+  forecastSnapshotId_oddsSnapshotId_market_selection?: Prisma.ValueReceiptForecastSnapshotIdOddsSnapshotIdMarketSelectionCompoundUniqueInput
   AND?: Prisma.ValueReceiptWhereInput | Prisma.ValueReceiptWhereInput[]
   OR?: Prisma.ValueReceiptWhereInput[]
   NOT?: Prisma.ValueReceiptWhereInput | Prisma.ValueReceiptWhereInput[]
@@ -300,7 +300,7 @@ export type ValueReceiptWhereUniqueInput = Prisma.AtLeast<{
   forecastSnapshotId?: Prisma.StringFilter<"ValueReceipt"> | string
   oddsSnapshotId?: Prisma.StringFilter<"ValueReceipt"> | string
   outcome?: Prisma.StringFilter<"ValueReceipt"> | string
-  selection?: Prisma.StringNullableFilter<"ValueReceipt"> | string | null
+  selection?: Prisma.StringFilter<"ValueReceipt"> | string
   modelProbability?: Prisma.StringNullableFilter<"ValueReceipt"> | string | null
   noVigProbability?: Prisma.StringNullableFilter<"ValueReceipt"> | string | null
   fairOdds?: Prisma.StringNullableFilter<"ValueReceipt"> | string | null
@@ -313,7 +313,7 @@ export type ValueReceiptWhereUniqueInput = Prisma.AtLeast<{
   oddsSnapshot?: Prisma.XOR<Prisma.ManualOddsSnapshotScalarRelationFilter, Prisma.ManualOddsSnapshotWhereInput>
   supersedesValueReceipt?: Prisma.XOR<Prisma.ValueReceiptNullableScalarRelationFilter, Prisma.ValueReceiptWhereInput> | null
   supersededBy?: Prisma.XOR<Prisma.ValueReceiptNullableScalarRelationFilter, Prisma.ValueReceiptWhereInput> | null
-}, "id" | "supersedesValueReceiptId" | "forecastSnapshotId_oddsSnapshotId">
+}, "id" | "supersedesValueReceiptId" | "forecastSnapshotId_oddsSnapshotId_market_selection">
 
 export type ValueReceiptOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -322,7 +322,7 @@ export type ValueReceiptOrderByWithAggregationInput = {
   forecastSnapshotId?: Prisma.SortOrder
   oddsSnapshotId?: Prisma.SortOrder
   outcome?: Prisma.SortOrder
-  selection?: Prisma.SortOrderInput | Prisma.SortOrder
+  selection?: Prisma.SortOrder
   modelProbability?: Prisma.SortOrderInput | Prisma.SortOrder
   noVigProbability?: Prisma.SortOrderInput | Prisma.SortOrder
   fairOdds?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -346,7 +346,7 @@ export type ValueReceiptScalarWhereWithAggregatesInput = {
   forecastSnapshotId?: Prisma.StringWithAggregatesFilter<"ValueReceipt"> | string
   oddsSnapshotId?: Prisma.StringWithAggregatesFilter<"ValueReceipt"> | string
   outcome?: Prisma.StringWithAggregatesFilter<"ValueReceipt"> | string
-  selection?: Prisma.StringNullableWithAggregatesFilter<"ValueReceipt"> | string | null
+  selection?: Prisma.StringWithAggregatesFilter<"ValueReceipt"> | string
   modelProbability?: Prisma.StringNullableWithAggregatesFilter<"ValueReceipt"> | string | null
   noVigProbability?: Prisma.StringNullableWithAggregatesFilter<"ValueReceipt"> | string | null
   fairOdds?: Prisma.StringNullableWithAggregatesFilter<"ValueReceipt"> | string | null
@@ -361,7 +361,7 @@ export type ValueReceiptCreateInput = {
   id?: string
   market: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -383,7 +383,7 @@ export type ValueReceiptUncheckedCreateInput = {
   forecastSnapshotId: string
   oddsSnapshotId: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -399,7 +399,7 @@ export type ValueReceiptUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   market?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -421,7 +421,7 @@ export type ValueReceiptUncheckedUpdateInput = {
   forecastSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   oddsSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -440,7 +440,7 @@ export type ValueReceiptCreateManyInput = {
   forecastSnapshotId: string
   oddsSnapshotId: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -455,7 +455,7 @@ export type ValueReceiptUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   market?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -472,7 +472,7 @@ export type ValueReceiptUncheckedUpdateManyInput = {
   forecastSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   oddsSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -498,9 +498,11 @@ export type ValueReceiptNullableScalarRelationFilter = {
   isNot?: Prisma.ValueReceiptWhereInput | null
 }
 
-export type ValueReceiptForecastSnapshotIdOddsSnapshotIdCompoundUniqueInput = {
+export type ValueReceiptForecastSnapshotIdOddsSnapshotIdMarketSelectionCompoundUniqueInput = {
   forecastSnapshotId: string
   oddsSnapshotId: string
+  market: string
+  selection: string
 }
 
 export type ValueReceiptCountOrderByAggregateInput = {
@@ -733,7 +735,7 @@ export type ValueReceiptCreateWithoutFixtureInput = {
   id?: string
   market: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -753,7 +755,7 @@ export type ValueReceiptUncheckedCreateWithoutFixtureInput = {
   forecastSnapshotId: string
   oddsSnapshotId: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -801,7 +803,7 @@ export type ValueReceiptScalarWhereInput = {
   forecastSnapshotId?: Prisma.StringFilter<"ValueReceipt"> | string
   oddsSnapshotId?: Prisma.StringFilter<"ValueReceipt"> | string
   outcome?: Prisma.StringFilter<"ValueReceipt"> | string
-  selection?: Prisma.StringNullableFilter<"ValueReceipt"> | string | null
+  selection?: Prisma.StringFilter<"ValueReceipt"> | string
   modelProbability?: Prisma.StringNullableFilter<"ValueReceipt"> | string | null
   noVigProbability?: Prisma.StringNullableFilter<"ValueReceipt"> | string | null
   fairOdds?: Prisma.StringNullableFilter<"ValueReceipt"> | string | null
@@ -816,7 +818,7 @@ export type ValueReceiptCreateWithoutForecastSnapshotInput = {
   id?: string
   market: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -836,7 +838,7 @@ export type ValueReceiptUncheckedCreateWithoutForecastSnapshotInput = {
   market: string
   oddsSnapshotId: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -878,7 +880,7 @@ export type ValueReceiptCreateWithoutOddsSnapshotInput = {
   id?: string
   market: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -898,7 +900,7 @@ export type ValueReceiptUncheckedCreateWithoutOddsSnapshotInput = {
   market: string
   forecastSnapshotId: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -940,7 +942,7 @@ export type ValueReceiptCreateWithoutSupersededByInput = {
   id?: string
   market: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -961,7 +963,7 @@ export type ValueReceiptUncheckedCreateWithoutSupersededByInput = {
   forecastSnapshotId: string
   oddsSnapshotId: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -981,7 +983,7 @@ export type ValueReceiptCreateWithoutSupersedesValueReceiptInput = {
   id?: string
   market: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -1002,7 +1004,7 @@ export type ValueReceiptUncheckedCreateWithoutSupersedesValueReceiptInput = {
   forecastSnapshotId: string
   oddsSnapshotId: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -1033,7 +1035,7 @@ export type ValueReceiptUpdateWithoutSupersededByInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   market?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1054,7 +1056,7 @@ export type ValueReceiptUncheckedUpdateWithoutSupersededByInput = {
   forecastSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   oddsSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1080,7 +1082,7 @@ export type ValueReceiptUpdateWithoutSupersedesValueReceiptInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   market?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1101,7 +1103,7 @@ export type ValueReceiptUncheckedUpdateWithoutSupersedesValueReceiptInput = {
   forecastSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   oddsSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1118,7 +1120,7 @@ export type ValueReceiptCreateManyFixtureInput = {
   forecastSnapshotId: string
   oddsSnapshotId: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -1133,7 +1135,7 @@ export type ValueReceiptUpdateWithoutFixtureInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   market?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1153,7 +1155,7 @@ export type ValueReceiptUncheckedUpdateWithoutFixtureInput = {
   forecastSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   oddsSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1171,7 +1173,7 @@ export type ValueReceiptUncheckedUpdateManyWithoutFixtureInput = {
   forecastSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   oddsSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1188,7 +1190,7 @@ export type ValueReceiptCreateManyForecastSnapshotInput = {
   market: string
   oddsSnapshotId: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -1203,7 +1205,7 @@ export type ValueReceiptUpdateWithoutForecastSnapshotInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   market?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1223,7 +1225,7 @@ export type ValueReceiptUncheckedUpdateWithoutForecastSnapshotInput = {
   market?: Prisma.StringFieldUpdateOperationsInput | string
   oddsSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1241,7 +1243,7 @@ export type ValueReceiptUncheckedUpdateManyWithoutForecastSnapshotInput = {
   market?: Prisma.StringFieldUpdateOperationsInput | string
   oddsSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1258,7 +1260,7 @@ export type ValueReceiptCreateManyOddsSnapshotInput = {
   market: string
   forecastSnapshotId: string
   outcome: string
-  selection?: string | null
+  selection: string
   modelProbability?: string | null
   noVigProbability?: string | null
   fairOdds?: string | null
@@ -1273,7 +1275,7 @@ export type ValueReceiptUpdateWithoutOddsSnapshotInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   market?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1293,7 +1295,7 @@ export type ValueReceiptUncheckedUpdateWithoutOddsSnapshotInput = {
   market?: Prisma.StringFieldUpdateOperationsInput | string
   forecastSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1311,7 +1313,7 @@ export type ValueReceiptUncheckedUpdateManyWithoutOddsSnapshotInput = {
   market?: Prisma.StringFieldUpdateOperationsInput | string
   forecastSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
   outcome?: Prisma.StringFieldUpdateOperationsInput | string
-  selection?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
   modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1446,7 +1448,7 @@ export type $ValueReceiptPayload<ExtArgs extends runtime.Types.Extensions.Intern
     forecastSnapshotId: string
     oddsSnapshotId: string
     outcome: string
-    selection: string | null
+    selection: string
     modelProbability: string | null
     noVigProbability: string | null
     fairOdds: string | null

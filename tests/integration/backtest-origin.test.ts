@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ForecastOrchestrator,
+  currentForecastConfigHash,
   type EvidenceProjectionDto,
   type ForecastOrchestratorRepository,
 } from "@bet-stats/domain";
@@ -75,7 +76,7 @@ describe("rolling-origin backtest", () => {
     const liveTrace: string[] = [];
     const backtestTrace: string[] = [];
     const orchestrator = new ForecastOrchestrator();
-    const input = { fixtureId: "fixture-1", asOf: cutoff, kind: "PRE_MATCH" as const, modelVersion: "poisson-ensemble-v1" as const, configHash: "forecast-config-v1", initiator: { type: "production" as const, correlationId: "live-1" } };
+    const input = { fixtureId: "fixture-1", asOf: cutoff, kind: "PRE_MATCH" as const, modelVersion: "poisson-ensemble-v1" as const, configHash: currentForecastConfigHash(), initiator: { type: "production" as const, correlationId: "live-1" } };
 
     const live = await orchestrator.run(input, repository(liveTrace));
     const replay = await runBacktestOrigin({
@@ -106,7 +107,7 @@ describe("rolling-origin backtest", () => {
       repository: repository(trace, future),
       window: { id: "window-poison", trainingEndsAt: "2026-07-31T23:59:59.999Z", forecastCutoff: cutoff, fixtureId: "fixture-1" },
       modelVersion: "poisson-ensemble-v1",
-      configHash: "forecast-config-v1",
+      configHash: currentForecastConfigHash(),
       correlationId: "backtest-poison",
     })).rejects.toMatchObject({ code: "LEAKAGE_DETECTED" });
     expect(trace.some((entry) => entry.startsWith("publish:"))).toBe(false);

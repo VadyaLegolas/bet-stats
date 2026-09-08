@@ -24,3 +24,5 @@ export * from "./evaluation/reliability.js";
 export * from "./evaluation/cohort-health.js";
 export * from "./evaluation/financial.js";
 export * from "./evaluation/clv.js";
+export * from "./evaluation/backtest.js";
+export * from "./evaluation/forecast-orchestrator.js";

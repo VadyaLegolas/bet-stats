@@ -1,24 +1,18 @@
-import { createHash } from "node:crypto";
 import { BadRequestException, ConflictException, Injectable, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import {
-  createForecast,
+  currentForecastConfigHash,
+  ForecastOrchestrator,
   parseForecastRequest,
   parseForecastResponse,
   type EvidenceProjectionDto,
+  type ForecastFixture,
+  type ForecastOrchestratorRepository,
   type ForecastRequestDto,
   type ForecastResponseDto,
 } from "@bet-stats/domain";
 
-export interface ForecastFixture {
-  readonly id: string;
-  readonly homeTeamId: string;
-  readonly awayTeamId: string;
-  readonly kickoffUtc: Date | string;
-  readonly canonicalIdentityResolved: boolean;
-}
-
-export interface ForecastPublicationRepository {
+export interface ForecastPublicationRepository extends ForecastOrchestratorRepository {
   assertEligible(): Promise<void>;
   findFixture(fixtureId: string): Promise<ForecastFixture | null>;
   findEvidence(teamId: string, cutoff: string): Promise<EvidenceProjectionDto | null>;
@@ -28,10 +22,6 @@ export interface ForecastPublicationRepository {
   listIssued?(fixtureId: string): Promise<readonly ForecastResponseDto[]>;
 }
 
-function sha(value: unknown): string {
-  return `sha256:${createHash("sha256").update(JSON.stringify(value)).digest("hex")}`;
-}
-
 function failure(code: string): Error & { code: string } {
   const exception = ["POST_KICKOFF_CUTOFF", "LINEUP_NOT_CONFIRMED", "REQUIRED_EVIDENCE_UNAVAILABLE", "UNRESOLVED_CANONICAL_IDENTITY"].includes(code)
     ? new ConflictException({ code })
@@ -39,64 +29,23 @@ function failure(code: string): Error & { code: string } {
   return Object.assign(exception, { code });
 }
 
-function verifyEvidence(projection: EvidenceProjectionDto | null, cutoff: string): asserts projection is EvidenceProjectionDto {
-  if (!projection?.buildId || !projection.receipt) throw failure("REQUIRED_EVIDENCE_UNAVAILABLE");
-  if (projection.resolvedAsOfUtc !== cutoff || projection.cutoffBoundary.observedAt !== cutoff) throw failure("EVIDENCE_CUTOFF_MISMATCH");
-  const boundary = Date.parse(cutoff);
-  for (const source of projection.receipt.inputs) {
-    if (Date.parse(source.effectiveAt) > boundary || Date.parse(source.observedAt) > boundary || (source.sourceUpdatedAt !== null && Date.parse(source.sourceUpdatedAt) > boundary)) throw failure("POST_CUTOFF_SOURCE_INPUT");
-  }
-}
-
 export async function generateForecast(raw: unknown, repository: ForecastPublicationRepository): Promise<ForecastResponseDto> {
   const request = parseForecastRequest(raw);
-  await repository.assertEligible();
-  const fixture = await repository.findFixture(request.fixtureId);
-  if (!fixture) throw failure("FIXTURE_NOT_FOUND");
-  if (!fixture.canonicalIdentityResolved) throw failure("UNRESOLVED_CANONICAL_IDENTITY");
-  if (Date.parse(request.cutoff) >= new Date(fixture.kickoffUtc).getTime()) throw failure("POST_KICKOFF_CUTOFF");
-  const [home, away] = await Promise.all([
-    repository.findEvidence(fixture.homeTeamId, request.cutoff),
-    repository.findEvidence(fixture.awayTeamId, request.cutoff),
-  ]);
-  verifyEvidence(home, request.cutoff);
-  verifyEvidence(away, request.cutoff);
-  const lineup = request.kind === "LINEUP_CONFIRMED" ? await repository.findOfficialLineup(fixture.id, request.cutoff) : null;
-  if (request.kind === "LINEUP_CONFIRMED" && !lineup) throw failure("LINEUP_NOT_CONFIRMED");
-  const homeBuildId = home.buildId;
-  const awayBuildId = away.buildId;
-  if (!homeBuildId || !awayBuildId) throw failure("REQUIRED_EVIDENCE_UNAVAILABLE");
-  const evidenceBuildIds = [homeBuildId, awayBuildId].sort();
-  const officialLineupObservationId = lineup?.id ?? null;
-  const preliminary = createForecast({ fixtureId: fixture.id, forecastSnapshotId: "pending", cutoff: request.cutoff, canonicalIdentityState: "RESOLVED", home, away, lineupAvailable: lineup !== null, sourceReliability: 1 });
-  const inputHash = sha({ forecastInputHash: preliminary.inputHash, officialLineupObservationId });
-  const snapshotId = sha({ fixtureId: fixture.id, kind: request.kind, cutoff: request.cutoff, modelVersion: preliminary.modelVersion, configHash: preliminary.configHash, inputHash, evidenceBuildIds, officialLineupObservationId }).slice(7);
-  const forecast = createForecast({ fixtureId: fixture.id, forecastSnapshotId: snapshotId, cutoff: request.cutoff, canonicalIdentityState: "RESOLVED", home, away, lineupAvailable: lineup !== null, sourceReliability: 1 });
-  const issuedAt = new Date().toISOString();
-  const draft: ForecastResponseDto = {
-    id: snapshotId,
-    fixtureId: fixture.id,
-    kind: request.kind,
-    officialLineupObservationId,
-    revision: 1,
-    cutoff: request.cutoff,
-    modelVersion: forecast.modelVersion,
-    modelHash: sha({ version: forecast.modelVersion }),
-    configVersion: forecast.configVersion,
-    configHash: forecast.configHash,
-    inputHash,
-    evidenceFingerprint: sha(evidenceBuildIds),
-    evidenceBuildIds,
-    probabilities: forecast.markets,
-    confidence: forecast.confidence,
-    limitations: forecast.limitations,
-    tail: { retainedMass: forecast.retainedMass, tailMass: forecast.tailMass, warning: forecast.tailWarning, normalizationVersion: forecast.normalizationVersion },
-    assumptions: forecast.assumptions,
-    receipt: { forecastSnapshotId: snapshotId, officialLineupObservationId, evidenceBuildIds, sourceRefs: forecast.sources, expectedGoals: forecast.expectedGoals, adjustments: forecast.adjustments },
-    issuedAt,
-  };
-  parseForecastResponse(draft);
-  return repository.publish(draft);
+  try {
+    return await new ForecastOrchestrator().run({
+      fixtureId: request.fixtureId,
+      asOf: request.cutoff,
+      kind: request.kind,
+      modelVersion: "poisson-ensemble-v1",
+      configHash: currentForecastConfigHash(),
+      initiator: { type: "production", correlationId: `api:${request.fixtureId}:${request.cutoff}` },
+    }, repository);
+  } catch (error) {
+    if (error instanceof BadRequestException || error instanceof ConflictException) throw error;
+    const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : null;
+    if (code) throw failure(code);
+    throw error;
+  }
 }
 
 type StoredForecast = Record<string, unknown>;

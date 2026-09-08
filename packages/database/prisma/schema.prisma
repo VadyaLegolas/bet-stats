@@ -90,6 +90,7 @@ model League {
   fixtures             Fixture[]
   externalRefs         LeagueExternalRef[]
   providerCapabilities ProviderCapability[]
+  forecastScores       ForecastScore[]
 
   @@index([countryCode, name])
 }
@@ -191,6 +192,7 @@ model Fixture {
   manualOddsSnapshots ManualOddsSnapshot[]
   valueReceipts ValueReceipt[]
   settlementReceipts SettlementReceipt[]
+  forecastScores ForecastScore[]
 
   // D-10: deliberately non-unique; this index finds ±36h candidates only.
   @@index([homeTeamId, awayTeamId, kickoffUtc])
@@ -457,6 +459,7 @@ model ForecastSnapshot {
   markets                     ForecastMarket[]
   valueReceipts               ValueReceipt[]
   settlementReceipts          SettlementReceipt[]
+  forecastScores              ForecastScore[]
 
   @@unique([fixtureId, kind, cutoff, modelHash, configHash, inputHash, evidenceFingerprint, officialLineupObservationId])
   @@unique([fixtureId, kind, revision])
@@ -582,10 +585,46 @@ model SettlementReceipt {
   forecastSnapshot               ForecastSnapshot    @relation(fields: [forecastSnapshotId], references: [id], onDelete: Restrict)
   supersedesSettlementReceipt    SettlementReceipt?  @relation("SettlementSupersession", fields: [supersedesSettlementReceiptId], references: [id], onDelete: Restrict)
   supersededBy                   SettlementReceipt?  @relation("SettlementSupersession")
+  forecastScores                 ForecastScore[]
 
   @@unique([resultVersionId, forecastSnapshotId, policyHash])
   @@unique([fixtureId, revision])
   @@index([fixtureId, settledAt])
+}
+
+/// Append-only proper-score evidence derived from one exact scoreable settlement.
+model ForecastScore {
+  id                         String            @id
+  settlementReceiptId        String
+  forecastSnapshotId         String
+  fixtureId                  String
+  leagueId                   String
+  market                     String
+  modelVersion               String
+  kickoffUtc                 DateTime          @db.Timestamptz(3)
+  outcome                    String
+  probabilities              Json
+  classOrder                 Json
+  rawChosenProbability       Float
+  clippedChosenProbability   Float
+  brierScore                 Float
+  logLoss                    Float
+  eventCount                 Int               @default(1)
+  formulaVersion             String
+  formulaHash                String
+  supersedesForecastScoreId  String?           @unique
+  receipt                    Json
+  createdAt                  DateTime           @default(now()) @db.Timestamptz(3)
+  settlementReceipt          SettlementReceipt @relation(fields: [settlementReceiptId], references: [id], onDelete: Restrict)
+  forecastSnapshot           ForecastSnapshot  @relation(fields: [forecastSnapshotId], references: [id], onDelete: Restrict)
+  fixture                    Fixture           @relation(fields: [fixtureId], references: [id], onDelete: Restrict)
+  league                     League            @relation(fields: [leagueId], references: [id], onDelete: Restrict)
+  supersedesForecastScore    ForecastScore?     @relation("ForecastScoreSupersession", fields: [supersedesForecastScoreId], references: [id], onDelete: Restrict)
+  supersededBy               ForecastScore?     @relation("ForecastScoreSupersession")
+
+  @@unique([settlementReceiptId, market, formulaHash])
+  @@index([modelVersion, leagueId, market, kickoffUtc])
+  @@index([fixtureId, market, kickoffUtc])
 }
 
 model LeagueExternalRef {

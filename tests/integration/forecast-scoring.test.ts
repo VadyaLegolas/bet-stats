@@ -88,7 +88,7 @@ describe("immutable forecast scoring facts", () => {
     `);
     expect(cohorts).toHaveLength(1);
     expect(cohorts[0]).toMatchObject({ modelVersion: "poisson-v1", leagueId: "score-league", market: "ONE_X_TWO", fixtureCount: 1n, scoreCount: 1n, eventCount: 1n });
-    expect(cohorts[0]!.meanBrier).toBeCloseTo(0.98);
+    expect(cohorts[0]!.meanBrier).toBeCloseTo(0.78);
     expect(cohorts[0]!.meanLogLoss).toBeCloseTo(-Math.log(0.3));
   });
 

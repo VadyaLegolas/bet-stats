@@ -151,6 +151,11 @@ export type ResultVersion = Prisma.ResultVersionModel
  */
 export type SettlementReceipt = Prisma.SettlementReceiptModel
 /**
+ * Model ForecastScore
+ * Append-only proper-score evidence derived from one exact scoreable settlement.
+ */
+export type ForecastScore = Prisma.ForecastScoreModel
+/**
  * Model LeagueExternalRef
  * 
  */

@@ -423,6 +423,7 @@ export const ModelName = {
   ValueReceipt: 'ValueReceipt',
   ResultVersion: 'ResultVersion',
   SettlementReceipt: 'SettlementReceipt',
+  ForecastScore: 'ForecastScore',
   LeagueExternalRef: 'LeagueExternalRef',
   SeasonExternalRef: 'SeasonExternalRef',
   TeamExternalRef: 'TeamExternalRef',
@@ -447,7 +448,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2375,6 +2376,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ForecastScore: {
+      payload: Prisma.$ForecastScorePayload<ExtArgs>
+      fields: Prisma.ForecastScoreFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ForecastScoreFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForecastScorePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ForecastScoreFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForecastScorePayload>
+        }
+        findFirst: {
+          args: Prisma.ForecastScoreFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForecastScorePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ForecastScoreFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForecastScorePayload>
+        }
+        findMany: {
+          args: Prisma.ForecastScoreFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForecastScorePayload>[]
+        }
+        create: {
+          args: Prisma.ForecastScoreCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForecastScorePayload>
+        }
+        createMany: {
+          args: Prisma.ForecastScoreCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ForecastScoreCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForecastScorePayload>[]
+        }
+        delete: {
+          args: Prisma.ForecastScoreDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForecastScorePayload>
+        }
+        update: {
+          args: Prisma.ForecastScoreUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForecastScorePayload>
+        }
+        deleteMany: {
+          args: Prisma.ForecastScoreDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ForecastScoreUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ForecastScoreUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForecastScorePayload>[]
+        }
+        upsert: {
+          args: Prisma.ForecastScoreUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForecastScorePayload>
+        }
+        aggregate: {
+          args: Prisma.ForecastScoreAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateForecastScore>
+        }
+        groupBy: {
+          args: Prisma.ForecastScoreGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ForecastScoreGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ForecastScoreCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ForecastScoreCountAggregateOutputType> | number
+        }
+      }
+    }
     LeagueExternalRef: {
       payload: Prisma.$LeagueExternalRefPayload<ExtArgs>
       fields: Prisma.LeagueExternalRefFieldRefs
@@ -3500,6 +3575,33 @@ export const SettlementReceiptScalarFieldEnum = {
 export type SettlementReceiptScalarFieldEnum = (typeof SettlementReceiptScalarFieldEnum)[keyof typeof SettlementReceiptScalarFieldEnum]
 
 
+export const ForecastScoreScalarFieldEnum = {
+  id: 'id',
+  settlementReceiptId: 'settlementReceiptId',
+  forecastSnapshotId: 'forecastSnapshotId',
+  fixtureId: 'fixtureId',
+  leagueId: 'leagueId',
+  market: 'market',
+  modelVersion: 'modelVersion',
+  kickoffUtc: 'kickoffUtc',
+  outcome: 'outcome',
+  probabilities: 'probabilities',
+  classOrder: 'classOrder',
+  rawChosenProbability: 'rawChosenProbability',
+  clippedChosenProbability: 'clippedChosenProbability',
+  brierScore: 'brierScore',
+  logLoss: 'logLoss',
+  eventCount: 'eventCount',
+  formulaVersion: 'formulaVersion',
+  formulaHash: 'formulaHash',
+  supersedesForecastScoreId: 'supersedesForecastScoreId',
+  receipt: 'receipt',
+  createdAt: 'createdAt'
+} as const
+
+export type ForecastScoreScalarFieldEnum = (typeof ForecastScoreScalarFieldEnum)[keyof typeof ForecastScoreScalarFieldEnum]
+
+
 export const LeagueExternalRefScalarFieldEnum = {
   id: 'id',
   leagueId: 'leagueId',
@@ -3815,6 +3917,20 @@ export type ListEnumForecastSnapshotStateFieldRefInput<$PrismaModel> = FieldRefI
 
 
 /**
+ * Reference to a field of type 'Float'
+ */
+export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+    
+
+
+/**
+ * Reference to a field of type 'Float[]'
+ */
+export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
+    
+
+
+/**
  * Reference to a field of type 'ReconciliationEntityType'
  */
 export type EnumReconciliationEntityTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReconciliationEntityType'>
@@ -3895,20 +4011,6 @@ export type EnumReconciliationActionFieldRefInput<$PrismaModel> = FieldRefInputT
  * Reference to a field of type 'ReconciliationAction[]'
  */
 export type ListEnumReconciliationActionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReconciliationAction[]'>
-    
-
-
-/**
- * Reference to a field of type 'Float'
- */
-export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
-    
-
-
-/**
- * Reference to a field of type 'Float[]'
- */
-export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
     
 
 /**
@@ -4088,6 +4190,7 @@ export type GlobalOmitConfig = {
   valueReceipt?: Prisma.ValueReceiptOmit
   resultVersion?: Prisma.ResultVersionOmit
   settlementReceipt?: Prisma.SettlementReceiptOmit
+  forecastScore?: Prisma.ForecastScoreOmit
   leagueExternalRef?: Prisma.LeagueExternalRefOmit
   seasonExternalRef?: Prisma.SeasonExternalRefOmit
   teamExternalRef?: Prisma.TeamExternalRefOmit

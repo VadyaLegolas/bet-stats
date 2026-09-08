@@ -57,6 +57,20 @@ describe("protected analytics internal routes", () => {
     expect(JSON.parse(String(fetchStub.mock.calls[1]?.[1]?.body))).toEqual({ kind: "INITIAL", cutoff: "2026-09-06T01:00:00.000Z" });
   });
 
+  it("forwards an empty forecast query as fixture-scoped issued discovery", async () => {
+    const fetchStub = vi.fn().mockResolvedValue(new Response("[]", { headers: { "content-type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchStub);
+
+    const response = await getForecast(
+      new NextRequest("http://web.test/internal-api/fixtures/x/forecasts?secret=drop"),
+      fixtureContext,
+    );
+
+    expect(fetchStub.mock.calls[0]?.[0].toString()).toBe("http://api.test/fixtures/fixture%2F1/forecasts");
+    expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+    expect(await response.json()).toEqual([]);
+  });
+
   it("allowlists odds and value bodies while preserving upstream errors exactly", async () => {
     const fetchStub = vi.fn()
       .mockResolvedValueOnce(new Response('{"code":"INVALID_DECIMAL_ODDS"}', { status: 400, headers: { "content-type": "application/problem+json" } }))

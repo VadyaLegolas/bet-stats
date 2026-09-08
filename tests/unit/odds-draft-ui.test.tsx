@@ -1,7 +1,11 @@
+import { createElement } from "../../apps/web/node_modules/react/index.js";
+import { renderToStaticMarkup } from "../../apps/web/node_modules/react-dom/server.js";
 import { describe, expect, it } from "vitest";
 
 import {
   buildOddsSubmission,
+  ForecastWorkbench,
+  forecastOptionLabel,
   oddsDraftStorageKey,
   selectStableSnapshot,
   validateOddsFields,
@@ -45,5 +49,20 @@ describe("manual odds workbench draft behavior", () => {
     const original = { id: "forecast-1" };
     expect(selectStableSnapshot("forecast-1", [original, { id: "forecast-2" }])).toBe(original);
     expect(selectStableSnapshot("missing", [original, { id: "forecast-2" }])).toBe(original);
+  });
+
+  it("labels discovered snapshots with their exact non-round cutoff", () => {
+    expect(forecastOptionLabel({
+      id: "forecast-lineup-2",
+      kind: "LINEUP_CONFIRMED",
+      revision: 2,
+      cutoff: "2026-09-06T11:17:23.000Z",
+    })).toBe("LINEUP_CONFIRMED revision 2 — 2026-09-06T11:17:23.000Z — forecast-lineup-2");
+  });
+
+  it("renders an honest empty state when discovery returns no issued snapshots", () => {
+    const markup = renderToStaticMarkup(createElement(ForecastWorkbench, { fixtureId: "fixture-1", forecasts: [] }));
+    expect(markup).toContain("No issued forecast snapshot is available for this fixture.");
+    expect(markup).not.toContain("fixture and cutoff");
   });
 });

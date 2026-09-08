@@ -7,6 +7,7 @@ import {
 } from "../../apps/api/src/modules/evaluation/evaluation.controller.js";
 import {
   EvaluationService,
+  encodeCandidateCursor,
   type EvaluationRepository,
   type ScorecardCohort,
 } from "../../apps/api/src/modules/evaluation/evaluation.service.js";
@@ -93,5 +94,31 @@ describe("evaluation scorecard API boundary", () => {
     expect(response.headers.Location).toContain("modelVersion=all");
     expect(response.headers.Location).toContain("competitionId=all");
     expect(response.headers.Location).toContain("market=all");
+  });
+
+  it("uses an opaque cohort-bound cursor and reconciles stable candidate pages", async () => {
+    const rows = [
+      { id: "candidate-b", valueReceiptId: "value-b", settlementReceiptId: "settlement-b", resultVersionId: "result-b", selection: "AWAY", decimalOdds: "3.1", outcome: "LOSS", stakeUnits: "1", profitUnits: "-1", clv: { status: "UNAVAILABLE", reason: "NO_COMPARABLE_CLOSE", value: null }, settledAt: "2026-01-10T12:00:00.000Z" },
+      { id: "candidate-a", valueReceiptId: "value-a", settlementReceiptId: "settlement-a", resultVersionId: "result-a", selection: "HOME", decimalOdds: "2.5", outcome: "WIN", stakeUnits: "1", profitUnits: "1.5", clv: { status: "AVAILABLE", reason: null, value: "0.04" }, settledAt: "2026-01-10T12:00:00.000Z" },
+    ] as const;
+    const repository: EvaluationRepository = {
+      loadCohort: vi.fn(async () => cohort()),
+      enumerateAvailableCohorts: vi.fn(async () => [cohort()]),
+      listValueCandidates: vi.fn(async (_identity, cursor, limit) => {
+        const start = cursor ? rows.findIndex((row) => row.id === cursor.id) + 1 : 0;
+        const items = rows.slice(start, start + limit);
+        return { items, nextCursor: start + limit < rows.length ? { settledAt: items.at(-1)!.settledAt, id: items.at(-1)!.id } : null, pageTotals: { count: items.length, stakeUnits: String(items.length), profitUnits: String(items.reduce((sum, item) => sum + Number(item.profitUnits), 0)) } };
+      }),
+    };
+    const service = new EvaluationService(repository);
+    const first = await service.valueCandidates({ ...bounded, limit: "1" });
+    expect(first.items.map((row) => row.id)).toEqual(["candidate-b"]);
+    expect(first.nextCursor).not.toContain("candidate-b");
+    const second = await service.valueCandidates({ ...bounded, limit: "1", cursor: first.nextCursor! });
+    expect(second.items.map((row) => row.id)).toEqual(["candidate-a"]);
+    expect([first, second].reduce((sum, page) => sum + page.pageTotals.count, 0)).toBe(2);
+    await expect(service.valueCandidates({ ...bounded, modelVersion: "other", cursor: first.nextCursor! })).rejects.toThrow("CURSOR_COHORT_MISMATCH");
+    await expect(service.valueCandidates({ ...bounded, cursor: "not-a-cursor" })).rejects.toThrow("INVALID_CURSOR");
+    expect(encodeCandidateCursor(bounded, { settledAt: rows[0].settledAt, id: rows[0].id })).not.toContain(rows[0].id);
   });
 });

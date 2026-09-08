@@ -119,6 +119,6 @@ export class OddsService implements OnModuleDestroy {
   private readonly repository = this.client ? createPrismaManualOddsRepository(this.client) : null;
   private db() { if (!this.repository) throw Object.assign(new ServiceUnavailableException({ code: "DATABASE_UNAVAILABLE" }), { code: "DATABASE_UNAVAILABLE" }); return this.repository; }
   submit(input: unknown): Promise<ManualOddsSnapshotDto> { return submitManualOdds(input, this.db()); }
-  get(fixtureId: string, id: string): Promise<ManualOddsSnapshotDto> { return getManualOddsSnapshot(fixtureId, id, this.db()); }
+  async get(fixtureId: string, id: string): Promise<ManualOddsSnapshotDto> { return getManualOddsSnapshot(fixtureId, id, this.db()); }
   async onModuleDestroy(): Promise<void> { await this.client?.$disconnect(); }
 }

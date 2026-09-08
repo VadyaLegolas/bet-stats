@@ -1,6 +1,6 @@
 "use client";
 
-import { canonicalizeDecimalOdds, clearOddsDraftAfterSubmission, MARKET_SELECTIONS, MAX_DECIMAL_ODDS_LENGTH, MAX_DECIMAL_ODDS_SCALE, parseOddsDraft, serializeOddsDraft, type ForecastResponseDto, type OddsMarket, type OddsSelection } from "@bet-stats/domain";
+import { clearOddsDraftAfterSubmission, MARKET_SELECTIONS, parseOddsDraft, serializeOddsDraft, type ForecastResponseDto, type OddsMarket, type OddsSelection } from "@bet-stats/domain";
 import { useEffect, useMemo, useState } from "react";
 
 type OddsSnapshot = { oddsSnapshotId: string; fixtureId: string; market: OddsMarket; sourceLabel: string; capturedAt: string; schemaVersion: string; normalizationVersion: string; overround: string; selections: readonly { selection: OddsSelection; decimalOdds: string; impliedProbability: string; noVigProbability: string }[] };
@@ -12,10 +12,21 @@ const OUTCOME_COPY = {
   NO_VALUE: { heading: "No value", detail: "Evidence was sufficient, but one or more configured value thresholds were not met." },
   INSUFFICIENT_EVIDENCE: { heading: "Insufficient evidence", detail: "Evidence, confidence, or data-quality gates did not support a qualified comparison." },
 } as const;
+const MAX_DECIMAL_ODDS_SCALE = 20;
+const MAX_DECIMAL_ODDS_LENGTH = 128;
+const CLIENT_DECIMAL_ODDS_PATTERN = /^(?:0|[1-9]\d*)(?:\.\d+)?$/;
+
+function canonicalizeClientOdds(value: string): string {
+  if (value.length > MAX_DECIMAL_ODDS_LENGTH || !CLIENT_DECIMAL_ODDS_PATTERN.test(value)) throw new Error("INVALID_DECIMAL_ODDS");
+  const [integer, fraction = ""] = value.split(".");
+  if (integer!.length > 107 || fraction.length > MAX_DECIMAL_ODDS_SCALE || !Number.isFinite(Number(value)) || Number(value) <= 1) throw new Error("INVALID_DECIMAL_ODDS");
+  const trimmedFraction = fraction.replace(/0+$/, "");
+  return trimmedFraction ? `${integer}.${trimmedFraction}` : integer!;
+}
 
 export function oddsDraftStorageKey(fixtureId: string, market: OddsMarket): string { return `bet-stats:manual-odds-draft-v1:${encodeURIComponent(fixtureId)}:${market}`; }
-export function validateOddsFields(market: OddsMarket, fields: Partial<Record<OddsSelection, string>>): Partial<Record<OddsSelection, string>> { const errors: Partial<Record<OddsSelection, string>> = {}; for (const selection of MARKET_SELECTIONS[market]) { const value = fields[selection] ?? ""; if (!value) errors[selection] = "Enter decimal odds."; else { try { canonicalizeDecimalOdds(value); } catch { errors[selection] = `Use plain decimal odds greater than 1.00, up to ${MAX_DECIMAL_ODDS_SCALE} decimal places.`; } } } return errors; }
-export function buildOddsSubmission(input: { fixtureId: string; market: OddsMarket; sourceLabel: string; fields: Partial<Record<OddsSelection, string>>; capturedAt: string; oddsSnapshotId: string }) { if (!input.sourceLabel.trim() || Object.keys(validateOddsFields(input.market, input.fields)).length > 0) throw new Error("INCOMPLETE_ODDS_BOOK"); return { oddsSnapshotId: input.oddsSnapshotId, market: input.market, sourceLabel: input.sourceLabel.trim(), capturedAt: input.capturedAt, selections: MARKET_SELECTIONS[input.market].map((selection) => ({ selection, decimalOdds: canonicalizeDecimalOdds(input.fields[selection]!) })) }; }
+export function validateOddsFields(market: OddsMarket, fields: Partial<Record<OddsSelection, string>>): Partial<Record<OddsSelection, string>> { const errors: Partial<Record<OddsSelection, string>> = {}; for (const selection of MARKET_SELECTIONS[market]) { const value = fields[selection] ?? ""; if (!value) errors[selection] = "Enter decimal odds."; else if (CLIENT_DECIMAL_ODDS_PATTERN.test(value) && Number(value) <= 1) errors[selection] = "Decimal odds must be greater than 1.00."; else { try { canonicalizeClientOdds(value); } catch { errors[selection] = `Use plain decimal odds greater than 1.00, up to ${MAX_DECIMAL_ODDS_SCALE} decimal places.`; } } } return errors; }
+export function buildOddsSubmission(input: { fixtureId: string; market: OddsMarket; sourceLabel: string; fields: Partial<Record<OddsSelection, string>>; capturedAt: string; oddsSnapshotId: string }) { if (!input.sourceLabel.trim() || Object.keys(validateOddsFields(input.market, input.fields)).length > 0) throw new Error("INCOMPLETE_ODDS_BOOK"); return { oddsSnapshotId: input.oddsSnapshotId, market: input.market, sourceLabel: input.sourceLabel.trim(), capturedAt: input.capturedAt, selections: MARKET_SELECTIONS[input.market].map((selection) => ({ selection, decimalOdds: canonicalizeClientOdds(input.fields[selection]!) })) }; }
 export function selectStableSnapshot<T extends { id: string }>(selectedId: string, snapshots: readonly T[]): T | undefined { return snapshots.find(({ id }) => id === selectedId) ?? snapshots[0]; }
 function percent(value: number | string): string { return `${(Number(value) * 100).toFixed(1)}%`; }
 function labelReason(reason: string): string { return reason.toLowerCase().replaceAll("_", " "); }

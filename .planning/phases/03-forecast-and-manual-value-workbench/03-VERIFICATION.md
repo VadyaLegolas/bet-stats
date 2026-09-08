@@ -1,202 +1,157 @@
 ---
 phase: 03-forecast-and-manual-value-workbench
-verified: 2026-09-08T06:04:12Z
-status: gaps_found
-score: 0/5 must-haves verified
-behavior_unverified: 1
+verified: 2026-09-08T11:19:29Z
+status: human_needed
+score: 1/5 must-haves verified
+behavior_unverified: 4
 overrides_applied: 0
-requirements:
-  PRED-01: blocked
-  PRED-02: blocked
-  PRED-03: blocked
-  PRED-04: blocked
-  PRED-05: satisfied
-  PRED-06: blocked
-  ODDS-01: blocked
-  ODDS-02: blocked
-  ODDS-03: satisfied
-  VALUE-01: blocked
-  VALUE-02: blocked
-  VALUE-03: blocked
-  VALUE-04: blocked
-gaps:
-  - truth: "A user can discover and inspect issued normalized forecasts and their evidence."
-    status: failed
-    reason: "The fixture page invents three cutoff timestamps instead of discovering issued snapshots, so valid INITIAL and LINEUP_CONFIRMED forecasts at their actual cutoffs are invisible."
-    artifacts:
-      - path: "apps/web/app/fixtures/[fixtureId]/page.tsx"
-        issue: "Queries only kickoff-minus-24h, minus-6h, and minus-1h exact cutoffs."
-      - path: "apps/api/src/modules/forecasts/forecasts.service.ts"
-        issue: "Read API requires exact fixture/kind/cutoff and exposes no issued-snapshot list."
-    missing:
-      - "Add fixture-scoped issued forecast discovery by exact snapshot identity and preserve explicit selection."
-  - truth: "Forecast and manual-odds receipts preserve every immutable provenance input and create distinct revisions when those inputs change."
-    status: failed
-    reason: "Forecast identity omits the official lineup observation; odds identity omits source label and replacement lineage; concurrent distinct forecast revisions can also allocate the same revision."
-    artifacts:
-      - path: "apps/api/src/modules/forecasts/forecasts.service.ts"
-        issue: "snapshotId/inputHash do not bind officialLineupObservationId; revision allocation is a read-then-insert race."
-      - path: "apps/api/src/modules/odds/odds.service.ts"
-        issue: "inputHash excludes sourceLabel and replacementOfOddsSnapshotId."
-      - path: "packages/database/prisma/schema.prisma"
-        issue: "Forecast and odds content uniqueness repeats the incomplete identities."
-    missing:
-      - "Bind official lineup observation identity to forecast content identity and receipt."
-      - "Hash and compare all immutable manual-odds fields, including source and replacement lineage."
-      - "Serialize or retry fixture/kind revision allocation."
-  - truth: "The exact forecast and odds snapshots produce the requested selection's reproducible edge, EV, gate outcome, and receipt."
-    status: failed
-    reason: "Value identity is only forecastSnapshotId plus oddsSnapshotId. After one selection is evaluated, another selection from the same book returns the first selection's receipt. The database guard also permits internally false receipt fields."
-    artifacts:
-      - path: "apps/api/src/modules/value/value.service.ts"
-        issue: "Lookup, hash ID, and collision recovery omit market/selection."
-      - path: "packages/database/prisma/schema.prisma"
-        issue: "@@unique([forecastSnapshotId, oddsSnapshotId]) collapses all selections."
-      - path: "packages/database/prisma/migrations/20260905_phase03_forecast_value_snapshots/migration.sql"
-        issue: "Pair trigger checks fixture/market only, not ISSUED lifecycle, selection membership, or derived values."
-    missing:
-      - "Include market and selection in value identity, or persist one receipt containing every selection consistently."
-      - "Strengthen database enforcement for lifecycle, selection membership, and derived receipt values."
-  - truth: "Public odds and snapshot resources reject hostile input and enforce their fixture-scoped identity."
-    status: failed
-    reason: "Decimal strings are unbounded before Decimal construction, capturedAt accepts non-canonical Date.parse input without a documented fixture window, and the odds GET route ignores its fixtureId parameter."
-    artifacts:
-      - path: "packages/domain/src/odds/contract.ts"
-        issue: "No bounded decimal grammar/length/scale; permissive Date.parse timestamp."
-      - path: "apps/api/src/modules/odds/odds.controller.ts"
-        issue: "GET passes only oddsSnapshotId to OddsService.get."
-    missing:
-      - "Bound and canonicalize decimal/timestamp inputs before expensive parsing."
-      - "Resolve fixture chronology and enforce documented capture bounds."
-      - "Query odds by both fixtureId and oddsSnapshotId and test cross-fixture denial."
+re_verification:
+  previous_status: gaps_found
+  previous_score: 0/5
+  gaps_closed:
+    - "Issued forecasts are discovered by exact immutable ID rather than invented cutoffs."
+    - "Forecast and odds identities include official-lineup, source, and replacement provenance."
+    - "Value receipts are selection-aware and database guards validate source-derived values."
+    - "Odds parsing, chronology, and fixture-scoped retrieval are hardened."
+  gaps_remaining: []
+  regressions: []
 behavior_unverified_items:
-  - truth: "A user can distinguish event probability from confidence and inspect all confidence components."
-    test: "Open an issued forecast in the production-backed browser flow and inspect probability, completeness, lineup, freshness, source reliability, and model stability displays."
-    expected: "Probability and confidence remain distinct, all five components and limitations are visible, and no certainty language is used."
-    why_human: "The components are present in source, but the focused verifier run did not start application services and the existing browser test does not assert every named confidence component."
+  - truth: "Probability/confidence separation and all five confidence components are user-visible."
+    test: "Run the production-backed Chromium workbench flow at desktop and 360px/200% zoom."
+    expected: "Probability, confidence components, limitations, and responsible-use copy are distinct and visible."
+    why_human: "The production browser test could not run without PostgreSQL."
+  - truth: "Corrected and concurrent forecast publications preserve immutable linked revisions."
+    test: "Run the CR-03 and WR-01 cases in phase-03-security.test.ts against migrated PostgreSQL."
+    expected: "Corrected observations create distinct revisions, identical retries converge, and concurrent distinct writes receive consecutive revisions."
+    why_human: "This database concurrency invariant cannot be proven from source; DATABASE_URL is absent and Docker Engine unavailable."
+  - truth: "Manual odds are durably immutable, provenance-complete, chronologically bounded, and fixture-scoped."
+    test: "Run CR-02, CR-05, CR-06, and WR-02 against migrated PostgreSQL."
+    expected: "All provenance, hostile-input, chronology, and cross-fixture cases pass."
+    why_human: "Available API tests use repository seams; the durable path was not executable."
+  - truth: "Each exact forecast/odds/selection tuple produces a source-verifiable receipt."
+    test: "Run CR-01/WR-03 PostgreSQL cases and the two-selection production Chromium flow."
+    expected: "HOME and DRAW remain distinct, tampered fields are rejected, and server/DOM/clipboard/download JSON agree."
+    why_human: "The decisive trigger and end-to-end path require PostgreSQL."
+human_verification:
+  - test: "Apply all migrations to disposable PostgreSQL and run tests/integration/phase-03-security.test.ts."
+    expected: "All named CR-01..CR-06 and WR-01..WR-03 cases pass."
+    why_human: "No DATABASE_URL; Docker Engine unavailable."
+  - test: "Run tests/e2e/forecast-workbench.spec.ts with production Nest/Next/PostgreSQL services."
+    expected: "All three Chromium tests pass, including two-selection receipt parity and confidence/responsive checks."
+    why_human: "Production E2E cannot run in the current environment."
+requirements:
+  PRED-01: verified
+  PRED-02: verified
+  PRED-03: verified
+  PRED-04: human_needed
+  PRED-05: human_needed
+  PRED-06: human_needed
+  ODDS-01: human_needed
+  ODDS-02: human_needed
+  ODDS-03: verified
+  VALUE-01: human_needed
+  VALUE-02: human_needed
+  VALUE-03: human_needed
+  VALUE-04: human_needed
 ---
 
 # Phase 3: Forecast and Manual Value Workbench Verification Report
 
 **Phase Goal:** As a football analytics user, I want to compare a frozen forecast with manual odds, so that I can see a reproducible value or abstention result.
-**Verified:** 2026-09-08T06:04:12Z
-**Status:** gaps_found
-**Re-verification:** No prior Phase 3 verification report existed; this is the initial goal verification after the MVP user-story correction in `bdd8e69`.
+**Verified:** 2026-09-08T11:19:29Z
+**Status:** human_needed
+**Re-verification:** Yes — after gap plans 03-08 through 03-12.
 
 ## User Flow Coverage
 
-| Step | Expected | Actual code evidence | Status |
+| Step | Expected | Evidence | Status |
 | --- | --- | --- | --- |
-| Open a fixture forecast | Discover an issued frozen forecast at its real cutoff | `page.tsx` fabricates three cutoff instants and the API only supports exact kind+cutoff lookup | ✗ FAILED |
-| Inspect forecast and confidence | See normalized markets, fair odds, evidence, and distinct confidence components | Domain calculation and workbench rendering are substantive; focused unit tests pass, but all named UI components lack a current behavioral witness | ⚠ PRESENT_BEHAVIOR_UNVERIFIED |
-| Enter manual odds | Submit a complete positive book and correct field errors | Complete-book and normalization logic works, but unbounded decimals and incomplete immutable identity violate the public/audit contract | ✗ FAILED |
-| Compare exact snapshots | Receive the selected event's edge, EV, and gated outcome | Receipt identity collapses all selections in one forecast/odds pair | ✗ FAILED |
-| Outcome | See a reproducible value or abstention result | A second selection can return the first selection's values and receipt | ✗ FAILED |
+| Discover forecast | Issued receipts at arbitrary cutoffs are listed and selected by exact ID | Fixture/state DB predicate, stable ordering, no synthesized cutoff; focused API/UI tests pass | ✓ VERIFIED |
+| Inspect forecast | Coherent markets, fair odds, evidence and confidence | Domain tests pass; production visual assertion exists but was not run | ⚠ PRESENT_BEHAVIOR_UNVERIFIED |
+| Enter/replace odds | Complete canonical book with immutable provenance | Bounded parser and API tests pass; PostgreSQL path not run | ⚠ PRESENT_BEHAVIOR_UNVERIFIED |
+| Compare snapshots | Selection-specific edge/EV/gates and receipt | Selection is in hash/lookup/unique key; DB trigger/E2E not run | ⚠ PRESENT_BEHAVIOR_UNVERIFIED |
+| Outcome | Reproducible value/no-value/insufficient-evidence result | Pure logic passes; production two-selection flow not run | ⚠ PRESENT_BEHAVIOR_UNVERIFIED |
 
 ## Goal Achievement
 
 ### Observable Truths
 
-| # | Roadmap truth | Status | Evidence |
+| # | Truth | Status | Evidence |
 | --- | --- | --- | --- |
-| 1 | User can inspect normalized 1X2, O/U 2.5 and BTTS probabilities, fair odds, and evidence | ✗ FAILED | The model is implemented and tested, but the page cannot discover valid snapshots except at invented exact cutoffs. |
-| 2 | User distinguishes probability from confidence and inspects all components | ⚠ PRESENT_BEHAVIOR_UNVERIFIED | Separate DTO/render fields exist; no current named behavioral test asserts all five displayed components. |
-| 3 | Forecast kinds are immutable, cutoff/provenance tied, and LINEUP_CONFIRMED is official-only | ✗ FAILED | Official-only DB guard exists, but official observation is absent from forecast identity; corrected observations cannot create a distinct revision. |
-| 4 | Complete validated odds are immutable, provenance-visible, and no-vig normalized | ✗ FAILED | Validation/normalization work, but identity drops source and replacement lineage and accepts unbounded decimal strings. |
-| 5 | Exact snapshot pair produces edge/EV and correct candidate/abstention gates | ✗ FAILED | Value identity omits selection; subsequent selections return the wrong immutable result. |
+| 1 | Inspect normalized 1X2, O/U 2.5, BTTS, fair odds, and evidence | ✓ VERIFIED | Unit suite 152/152 and focused API/contract suite 29/29 pass; exact issued-list wiring exists. |
+| 2 | Distinguish probability from confidence and inspect all components | ⚠ PRESENT_BEHAVIOR_UNVERIFIED | Contract/render fields exist; production Chromium not run. |
+| 3 | Immutable, provenance-tied forecast kinds and official-only lineup snapshots | ⚠ PRESENT_BEHAVIOR_UNVERIFIED | Official observation hashing and advisory-lock publication exist; PostgreSQL invariant tests not run. |
+| 4 | Validated immutable odds with provenance and no-vig normalization | ⚠ PRESENT_BEHAVIOR_UNVERIFIED | Parser, chronology, full identity and fixture scope exist; durable DB path not run. |
+| 5 | Exact pair produces correct edge/EV and candidate/abstention | ⚠ PRESENT_BEHAVIOR_UNVERIFIED | Selection-aware identity and source-derived trigger checks exist; DB/browser proof not run. |
 
-**Score:** 0/5 truths verified (1 present, behavior-unverified). Present-but-behavior-unverified truths are excluded from the verified score.
+**Score:** 1/5 truths verified (4 present and wired, behavior-unverified).
 
-### Required Artifacts and Data Flow
+### Required Artifacts and Key Links
 
-| Artifact | Levels 1-2 | Wiring/data flow | Status |
-| --- | --- | --- | --- |
-| `packages/domain/src/forecast/model.ts` | Exists, substantive | Evidence DTO to coherent matrix/markets; exercised by unit tests | ✓ VERIFIED |
-| `packages/domain/src/odds/normalize.ts` | Exists, substantive | Complete book to implied/no-vig probabilities | ✓ VERIFIED |
-| `packages/domain/src/value/decision.ts` | Exists, substantive | Exact DTO inputs to edge/EV/gates | ✓ VERIFIED at pure-function level |
-| `packages/database/prisma/schema.prisma` + Phase 3 migration | Exists, substantive | Wired to Prisma repositories | ✗ INCOMPLETE identities/guard |
-| Forecast/odds/value Nest services | Exist, substantive | Wired through guarded controllers to PostgreSQL | ✗ WIRED WITH BLOCKING correctness defects |
-| Fixture workbench and proxies | Exist, substantive | Next to Nest routes; server results render | ✗ HOLLOW discovery for non-invented forecast cutoffs |
-| Phase 3 unit/integration/E2E tests | Exist, substantive | Active Vitest/Playwright config | ⚠ Missing adversarial cases corresponding to all nine review findings |
-
-### Key Link Verification
-
-| From | To | Via | Status | Details |
-| --- | --- | --- | --- | --- |
-| Phase 2 evidence | Forecast receipt | `generateForecast` and `createForecast` | ⚠ PARTIAL | Evidence flows, but official lineup provenance does not participate in immutable identity. |
-| Issued forecasts | Fixture workbench | Exact kind+cutoff GET | ✗ NOT WIRED FOR DISCOVERY | Page guesses cutoffs instead of listing issued identities. |
-| Manual odds form | Immutable odds row | Proxy → controller → service → Prisma | ⚠ PARTIAL | Real persistence, but source/lineage are absent from identity and hostile numerics are unbounded. |
-| Forecast + odds + selection | Value receipt | `compareValue` → `decideValue` → Prisma | ✗ INCORRECT | Selection is used for calculation but omitted from durable identity. |
-| Value receipt | DOM/copy/download | API receipt as single source | ✓ WIRED | Existing E2E source compares canonical JSON, but correctness depends on the broken receipt identity upstream. |
-
-### Code Review Claim Validation
-
-| Finding | Current verdict | Independent evidence |
+| Artifact/link | Status | Evidence |
 | --- | --- | --- |
-| CR-01 selection-collapsing value identity | CONFIRMED BLOCKER | Service lookup/hash/collision and Prisma uniqueness use only two snapshot IDs. |
-| CR-02 odds source/replacement omitted from identity | CONFIRMED BLOCKER | `inputHash` JSON excludes both fields; DB content key uses that hash. |
-| CR-03 official lineup observation omitted from forecast identity | CONFIRMED BLOCKER | Observation is persisted but absent from `snapshotId`, model input, and content key. |
-| CR-04 invented UI cutoffs | CONFIRMED BLOCKER | Page hardcodes kickoff offsets 24/6/1 and service GET requires exact cutoff. |
-| CR-05 fixture ignored by odds GET | CONFIRMED BLOCKER | Controller receives only `oddsSnapshotId`; service queries by ID. |
-| CR-06 unbounded decimal input | CONFIRMED BLOCKER | Arbitrary strings reach `new Decimal()` before any grammar/size bound. |
-| WR-01 concurrent revision allocation | CONFIRMED WARNING | Transaction reads latest then inserts `latest+1`; no lock/serializable retry for distinct content. |
-| WR-02 non-canonical/unbounded odds time | CONFIRMED WARNING | Contract uses `Date.parse`; service does not resolve fixture chronology. |
-| WR-03 incomplete database pair trigger | CONFIRMED WARNING | Trigger checks fixture/market only. |
+| Evidence → one 64-cell forecast matrix → all markets/fair odds | ✓ VERIFIED | Domain implementation and unit assertions pass. |
+| Official lineup → forecast hash/receipt → linked revision | ⚠ WIRED | CR-03 static gap closed; WR-01 requires PostgreSQL. |
+| Issued DB rows → fixture list → exact client selection | ✓ WIRED | CR-04 closed; no kickoff-offset synthesis remains. |
+| Odds input → bounded parse → chronology → full identity → fixture-scoped row | ⚠ WIRED | CR-02/05/06 and WR-02 code exists; durable path unexecuted. |
+| Forecast+odds+market+selection → decision → guarded receipt | ⚠ WIRED | CR-01/WR-03 static gaps closed; DB proof unavailable. |
 
-Commits `223bebb` and `37db10e` were inspected directly. They respectively defer database-unavailable errors until endpoint calls and render a null source-updated value in an explicit element. Both are valid regression fixes, but neither touches any of the nine findings above.
+### Review Finding Closure
+
+| Finding | Code evidence | Runtime evidence |
+| --- | --- | --- |
+| CR-01 | Market+selection in lookup/hash/Prisma unique key | Named DB test not run |
+| CR-02 | Source and replacement lineage in canonical odds identity | API seam passes; DB test not run |
+| CR-03 | Official observation in forecast hash, ID, receipt and DB key | Focused publication passes; DB test not run |
+| CR-04 | Issued-list API replaces invented cutoffs | Focused API/UI tests pass |
+| CR-05 | Fixture ID reaches compound odds lookup | Focused API test passes; DB case not run |
+| CR-06 | Bounded grammar precedes Decimal construction | Unit/API cases pass |
+| WR-01 | Transaction advisory lock and protected predecessor read | DB concurrency case not run |
+| WR-02 | Canonical UTC and explicit kickoff/clock-skew bounds | Unit/API cases pass; DB case not run |
+| WR-03 | Trigger checks lifecycle, selection and derived fields | Migration inspected; DB negative case not run |
 
 ### Behavioral Spot-Checks
 
-| Behavior | Command | Result | Status |
-| --- | --- | --- | --- |
-| Phase 3 calculation, contracts, proxies, drafts, and responsible copy | `node node_modules/vitest/vitest.mjs run` on seven focused Phase 3 unit files | 7 files, 59 tests passed | ✓ PASS |
-| Same focused run inside sandbox | Same command | Vite startup `spawn EPERM` | INFO: sandbox limitation; rerun outside sandbox passed |
-| Production browser chain | Not run: requires application services and PostgreSQL | Existing test source covers a single HOME receipt path but not the review counterexamples | ? SKIP / human after fixes |
+| Check | Result | Status |
+| --- | --- | --- |
+| `corepack pnpm test` | 15 files, 152 tests passed | ✓ PASS |
+| Four focused forecast/odds/value API files | 4 files, 29 tests passed | ✓ PASS |
+| PostgreSQL security matrix | Not run: no DATABASE_URL; Docker Engine unavailable | ? SKIP |
+| Production Chromium workbench | Not run for the same PostgreSQL blocker | ? SKIP |
 
-No Phase 3 probe scripts are declared.
+No Phase 3 probes are declared.
 
 ### Requirements Coverage
 
-| Requirement | Status | Evidence / blocker |
+| Requirements | Status | Evidence |
 | --- | --- | --- |
-| PRED-01, PRED-02, PRED-03 | ✗ BLOCKED | Calculations pass, but issued forecast discovery is false for arbitrary real cutoffs. |
-| PRED-04 | ✗ BLOCKED | Official lineup provenance is not part of immutable content identity. |
-| PRED-05 | ✓ SATISFIED in source | Probability/confidence separation and components exist; final visual behavior remains human-unverified. |
-| PRED-06 | ✗ BLOCKED | Official guard exists, but corrected official observations collapse to the same identity. |
-| ODDS-01 | ✗ BLOCKED | Complete-book validation exists; hostile unbounded decimal strings violate the public parser contract. |
-| ODDS-02 | ✗ BLOCKED | Source and replacement lineage are stored but omitted from identity/deduplication. |
-| ODDS-03 | ✓ SATISFIED | Multiplicative normalization and invariant tests pass. |
-| VALUE-01, VALUE-02, VALUE-03, VALUE-04 | ✗ BLOCKED | Selection-specific calculations collapse into one pair receipt and can return the wrong result. |
+| PRED-01..03 | ✓ SATISFIED | Model invariants, fair odds and discovery pass available tests. |
+| PRED-04, PRED-06 | ? NEEDS RUNTIME | Immutable/official/revision code exists; PostgreSQL proofs unavailable. |
+| PRED-05 | ? NEEDS UAT | Separation/components exist; production visual assertion unavailable. |
+| ODDS-01, ODDS-02 | ? NEEDS RUNTIME | Parser/provenance/scope exist; durable path unavailable. |
+| ODDS-03 | ✓ SATISFIED | Multiplicative normalization passes unit tests. |
+| VALUE-01..04 | ? NEEDS RUNTIME/UAT | Exact selection-aware logic exists; DB trigger and receipt parity unexecuted. |
 
-All 13 Phase 3 requirements are claimed by the plans; none are orphaned. REQUIREMENTS.md checkmarks are planning metadata, not verification evidence.
+All 13 Phase 3 requirements are claimed; none are orphaned.
 
-### Anti-Patterns Found
+### Test Quality and Anti-Patterns
 
-No unreferenced `TBD`, `FIXME`, or `XXX` debt markers were found in the Phase 3 implementation surfaces. The blocking issues are substantive identity, discovery, validation, and database-enforcement defects rather than placeholder code.
+No disabled requirement tests, circular expected-value generation, unreferenced `TBD`/`FIXME`/`XXX`, or rendering stubs were found. The PostgreSQL matrix contains 13 named value/behavioral cases and Playwright contains 3 active tests, but their existence is not counted as a pass.
+
+### Decision Coverage
+
+All 17 trackable CONTEXT.md decisions are honored by shipped artifacts (`check.decision-coverage-verify`: 17/17).
 
 ### Human Verification Required
 
-1. **Confidence and evidence presentation**
-
-   **Test:** After the blockers are fixed, open a real issued forecast and inspect every confidence and evidence section at desktop and 360px/200% zoom.
-   **Expected:** Probability remains distinct from confidence; completeness, lineup, freshness, source reliability, model stability, limitations, and probabilistic disclosure are all readable.
-   **Why human:** Visual hierarchy and comprehensibility require judgment; the focused automated run did not launch the live stack.
-
-2. **Complete reproducible user flow**
-
-   **Test:** Discover a forecast at a non-round INITIAL cutoff, submit and replace a full book, then evaluate two different selections from the same exact snapshot pair and export both receipts.
-   **Expected:** Both forecasts/books are discoverable, immutable provenance differs when inputs differ, and each selection has its own correct DOM/copy/download receipt.
-   **Why human:** This is the MVP outcome flow; current blockers make it fail before visual acceptance is meaningful.
-
-### Deferred Items
-
-None of these gaps are deferred. Phases 4-6 consume trustworthy frozen receipts; their goals do not repair Phase 3 identity, discovery, parser, or resource-scoping defects.
+1. Apply all migrations to disposable PostgreSQL and run `tests/integration/phase-03-security.test.ts`; all CR-01..06 and WR-01..03 cases must pass.
+2. Run the production Nest/Next/PostgreSQL stack and `tests/e2e/forecast-workbench.spec.ts`; all three Chromium tests must pass.
 
 ### Gaps Summary
 
-Phase 3 has substantial domain math, persistence, API, worker, and UI implementation, and the focused unit gate passes. The goal is nevertheless not achieved: a user cannot reliably discover real issued forecasts, immutable forecast/odds identities omit required provenance, and the value receipt identity can return another selection's result. Six security/correctness blockers and three robustness warnings from the independent code review remain observable in current source. Gap closure must precede MVP UAT or Phase 4.
+All four previous implementation gaps are closed in current source and no new static blocker was found. The phase is not yet `passed`: four runtime-dependent truths lack PostgreSQL and production-browser evidence. Therefore the canonical status is `human_needed`, not `gaps_found`.
 
 ---
 
-_Verified: 2026-09-08T06:04:12Z_
+_Verified: 2026-09-08T11:19:29Z_
 _Verifier: the agent (gsd-verifier)_

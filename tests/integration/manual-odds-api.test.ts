@@ -95,4 +95,21 @@ describe("manual odds API", () => {
     await expect(submitManualOdds(completeBook, { findFixture: async () => null, append: async () => { mutations += 1; throw new Error("unexpected mutation"); } }, serverNow)).rejects.toMatchObject({ code: "ODDS_FIXTURE_NOT_FOUND" });
     expect(mutations).toBe(0);
   });
+
+  it("scopes immutable odds retrieval to the owning fixture without disclosing cross-fixture IDs", async () => {
+    const { getManualOddsSnapshot } = await import("../../apps/api/src/modules/odds/odds.service.js");
+    const stored = { oddsSnapshotId: "odds-1", fixtureId: "fixture-1" };
+    const repository = { get: async (fixtureId: string, oddsSnapshotId: string) => fixtureId === stored.fixtureId && oddsSnapshotId === stored.oddsSnapshotId ? stored : null };
+    await expect(getManualOddsSnapshot("fixture-1", "odds-1", repository as never)).resolves.toEqual(stored);
+    await expect(getManualOddsSnapshot("fixture-2", "odds-1", repository as never)).rejects.toMatchObject({ response: { code: "ODDS_SNAPSHOT_NOT_FOUND" } });
+    await expect(getManualOddsSnapshot("fixture-1", "missing", repository as never)).rejects.toMatchObject({ response: { code: "ODDS_SNAPSHOT_NOT_FOUND" } });
+  });
+
+  it("passes both fixture and snapshot route parameters through the controller", async () => {
+    const { OddsController } = await import("../../apps/api/src/modules/odds/odds.controller.js");
+    const calls: string[][] = [];
+    const controller = new OddsController({ get: async (...args: string[]) => { calls.push(args); return {} as never; } } as never);
+    await controller.get("fixture-1", "odds-1");
+    expect(calls).toEqual([["fixture-1", "odds-1"]]);
+  });
 });

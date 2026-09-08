@@ -25,4 +25,10 @@ export class EvaluationController {
     for (const [name, value] of Object.entries(result.headers)) response.setHeader(name, value);
     return result.statusCode === 308 ? response.status(308).end() : response.status(200).json(result.body);
   }
+
+  @Get("value-candidates")
+  async valueCandidates(@Query() query: Record<string, unknown>, @Res() response: HttpResponse): Promise<unknown> {
+    response.setHeader("Cache-Control", PRIVATE_NO_STORE);
+    return response.status(200).json(await this.evaluation.valueCandidates(query));
+  }
 }

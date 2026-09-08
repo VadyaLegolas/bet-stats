@@ -59,6 +59,27 @@ export interface EvaluationRepository {
   }>;
 }
 
+type CandidateCursor = { cohortIdentity: CohortIdentity; settledAt: string; id: string };
+
+export function encodeCandidateCursor(identity: CohortIdentity, position: { settledAt: string; id: string }): string {
+  return Buffer.from(JSON.stringify({ cohortIdentity: identity, settledAt: position.settledAt, id: position.id }), "utf8").toString("base64url");
+}
+
+function decodeCandidateCursor(value: string, expected: CohortIdentity): { settledAt: string; id: string } {
+  try {
+    if (value.length > 2048 || !/^[A-Za-z0-9_-]+$/.test(value)) throw new Error();
+    const decoded = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as CandidateCursor;
+    if (!decoded || Object.keys(decoded).sort().join(",") !== "cohortIdentity,id,settledAt") throw new Error();
+    if (JSON.stringify(decoded.cohortIdentity) !== JSON.stringify(expected)) throw new BadRequestException("CURSOR_COHORT_MISMATCH");
+    exactUtc(decoded.settledAt, "cursor_settled_at");
+    scalar(decoded.id, "cursor_id");
+    return { settledAt: decoded.settledAt, id: decoded.id };
+  } catch (error) {
+    if (error instanceof BadRequestException && error.message === "CURSOR_COHORT_MISMATCH") throw error;
+    throw new BadRequestException("INVALID_CURSOR");
+  }
+}
+
 function exactUtc(value: unknown, field: string): string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) throw new BadRequestException(`INVALID_${field.toUpperCase()}`);
   const date = new Date(value);
@@ -170,7 +191,47 @@ export function createPrismaEvaluationRepository(client: PrismaClient): Evaluati
       const dimensions = await client.forecastScore.findMany({ where: { supersededBy: null, kickoffUtc: { gte: new Date(bounds.from), lt: new Date(bounds.to) } }, distinct: ["modelVersion", "leagueId", "market"], select: { modelVersion: true, leagueId: true, market: true } });
       return Promise.all(dimensions.map((row) => load({ modelVersion: row.modelVersion, competitionId: row.leagueId, market: row.market, ...bounds })));
     },
-    async listValueCandidates() { return { items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" } }; },
+    async listValueCandidates(identity, cursor, limit) {
+      const rows = await client.valueSettlement.findMany({
+        where: {
+          supersededBy: null,
+          ...(identity.market === "all" ? {} : { market: identity.market }),
+          settlementReceipt: {
+            settledAt: { gte: new Date(identity.from), lt: new Date(identity.to) },
+            forecastSnapshot: identity.modelVersion === "all" ? {} : { modelVersion: identity.modelVersion },
+            fixture: identity.competitionId === "all" ? {} : { leagueId: identity.competitionId },
+          },
+          ...(cursor ? { OR: [
+            { settlementReceipt: { settledAt: { lt: new Date(cursor.settledAt) } } },
+            { settlementReceipt: { settledAt: new Date(cursor.settledAt) }, id: { lt: cursor.id } },
+          ] } : {}),
+        },
+        include: { settlementReceipt: { select: { resultVersionId: true, settledAt: true } }, oddsSelection: { select: { decimalOdds: true } } },
+        orderBy: [{ settlementReceipt: { settledAt: "desc" } }, { id: "desc" }],
+        take: limit + 1,
+      });
+      const selected = rows.slice(0, limit);
+      const items: ValueCandidateRow[] = selected.map((row) => ({
+        id: row.id,
+        valueReceiptId: row.valueReceiptId,
+        settlementReceiptId: row.settlementReceiptId,
+        resultVersionId: row.settlementReceipt.resultVersionId,
+        selection: row.selection,
+        decimalOdds: row.oddsSelection.decimalOdds,
+        outcome: row.result,
+        stakeUnits: row.stakeUnits,
+        profitUnits: row.profitUnits,
+        clv: { status: row.clvStatus, reason: row.clvReason, value: row.clv },
+        settledAt: row.settlementReceipt.settledAt.toISOString(),
+      }));
+      const totals = aggregateFlatOneUnit(items.map((row) => ({ status: "SETTLED", policyVersion: "flat-one-unit-v1", stakeUnits: row.stakeUnits, returnUnits: "0", profitUnits: row.profitUnits })));
+      const last = items.at(-1);
+      return {
+        items,
+        nextCursor: rows.length > limit && last ? { settledAt: last.settledAt, id: last.id } : null,
+        pageTotals: { count: items.length, stakeUnits: totals.totalStakedUnits, profitUnits: totals.totalProfitUnits },
+      };
+    },
   };
 }
 
@@ -198,5 +259,17 @@ export class EvaluationService {
       .sort((a, b) => b.denominators.eventCount - a.denominators.eventCount || tuple(a.cohortIdentity).localeCompare(tuple(b.cohortIdentity)));
     const identity = candidates[0]?.cohortIdentity ?? { modelVersion: "all", competitionId: "all", market: "all", ...bounds };
     return { redirect: canonicalCohortUrl(identity) };
+  }
+
+  async valueCandidates(query: Record<string, unknown>): Promise<{ items: readonly ValueCandidateRow[]; nextCursor: string | null; pageTotals: { count: number; stakeUnits: string; profitUnits: string }; cohortIdentity: CohortIdentity }> {
+    const { cursor: rawCursor, limit: rawLimit, ...cohortQuery } = query;
+    const identity = parseCohortQuery(cohortQuery, true) as CohortIdentity;
+    const limit = rawLimit === undefined ? 25 : Number(rawLimit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new BadRequestException("INVALID_LIMIT");
+    if (Array.isArray(rawCursor) || Array.isArray(rawLimit)) throw new BadRequestException("INVALID_CANDIDATE_QUERY");
+    if (rawCursor !== undefined && (typeof rawCursor !== "string" || rawCursor.length === 0 || rawCursor.length > 2048)) throw new BadRequestException("INVALID_CURSOR");
+    const cursor = rawCursor === undefined ? null : decodeCandidateCursor(rawCursor as string, identity);
+    const page = await this.repo().listValueCandidates(identity, cursor, limit);
+    return { ...page, nextCursor: page.nextCursor ? encodeCandidateCursor(identity, page.nextCursor) : null, cohortIdentity: identity };
   }
 }

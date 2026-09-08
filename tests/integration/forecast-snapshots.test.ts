@@ -1,6 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import type { ForecastResponseDto } from "@bet-stats/domain";
+
+import { createPrismaForecastRepository } from "../../apps/api/src/modules/forecasts/forecasts.service.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required");
@@ -57,5 +60,43 @@ describe("append-only forecast snapshots", () => {
       INSERT INTO "ForecastSnapshot" (id,"fixtureId",kind,state,revision,"officialLineupObservationId",cutoff,"modelVersion","modelHash","configVersion","configHash","inputHash","evidenceFingerprint","sourceRefs",probabilities,confidence,assumptions,receipt,"issuedAt")
       VALUES ($1,'${id("p3-fixture")}','LINEUP_CONFIRMED','ISSUED',1,$2,'2026-09-10T17:00:00Z','poisson-v1',$3,'forecast-config-v1',$4,$5,$6,'[]','{}','{}','[]','{}',now())
     `, id("lineup-valid"), id("lineup-observation"), id("m2"), id("c2"), id("i2"), id("e2"))).resolves.toBe(1);
+  });
+
+  it("serializes concurrent distinct contents into consecutive linked revisions", async () => {
+    const fixtureId = id("p3-fixture");
+    const draft = (suffix: string): ForecastResponseDto => ({
+      id: id(`race-${suffix}`),
+      fixtureId,
+      kind: "INITIAL",
+      officialLineupObservationId: null,
+      revision: 1,
+      cutoff: "2026-09-09T12:00:00.000Z",
+      modelVersion: "poisson-ensemble-v1",
+      modelHash: id("race-model"),
+      configVersion: "forecast-config-v1",
+      configHash: id("race-config"),
+      inputHash: id(`race-input-${suffix}`),
+      evidenceFingerprint: id(`race-evidence-${suffix}`),
+      evidenceBuildIds: [id(`away-${suffix}`), id(`home-${suffix}`)],
+      probabilities: {
+        ONE_X_TWO: [{ selection: "HOME", probability: 0.5, fairOdds: "2" }, { selection: "DRAW", probability: 0.25, fairOdds: "4" }, { selection: "AWAY", probability: 0.25, fairOdds: "4" }],
+        OVER_UNDER_2_5: [{ selection: "OVER_2_5", probability: 0.5, fairOdds: "2" }, { selection: "UNDER_2_5", probability: 0.5, fairOdds: "2" }],
+        BTTS: [{ selection: "YES", probability: 0.5, fairOdds: "2" }, { selection: "NO", probability: 0.5, fairOdds: "2" }],
+      },
+      confidence: { version: "confidence-v1", score: 0.8, components: { completeness: 1, lineupAvailability: 0, freshness: 1, sourceReliability: 1, modelStability: 1 } },
+      limitations: [],
+      tail: { retainedMass: 1, tailMass: 0, warning: false, normalizationVersion: "retained-mass-v1" },
+      assumptions: [],
+      receipt: { forecastSnapshotId: id(`race-${suffix}`), officialLineupObservationId: null, evidenceBuildIds: [id(`away-${suffix}`), id(`home-${suffix}`)], sourceRefs: [], expectedGoals: { home: 1.5, away: 1 }, adjustments: { home: { multiplier: 1, components: {} }, away: { multiplier: 1, components: {} } } },
+      issuedAt: "2026-09-09T12:00:01.000Z",
+    });
+    const repository = createPrismaForecastRepository(prisma);
+
+    const [first, second] = await Promise.all([repository.publish(draft("a")), repository.publish(draft("b"))]);
+    const rows = await prisma.forecastSnapshot.findMany({ where: { id: { in: [first.id, second.id] } }, orderBy: { revision: "asc" }, select: { id: true, revision: true, supersedesForecastId: true } });
+
+    expect(rows.map(({ revision }) => revision)).toEqual([1, 2]);
+    expect(rows[0]?.supersedesForecastId).toBeNull();
+    expect(rows[1]?.supersedesForecastId).toBe(rows[0]?.id);
   });
 });

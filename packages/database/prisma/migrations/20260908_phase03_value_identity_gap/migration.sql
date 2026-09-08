@@ -42,18 +42,18 @@ BEGIN
     RAISE EXCEPTION 'value receipt requires exact issued forecast and odds pair for fixture and market';
   END IF;
 
-  SELECT probability INTO forecast_selection
+  SELECT probability.value INTO forecast_selection
   FROM "ForecastMarket" fm
-  CROSS JOIN LATERAL jsonb_array_elements(fm.probabilities) probability
+  CROSS JOIN LATERAL jsonb_array_elements(fm.probabilities) AS probability(value)
   WHERE fm."forecastSnapshotId"=NEW."forecastSnapshotId"
     AND fm.market=NEW.market
-    AND probability->>'selection'=NEW.selection;
+    AND probability.value->>'selection'=NEW.selection;
 
-  SELECT candidate INTO odds_selection
+  SELECT candidate.value INTO odds_selection
   FROM "ManualOddsSnapshot" snapshot
-  CROSS JOIN LATERAL jsonb_array_elements(snapshot.receipt->'selections') candidate
+  CROSS JOIN LATERAL jsonb_array_elements(snapshot.receipt->'selections') AS candidate(value)
   WHERE snapshot.id=NEW."oddsSnapshotId"
-    AND candidate->>'selection'=NEW.selection;
+    AND candidate.value->>'selection'=NEW.selection;
 
   IF forecast_selection IS NULL OR odds_selection IS NULL THEN
     RAISE EXCEPTION 'value receipt selection must exist in both immutable source snapshots';

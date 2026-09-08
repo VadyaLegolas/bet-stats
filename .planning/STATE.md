@@ -2,17 +2,18 @@
 gsd_state_version: 1.0
 current_phase: 4
 current_phase_name: Settlement and Evidence Scorecard
-current_plan: 4
+current_plan: 5
 status: executing
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-09-08T21:27:57.231Z"
-last_activity: 2026-09-08
+stopped_at: Completed 04-05-PLAN.md
+last_updated: "2026-09-08T22:03:05.133Z"
+last_activity: 2026-09-09
 last_activity_desc: Phase 03 complete, transitioned to Phase 4
+state_head: 1697a6ecadef1204f052b33ebcf7e45d082943b1
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 60
-  completed_plans: 56
+  completed_plans: 58
   percent: 50
 ---
 
@@ -28,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 4 — Settlement and Evidence Scorecard
-Current Plan: 4
+Current Plan: 5
 Total Plans in Phase: 8
 Status: Ready to execute
-Last Activity: 2026-09-08
+Last Activity: 2026-09-09
 Last Activity Description: Phase 03 complete, transitioned to Phase 4
 
 Progress: [█████░░░░░] 50%
@@ -87,6 +88,7 @@ Progress: [█████░░░░░] 50%
 | Phase 04 P02 | 18min | 2 tasks | 18 files |
 | Phase 04 P03 | 9min | 2 tasks | 5 files |
 | Phase 04 P04 | 16min | 2 tasks | 20 files |
+| Phase 04 P05 | 12min | 2 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -129,6 +131,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 4]: Phase 04: Cohort policy identities hash exact serialized thresholds so changed gates cannot silently relabel evidence.
 - [Phase 4]: Phase 04: ROI and Yield are disclosed aliases of totalProfitUnits / totalStakedUnits under flat-one-unit-v1.
 - [Phase 4]: Phase 04: CLV requires an explicitly labeled market-close observation with an exact comparable tuple.
+- [Phase 4]: Phase 04: Production and backtest forecasts share ForecastOrchestrator.run; future evidence fails closed before publication.
 
 ### Pending Todos
 
@@ -148,6 +151,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-08T21:27:57.056Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-09-08T22:03:04.044Z
+Stopped at: Completed 04-05-PLAN.md
 Resume file: None

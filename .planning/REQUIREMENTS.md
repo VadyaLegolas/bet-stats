@@ -54,8 +54,8 @@
 
 ### Settlement, Backtesting, and Calibration
 
-- [ ] **EVAL-01**: The system resolves completed, postponed, cancelled, abandoned, and void fixtures using explicit versioned settlement rules.
-- [ ] **EVAL-02**: The system scores the exact frozen pre-match prediction rather than recomputing it with later data.
+- [x] **EVAL-01**: The system resolves completed, postponed, cancelled, abandoned, and void fixtures using explicit versioned settlement rules.
+- [x] **EVAL-02**: The system scores the exact frozen pre-match prediction rather than recomputing it with later data.
 - [ ] **EVAL-03**: A user can view Brier Score and Log Loss by model version, competition, market, and evaluation period with sample size.
 - [ ] **EVAL-04**: A user can view calibration/reliability results by probability bucket and identify under-confident or over-confident cohorts.
 - [ ] **EVAL-05**: A user can view the outcome and unit profit/loss of each frozen value candidate and aggregate ROI and Yield with denominator and sample size.
@@ -156,8 +156,8 @@
 | VALUE-02 | Phase 3 | Complete |
 | VALUE-03 | Phase 3 | Complete |
 | VALUE-04 | Phase 3 | Complete |
-| EVAL-01 | Phase 4 | Pending |
-| EVAL-02 | Phase 4 | Pending |
+| EVAL-01 | Phase 4 | Complete |
+| EVAL-02 | Phase 4 | Complete |
 | EVAL-03 | Phase 4 | Pending |
 | EVAL-04 | Phase 4 | Pending |
 | EVAL-05 | Phase 4 | Pending |

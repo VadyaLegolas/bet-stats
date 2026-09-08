@@ -205,10 +205,11 @@ Plans:
   4. Frozen value candidates show per-result unit profit/loss and aggregate ROI and Yield with denominators and sample sizes; weak cohorts are labeled or suppressed.
   5. Backtests use rolling-origin chronology and production-equivalent as-of features, while CLV is shown only when comparable timestamped prices exist and explicitly unavailable otherwise.
 
-**Plans**: 8 plans
+**Plans**: 1/8 plans executed
 
 Plans:
-- [ ] 04-01-PLAN.md — Append-only settlement receipts bound to exact frozen forecasts
+
+- [x] 04-01-PLAN.md — Append-only settlement receipts bound to exact frozen forecasts
 - [ ] 04-02-PLAN.md — Versioned Brier and Log Loss facts
 - [ ] 04-03-PLAN.md — Reliability buckets and honest cohort-health gates
 - [ ] 04-04-PLAN.md — Flat-unit value settlement and fail-closed CLV
@@ -216,6 +217,7 @@ Plans:
 - [ ] 04-06-PLAN.md — Guarded URL-stable evidence scorecard API and UI
 - [ ] 04-07-PLAN.md — PostgreSQL security matrix and production Chromium acceptance
 - [ ] 04-08-PLAN.md — Idempotent result-to-settlement-to-score/value worker pipeline
+
 **UI hint**: yes
 
 ### Phase 5: Provider-Aware Coverage and Enrichment
@@ -259,6 +261,6 @@ Plans:
 | 1. Trustworthy Fixture Discovery | 12/12 | Complete    | 2026-08-29 |
 | 2. Historical Evidence Pipeline | 28/28 | Complete    | 2026-09-05 |
 | 3. Forecast and Manual Value Workbench | 12/12 | Complete    | 2026-09-08 |
-| 4. Settlement and Evidence Scorecard | 0/TBD | Not started | - |
+| 4. Settlement and Evidence Scorecard | 1/8 | In Progress|  |
 | 5. Provider-Aware Coverage and Enrichment | 0/TBD | Not started | - |
 | 6. Release Experience and Operations | 0/TBD | Not started | - |

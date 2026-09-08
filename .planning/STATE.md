@@ -4,16 +4,15 @@ current_phase: 4
 current_phase_name: Settlement and Evidence Scorecard
 current_plan: Not started
 status: planning
-stopped_at: Phase 4 context gathered
-last_updated: "2026-09-08T16:11:15.754Z"
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-09-08T17:22:38.601Z"
 last_activity: 2026-09-08
 last_activity_desc: Phase 03 complete, transitioned to Phase 4
-state_head: 6e75d19b825e177db0182a07d462a4f38a0aeb70
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 52
-  completed_plans: 52
+  total_plans: 60
+  completed_plans: 53
   percent: 50
 ---
 
@@ -84,6 +83,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P05 | 7min | 2 tasks | 11 files |
 | Phase 03 P06 | 25min | 3 tasks | 12 files |
 | Phase 03 P07 | 47min | 2 tasks | 13 files |
+| Phase 04 P01 | 16min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -117,6 +117,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 3]: Exact forecast/odds pairing binds immutable IDs, fixture, market, and contents without requiring equal capture timestamps.
 - [Phase 3]: Concurrent immutable IDs converge only for identical canonical payloads; conflicting reuse remains an error.
 - [Phase 3]: Phase 3 acceptance evidence uses durable PostgreSQL data and production Nest/Next boundaries rather than mocked analysis responses.
+- [Phase 4]: Phase 04: Settlement identity is the exact ResultVersion, ForecastSnapshot, and policy hash tuple.
+- [Phase 4]: Phase 04: Corrections append linked settlement revisions under a fixture-scoped PostgreSQL advisory lock.
 
 ### Pending Todos
 
@@ -136,6 +138,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-08T16:11:13.860Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-settlement-and-evidence-scorecard/04-CONTEXT.md
+Last session: 2026-09-08T17:22:38.415Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None

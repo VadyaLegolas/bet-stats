@@ -174,7 +174,7 @@ Plans:
   4. A user can enter a complete positive decimal-odds book, correct actionable validation errors, and inspect its immutable provenance and multiplicatively normalized no-vig probabilities.
   5. The exact forecast and odds snapshots produce edge and expected value, with a candidate shown only when all gates pass and an explicit no-value or insufficient-evidence result otherwise.
 
-**Plans**: TBD
+**Plans**: 12 plans (7 complete, 5 gap-closure)
 
 - [x] 03-01-PLAN.md
 - [x] 03-02-PLAN.md
@@ -183,6 +183,11 @@ Plans:
 - [x] 03-05-PLAN.md
 - [x] 03-06-PLAN.md
 - [x] 03-07-PLAN.md
+- [ ] 03-08-PLAN.md — Bind official lineup provenance and serialize forecast revisions
+- [ ] 03-09-PLAN.md — Harden canonical, provenance-complete, fixture-scoped manual odds
+- [ ] 03-10-PLAN.md — Make value receipts selection-aware and database-verifiable
+- [ ] 03-11-PLAN.md — Discover issued forecasts at their exact immutable identities
+- [ ] 03-12-PLAN.md — Prove all repaired boundaries in integration and browser flows
 
 **UI hint**: yes
 
@@ -243,7 +248,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Trustworthy Fixture Discovery | 12/12 | Complete    | 2026-08-29 |
 | 2. Historical Evidence Pipeline | 28/28 | Complete    | 2026-09-05 |
-| 3. Forecast and Manual Value Workbench | 7/7 | In Progress|  |
+| 3. Forecast and Manual Value Workbench | 7/12 | In Progress|  |
 | 4. Settlement and Evidence Scorecard | 0/TBD | Not started | - |
 | 5. Provider-Aware Coverage and Enrichment | 0/TBD | Not started | - |
 | 6. Release Experience and Operations | 0/TBD | Not started | - |

@@ -1,35 +1,102 @@
-# Phase 3 Validation Strategy
+---
+phase: 03
+slug: forecast-and-manual-value-workbench
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
+created: 2026-09-05
+validated: 2026-09-08
+---
 
-**Created:** 2026-09-05
-**Status:** Wave 0 contract established before execution
+# Phase 3 — Validation Strategy
 
 ## Test Infrastructure
 
-- Vitest unit and integration projects cover domain, API, worker, and PostgreSQL boundaries.
-- Playwright runs once after the web plan as its plan/wave gate, then once at the final live-stack phase gate.
-- Database guarantees use a project-owned disposable PostgreSQL instance; SQLite and shared/populated database resets are excluded.
+| Property | Value |
+|----------|-------|
+| **Framework** | Vitest 4.1.11 (unit/integration), Playwright Chromium (production E2E) |
+| **Config files** | `vitest.config.ts`, `playwright.config.ts` |
+| **Quick run command** | `corepack pnpm test` |
+| **PostgreSQL command** | `node node_modules/vitest/vitest.mjs run tests/integration/phase-03-security.test.ts --project integration` |
+| **Production E2E command** | `corepack pnpm exec playwright test tests/e2e/forecast-workbench.spec.ts --project=chromium` |
+| **Estimated runtime** | Unit ~5s; PostgreSQL/E2E environment-dependent |
 
-## Wave 0 Test Map
+## Sampling Rate
 
-| Requirement / decision | Owning tests | Fast automated command | Created by |
-|---|---|---|---|
-| PRED-01..03; D-01..04, D-07 | `tests/unit/forecast-value-tracer.test.ts`, `tests/unit/forecast.test.ts` | `node node_modules/vitest/vitest.mjs run tests/unit/forecast-value-tracer.test.ts tests/unit/forecast.test.ts --project unit` | 03-01, 03-02 |
-| ODDS-01, ODDS-03; D-09, D-11 | `tests/unit/value.test.ts`, `tests/unit/odds-draft.test.ts` | `node node_modules/vitest/vitest.mjs run tests/unit/value.test.ts tests/unit/odds-draft.test.ts --project unit` | 03-02 |
-| PRED-04, PRED-06, ODDS-02, VALUE-01, VALUE-04; D-05, D-06, D-10, D-12, D-17 | `tests/integration/forecast-snapshots.test.ts`, `tests/integration/manual-odds.test.ts`, `tests/integration/value-receipt.test.ts`, `tests/integration/migration-empty.test.ts` | `node node_modules/vitest/vitest.mjs run tests/integration/forecast-snapshots.test.ts tests/integration/manual-odds.test.ts tests/integration/value-receipt.test.ts tests/integration/migration-empty.test.ts --project integration` | 03-03 |
-| PRED-04..06; D-04..08 | `tests/integration/forecast-api.test.ts`, `tests/integration/forecast-publication.test.ts` | `node node_modules/vitest/vitest.mjs run tests/integration/forecast-api.test.ts tests/integration/forecast-publication.test.ts --project integration` | 03-04 |
-| ODDS-01..03, VALUE-01..04; D-09..17 | `tests/integration/manual-odds-api.test.ts`, `tests/integration/value-api.test.ts` | `node node_modules/vitest/vitest.mjs run tests/integration/manual-odds-api.test.ts tests/integration/value-api.test.ts --project integration` | 03-05 |
-| D-11 local-only draft; D-07, D-12, D-15..17 UI | `tests/unit/odds-draft-ui.test.tsx`, `tests/unit/responsible-copy.test.ts`, `tests/e2e/forecast-workbench.spec.ts` | `node node_modules/vitest/vitest.mjs run tests/unit/odds-draft-ui.test.tsx tests/unit/responsible-copy.test.ts --project unit` | 03-06 |
-| All 13 requirements and D-01..D-17 adversarial/live chain | `tests/integration/phase-03-security.test.ts`, `tests/e2e/forecast-workbench.spec.ts` | `node node_modules/vitest/vitest.mjs run tests/integration/phase-03-security.test.ts --project integration` | 03-07 |
+- **After every task commit:** run the focused command named in the owning PLAN.
+- **After every plan wave:** run the affected Vitest project(s).
+- **Before `$gsd-verify-work`:** run unit, migrated PostgreSQL security, and production Chromium gates.
+- **Max fast-feedback latency:** approximately 5 seconds for the unit suite.
 
-## Schema Gate
+## Requirement Verification Map
 
-On disposable PostgreSQL: run Prisma `validate`, `generate`, `migrate deploy`, and `migrate status`; run migration-empty and persistence integration tests; then typecheck `@bet-stats/database`, `@bet-stats/api`, and `@bet-stats/data-sync` against `packages/database/src/generated/prisma`.
+| Requirement | Plans | Observable behavior | Automated evidence | Status |
+|-------------|-------|---------------------|--------------------|--------|
+| PRED-01 | 01,02,06,07,11,12 | Normalized 1X2 probabilities satisfy the invariant and are discoverable by exact issued ID. | `forecast-value-tracer.test.ts`, `forecast.test.ts`, `forecast-api.test.ts`, `forecast-workbench.spec.ts` | ✅ green |
+| PRED-02 | 01,02,06,07,12 | O/U 2.5 and BTTS derive from the same 0:0–7:7 matrix with tail disclosure. | `forecast-value-tracer.test.ts`, `forecast.test.ts`, `forecast-workbench.spec.ts` | ✅ green |
+| PRED-03 | 01,02,06,07,11,12 | Fair decimal odds correspond to supported probabilities; unavailable cases never become infinity. | `forecast-value-tracer.test.ts`, `forecast.test.ts`, `forecast-workbench.spec.ts` | ✅ green |
+| PRED-04 | 03,04,07,08,11,12 | Forecasts are append-only, provenance-complete exact-cutoff snapshots with linked revisions. | `forecast-snapshots.test.ts`, `forecast-api.test.ts`, `phase-03-security.test.ts` | ✅ green |
+| PRED-05 | 01,02,04,06,07,11,12 | Probability and confidence remain separate; all five confidence components and limitations are inspectable. | `forecast.test.ts`, `forecast-api.test.ts`, `forecast-workbench.spec.ts` | ✅ green |
+| PRED-06 | 03,04,06,07,08,11,12 | INITIAL/PRE_MATCH are deterministic; LINEUP_CONFIRMED requires exact official provenance; concurrent revisions serialize. | `forecast-publication.test.ts`, `forecast-snapshots.test.ts`, `phase-03-security.test.ts` | ✅ green |
+| ODDS-01 | 01,02,05,06,07,09,12 | Only complete bounded canonical positive decimal books are accepted; invalid fields fail before mutation. | `forecast-value-tracer.test.ts`, `manual-odds-api.test.ts`, `phase-03-security.test.ts`, `forecast-workbench.spec.ts` | ✅ green |
+| ODDS-02 | 03,05,06,07,09,12 | Odds are immutable, fixture-scoped, chronologically valid, provenance-complete, and replacement-linked. | `manual-odds.test.ts`, `manual-odds-api.test.ts`, `phase-03-security.test.ts`, `forecast-workbench.spec.ts` | ✅ green |
+| ODDS-03 | 01,02,05,06,07,12 | Complete books expose implied probability, multiplicative no-vig probability, and overround. | `forecast-value-tracer.test.ts`, `manual-odds-api.test.ts`, `forecast-workbench.spec.ts` | ✅ green |
+| VALUE-01 | 01,03,05,06,07,10,12 | Edge and EV use one exact forecast/odds/market/selection tuple. | `value.test.ts`, `value-api.test.ts`, `value-receipt.test.ts`, `forecast-workbench.spec.ts` | ✅ green |
+| VALUE-02 | 01,02,05,06,07,10,12 | A candidate appears only when every versioned quality, confidence, edge, and EV gate passes. | `value.test.ts`, `value-api.test.ts`, `forecast-workbench.spec.ts` | ✅ green |
+| VALUE-03 | 01,02,05,06,07,10,12 | Failed thresholds/data quality yield explicit NO_VALUE or INSUFFICIENT_EVIDENCE with ordered reasons. | `forecast-value-tracer.test.ts`, `value.test.ts`, `value-api.test.ts`, `forecast-workbench.spec.ts` | ✅ green |
+| VALUE-04 | 01,03,05,06,07,10,12 | Selection-aware receipts expose exact provenance/calculation inputs; server, DOM, clipboard and download agree. | `value-receipt.test.ts`, `value-api.test.ts`, `phase-03-security.test.ts`, `forecast-workbench.spec.ts` | ✅ green |
 
-## Plan/Wave and Phase Gates
+Test paths above are under `tests/unit/`, `tests/integration/`, and `tests/e2e/` respectively.
 
-- After 03-06: `corepack pnpm exec playwright test tests/e2e/forecast-workbench.spec.ts` once for the complete browser behavior, including draft restore/no-analysis and receipt accessibility.
-- After 03-07: unit + integration projects, live Playwright, workspace typecheck, lint, and build under Node 24.
+## Review Counterexample Matrix
 
-## Nyquist Rule
+| Finding | Behavioral witness | Status |
+|---------|--------------------|--------|
+| CR-01 | HOME and DRAW persist as distinct exact-pair receipts. | ✅ green |
+| CR-02 | Source provenance and replacement lineage alter immutable odds identity. | ✅ green |
+| CR-03 | Each official lineup observation alters forecast identity and receipt. | ✅ green |
+| CR-04 | Non-round issued cutoffs are discovered without synthesized timestamps. | ✅ green |
+| CR-05 | Cross-fixture odds retrieval returns the non-disclosing not-found result. | ✅ green |
+| CR-06 | Hostile decimals fail before repository access. | ✅ green |
+| WR-01 | Concurrent distinct forecasts receive linked revisions; identical retries converge. | ✅ green |
+| WR-02 | Canonical UTC and kickoff/server-skew boundaries are enforced before append. | ✅ green |
+| WR-03 | PostgreSQL rejects receipt fields inconsistent with immutable sources. | ✅ green |
 
-Every production task names its test file and has a runnable automated check. Files listed above that do not yet exist are Wave 0 test contracts: the owning task creates the failing test before implementation and completes it in the same TDD cycle.
+All nine witnesses are named cases in `tests/integration/phase-03-security.test.ts`.
+
+## Wave 0 Requirements
+
+Existing infrastructure and completed TDD plans cover all Phase 3 requirements. No missing test stubs remain.
+
+## Manual-Only Verifications
+
+All Phase 3 behaviors have automated verification. No manual-only requirement remains.
+
+## Validation Audit 2026-09-08
+
+| Metric | Count |
+|--------|-------|
+| Phase requirements audited | 13 |
+| Missing behavioral tests | 0 |
+| Partial requirements | 0 |
+| Automated requirements | 13 |
+| Escalated | 0 |
+
+Execution evidence:
+
+- Fresh Nyquist run: `corepack pnpm test` — 15 files, 152 tests passed.
+- UAT runtime gate: `phase-03-security.test.ts` — 13/13 passed against migrated disposable PostgreSQL after commits `8803809` and `ba6a66d`.
+- UAT production gate: `forecast-workbench.spec.ts --project=chromium` — 3/3 passed against production Nest/Next/PostgreSQL with the current E2E fixes.
+- UAT summary: 4/4 passed, 0 issues, 0 pending, 0 skipped.
+
+## Validation Sign-Off
+
+- [x] All tasks have an automated verify command or completed Wave 0 dependency.
+- [x] Sampling continuity has no three consecutive tasks without automated verification.
+- [x] Every Phase 3 requirement has a real behavioral test capable of failing.
+- [x] Persistence requirements are witnessed against PostgreSQL rather than mocked semantics.
+- [x] User-visible receipt parity is witnessed through production Chromium.
+- [x] No watch-mode flags are used.
+- [x] `nyquist_compliant: true` is set in frontmatter.
+
+**Approval:** approved 2026-09-08

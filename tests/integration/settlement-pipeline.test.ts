@@ -3,6 +3,8 @@ import { resolve } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPrismaClient, createSettlementPipelineService, type PrismaClient } from "@bet-stats/database";
+import { createSettlementJobHandler } from "../../workers/data-sync/src/jobs/settlement.js";
+import { createSettlementJobId, type SettlementJobData } from "../../workers/data-sync/src/queues/index.js";
 
 const root = resolve(import.meta.dirname, "../..");
 const databaseRoot = resolve(root, "packages/database");
@@ -80,5 +82,27 @@ describe("settlement pipeline", () => {
     const service = createSettlementPipelineService({ database: prisma });
     const result = await service.process({ fixtureId: "terminal-fixture", resultVersionId: "terminal-result", forecastSnapshotId: "terminal-forecast", policyVersion: "settlement-policy-v1", correlationId: "corr-terminal" });
     expect(result).toMatchObject({ reason: "RESULT_POSTPONED", forecastScoreIds: [], valueSettlementIds: [] });
+  });
+
+  it("delivery uses deterministic identity and rejects cross-fixture payload before mutation", async () => {
+    const payload: SettlementJobData = { fixtureId: "pipeline-fixture", resultVersionId: "pipeline-result-1", forecastSnapshotId: "pipeline-forecast", policyVersion: "settlement-policy-v1", policyHash: "policy-hash", correlationId: "corr-delivery" };
+    expect(createSettlementJobId(payload)).toBe("settlement:pipeline-result-1:policy-hash:pipeline-forecast");
+    const handler = createSettlementJobHandler({ service: createSettlementPipelineService({ database: prisma }) });
+    await expect(handler({ ...payload, fixtureId: "terminal-fixture" })).rejects.toThrow(/FIXTURE_SCOPE_MISMATCH/);
+    expect(await prisma.settlementReceipt.count({ where: { resultVersionId: "pipeline-result-1" } })).toBe(1);
+  });
+
+  it("retry after a forced delivery failure converges without duplicate facts", async () => {
+    const payload: SettlementJobData = { fixtureId: "pipeline-fixture", resultVersionId: "pipeline-result-1", forecastSnapshotId: "pipeline-forecast", policyVersion: "settlement-policy-v1", policyHash: "policy-hash", correlationId: "corr-retry" };
+    let attempts = 0;
+    const handler = createSettlementJobHandler({
+      service: createSettlementPipelineService({ database: prisma }),
+      beforeProcess: () => { attempts += 1; if (attempts === 1) throw new Error("FORCED_DELIVERY_FAILURE"); },
+    });
+    await expect(handler(payload)).rejects.toThrow("FORCED_DELIVERY_FAILURE");
+    const retried = await handler(payload);
+    expect(retried.duplicate).toBe(true);
+    expect(await prisma.forecastScore.count()).toBe(3);
+    expect(await prisma.valueSettlement.count()).toBe(1);
   });
 });

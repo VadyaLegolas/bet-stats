@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 async function contract() {
   return import("../../packages/domain/src/forecast/contract.js");
@@ -102,6 +102,40 @@ const projection = (teamId: string, buildId: string, cutoff = validRequest.cutof
 });
 
 describe("forecast API orchestration", () => {
+  it("discovers only issued snapshots for one fixture in deterministic newest-first order", async () => {
+    const { createPrismaForecastRepository } = await import("../../apps/api/src/modules/forecasts/forecasts.service.js");
+    const findMany = vi.fn().mockResolvedValue([
+      { receipt: { ...validResponse, id: "lineup-2", kind: "LINEUP_CONFIRMED", revision: 2, cutoff: "2026-09-06T11:17:23.000Z" } },
+      { receipt: { ...validResponse, id: "initial-1", kind: "INITIAL", revision: 1, cutoff: "2026-09-05T09:43:11.000Z" } },
+    ]);
+    const repository = createPrismaForecastRepository({ forecastSnapshot: { findMany } } as never);
+
+    await expect(repository.listIssued?.("fixture-1")).resolves.toMatchObject([
+      { id: "lineup-2", kind: "LINEUP_CONFIRMED", revision: 2, cutoff: "2026-09-06T11:17:23.000Z" },
+      { id: "initial-1", kind: "INITIAL", revision: 1, cutoff: "2026-09-05T09:43:11.000Z" },
+    ]);
+    expect(findMany).toHaveBeenCalledWith({
+      where: { fixtureId: "fixture-1", state: "ISSUED" },
+      orderBy: [{ issuedAt: "desc" }, { cutoff: "desc" }, { revision: "desc" }, { id: "asc" }],
+    });
+  });
+
+  it("keeps list and exact lookup query semantics unambiguous", async () => {
+    const { ForecastsController } = await import("../../apps/api/src/modules/forecasts/forecasts.controller.js");
+    const service = {
+      list: vi.fn().mockResolvedValue([validResponse]),
+      get: vi.fn().mockResolvedValue(validResponse),
+    };
+    const controller = new ForecastsController(service as never);
+
+    await expect(controller.get("fixture-1", {})).resolves.toEqual([validResponse]);
+    await expect(controller.get("fixture-1", { kind: "PRE_MATCH", cutoff: validRequest.cutoff })).resolves.toEqual(validResponse);
+    await expect(controller.get("fixture-1", { kind: "PRE_MATCH" })).rejects.toMatchObject({ response: { code: "INVALID_FORECAST_QUERY" } });
+    await expect(controller.get("fixture-1", { secret: "drop" })).rejects.toMatchObject({ response: { code: "INVALID_FORECAST_QUERY" } });
+    expect(service.list).toHaveBeenCalledWith("fixture-1");
+    expect(service.get).toHaveBeenCalledWith("fixture-1", "PRE_MATCH", validRequest.cutoff);
+  });
+
   it("fails policy, canonical, cutoff, and evidence gates before calculation or insert", async () => {
     const { generateForecast } = await import("../../apps/api/src/modules/forecasts/forecasts.service.js");
     let inserts = 0;

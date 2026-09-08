@@ -276,6 +276,7 @@ export type ResultVersionWhereInput = {
   observation?: Prisma.XOR<Prisma.SourceObservationScalarRelationFilter, Prisma.SourceObservationWhereInput>
   supersedesResultVersion?: Prisma.XOR<Prisma.ResultVersionNullableScalarRelationFilter, Prisma.ResultVersionWhereInput> | null
   supersededBy?: Prisma.XOR<Prisma.ResultVersionNullableScalarRelationFilter, Prisma.ResultVersionWhereInput> | null
+  settlementReceipts?: Prisma.SettlementReceiptListRelationFilter
 }
 
 export type ResultVersionOrderByWithRelationInput = {
@@ -294,6 +295,7 @@ export type ResultVersionOrderByWithRelationInput = {
   observation?: Prisma.SourceObservationOrderByWithRelationInput
   supersedesResultVersion?: Prisma.ResultVersionOrderByWithRelationInput
   supersededBy?: Prisma.ResultVersionOrderByWithRelationInput
+  settlementReceipts?: Prisma.SettlementReceiptOrderByRelationAggregateInput
 }
 
 export type ResultVersionWhereUniqueInput = Prisma.AtLeast<{
@@ -317,6 +319,7 @@ export type ResultVersionWhereUniqueInput = Prisma.AtLeast<{
   observation?: Prisma.XOR<Prisma.SourceObservationScalarRelationFilter, Prisma.SourceObservationWhereInput>
   supersedesResultVersion?: Prisma.XOR<Prisma.ResultVersionNullableScalarRelationFilter, Prisma.ResultVersionWhereInput> | null
   supersededBy?: Prisma.XOR<Prisma.ResultVersionNullableScalarRelationFilter, Prisma.ResultVersionWhereInput> | null
+  settlementReceipts?: Prisma.SettlementReceiptListRelationFilter
 }, "id" | "supersedesResultVersionId" | "fixtureId_revision" | "fixtureId_observationId">
 
 export type ResultVersionOrderByWithAggregationInput = {
@@ -368,6 +371,7 @@ export type ResultVersionCreateInput = {
   observation: Prisma.SourceObservationCreateNestedOneWithoutResultVersionsInput
   supersedesResultVersion?: Prisma.ResultVersionCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.ResultVersionCreateNestedOneWithoutSupersedesResultVersionInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutResultVersionInput
 }
 
 export type ResultVersionUncheckedCreateInput = {
@@ -383,6 +387,7 @@ export type ResultVersionUncheckedCreateInput = {
   supersedesResultVersionId?: string | null
   createdAt?: Date | string
   supersededBy?: Prisma.ResultVersionUncheckedCreateNestedOneWithoutSupersedesResultVersionInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutResultVersionInput
 }
 
 export type ResultVersionUpdateInput = {
@@ -398,6 +403,7 @@ export type ResultVersionUpdateInput = {
   observation?: Prisma.SourceObservationUpdateOneRequiredWithoutResultVersionsNestedInput
   supersedesResultVersion?: Prisma.ResultVersionUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.ResultVersionUpdateOneWithoutSupersedesResultVersionNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutResultVersionNestedInput
 }
 
 export type ResultVersionUncheckedUpdateInput = {
@@ -413,6 +419,7 @@ export type ResultVersionUncheckedUpdateInput = {
   supersedesResultVersionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.ResultVersionUncheckedUpdateOneWithoutSupersedesResultVersionNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutResultVersionNestedInput
 }
 
 export type ResultVersionCreateManyInput = {
@@ -531,6 +538,11 @@ export type ResultVersionSumOrderByAggregateInput = {
   homeGoals?: Prisma.SortOrder
   awayGoals?: Prisma.SortOrder
   revision?: Prisma.SortOrder
+}
+
+export type ResultVersionScalarRelationFilter = {
+  is?: Prisma.ResultVersionWhereInput
+  isNot?: Prisma.ResultVersionWhereInput
 }
 
 export type ResultVersionCreateNestedManyWithoutFixtureInput = {
@@ -673,6 +685,20 @@ export type ResultVersionUncheckedUpdateOneWithoutSupersedesResultVersionNestedI
   update?: Prisma.XOR<Prisma.XOR<Prisma.ResultVersionUpdateToOneWithWhereWithoutSupersedesResultVersionInput, Prisma.ResultVersionUpdateWithoutSupersedesResultVersionInput>, Prisma.ResultVersionUncheckedUpdateWithoutSupersedesResultVersionInput>
 }
 
+export type ResultVersionCreateNestedOneWithoutSettlementReceiptsInput = {
+  create?: Prisma.XOR<Prisma.ResultVersionCreateWithoutSettlementReceiptsInput, Prisma.ResultVersionUncheckedCreateWithoutSettlementReceiptsInput>
+  connectOrCreate?: Prisma.ResultVersionCreateOrConnectWithoutSettlementReceiptsInput
+  connect?: Prisma.ResultVersionWhereUniqueInput
+}
+
+export type ResultVersionUpdateOneRequiredWithoutSettlementReceiptsNestedInput = {
+  create?: Prisma.XOR<Prisma.ResultVersionCreateWithoutSettlementReceiptsInput, Prisma.ResultVersionUncheckedCreateWithoutSettlementReceiptsInput>
+  connectOrCreate?: Prisma.ResultVersionCreateOrConnectWithoutSettlementReceiptsInput
+  upsert?: Prisma.ResultVersionUpsertWithoutSettlementReceiptsInput
+  connect?: Prisma.ResultVersionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ResultVersionUpdateToOneWithWhereWithoutSettlementReceiptsInput, Prisma.ResultVersionUpdateWithoutSettlementReceiptsInput>, Prisma.ResultVersionUncheckedUpdateWithoutSettlementReceiptsInput>
+}
+
 export type ResultVersionCreateWithoutFixtureInput = {
   id?: string
   effectiveAt: Date | string
@@ -685,6 +711,7 @@ export type ResultVersionCreateWithoutFixtureInput = {
   observation: Prisma.SourceObservationCreateNestedOneWithoutResultVersionsInput
   supersedesResultVersion?: Prisma.ResultVersionCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.ResultVersionCreateNestedOneWithoutSupersedesResultVersionInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutResultVersionInput
 }
 
 export type ResultVersionUncheckedCreateWithoutFixtureInput = {
@@ -699,6 +726,7 @@ export type ResultVersionUncheckedCreateWithoutFixtureInput = {
   supersedesResultVersionId?: string | null
   createdAt?: Date | string
   supersededBy?: Prisma.ResultVersionUncheckedCreateNestedOneWithoutSupersedesResultVersionInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutResultVersionInput
 }
 
 export type ResultVersionCreateOrConnectWithoutFixtureInput = {
@@ -756,6 +784,7 @@ export type ResultVersionCreateWithoutObservationInput = {
   fixture: Prisma.FixtureCreateNestedOneWithoutResultVersionsInput
   supersedesResultVersion?: Prisma.ResultVersionCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.ResultVersionCreateNestedOneWithoutSupersedesResultVersionInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutResultVersionInput
 }
 
 export type ResultVersionUncheckedCreateWithoutObservationInput = {
@@ -770,6 +799,7 @@ export type ResultVersionUncheckedCreateWithoutObservationInput = {
   supersedesResultVersionId?: string | null
   createdAt?: Date | string
   supersededBy?: Prisma.ResultVersionUncheckedCreateNestedOneWithoutSupersedesResultVersionInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutResultVersionInput
 }
 
 export type ResultVersionCreateOrConnectWithoutObservationInput = {
@@ -810,6 +840,7 @@ export type ResultVersionCreateWithoutSupersededByInput = {
   fixture: Prisma.FixtureCreateNestedOneWithoutResultVersionsInput
   observation: Prisma.SourceObservationCreateNestedOneWithoutResultVersionsInput
   supersedesResultVersion?: Prisma.ResultVersionCreateNestedOneWithoutSupersededByInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutResultVersionInput
 }
 
 export type ResultVersionUncheckedCreateWithoutSupersededByInput = {
@@ -824,6 +855,7 @@ export type ResultVersionUncheckedCreateWithoutSupersededByInput = {
   revision: number
   supersedesResultVersionId?: string | null
   createdAt?: Date | string
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutResultVersionInput
 }
 
 export type ResultVersionCreateOrConnectWithoutSupersededByInput = {
@@ -843,6 +875,7 @@ export type ResultVersionCreateWithoutSupersedesResultVersionInput = {
   fixture: Prisma.FixtureCreateNestedOneWithoutResultVersionsInput
   observation: Prisma.SourceObservationCreateNestedOneWithoutResultVersionsInput
   supersededBy?: Prisma.ResultVersionCreateNestedOneWithoutSupersedesResultVersionInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutResultVersionInput
 }
 
 export type ResultVersionUncheckedCreateWithoutSupersedesResultVersionInput = {
@@ -857,6 +890,7 @@ export type ResultVersionUncheckedCreateWithoutSupersedesResultVersionInput = {
   revision: number
   createdAt?: Date | string
   supersededBy?: Prisma.ResultVersionUncheckedCreateNestedOneWithoutSupersedesResultVersionInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutResultVersionInput
 }
 
 export type ResultVersionCreateOrConnectWithoutSupersedesResultVersionInput = {
@@ -887,6 +921,7 @@ export type ResultVersionUpdateWithoutSupersededByInput = {
   fixture?: Prisma.FixtureUpdateOneRequiredWithoutResultVersionsNestedInput
   observation?: Prisma.SourceObservationUpdateOneRequiredWithoutResultVersionsNestedInput
   supersedesResultVersion?: Prisma.ResultVersionUpdateOneWithoutSupersededByNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutResultVersionNestedInput
 }
 
 export type ResultVersionUncheckedUpdateWithoutSupersededByInput = {
@@ -901,6 +936,7 @@ export type ResultVersionUncheckedUpdateWithoutSupersededByInput = {
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   supersedesResultVersionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutResultVersionNestedInput
 }
 
 export type ResultVersionUpsertWithoutSupersedesResultVersionInput = {
@@ -926,6 +962,7 @@ export type ResultVersionUpdateWithoutSupersedesResultVersionInput = {
   fixture?: Prisma.FixtureUpdateOneRequiredWithoutResultVersionsNestedInput
   observation?: Prisma.SourceObservationUpdateOneRequiredWithoutResultVersionsNestedInput
   supersededBy?: Prisma.ResultVersionUpdateOneWithoutSupersedesResultVersionNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutResultVersionNestedInput
 }
 
 export type ResultVersionUncheckedUpdateWithoutSupersedesResultVersionInput = {
@@ -938,6 +975,83 @@ export type ResultVersionUncheckedUpdateWithoutSupersedesResultVersionInput = {
   awayGoals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supersededBy?: Prisma.ResultVersionUncheckedUpdateOneWithoutSupersedesResultVersionNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutResultVersionNestedInput
+}
+
+export type ResultVersionCreateWithoutSettlementReceiptsInput = {
+  id?: string
+  effectiveAt: Date | string
+  observedAt: Date | string
+  homeGoals?: number | null
+  awayGoals?: number | null
+  status: string
+  revision: number
+  createdAt?: Date | string
+  fixture: Prisma.FixtureCreateNestedOneWithoutResultVersionsInput
+  observation: Prisma.SourceObservationCreateNestedOneWithoutResultVersionsInput
+  supersedesResultVersion?: Prisma.ResultVersionCreateNestedOneWithoutSupersededByInput
+  supersededBy?: Prisma.ResultVersionCreateNestedOneWithoutSupersedesResultVersionInput
+}
+
+export type ResultVersionUncheckedCreateWithoutSettlementReceiptsInput = {
+  id?: string
+  fixtureId: string
+  observationId: string
+  effectiveAt: Date | string
+  observedAt: Date | string
+  homeGoals?: number | null
+  awayGoals?: number | null
+  status: string
+  revision: number
+  supersedesResultVersionId?: string | null
+  createdAt?: Date | string
+  supersededBy?: Prisma.ResultVersionUncheckedCreateNestedOneWithoutSupersedesResultVersionInput
+}
+
+export type ResultVersionCreateOrConnectWithoutSettlementReceiptsInput = {
+  where: Prisma.ResultVersionWhereUniqueInput
+  create: Prisma.XOR<Prisma.ResultVersionCreateWithoutSettlementReceiptsInput, Prisma.ResultVersionUncheckedCreateWithoutSettlementReceiptsInput>
+}
+
+export type ResultVersionUpsertWithoutSettlementReceiptsInput = {
+  update: Prisma.XOR<Prisma.ResultVersionUpdateWithoutSettlementReceiptsInput, Prisma.ResultVersionUncheckedUpdateWithoutSettlementReceiptsInput>
+  create: Prisma.XOR<Prisma.ResultVersionCreateWithoutSettlementReceiptsInput, Prisma.ResultVersionUncheckedCreateWithoutSettlementReceiptsInput>
+  where?: Prisma.ResultVersionWhereInput
+}
+
+export type ResultVersionUpdateToOneWithWhereWithoutSettlementReceiptsInput = {
+  where?: Prisma.ResultVersionWhereInput
+  data: Prisma.XOR<Prisma.ResultVersionUpdateWithoutSettlementReceiptsInput, Prisma.ResultVersionUncheckedUpdateWithoutSettlementReceiptsInput>
+}
+
+export type ResultVersionUpdateWithoutSettlementReceiptsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  effectiveAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  observedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  homeGoals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  awayGoals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  fixture?: Prisma.FixtureUpdateOneRequiredWithoutResultVersionsNestedInput
+  observation?: Prisma.SourceObservationUpdateOneRequiredWithoutResultVersionsNestedInput
+  supersedesResultVersion?: Prisma.ResultVersionUpdateOneWithoutSupersededByNestedInput
+  supersededBy?: Prisma.ResultVersionUpdateOneWithoutSupersedesResultVersionNestedInput
+}
+
+export type ResultVersionUncheckedUpdateWithoutSettlementReceiptsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
+  observationId?: Prisma.StringFieldUpdateOperationsInput | string
+  effectiveAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  observedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  homeGoals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  awayGoals?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  supersedesResultVersionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.ResultVersionUncheckedUpdateOneWithoutSupersedesResultVersionNestedInput
 }
@@ -967,6 +1081,7 @@ export type ResultVersionUpdateWithoutFixtureInput = {
   observation?: Prisma.SourceObservationUpdateOneRequiredWithoutResultVersionsNestedInput
   supersedesResultVersion?: Prisma.ResultVersionUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.ResultVersionUpdateOneWithoutSupersedesResultVersionNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutResultVersionNestedInput
 }
 
 export type ResultVersionUncheckedUpdateWithoutFixtureInput = {
@@ -981,6 +1096,7 @@ export type ResultVersionUncheckedUpdateWithoutFixtureInput = {
   supersedesResultVersionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.ResultVersionUncheckedUpdateOneWithoutSupersedesResultVersionNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutResultVersionNestedInput
 }
 
 export type ResultVersionUncheckedUpdateManyWithoutFixtureInput = {
@@ -1021,6 +1137,7 @@ export type ResultVersionUpdateWithoutObservationInput = {
   fixture?: Prisma.FixtureUpdateOneRequiredWithoutResultVersionsNestedInput
   supersedesResultVersion?: Prisma.ResultVersionUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.ResultVersionUpdateOneWithoutSupersedesResultVersionNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutResultVersionNestedInput
 }
 
 export type ResultVersionUncheckedUpdateWithoutObservationInput = {
@@ -1035,6 +1152,7 @@ export type ResultVersionUncheckedUpdateWithoutObservationInput = {
   supersedesResultVersionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.ResultVersionUncheckedUpdateOneWithoutSupersedesResultVersionNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutResultVersionNestedInput
 }
 
 export type ResultVersionUncheckedUpdateManyWithoutObservationInput = {
@@ -1050,6 +1168,35 @@ export type ResultVersionUncheckedUpdateManyWithoutObservationInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+
+/**
+ * Count Type ResultVersionCountOutputType
+ */
+
+export type ResultVersionCountOutputType = {
+  settlementReceipts: number
+}
+
+export type ResultVersionCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  settlementReceipts?: boolean | ResultVersionCountOutputTypeCountSettlementReceiptsArgs
+}
+
+/**
+ * ResultVersionCountOutputType without action
+ */
+export type ResultVersionCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ResultVersionCountOutputType
+   */
+  select?: Prisma.ResultVersionCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * ResultVersionCountOutputType without action
+ */
+export type ResultVersionCountOutputTypeCountSettlementReceiptsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SettlementReceiptWhereInput
+}
 
 
 export type ResultVersionSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1068,6 +1215,8 @@ export type ResultVersionSelect<ExtArgs extends runtime.Types.Extensions.Interna
   observation?: boolean | Prisma.SourceObservationDefaultArgs<ExtArgs>
   supersedesResultVersion?: boolean | Prisma.ResultVersion$supersedesResultVersionArgs<ExtArgs>
   supersededBy?: boolean | Prisma.ResultVersion$supersededByArgs<ExtArgs>
+  settlementReceipts?: boolean | Prisma.ResultVersion$settlementReceiptsArgs<ExtArgs>
+  _count?: boolean | Prisma.ResultVersionCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["resultVersion"]>
 
 export type ResultVersionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1124,6 +1273,8 @@ export type ResultVersionInclude<ExtArgs extends runtime.Types.Extensions.Intern
   observation?: boolean | Prisma.SourceObservationDefaultArgs<ExtArgs>
   supersedesResultVersion?: boolean | Prisma.ResultVersion$supersedesResultVersionArgs<ExtArgs>
   supersededBy?: boolean | Prisma.ResultVersion$supersededByArgs<ExtArgs>
+  settlementReceipts?: boolean | Prisma.ResultVersion$settlementReceiptsArgs<ExtArgs>
+  _count?: boolean | Prisma.ResultVersionCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ResultVersionIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   fixture?: boolean | Prisma.FixtureDefaultArgs<ExtArgs>
@@ -1143,6 +1294,7 @@ export type $ResultVersionPayload<ExtArgs extends runtime.Types.Extensions.Inter
     observation: Prisma.$SourceObservationPayload<ExtArgs>
     supersedesResultVersion: Prisma.$ResultVersionPayload<ExtArgs> | null
     supersededBy: Prisma.$ResultVersionPayload<ExtArgs> | null
+    settlementReceipts: Prisma.$SettlementReceiptPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1554,6 +1706,7 @@ export interface Prisma__ResultVersionClient<T, Null = never, ExtArgs extends ru
   observation<T extends Prisma.SourceObservationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SourceObservationDefaultArgs<ExtArgs>>): Prisma.Prisma__SourceObservationClient<runtime.Types.Result.GetResult<Prisma.$SourceObservationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   supersedesResultVersion<T extends Prisma.ResultVersion$supersedesResultVersionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ResultVersion$supersedesResultVersionArgs<ExtArgs>>): Prisma.Prisma__ResultVersionClient<runtime.Types.Result.GetResult<Prisma.$ResultVersionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   supersededBy<T extends Prisma.ResultVersion$supersededByArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ResultVersion$supersededByArgs<ExtArgs>>): Prisma.Prisma__ResultVersionClient<runtime.Types.Result.GetResult<Prisma.$ResultVersionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  settlementReceipts<T extends Prisma.ResultVersion$settlementReceiptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ResultVersion$settlementReceiptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SettlementReceiptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2030,6 +2183,30 @@ export type ResultVersion$supersededByArgs<ExtArgs extends runtime.Types.Extensi
    */
   include?: Prisma.ResultVersionInclude<ExtArgs> | null
   where?: Prisma.ResultVersionWhereInput
+}
+
+/**
+ * ResultVersion.settlementReceipts
+ */
+export type ResultVersion$settlementReceiptsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SettlementReceipt
+   */
+  select?: Prisma.SettlementReceiptSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SettlementReceipt
+   */
+  omit?: Prisma.SettlementReceiptOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SettlementReceiptInclude<ExtArgs> | null
+  where?: Prisma.SettlementReceiptWhereInput
+  orderBy?: Prisma.SettlementReceiptOrderByWithRelationInput | Prisma.SettlementReceiptOrderByWithRelationInput[]
+  cursor?: Prisma.SettlementReceiptWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SettlementReceiptScalarFieldEnum | Prisma.SettlementReceiptScalarFieldEnum[]
 }
 
 /**

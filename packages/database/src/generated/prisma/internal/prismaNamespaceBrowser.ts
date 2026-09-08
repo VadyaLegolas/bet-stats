@@ -76,6 +76,7 @@ export const ModelName = {
   ManualOddsSelection: 'ManualOddsSelection',
   ValueReceipt: 'ValueReceipt',
   ResultVersion: 'ResultVersion',
+  SettlementReceipt: 'SettlementReceipt',
   LeagueExternalRef: 'LeagueExternalRef',
   SeasonExternalRef: 'SeasonExternalRef',
   TeamExternalRef: 'TeamExternalRef',
@@ -497,6 +498,30 @@ export const ResultVersionScalarFieldEnum = {
 } as const
 
 export type ResultVersionScalarFieldEnum = (typeof ResultVersionScalarFieldEnum)[keyof typeof ResultVersionScalarFieldEnum]
+
+
+export const SettlementReceiptScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  resultVersionId: 'resultVersionId',
+  forecastSnapshotId: 'forecastSnapshotId',
+  revision: 'revision',
+  supersedesSettlementReceiptId: 'supersedesSettlementReceiptId',
+  policyVersion: 'policyVersion',
+  policyHash: 'policyHash',
+  lifecycle: 'lifecycle',
+  scoreability: 'scoreability',
+  financialEligibility: 'financialEligibility',
+  classOutcome: 'classOutcome',
+  reason: 'reason',
+  receipt: 'receipt',
+  resultObservedAt: 'resultObservedAt',
+  forecastCutoff: 'forecastCutoff',
+  settledAt: 'settledAt',
+  createdAt: 'createdAt'
+} as const
+
+export type SettlementReceiptScalarFieldEnum = (typeof SettlementReceiptScalarFieldEnum)[keyof typeof SettlementReceiptScalarFieldEnum]
 
 
 export const LeagueExternalRefScalarFieldEnum = {

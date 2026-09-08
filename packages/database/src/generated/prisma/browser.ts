@@ -146,6 +146,11 @@ export type ValueReceipt = Prisma.ValueReceiptModel
  */
 export type ResultVersion = Prisma.ResultVersionModel
 /**
+ * Model SettlementReceipt
+ * Immutable evaluation fact bound to one exact result revision and frozen forecast.
+ */
+export type SettlementReceipt = Prisma.SettlementReceiptModel
+/**
  * Model LeagueExternalRef
  * 
  */

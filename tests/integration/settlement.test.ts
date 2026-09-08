@@ -24,7 +24,7 @@ function waitForPostgres(): void {
 
 async function persist(id: string, resultVersionId: string, supersedes: string | null = null, revision?: number) {
   return prisma.$queryRawUnsafe<Array<{ id: string; revision: number; supersedesSettlementReceiptId: string | null }>>(
-    `SELECT * FROM persist_settlement_receipt($1,$2,$3,$4,'settlement-policy-v1','policy-hash','FINISHED','SCOREABLE','ELIGIBLE','SCORED','RESULT_FINISHED',$5::jsonb,'2026-09-10T20:05:00Z',$6)` ,
+    `SELECT * FROM persist_settlement_receipt($1,$2,$3,$4,'settlement-policy-v1','policy-hash','FINISHED','SCOREABLE','ELIGIBLE','SCORED','RESULT_FINISHED',$5::jsonb,'2026-09-10T20:05:00Z',$6,$7)` ,
     id, "settlement-fixture", resultVersionId, "settlement-forecast", JSON.stringify({ fixtureId: "settlement-fixture", resultVersionId, forecastSnapshotId: "settlement-forecast", policyVersion: "settlement-policy-v1", policyHash: "policy-hash", lifecycle: "FINISHED", scoreability: "SCOREABLE", financialEligibility: "ELIGIBLE", classOutcome: "SCORED", reason: "RESULT_FINISHED" }), supersedes ?? null, revision ?? null,
   );
 }
@@ -42,9 +42,10 @@ describe("append-only settlement revisions", () => {
       INSERT INTO "Season" (id,"leagueId",label,"startsOn","endsOn","updatedAt") VALUES ('settlement-season','settlement-league','2026','2026-01-01','2026-12-31',now());
       INSERT INTO "Team" (id,name,"normalizedName","countryCode","updatedAt") VALUES ('settlement-home','Home','home','GB',now()),('settlement-away','Away','away','GB',now());
       INSERT INTO "Fixture" (id,"leagueId","seasonId","homeTeamId","awayTeamId","kickoffUtc",status,"updatedAt") VALUES ('settlement-fixture','settlement-league','settlement-season','settlement-home','settlement-away','2026-09-10T18:00:00Z','FINISHED',now());
-      INSERT INTO "SourceObservation" (id,provider,"endpointFamily","externalIdentity","observedAt","payloadHash","rawPayload","payloadBytes") VALUES ('settlement-obs-1','test','RESULTS','fixture','2026-09-10T20:00:00Z','settlement-hash-1','{}',2),('settlement-obs-2','test','RESULTS','fixture','2026-09-10T20:01:00Z','settlement-hash-2','{}',2);
+      INSERT INTO "SourceObservation" (id,provider,"endpointFamily","externalIdentity","observedAt","payloadHash","rawPayload","payloadBytes") VALUES ('settlement-obs-1','test','RESULTS','fixture','2026-09-10T20:00:00Z','settlement-hash-1','{}',2),('settlement-obs-2','test','RESULTS','fixture','2026-09-10T20:01:00Z','settlement-hash-2','{}',2),('settlement-obs-3','test','RESULTS','fixture','2026-09-10T20:02:00Z','settlement-hash-3','{}',2);
       INSERT INTO "ResultVersion" (id,"fixtureId","observationId","effectiveAt","observedAt","homeGoals","awayGoals",status,revision) VALUES ('settlement-result-1','settlement-fixture','settlement-obs-1','2026-09-10T18:00:00Z','2026-09-10T20:00:00Z',2,1,'FINISHED',1);
       INSERT INTO "ResultVersion" (id,"fixtureId","observationId","effectiveAt","observedAt","homeGoals","awayGoals",status,revision,"supersedesResultVersionId") VALUES ('settlement-result-2','settlement-fixture','settlement-obs-2','2026-09-10T18:00:00Z','2026-09-10T20:01:00Z',1,1,'FINISHED',2,'settlement-result-1');
+      INSERT INTO "ResultVersion" (id,"fixtureId","observationId","effectiveAt","observedAt","homeGoals","awayGoals",status,revision,"supersedesResultVersionId") VALUES ('settlement-result-3','settlement-fixture','settlement-obs-3','2026-09-10T18:00:00Z','2026-09-10T20:02:00Z',1,0,'FINISHED',3,'settlement-result-2');
       INSERT INTO "ForecastSnapshot" (id,"fixtureId",kind,state,revision,cutoff,"modelVersion","modelHash","configVersion","configHash","inputHash","evidenceFingerprint","sourceRefs",probabilities,confidence,assumptions,receipt,"issuedAt") VALUES ('settlement-forecast','settlement-fixture','PRE_MATCH','ISSUED',1,'2026-09-10T17:00:00Z','poisson-v1','model-hash','forecast-config-v1','config-hash','input-hash','evidence-hash','[]','{}','{}','[]','{"officialLineupObservationId":null}','2026-09-10T17:00:01Z');
     `);
   }, 120_000);
@@ -67,7 +68,7 @@ describe("append-only settlement revisions", () => {
   it("rejects mutation and broken source/revision lineage", async () => {
     await expect(prisma.$executeRawUnsafe(`UPDATE "SettlementReceipt" SET reason='tampered' WHERE id='settlement-receipt-1'`)).rejects.toThrow(/immutable/i);
     await expect(prisma.$executeRawUnsafe(`DELETE FROM "SettlementReceipt" WHERE id='settlement-receipt-1'`)).rejects.toThrow(/immutable/i);
-    await expect(persist("gap", "settlement-result-2", "settlement-receipt-1", 4)).rejects.toThrow(/revision|predecessor/i);
+    await expect(persist("gap", "settlement-result-3", "settlement-receipt-2", 4)).rejects.toThrow(/revision|predecessor/i);
     await expect(prisma.$executeRawUnsafe(`INSERT INTO "SettlementReceipt" (id,"fixtureId","resultVersionId","forecastSnapshotId",revision,"policyVersion","policyHash",lifecycle,scoreability,"financialEligibility","classOutcome",reason,receipt,"resultObservedAt","forecastCutoff","settledAt") VALUES ('bad-fixture','settlement-home','settlement-result-1','settlement-forecast',1,'settlement-policy-v1','other-policy','FINISHED','SCOREABLE','ELIGIBLE','SCORED','RESULT_FINISHED','{}','2026-09-10T20:00:00Z','2026-09-10T17:00:00Z',now())`)).rejects.toThrow(/lineage|fixture/i);
   });
 });

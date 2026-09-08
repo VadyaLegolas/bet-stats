@@ -422,6 +422,7 @@ export const ModelName = {
   ManualOddsSelection: 'ManualOddsSelection',
   ValueReceipt: 'ValueReceipt',
   ResultVersion: 'ResultVersion',
+  SettlementReceipt: 'SettlementReceipt',
   LeagueExternalRef: 'LeagueExternalRef',
   SeasonExternalRef: 'SeasonExternalRef',
   TeamExternalRef: 'TeamExternalRef',
@@ -446,7 +447,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2300,6 +2301,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SettlementReceipt: {
+      payload: Prisma.$SettlementReceiptPayload<ExtArgs>
+      fields: Prisma.SettlementReceiptFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SettlementReceiptFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SettlementReceiptFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>
+        }
+        findFirst: {
+          args: Prisma.SettlementReceiptFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SettlementReceiptFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>
+        }
+        findMany: {
+          args: Prisma.SettlementReceiptFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>[]
+        }
+        create: {
+          args: Prisma.SettlementReceiptCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>
+        }
+        createMany: {
+          args: Prisma.SettlementReceiptCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SettlementReceiptCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>[]
+        }
+        delete: {
+          args: Prisma.SettlementReceiptDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>
+        }
+        update: {
+          args: Prisma.SettlementReceiptUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>
+        }
+        deleteMany: {
+          args: Prisma.SettlementReceiptDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SettlementReceiptUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SettlementReceiptUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>[]
+        }
+        upsert: {
+          args: Prisma.SettlementReceiptUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SettlementReceiptPayload>
+        }
+        aggregate: {
+          args: Prisma.SettlementReceiptAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSettlementReceipt>
+        }
+        groupBy: {
+          args: Prisma.SettlementReceiptGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SettlementReceiptGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SettlementReceiptCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SettlementReceiptCountAggregateOutputType> | number
+        }
+      }
+    }
     LeagueExternalRef: {
       payload: Prisma.$LeagueExternalRefPayload<ExtArgs>
       fields: Prisma.LeagueExternalRefFieldRefs
@@ -3401,6 +3476,30 @@ export const ResultVersionScalarFieldEnum = {
 export type ResultVersionScalarFieldEnum = (typeof ResultVersionScalarFieldEnum)[keyof typeof ResultVersionScalarFieldEnum]
 
 
+export const SettlementReceiptScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  resultVersionId: 'resultVersionId',
+  forecastSnapshotId: 'forecastSnapshotId',
+  revision: 'revision',
+  supersedesSettlementReceiptId: 'supersedesSettlementReceiptId',
+  policyVersion: 'policyVersion',
+  policyHash: 'policyHash',
+  lifecycle: 'lifecycle',
+  scoreability: 'scoreability',
+  financialEligibility: 'financialEligibility',
+  classOutcome: 'classOutcome',
+  reason: 'reason',
+  receipt: 'receipt',
+  resultObservedAt: 'resultObservedAt',
+  forecastCutoff: 'forecastCutoff',
+  settledAt: 'settledAt',
+  createdAt: 'createdAt'
+} as const
+
+export type SettlementReceiptScalarFieldEnum = (typeof SettlementReceiptScalarFieldEnum)[keyof typeof SettlementReceiptScalarFieldEnum]
+
+
 export const LeagueExternalRefScalarFieldEnum = {
   id: 'id',
   leagueId: 'leagueId',
@@ -3988,6 +4087,7 @@ export type GlobalOmitConfig = {
   manualOddsSelection?: Prisma.ManualOddsSelectionOmit
   valueReceipt?: Prisma.ValueReceiptOmit
   resultVersion?: Prisma.ResultVersionOmit
+  settlementReceipt?: Prisma.SettlementReceiptOmit
   leagueExternalRef?: Prisma.LeagueExternalRefOmit
   seasonExternalRef?: Prisma.SeasonExternalRefOmit
   teamExternalRef?: Prisma.TeamExternalRefOmit

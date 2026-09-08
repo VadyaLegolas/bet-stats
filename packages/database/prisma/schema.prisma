@@ -190,6 +190,7 @@ model Fixture {
   forecastSnapshots ForecastSnapshot[]
   manualOddsSnapshots ManualOddsSnapshot[]
   valueReceipts ValueReceipt[]
+  settlementReceipts SettlementReceipt[]
 
   // D-10: deliberately non-unique; this index finds ±36h candidates only.
   @@index([homeTeamId, awayTeamId, kickoffUtc])
@@ -455,6 +456,7 @@ model ForecastSnapshot {
   supersededBy                ForecastSnapshot?     @relation("ForecastSupersession")
   markets                     ForecastMarket[]
   valueReceipts               ValueReceipt[]
+  settlementReceipts          SettlementReceipt[]
 
   @@unique([fixtureId, kind, cutoff, modelHash, configHash, inputHash, evidenceFingerprint, officialLineupObservationId])
   @@unique([fixtureId, kind, revision])
@@ -547,11 +549,43 @@ model ResultVersion {
   observation               SourceObservation @relation(fields: [observationId], references: [id], onDelete: Restrict)
   supersedesResultVersion   ResultVersion?    @relation("ResultSupersession", fields: [supersedesResultVersionId], references: [id], onDelete: Restrict)
   supersededBy              ResultVersion?    @relation("ResultSupersession")
+  settlementReceipts        SettlementReceipt[]
 
   @@unique([fixtureId, revision])
   @@unique([fixtureId, observationId])
   @@index([fixtureId, effectiveAt, observedAt])
   @@index([effectiveAt, observedAt])
+}
+
+/// Immutable evaluation fact bound to one exact result revision and frozen forecast.
+model SettlementReceipt {
+  id                             String             @id
+  fixtureId                      String
+  resultVersionId                String
+  forecastSnapshotId             String
+  revision                       Int
+  supersedesSettlementReceiptId  String?            @unique
+  policyVersion                  String
+  policyHash                     String
+  lifecycle                      String
+  scoreability                   String
+  financialEligibility           String
+  classOutcome                   String
+  reason                         String
+  receipt                        Json
+  resultObservedAt               DateTime           @db.Timestamptz(3)
+  forecastCutoff                 DateTime           @db.Timestamptz(3)
+  settledAt                      DateTime           @db.Timestamptz(3)
+  createdAt                      DateTime           @default(now()) @db.Timestamptz(3)
+  fixture                        Fixture             @relation(fields: [fixtureId], references: [id], onDelete: Restrict)
+  resultVersion                  ResultVersion       @relation(fields: [resultVersionId], references: [id], onDelete: Restrict)
+  forecastSnapshot               ForecastSnapshot    @relation(fields: [forecastSnapshotId], references: [id], onDelete: Restrict)
+  supersedesSettlementReceipt    SettlementReceipt?  @relation("SettlementSupersession", fields: [supersedesSettlementReceiptId], references: [id], onDelete: Restrict)
+  supersededBy                   SettlementReceipt?  @relation("SettlementSupersession")
+
+  @@unique([resultVersionId, forecastSnapshotId, policyHash])
+  @@unique([fixtureId, revision])
+  @@index([fixtureId, settledAt])
 }
 
 model LeagueExternalRef {

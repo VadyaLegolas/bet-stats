@@ -330,6 +330,7 @@ export type ForecastSnapshotWhereInput = {
   supersededBy?: Prisma.XOR<Prisma.ForecastSnapshotNullableScalarRelationFilter, Prisma.ForecastSnapshotWhereInput> | null
   markets?: Prisma.ForecastMarketListRelationFilter
   valueReceipts?: Prisma.ValueReceiptListRelationFilter
+  settlementReceipts?: Prisma.SettlementReceiptListRelationFilter
 }
 
 export type ForecastSnapshotOrderByWithRelationInput = {
@@ -360,6 +361,7 @@ export type ForecastSnapshotOrderByWithRelationInput = {
   supersededBy?: Prisma.ForecastSnapshotOrderByWithRelationInput
   markets?: Prisma.ForecastMarketOrderByRelationAggregateInput
   valueReceipts?: Prisma.ValueReceiptOrderByRelationAggregateInput
+  settlementReceipts?: Prisma.SettlementReceiptOrderByRelationAggregateInput
 }
 
 export type ForecastSnapshotWhereUniqueInput = Prisma.AtLeast<{
@@ -395,6 +397,7 @@ export type ForecastSnapshotWhereUniqueInput = Prisma.AtLeast<{
   supersededBy?: Prisma.XOR<Prisma.ForecastSnapshotNullableScalarRelationFilter, Prisma.ForecastSnapshotWhereInput> | null
   markets?: Prisma.ForecastMarketListRelationFilter
   valueReceipts?: Prisma.ValueReceiptListRelationFilter
+  settlementReceipts?: Prisma.SettlementReceiptListRelationFilter
 }, "id" | "supersedesForecastId" | "fixtureId_kind_cutoff_modelHash_configHash_inputHash_evidenceFingerprint_officialLineupObservationId" | "fixtureId_kind_revision">
 
 export type ForecastSnapshotOrderByWithAggregationInput = {
@@ -478,6 +481,7 @@ export type ForecastSnapshotCreateInput = {
   supersededBy?: Prisma.ForecastSnapshotCreateNestedOneWithoutSupersedesForecastInput
   markets?: Prisma.ForecastMarketCreateNestedManyWithoutForecastSnapshotInput
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotUncheckedCreateInput = {
@@ -505,6 +509,7 @@ export type ForecastSnapshotUncheckedCreateInput = {
   supersededBy?: Prisma.ForecastSnapshotUncheckedCreateNestedOneWithoutSupersedesForecastInput
   markets?: Prisma.ForecastMarketUncheckedCreateNestedManyWithoutForecastSnapshotInput
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotUpdateInput = {
@@ -532,6 +537,7 @@ export type ForecastSnapshotUpdateInput = {
   supersededBy?: Prisma.ForecastSnapshotUpdateOneWithoutSupersedesForecastNestedInput
   markets?: Prisma.ForecastMarketUpdateManyWithoutForecastSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotUncheckedUpdateInput = {
@@ -559,6 +565,7 @@ export type ForecastSnapshotUncheckedUpdateInput = {
   supersededBy?: Prisma.ForecastSnapshotUncheckedUpdateOneWithoutSupersedesForecastNestedInput
   markets?: Prisma.ForecastMarketUncheckedUpdateManyWithoutForecastSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotCreateManyInput = {
@@ -905,6 +912,20 @@ export type ForecastSnapshotUpdateOneRequiredWithoutValueReceiptsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ForecastSnapshotUpdateToOneWithWhereWithoutValueReceiptsInput, Prisma.ForecastSnapshotUpdateWithoutValueReceiptsInput>, Prisma.ForecastSnapshotUncheckedUpdateWithoutValueReceiptsInput>
 }
 
+export type ForecastSnapshotCreateNestedOneWithoutSettlementReceiptsInput = {
+  create?: Prisma.XOR<Prisma.ForecastSnapshotCreateWithoutSettlementReceiptsInput, Prisma.ForecastSnapshotUncheckedCreateWithoutSettlementReceiptsInput>
+  connectOrCreate?: Prisma.ForecastSnapshotCreateOrConnectWithoutSettlementReceiptsInput
+  connect?: Prisma.ForecastSnapshotWhereUniqueInput
+}
+
+export type ForecastSnapshotUpdateOneRequiredWithoutSettlementReceiptsNestedInput = {
+  create?: Prisma.XOR<Prisma.ForecastSnapshotCreateWithoutSettlementReceiptsInput, Prisma.ForecastSnapshotUncheckedCreateWithoutSettlementReceiptsInput>
+  connectOrCreate?: Prisma.ForecastSnapshotCreateOrConnectWithoutSettlementReceiptsInput
+  upsert?: Prisma.ForecastSnapshotUpsertWithoutSettlementReceiptsInput
+  connect?: Prisma.ForecastSnapshotWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ForecastSnapshotUpdateToOneWithWhereWithoutSettlementReceiptsInput, Prisma.ForecastSnapshotUpdateWithoutSettlementReceiptsInput>, Prisma.ForecastSnapshotUncheckedUpdateWithoutSettlementReceiptsInput>
+}
+
 export type ForecastSnapshotCreateWithoutFixtureInput = {
   id?: string
   kind: $Enums.ForecastKind
@@ -929,6 +950,7 @@ export type ForecastSnapshotCreateWithoutFixtureInput = {
   supersededBy?: Prisma.ForecastSnapshotCreateNestedOneWithoutSupersedesForecastInput
   markets?: Prisma.ForecastMarketCreateNestedManyWithoutForecastSnapshotInput
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotUncheckedCreateWithoutFixtureInput = {
@@ -955,6 +977,7 @@ export type ForecastSnapshotUncheckedCreateWithoutFixtureInput = {
   supersededBy?: Prisma.ForecastSnapshotUncheckedCreateNestedOneWithoutSupersedesForecastInput
   markets?: Prisma.ForecastMarketUncheckedCreateNestedManyWithoutForecastSnapshotInput
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotCreateOrConnectWithoutFixtureInput = {
@@ -1034,6 +1057,7 @@ export type ForecastSnapshotCreateWithoutOfficialLineupObservationInput = {
   supersededBy?: Prisma.ForecastSnapshotCreateNestedOneWithoutSupersedesForecastInput
   markets?: Prisma.ForecastMarketCreateNestedManyWithoutForecastSnapshotInput
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotUncheckedCreateWithoutOfficialLineupObservationInput = {
@@ -1060,6 +1084,7 @@ export type ForecastSnapshotUncheckedCreateWithoutOfficialLineupObservationInput
   supersededBy?: Prisma.ForecastSnapshotUncheckedCreateNestedOneWithoutSupersedesForecastInput
   markets?: Prisma.ForecastMarketUncheckedCreateNestedManyWithoutForecastSnapshotInput
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotCreateOrConnectWithoutOfficialLineupObservationInput = {
@@ -1112,6 +1137,7 @@ export type ForecastSnapshotCreateWithoutSupersededByInput = {
   supersedesForecast?: Prisma.ForecastSnapshotCreateNestedOneWithoutSupersededByInput
   markets?: Prisma.ForecastMarketCreateNestedManyWithoutForecastSnapshotInput
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotUncheckedCreateWithoutSupersededByInput = {
@@ -1138,6 +1164,7 @@ export type ForecastSnapshotUncheckedCreateWithoutSupersededByInput = {
   createdAt?: Date | string
   markets?: Prisma.ForecastMarketUncheckedCreateNestedManyWithoutForecastSnapshotInput
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotCreateOrConnectWithoutSupersededByInput = {
@@ -1169,6 +1196,7 @@ export type ForecastSnapshotCreateWithoutSupersedesForecastInput = {
   supersededBy?: Prisma.ForecastSnapshotCreateNestedOneWithoutSupersedesForecastInput
   markets?: Prisma.ForecastMarketCreateNestedManyWithoutForecastSnapshotInput
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotUncheckedCreateWithoutSupersedesForecastInput = {
@@ -1195,6 +1223,7 @@ export type ForecastSnapshotUncheckedCreateWithoutSupersedesForecastInput = {
   supersededBy?: Prisma.ForecastSnapshotUncheckedCreateNestedOneWithoutSupersedesForecastInput
   markets?: Prisma.ForecastMarketUncheckedCreateNestedManyWithoutForecastSnapshotInput
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotCreateOrConnectWithoutSupersedesForecastInput = {
@@ -1237,6 +1266,7 @@ export type ForecastSnapshotUpdateWithoutSupersededByInput = {
   supersedesForecast?: Prisma.ForecastSnapshotUpdateOneWithoutSupersededByNestedInput
   markets?: Prisma.ForecastMarketUpdateManyWithoutForecastSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotUncheckedUpdateWithoutSupersededByInput = {
@@ -1263,6 +1293,7 @@ export type ForecastSnapshotUncheckedUpdateWithoutSupersededByInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   markets?: Prisma.ForecastMarketUncheckedUpdateManyWithoutForecastSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotUpsertWithoutSupersedesForecastInput = {
@@ -1300,6 +1331,7 @@ export type ForecastSnapshotUpdateWithoutSupersedesForecastInput = {
   supersededBy?: Prisma.ForecastSnapshotUpdateOneWithoutSupersedesForecastNestedInput
   markets?: Prisma.ForecastMarketUpdateManyWithoutForecastSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotUncheckedUpdateWithoutSupersedesForecastInput = {
@@ -1326,6 +1358,7 @@ export type ForecastSnapshotUncheckedUpdateWithoutSupersedesForecastInput = {
   supersededBy?: Prisma.ForecastSnapshotUncheckedUpdateOneWithoutSupersedesForecastNestedInput
   markets?: Prisma.ForecastMarketUncheckedUpdateManyWithoutForecastSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotCreateWithoutMarketsInput = {
@@ -1352,6 +1385,7 @@ export type ForecastSnapshotCreateWithoutMarketsInput = {
   supersedesForecast?: Prisma.ForecastSnapshotCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.ForecastSnapshotCreateNestedOneWithoutSupersedesForecastInput
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotUncheckedCreateWithoutMarketsInput = {
@@ -1378,6 +1412,7 @@ export type ForecastSnapshotUncheckedCreateWithoutMarketsInput = {
   createdAt?: Date | string
   supersededBy?: Prisma.ForecastSnapshotUncheckedCreateNestedOneWithoutSupersedesForecastInput
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotCreateOrConnectWithoutMarketsInput = {
@@ -1420,6 +1455,7 @@ export type ForecastSnapshotUpdateWithoutMarketsInput = {
   supersedesForecast?: Prisma.ForecastSnapshotUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.ForecastSnapshotUpdateOneWithoutSupersedesForecastNestedInput
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotUncheckedUpdateWithoutMarketsInput = {
@@ -1446,6 +1482,7 @@ export type ForecastSnapshotUncheckedUpdateWithoutMarketsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.ForecastSnapshotUncheckedUpdateOneWithoutSupersedesForecastNestedInput
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotCreateWithoutValueReceiptsInput = {
@@ -1472,6 +1509,7 @@ export type ForecastSnapshotCreateWithoutValueReceiptsInput = {
   supersedesForecast?: Prisma.ForecastSnapshotCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.ForecastSnapshotCreateNestedOneWithoutSupersedesForecastInput
   markets?: Prisma.ForecastMarketCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotUncheckedCreateWithoutValueReceiptsInput = {
@@ -1498,6 +1536,7 @@ export type ForecastSnapshotUncheckedCreateWithoutValueReceiptsInput = {
   createdAt?: Date | string
   supersededBy?: Prisma.ForecastSnapshotUncheckedCreateNestedOneWithoutSupersedesForecastInput
   markets?: Prisma.ForecastMarketUncheckedCreateNestedManyWithoutForecastSnapshotInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
 }
 
 export type ForecastSnapshotCreateOrConnectWithoutValueReceiptsInput = {
@@ -1540,6 +1579,7 @@ export type ForecastSnapshotUpdateWithoutValueReceiptsInput = {
   supersedesForecast?: Prisma.ForecastSnapshotUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.ForecastSnapshotUpdateOneWithoutSupersedesForecastNestedInput
   markets?: Prisma.ForecastMarketUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotUncheckedUpdateWithoutValueReceiptsInput = {
@@ -1566,6 +1606,131 @@ export type ForecastSnapshotUncheckedUpdateWithoutValueReceiptsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.ForecastSnapshotUncheckedUpdateOneWithoutSupersedesForecastNestedInput
   markets?: Prisma.ForecastMarketUncheckedUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
+}
+
+export type ForecastSnapshotCreateWithoutSettlementReceiptsInput = {
+  id?: string
+  kind: $Enums.ForecastKind
+  state?: $Enums.ForecastSnapshotState
+  revision: number
+  cutoff: Date | string
+  modelVersion: string
+  modelHash: string
+  configVersion: string
+  configHash: string
+  inputHash: string
+  evidenceFingerprint: string
+  sourceRefs: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  probabilities: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  confidence: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  assumptions: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  issuedAt?: Date | string | null
+  createdAt?: Date | string
+  fixture: Prisma.FixtureCreateNestedOneWithoutForecastSnapshotsInput
+  officialLineupObservation?: Prisma.LineupObservationCreateNestedOneWithoutForecastsInput
+  supersedesForecast?: Prisma.ForecastSnapshotCreateNestedOneWithoutSupersededByInput
+  supersededBy?: Prisma.ForecastSnapshotCreateNestedOneWithoutSupersedesForecastInput
+  markets?: Prisma.ForecastMarketCreateNestedManyWithoutForecastSnapshotInput
+  valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutForecastSnapshotInput
+}
+
+export type ForecastSnapshotUncheckedCreateWithoutSettlementReceiptsInput = {
+  id?: string
+  fixtureId: string
+  kind: $Enums.ForecastKind
+  state?: $Enums.ForecastSnapshotState
+  revision: number
+  supersedesForecastId?: string | null
+  officialLineupObservationId?: string | null
+  cutoff: Date | string
+  modelVersion: string
+  modelHash: string
+  configVersion: string
+  configHash: string
+  inputHash: string
+  evidenceFingerprint: string
+  sourceRefs: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  probabilities: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  confidence: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  assumptions: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  issuedAt?: Date | string | null
+  createdAt?: Date | string
+  supersededBy?: Prisma.ForecastSnapshotUncheckedCreateNestedOneWithoutSupersedesForecastInput
+  markets?: Prisma.ForecastMarketUncheckedCreateNestedManyWithoutForecastSnapshotInput
+  valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutForecastSnapshotInput
+}
+
+export type ForecastSnapshotCreateOrConnectWithoutSettlementReceiptsInput = {
+  where: Prisma.ForecastSnapshotWhereUniqueInput
+  create: Prisma.XOR<Prisma.ForecastSnapshotCreateWithoutSettlementReceiptsInput, Prisma.ForecastSnapshotUncheckedCreateWithoutSettlementReceiptsInput>
+}
+
+export type ForecastSnapshotUpsertWithoutSettlementReceiptsInput = {
+  update: Prisma.XOR<Prisma.ForecastSnapshotUpdateWithoutSettlementReceiptsInput, Prisma.ForecastSnapshotUncheckedUpdateWithoutSettlementReceiptsInput>
+  create: Prisma.XOR<Prisma.ForecastSnapshotCreateWithoutSettlementReceiptsInput, Prisma.ForecastSnapshotUncheckedCreateWithoutSettlementReceiptsInput>
+  where?: Prisma.ForecastSnapshotWhereInput
+}
+
+export type ForecastSnapshotUpdateToOneWithWhereWithoutSettlementReceiptsInput = {
+  where?: Prisma.ForecastSnapshotWhereInput
+  data: Prisma.XOR<Prisma.ForecastSnapshotUpdateWithoutSettlementReceiptsInput, Prisma.ForecastSnapshotUncheckedUpdateWithoutSettlementReceiptsInput>
+}
+
+export type ForecastSnapshotUpdateWithoutSettlementReceiptsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
+  state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  modelVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  modelHash?: Prisma.StringFieldUpdateOperationsInput | string
+  configVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  configHash?: Prisma.StringFieldUpdateOperationsInput | string
+  inputHash?: Prisma.StringFieldUpdateOperationsInput | string
+  evidenceFingerprint?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceRefs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  probabilities?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  confidence?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  assumptions?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  issuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  fixture?: Prisma.FixtureUpdateOneRequiredWithoutForecastSnapshotsNestedInput
+  officialLineupObservation?: Prisma.LineupObservationUpdateOneWithoutForecastsNestedInput
+  supersedesForecast?: Prisma.ForecastSnapshotUpdateOneWithoutSupersededByNestedInput
+  supersededBy?: Prisma.ForecastSnapshotUpdateOneWithoutSupersedesForecastNestedInput
+  markets?: Prisma.ForecastMarketUpdateManyWithoutForecastSnapshotNestedInput
+  valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutForecastSnapshotNestedInput
+}
+
+export type ForecastSnapshotUncheckedUpdateWithoutSettlementReceiptsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
+  kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
+  state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  supersedesForecastId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  officialLineupObservationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  modelVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  modelHash?: Prisma.StringFieldUpdateOperationsInput | string
+  configVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  configHash?: Prisma.StringFieldUpdateOperationsInput | string
+  inputHash?: Prisma.StringFieldUpdateOperationsInput | string
+  evidenceFingerprint?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceRefs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  probabilities?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  confidence?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  assumptions?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  issuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supersededBy?: Prisma.ForecastSnapshotUncheckedUpdateOneWithoutSupersedesForecastNestedInput
+  markets?: Prisma.ForecastMarketUncheckedUpdateManyWithoutForecastSnapshotNestedInput
+  valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotCreateManyFixtureInput = {
@@ -1615,6 +1780,7 @@ export type ForecastSnapshotUpdateWithoutFixtureInput = {
   supersededBy?: Prisma.ForecastSnapshotUpdateOneWithoutSupersedesForecastNestedInput
   markets?: Prisma.ForecastMarketUpdateManyWithoutForecastSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotUncheckedUpdateWithoutFixtureInput = {
@@ -1641,6 +1807,7 @@ export type ForecastSnapshotUncheckedUpdateWithoutFixtureInput = {
   supersededBy?: Prisma.ForecastSnapshotUncheckedUpdateOneWithoutSupersedesForecastNestedInput
   markets?: Prisma.ForecastMarketUncheckedUpdateManyWithoutForecastSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotUncheckedUpdateManyWithoutFixtureInput = {
@@ -1713,6 +1880,7 @@ export type ForecastSnapshotUpdateWithoutOfficialLineupObservationInput = {
   supersededBy?: Prisma.ForecastSnapshotUpdateOneWithoutSupersedesForecastNestedInput
   markets?: Prisma.ForecastMarketUpdateManyWithoutForecastSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotUncheckedUpdateWithoutOfficialLineupObservationInput = {
@@ -1739,6 +1907,7 @@ export type ForecastSnapshotUncheckedUpdateWithoutOfficialLineupObservationInput
   supersededBy?: Prisma.ForecastSnapshotUncheckedUpdateOneWithoutSupersedesForecastNestedInput
   markets?: Prisma.ForecastMarketUncheckedUpdateManyWithoutForecastSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutForecastSnapshotNestedInput
 }
 
 export type ForecastSnapshotUncheckedUpdateManyWithoutOfficialLineupObservationInput = {
@@ -1772,11 +1941,13 @@ export type ForecastSnapshotUncheckedUpdateManyWithoutOfficialLineupObservationI
 export type ForecastSnapshotCountOutputType = {
   markets: number
   valueReceipts: number
+  settlementReceipts: number
 }
 
 export type ForecastSnapshotCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   markets?: boolean | ForecastSnapshotCountOutputTypeCountMarketsArgs
   valueReceipts?: boolean | ForecastSnapshotCountOutputTypeCountValueReceiptsArgs
+  settlementReceipts?: boolean | ForecastSnapshotCountOutputTypeCountSettlementReceiptsArgs
 }
 
 /**
@@ -1801,6 +1972,13 @@ export type ForecastSnapshotCountOutputTypeCountMarketsArgs<ExtArgs extends runt
  */
 export type ForecastSnapshotCountOutputTypeCountValueReceiptsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.ValueReceiptWhereInput
+}
+
+/**
+ * ForecastSnapshotCountOutputType without action
+ */
+export type ForecastSnapshotCountOutputTypeCountSettlementReceiptsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SettlementReceiptWhereInput
 }
 
 
@@ -1832,6 +2010,7 @@ export type ForecastSnapshotSelect<ExtArgs extends runtime.Types.Extensions.Inte
   supersededBy?: boolean | Prisma.ForecastSnapshot$supersededByArgs<ExtArgs>
   markets?: boolean | Prisma.ForecastSnapshot$marketsArgs<ExtArgs>
   valueReceipts?: boolean | Prisma.ForecastSnapshot$valueReceiptsArgs<ExtArgs>
+  settlementReceipts?: boolean | Prisma.ForecastSnapshot$settlementReceiptsArgs<ExtArgs>
   _count?: boolean | Prisma.ForecastSnapshotCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["forecastSnapshot"]>
 
@@ -1921,6 +2100,7 @@ export type ForecastSnapshotInclude<ExtArgs extends runtime.Types.Extensions.Int
   supersededBy?: boolean | Prisma.ForecastSnapshot$supersededByArgs<ExtArgs>
   markets?: boolean | Prisma.ForecastSnapshot$marketsArgs<ExtArgs>
   valueReceipts?: boolean | Prisma.ForecastSnapshot$valueReceiptsArgs<ExtArgs>
+  settlementReceipts?: boolean | Prisma.ForecastSnapshot$settlementReceiptsArgs<ExtArgs>
   _count?: boolean | Prisma.ForecastSnapshotCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ForecastSnapshotIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1943,6 +2123,7 @@ export type $ForecastSnapshotPayload<ExtArgs extends runtime.Types.Extensions.In
     supersededBy: Prisma.$ForecastSnapshotPayload<ExtArgs> | null
     markets: Prisma.$ForecastMarketPayload<ExtArgs>[]
     valueReceipts: Prisma.$ValueReceiptPayload<ExtArgs>[]
+    settlementReceipts: Prisma.$SettlementReceiptPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2366,6 +2547,7 @@ export interface Prisma__ForecastSnapshotClient<T, Null = never, ExtArgs extends
   supersededBy<T extends Prisma.ForecastSnapshot$supersededByArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ForecastSnapshot$supersededByArgs<ExtArgs>>): Prisma.Prisma__ForecastSnapshotClient<runtime.Types.Result.GetResult<Prisma.$ForecastSnapshotPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   markets<T extends Prisma.ForecastSnapshot$marketsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ForecastSnapshot$marketsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ForecastMarketPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   valueReceipts<T extends Prisma.ForecastSnapshot$valueReceiptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ForecastSnapshot$valueReceiptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ValueReceiptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  settlementReceipts<T extends Prisma.ForecastSnapshot$settlementReceiptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ForecastSnapshot$settlementReceiptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SettlementReceiptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2919,6 +3101,30 @@ export type ForecastSnapshot$valueReceiptsArgs<ExtArgs extends runtime.Types.Ext
   take?: number
   skip?: number
   distinct?: Prisma.ValueReceiptScalarFieldEnum | Prisma.ValueReceiptScalarFieldEnum[]
+}
+
+/**
+ * ForecastSnapshot.settlementReceipts
+ */
+export type ForecastSnapshot$settlementReceiptsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SettlementReceipt
+   */
+  select?: Prisma.SettlementReceiptSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SettlementReceipt
+   */
+  omit?: Prisma.SettlementReceiptOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SettlementReceiptInclude<ExtArgs> | null
+  where?: Prisma.SettlementReceiptWhereInput
+  orderBy?: Prisma.SettlementReceiptOrderByWithRelationInput | Prisma.SettlementReceiptOrderByWithRelationInput[]
+  cursor?: Prisma.SettlementReceiptWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SettlementReceiptScalarFieldEnum | Prisma.SettlementReceiptScalarFieldEnum[]
 }
 
 /**

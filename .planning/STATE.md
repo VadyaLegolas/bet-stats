@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 4
 current_phase_name: Settlement and Evidence Scorecard
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-09-08T21:20:53.149Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-09-08T21:27:57.231Z"
 last_activity: 2026-09-08
 last_activity_desc: Phase 03 complete, transitioned to Phase 4
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 60
-  completed_plans: 55
+  completed_plans: 56
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 4 — Settlement and Evidence Scorecard
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 8
 Status: Ready to execute
 Last Activity: 2026-09-08
@@ -86,6 +86,7 @@ Progress: [█████░░░░░] 50%
 | Phase 04 P01 | 16min | 2 tasks | 18 files |
 | Phase 04 P02 | 18min | 2 tasks | 18 files |
 | Phase 04 P03 | 9min | 2 tasks | 5 files |
+| Phase 04 P04 | 16min | 2 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 4]: Phase 04: Reliability expands each categorical score into one binary event per selection before deterministic bucket aggregation.
 - [Phase 4]: Phase 04: Only populated buckets participate in the minimum-bucket cohort health gate; empty buckets remain visible as insufficient.
 - [Phase 4]: Phase 04: Cohort policy identities hash exact serialized thresholds so changed gates cannot silently relabel evidence.
+- [Phase 4]: Phase 04: ROI and Yield are disclosed aliases of totalProfitUnits / totalStakedUnits under flat-one-unit-v1.
+- [Phase 4]: Phase 04: CLV requires an explicitly labeled market-close observation with an exact comparable tuple.
 
 ### Pending Todos
 
@@ -145,6 +148,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-08T21:20:52.976Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-09-08T21:27:57.056Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None

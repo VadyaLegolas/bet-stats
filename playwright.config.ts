@@ -26,6 +26,7 @@ export default defineConfig({
       env: {
         NODE_ENV: "test",
         DATA_PROVIDER_MODE: "deterministic",
+        ELIGIBILITY_ALLOWED_REGIONS: "PL",
         API_HOST: "127.0.0.1",
         API_PORT: "3001",
       },
@@ -38,6 +39,9 @@ export default defineConfig({
       env: {
         API_ORIGIN: "http://127.0.0.1:3001",
         DISPLAY_TIME_ZONE: "Europe/Warsaw",
+        ELIGIBILITY_REGION: "PL",
+        ELIGIBILITY_AGE_ACKNOWLEDGED: "true",
+        ELIGIBILITY_CHECKED_AT: new Date().toISOString(),
       },
     },
   ],

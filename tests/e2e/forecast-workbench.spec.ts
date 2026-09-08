@@ -134,6 +134,7 @@ test.describe("forecast and manual value workbench", () => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://127.0.0.1:3000" });
     await page.goto(`/fixtures/${fixtureId}`);
     await expect(page.getByLabel("Forecast snapshot").locator("option").filter({ hasText: initialCutoff })).toHaveCount(1);
+    await page.getByLabel("Forecast snapshot").selectOption(`limited-forecast-${run}`);
     await page.getByText("Evidence, model, and limitations").click();
     await expect(page.getByText("limited history", { exact: false })).toBeVisible();
     await expect(page.getByText("lineup not confirmed", { exact: false })).toBeVisible();

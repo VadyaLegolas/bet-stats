@@ -105,8 +105,8 @@ describe("forecast API orchestration", () => {
   it("discovers only issued snapshots for one fixture in deterministic newest-first order", async () => {
     const { createPrismaForecastRepository } = await import("../../apps/api/src/modules/forecasts/forecasts.service.js");
     const findMany = vi.fn().mockResolvedValue([
-      { receipt: { ...validResponse, id: "lineup-2", kind: "LINEUP_CONFIRMED", revision: 2, cutoff: "2026-09-06T11:17:23.000Z" } },
-      { receipt: { ...validResponse, id: "initial-1", kind: "INITIAL", revision: 1, cutoff: "2026-09-05T09:43:11.000Z" } },
+      { receipt: { ...validResponse, id: "lineup-2", kind: "LINEUP_CONFIRMED", officialLineupObservationId: "lineup-observation-1", revision: 2, cutoff: "2026-09-06T11:17:23.000Z", receipt: { ...validResponse.receipt, forecastSnapshotId: "lineup-2", officialLineupObservationId: "lineup-observation-1" } } },
+      { receipt: { ...validResponse, id: "initial-1", kind: "INITIAL", revision: 1, cutoff: "2026-09-05T09:43:11.000Z", receipt: { ...validResponse.receipt, forecastSnapshotId: "initial-1" } } },
     ]);
     const repository = createPrismaForecastRepository({ forecastSnapshot: { findMany } } as never);
 
@@ -130,8 +130,8 @@ describe("forecast API orchestration", () => {
 
     await expect(controller.get("fixture-1", {})).resolves.toEqual([validResponse]);
     await expect(controller.get("fixture-1", { kind: "PRE_MATCH", cutoff: validRequest.cutoff })).resolves.toEqual(validResponse);
-    await expect(controller.get("fixture-1", { kind: "PRE_MATCH" })).rejects.toMatchObject({ response: { code: "INVALID_FORECAST_QUERY" } });
-    await expect(controller.get("fixture-1", { secret: "drop" })).rejects.toMatchObject({ response: { code: "INVALID_FORECAST_QUERY" } });
+    expect(() => controller.get("fixture-1", { kind: "PRE_MATCH" })).toThrowError(expect.objectContaining({ response: { code: "INVALID_FORECAST_QUERY" } }));
+    expect(() => controller.get("fixture-1", { secret: "drop" })).toThrowError(expect.objectContaining({ response: { code: "INVALID_FORECAST_QUERY" } }));
     expect(service.list).toHaveBeenCalledWith("fixture-1");
     expect(service.get).toHaveBeenCalledWith("fixture-1", "PRE_MATCH", validRequest.cutoff);
   });

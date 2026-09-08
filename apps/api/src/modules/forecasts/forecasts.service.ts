@@ -25,6 +25,7 @@ export interface ForecastPublicationRepository {
   findOfficialLineup(fixtureId: string, cutoff: string): Promise<{ id: string } | null>;
   publish(draft: ForecastResponseDto): Promise<ForecastResponseDto>;
   findIssued?(fixtureId: string, kind: ForecastRequestDto["kind"], cutoff: string): Promise<ForecastResponseDto | null>;
+  listIssued?(fixtureId: string): Promise<readonly ForecastResponseDto[]>;
 }
 
 function sha(value: unknown): string {
@@ -119,6 +120,13 @@ export function createPrismaForecastRepository(client: PrismaClient): ForecastPu
       const row = await client.forecastSnapshot.findFirst({ where: { fixtureId, kind, cutoff: new Date(cutoff), state: "ISSUED" }, orderBy: { revision: "desc" } });
       return row ? toDto(row as unknown as StoredForecast) : null;
     },
+    listIssued: async (fixtureId) => {
+      const rows = await client.forecastSnapshot.findMany({
+        where: { fixtureId, state: "ISSUED" },
+        orderBy: [{ issuedAt: "desc" }, { cutoff: "desc" }, { revision: "desc" }, { id: "asc" }],
+      });
+      return rows.map((row) => toDto(row as unknown as StoredForecast));
+    },
     publish: async (draft) => {
       const identity = { fixtureId: draft.fixtureId, kind: draft.kind, cutoff: new Date(draft.cutoff), modelHash: draft.modelHash, configHash: draft.configHash, inputHash: draft.inputHash, evidenceFingerprint: draft.evidenceFingerprint, state: "ISSUED" as const };
       const existing = await client.forecastSnapshot.findFirst({ where: identity });
@@ -169,6 +177,9 @@ export class ForecastsService implements OnModuleDestroy {
   }
 
   generate(input: unknown): Promise<ForecastResponseDto> { return generateForecast(input, this.db()); }
+  async list(fixtureId: string): Promise<readonly ForecastResponseDto[]> {
+    return this.db().listIssued?.(fixtureId) ?? [];
+  }
   async get(fixtureId: string, kind: unknown, cutoff: unknown): Promise<ForecastResponseDto> {
     const request = parseForecastRequest({ fixtureId, kind, cutoff });
     const existing = await this.db().findIssued?.(request.fixtureId, request.kind, request.cutoff);

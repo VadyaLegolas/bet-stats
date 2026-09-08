@@ -5,6 +5,9 @@ import {
   aggregateReliability,
   assignReliabilityBucket,
   expandCategoricalScore,
+  COHORT_HEALTH_POLICY,
+  createCohortHealthPolicy,
+  evaluateCohortHealth,
 } from "../../packages/domain/src/index.js";
 
 describe("reliability-policy-v1", () => {
@@ -78,5 +81,42 @@ describe("reliability-policy-v1", () => {
     expect(aligned.direction).toBe("ALIGNED");
     expect(RELIABILITY_POLICY).toMatchObject({ version: "reliability-policy-v1", bucketCount: 10, minimumBucketCount: 20, alignmentTolerance: 0.02 });
     expect(RELIABILITY_POLICY.identity).toMatch(/^sha256:/);
+  });
+});
+
+describe("cohort-health-v1", () => {
+  const denominators = { fixtureCount: 0, forecastCount: 0, eventCount: 0, valueCount: 0 };
+
+  it("marks an empty cohort unavailable with every denominator and a reason", () => {
+    expect(evaluateCohortHealth({ denominators, buckets: [] })).toMatchObject({
+      state: "UNAVAILABLE",
+      denominators,
+      reasons: ["NO_SCOREABLE_FIXTURES"],
+    });
+  });
+
+  it("keeps one through forty-nine fixtures limited without a performance claim", () => {
+    for (const fixtureCount of [1, 49]) {
+      const result = evaluateCohortHealth({
+        denominators: { fixtureCount, forecastCount: fixtureCount, eventCount: fixtureCount * 3, valueCount: 0 },
+        buckets: [{ count: 20, evidenceState: "SUFFICIENT" }],
+      });
+      expect(result).toMatchObject({ state: "LIMITED", performanceClaim: null });
+      expect(result.reasons).toContain("COHORT_BELOW_MINIMUM");
+    }
+  });
+
+  it("requires both fifty fixtures and sufficient populated buckets", () => {
+    const base = { fixtureCount: 50, forecastCount: 50, eventCount: 150, valueCount: 7 };
+    expect(evaluateCohortHealth({ denominators: base, buckets: [{ count: 19, evidenceState: "INSUFFICIENT" }] }))
+      .toMatchObject({ state: "LIMITED", reasons: ["BUCKET_BELOW_MINIMUM"], performanceClaim: null });
+    expect(evaluateCohortHealth({ denominators: base, buckets: [{ count: 20, evidenceState: "SUFFICIENT" }] }))
+      .toMatchObject({ state: "AVAILABLE", reasons: [], denominators: base });
+  });
+
+  it("changes policy identity whenever a threshold changes", () => {
+    const changed = createCohortHealthPolicy({ minimumFixtureCount: 51, minimumBucketCount: 20 });
+    expect(changed.version).toBe("cohort-health-v1");
+    expect(changed.identity).not.toBe(COHORT_HEALTH_POLICY.identity);
   });
 });

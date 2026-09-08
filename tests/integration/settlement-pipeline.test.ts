@@ -106,4 +106,31 @@ describe("settlement pipeline", () => {
     expect(await prisma.forecastScore.count()).toBe(3);
     expect(await prisma.valueSettlement.count()).toBe(1);
   });
+
+  it("corrected result pipeline rolls back partial failure and appends superseding leaf facts", async () => {
+    let fail = true;
+    const correctionService = createSettlementPipelineService({
+      database: prisma,
+      afterSettlement: () => { if (fail) { fail = false; throw new Error("FORCED_PARTIAL_FAILURE"); } },
+    });
+    const correction = { fixtureId: "pipeline-fixture", resultVersionId: "pipeline-result-2", forecastSnapshotId: "pipeline-forecast", policyVersion: "settlement-policy-v1", correlationId: "corr-correction" } as const;
+    await expect(correctionService.process(correction)).rejects.toThrow("FORCED_PARTIAL_FAILURE");
+    expect(await prisma.settlementReceipt.count()).toBe(0);
+
+    const base = { ...correction, resultVersionId: "pipeline-result-1", correlationId: "corr-original" };
+    await Promise.all([correctionService.process(correction), correctionService.process(base)]);
+    await correctionService.process(correction);
+
+    const settlements = await prisma.settlementReceipt.findMany({ orderBy: { revision: "asc" } });
+    expect(settlements).toHaveLength(2);
+    expect(settlements[1]!.supersedesSettlementReceiptId).toBe(settlements[0]!.id);
+    const scores = await prisma.forecastScore.findMany({ orderBy: { createdAt: "asc" } });
+    expect(scores).toHaveLength(6);
+    expect(scores.filter((score) => score.supersedesForecastScoreId)).toHaveLength(3);
+    const values = await prisma.valueSettlement.findMany({ orderBy: { createdAt: "asc" } });
+    expect(values).toHaveLength(2);
+    expect(values[1]!.supersedesValueSettlementId).toBe(values[0]!.id);
+    expect(values.map((value) => value.profitUnits)).toEqual(["1.4", "-1"]);
+    expect(await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(`SELECT COUNT(*)::bigint AS count FROM current_forecast_scores`)).toEqual([{ count: 3n }]);
+  });
 });

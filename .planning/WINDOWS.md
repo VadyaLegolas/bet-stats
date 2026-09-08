@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 14
+open_count: 16
 waived_count: 0
 fixed_count: 0
-total_count: 14
-last_updated: 2026-09-08T07:18:47.219Z
+total_count: 16
+last_updated: 2026-09-08T11:15:03.119Z
 ---
 
 # Broken Windows Ledger
@@ -29,6 +29,8 @@ last_updated: 2026-09-08T07:18:47.219Z
 | 12 | 03 | unrun-verify | tests/integration/manual-odds.test.ts |  | PostgreSQL manual-odds verification was not run because DATABASE_URL is unset and Docker Engine is unavailable | open |  | 2026-09-08T07:07:43.665Z |  |
 | 13 | 03 | deviation | apps/web/app/fixtures/[fixtureId]/forecast-workbench.tsx |  | Kept client odds validation self-contained so direct web tests do not consume stale package build output | open |  | 2026-09-08T07:07:44.088Z |  |
 | 14 | 03 | unrun-verify | tests/integration/value-receipt.test.ts |  | PostgreSQL receipt lifecycle, membership, and derived-field integration suite was not run because DATABASE_URL was unavailable | open |  | 2026-09-08T07:18:47.219Z |  |
+| 15 | 03 | unrun-verify | tests/integration/phase-03-security.test.ts |  | PostgreSQL security matrix not run: DATABASE_URL unset and Docker Engine unavailable | open |  | 2026-09-08T11:15:02.661Z |  |
+| 16 | 03 | unrun-verify | tests/e2e/forecast-workbench.spec.ts |  | Production-backed Chromium workbench not run: PostgreSQL environment unavailable | open |  | 2026-09-08T11:15:03.119Z |  |
 
 ````json
 [
@@ -198,6 +200,30 @@ last_updated: 2026-09-08T07:18:47.219Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-08T07:18:47.219Z",
+    "resolved_at": null
+  },
+  {
+    "id": 15,
+    "kind": "unrun-verify",
+    "phase": "03",
+    "file": "tests/integration/phase-03-security.test.ts",
+    "line": null,
+    "description": "PostgreSQL security matrix not run: DATABASE_URL unset and Docker Engine unavailable",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-08T11:15:02.661Z",
+    "resolved_at": null
+  },
+  {
+    "id": 16,
+    "kind": "unrun-verify",
+    "phase": "03",
+    "file": "tests/e2e/forecast-workbench.spec.ts",
+    "line": null,
+    "description": "Production-backed Chromium workbench not run: PostgreSQL environment unavailable",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-08T11:15:03.119Z",
     "resolved_at": null
   }
 ]

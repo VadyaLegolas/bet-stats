@@ -183,6 +183,7 @@ export type ManualOddsSelectionWhereInput = {
   decimalOdds?: Prisma.StringFilter<"ManualOddsSelection"> | string
   createdAt?: Prisma.DateTimeFilter<"ManualOddsSelection"> | Date | string
   oddsSnapshot?: Prisma.XOR<Prisma.ManualOddsSnapshotScalarRelationFilter, Prisma.ManualOddsSnapshotWhereInput>
+  valueSettlements?: Prisma.ValueSettlementListRelationFilter
 }
 
 export type ManualOddsSelectionOrderByWithRelationInput = {
@@ -192,6 +193,7 @@ export type ManualOddsSelectionOrderByWithRelationInput = {
   decimalOdds?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   oddsSnapshot?: Prisma.ManualOddsSnapshotOrderByWithRelationInput
+  valueSettlements?: Prisma.ValueSettlementOrderByRelationAggregateInput
 }
 
 export type ManualOddsSelectionWhereUniqueInput = Prisma.AtLeast<{
@@ -205,6 +207,7 @@ export type ManualOddsSelectionWhereUniqueInput = Prisma.AtLeast<{
   decimalOdds?: Prisma.StringFilter<"ManualOddsSelection"> | string
   createdAt?: Prisma.DateTimeFilter<"ManualOddsSelection"> | Date | string
   oddsSnapshot?: Prisma.XOR<Prisma.ManualOddsSnapshotScalarRelationFilter, Prisma.ManualOddsSnapshotWhereInput>
+  valueSettlements?: Prisma.ValueSettlementListRelationFilter
 }, "id" | "oddsSnapshotId_selection">
 
 export type ManualOddsSelectionOrderByWithAggregationInput = {
@@ -235,6 +238,7 @@ export type ManualOddsSelectionCreateInput = {
   decimalOdds: string
   createdAt?: Date | string
   oddsSnapshot: Prisma.ManualOddsSnapshotCreateNestedOneWithoutSelectionsInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutOddsSelectionInput
 }
 
 export type ManualOddsSelectionUncheckedCreateInput = {
@@ -243,6 +247,7 @@ export type ManualOddsSelectionUncheckedCreateInput = {
   selection: string
   decimalOdds: string
   createdAt?: Date | string
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutOddsSelectionInput
 }
 
 export type ManualOddsSelectionUpdateInput = {
@@ -251,6 +256,7 @@ export type ManualOddsSelectionUpdateInput = {
   decimalOdds?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   oddsSnapshot?: Prisma.ManualOddsSnapshotUpdateOneRequiredWithoutSelectionsNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutOddsSelectionNestedInput
 }
 
 export type ManualOddsSelectionUncheckedUpdateInput = {
@@ -259,6 +265,7 @@ export type ManualOddsSelectionUncheckedUpdateInput = {
   selection?: Prisma.StringFieldUpdateOperationsInput | string
   decimalOdds?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutOddsSelectionNestedInput
 }
 
 export type ManualOddsSelectionCreateManyInput = {
@@ -323,6 +330,11 @@ export type ManualOddsSelectionMinOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder
 }
 
+export type ManualOddsSelectionScalarRelationFilter = {
+  is?: Prisma.ManualOddsSelectionWhereInput
+  isNot?: Prisma.ManualOddsSelectionWhereInput
+}
+
 export type ManualOddsSelectionCreateNestedManyWithoutOddsSnapshotInput = {
   create?: Prisma.XOR<Prisma.ManualOddsSelectionCreateWithoutOddsSnapshotInput, Prisma.ManualOddsSelectionUncheckedCreateWithoutOddsSnapshotInput> | Prisma.ManualOddsSelectionCreateWithoutOddsSnapshotInput[] | Prisma.ManualOddsSelectionUncheckedCreateWithoutOddsSnapshotInput[]
   connectOrCreate?: Prisma.ManualOddsSelectionCreateOrConnectWithoutOddsSnapshotInput | Prisma.ManualOddsSelectionCreateOrConnectWithoutOddsSnapshotInput[]
@@ -365,11 +377,26 @@ export type ManualOddsSelectionUncheckedUpdateManyWithoutOddsSnapshotNestedInput
   deleteMany?: Prisma.ManualOddsSelectionScalarWhereInput | Prisma.ManualOddsSelectionScalarWhereInput[]
 }
 
+export type ManualOddsSelectionCreateNestedOneWithoutValueSettlementsInput = {
+  create?: Prisma.XOR<Prisma.ManualOddsSelectionCreateWithoutValueSettlementsInput, Prisma.ManualOddsSelectionUncheckedCreateWithoutValueSettlementsInput>
+  connectOrCreate?: Prisma.ManualOddsSelectionCreateOrConnectWithoutValueSettlementsInput
+  connect?: Prisma.ManualOddsSelectionWhereUniqueInput
+}
+
+export type ManualOddsSelectionUpdateOneRequiredWithoutValueSettlementsNestedInput = {
+  create?: Prisma.XOR<Prisma.ManualOddsSelectionCreateWithoutValueSettlementsInput, Prisma.ManualOddsSelectionUncheckedCreateWithoutValueSettlementsInput>
+  connectOrCreate?: Prisma.ManualOddsSelectionCreateOrConnectWithoutValueSettlementsInput
+  upsert?: Prisma.ManualOddsSelectionUpsertWithoutValueSettlementsInput
+  connect?: Prisma.ManualOddsSelectionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ManualOddsSelectionUpdateToOneWithWhereWithoutValueSettlementsInput, Prisma.ManualOddsSelectionUpdateWithoutValueSettlementsInput>, Prisma.ManualOddsSelectionUncheckedUpdateWithoutValueSettlementsInput>
+}
+
 export type ManualOddsSelectionCreateWithoutOddsSnapshotInput = {
   id?: string
   selection: string
   decimalOdds: string
   createdAt?: Date | string
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutOddsSelectionInput
 }
 
 export type ManualOddsSelectionUncheckedCreateWithoutOddsSnapshotInput = {
@@ -377,6 +404,7 @@ export type ManualOddsSelectionUncheckedCreateWithoutOddsSnapshotInput = {
   selection: string
   decimalOdds: string
   createdAt?: Date | string
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutOddsSelectionInput
 }
 
 export type ManualOddsSelectionCreateOrConnectWithoutOddsSnapshotInput = {
@@ -416,6 +444,54 @@ export type ManualOddsSelectionScalarWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"ManualOddsSelection"> | Date | string
 }
 
+export type ManualOddsSelectionCreateWithoutValueSettlementsInput = {
+  id?: string
+  selection: string
+  decimalOdds: string
+  createdAt?: Date | string
+  oddsSnapshot: Prisma.ManualOddsSnapshotCreateNestedOneWithoutSelectionsInput
+}
+
+export type ManualOddsSelectionUncheckedCreateWithoutValueSettlementsInput = {
+  id?: string
+  oddsSnapshotId: string
+  selection: string
+  decimalOdds: string
+  createdAt?: Date | string
+}
+
+export type ManualOddsSelectionCreateOrConnectWithoutValueSettlementsInput = {
+  where: Prisma.ManualOddsSelectionWhereUniqueInput
+  create: Prisma.XOR<Prisma.ManualOddsSelectionCreateWithoutValueSettlementsInput, Prisma.ManualOddsSelectionUncheckedCreateWithoutValueSettlementsInput>
+}
+
+export type ManualOddsSelectionUpsertWithoutValueSettlementsInput = {
+  update: Prisma.XOR<Prisma.ManualOddsSelectionUpdateWithoutValueSettlementsInput, Prisma.ManualOddsSelectionUncheckedUpdateWithoutValueSettlementsInput>
+  create: Prisma.XOR<Prisma.ManualOddsSelectionCreateWithoutValueSettlementsInput, Prisma.ManualOddsSelectionUncheckedCreateWithoutValueSettlementsInput>
+  where?: Prisma.ManualOddsSelectionWhereInput
+}
+
+export type ManualOddsSelectionUpdateToOneWithWhereWithoutValueSettlementsInput = {
+  where?: Prisma.ManualOddsSelectionWhereInput
+  data: Prisma.XOR<Prisma.ManualOddsSelectionUpdateWithoutValueSettlementsInput, Prisma.ManualOddsSelectionUncheckedUpdateWithoutValueSettlementsInput>
+}
+
+export type ManualOddsSelectionUpdateWithoutValueSettlementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
+  decimalOdds?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  oddsSnapshot?: Prisma.ManualOddsSnapshotUpdateOneRequiredWithoutSelectionsNestedInput
+}
+
+export type ManualOddsSelectionUncheckedUpdateWithoutValueSettlementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  oddsSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
+  decimalOdds?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
 export type ManualOddsSelectionCreateManyOddsSnapshotInput = {
   id?: string
   selection: string
@@ -428,6 +504,7 @@ export type ManualOddsSelectionUpdateWithoutOddsSnapshotInput = {
   selection?: Prisma.StringFieldUpdateOperationsInput | string
   decimalOdds?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutOddsSelectionNestedInput
 }
 
 export type ManualOddsSelectionUncheckedUpdateWithoutOddsSnapshotInput = {
@@ -435,6 +512,7 @@ export type ManualOddsSelectionUncheckedUpdateWithoutOddsSnapshotInput = {
   selection?: Prisma.StringFieldUpdateOperationsInput | string
   decimalOdds?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutOddsSelectionNestedInput
 }
 
 export type ManualOddsSelectionUncheckedUpdateManyWithoutOddsSnapshotInput = {
@@ -445,6 +523,35 @@ export type ManualOddsSelectionUncheckedUpdateManyWithoutOddsSnapshotInput = {
 }
 
 
+/**
+ * Count Type ManualOddsSelectionCountOutputType
+ */
+
+export type ManualOddsSelectionCountOutputType = {
+  valueSettlements: number
+}
+
+export type ManualOddsSelectionCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  valueSettlements?: boolean | ManualOddsSelectionCountOutputTypeCountValueSettlementsArgs
+}
+
+/**
+ * ManualOddsSelectionCountOutputType without action
+ */
+export type ManualOddsSelectionCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ManualOddsSelectionCountOutputType
+   */
+  select?: Prisma.ManualOddsSelectionCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * ManualOddsSelectionCountOutputType without action
+ */
+export type ManualOddsSelectionCountOutputTypeCountValueSettlementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ValueSettlementWhereInput
+}
+
 
 export type ManualOddsSelectionSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -453,6 +560,8 @@ export type ManualOddsSelectionSelect<ExtArgs extends runtime.Types.Extensions.I
   decimalOdds?: boolean
   createdAt?: boolean
   oddsSnapshot?: boolean | Prisma.ManualOddsSnapshotDefaultArgs<ExtArgs>
+  valueSettlements?: boolean | Prisma.ManualOddsSelection$valueSettlementsArgs<ExtArgs>
+  _count?: boolean | Prisma.ManualOddsSelectionCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["manualOddsSelection"]>
 
 export type ManualOddsSelectionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -484,6 +593,8 @@ export type ManualOddsSelectionSelectScalar = {
 export type ManualOddsSelectionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "oddsSnapshotId" | "selection" | "decimalOdds" | "createdAt", ExtArgs["result"]["manualOddsSelection"]>
 export type ManualOddsSelectionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   oddsSnapshot?: boolean | Prisma.ManualOddsSnapshotDefaultArgs<ExtArgs>
+  valueSettlements?: boolean | Prisma.ManualOddsSelection$valueSettlementsArgs<ExtArgs>
+  _count?: boolean | Prisma.ManualOddsSelectionCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ManualOddsSelectionIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   oddsSnapshot?: boolean | Prisma.ManualOddsSnapshotDefaultArgs<ExtArgs>
@@ -496,6 +607,7 @@ export type $ManualOddsSelectionPayload<ExtArgs extends runtime.Types.Extensions
   name: "ManualOddsSelection"
   objects: {
     oddsSnapshot: Prisma.$ManualOddsSnapshotPayload<ExtArgs>
+    valueSettlements: Prisma.$ValueSettlementPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -898,6 +1010,7 @@ readonly fields: ManualOddsSelectionFieldRefs;
 export interface Prisma__ManualOddsSelectionClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   oddsSnapshot<T extends Prisma.ManualOddsSnapshotDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ManualOddsSnapshotDefaultArgs<ExtArgs>>): Prisma.Prisma__ManualOddsSnapshotClient<runtime.Types.Result.GetResult<Prisma.$ManualOddsSnapshotPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  valueSettlements<T extends Prisma.ManualOddsSelection$valueSettlementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ManualOddsSelection$valueSettlementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ValueSettlementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1330,6 +1443,30 @@ export type ManualOddsSelectionDeleteManyArgs<ExtArgs extends runtime.Types.Exte
    * Limit how many ManualOddsSelections to delete.
    */
   limit?: number
+}
+
+/**
+ * ManualOddsSelection.valueSettlements
+ */
+export type ManualOddsSelection$valueSettlementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ValueSettlement
+   */
+  select?: Prisma.ValueSettlementSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ValueSettlement
+   */
+  omit?: Prisma.ValueSettlementOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ValueSettlementInclude<ExtArgs> | null
+  where?: Prisma.ValueSettlementWhereInput
+  orderBy?: Prisma.ValueSettlementOrderByWithRelationInput | Prisma.ValueSettlementOrderByWithRelationInput[]
+  cursor?: Prisma.ValueSettlementWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ValueSettlementScalarFieldEnum | Prisma.ValueSettlementScalarFieldEnum[]
 }
 
 /**

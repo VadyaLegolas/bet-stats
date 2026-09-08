@@ -322,6 +322,7 @@ export type SettlementReceiptWhereInput = {
   supersedesSettlementReceipt?: Prisma.XOR<Prisma.SettlementReceiptNullableScalarRelationFilter, Prisma.SettlementReceiptWhereInput> | null
   supersededBy?: Prisma.XOR<Prisma.SettlementReceiptNullableScalarRelationFilter, Prisma.SettlementReceiptWhereInput> | null
   forecastScores?: Prisma.ForecastScoreListRelationFilter
+  valueSettlements?: Prisma.ValueSettlementListRelationFilter
 }
 
 export type SettlementReceiptOrderByWithRelationInput = {
@@ -349,6 +350,7 @@ export type SettlementReceiptOrderByWithRelationInput = {
   supersedesSettlementReceipt?: Prisma.SettlementReceiptOrderByWithRelationInput
   supersededBy?: Prisma.SettlementReceiptOrderByWithRelationInput
   forecastScores?: Prisma.ForecastScoreOrderByRelationAggregateInput
+  valueSettlements?: Prisma.ValueSettlementOrderByRelationAggregateInput
 }
 
 export type SettlementReceiptWhereUniqueInput = Prisma.AtLeast<{
@@ -381,6 +383,7 @@ export type SettlementReceiptWhereUniqueInput = Prisma.AtLeast<{
   supersedesSettlementReceipt?: Prisma.XOR<Prisma.SettlementReceiptNullableScalarRelationFilter, Prisma.SettlementReceiptWhereInput> | null
   supersededBy?: Prisma.XOR<Prisma.SettlementReceiptNullableScalarRelationFilter, Prisma.SettlementReceiptWhereInput> | null
   forecastScores?: Prisma.ForecastScoreListRelationFilter
+  valueSettlements?: Prisma.ValueSettlementListRelationFilter
 }, "id" | "supersedesSettlementReceiptId" | "resultVersionId_forecastSnapshotId_policyHash" | "fixtureId_revision">
 
 export type SettlementReceiptOrderByWithAggregationInput = {
@@ -454,6 +457,7 @@ export type SettlementReceiptCreateInput = {
   supersedesSettlementReceipt?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersedesSettlementReceiptInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptUncheckedCreateInput = {
@@ -477,6 +481,7 @@ export type SettlementReceiptUncheckedCreateInput = {
   createdAt?: Date | string
   supersededBy?: Prisma.SettlementReceiptUncheckedCreateNestedOneWithoutSupersedesSettlementReceiptInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptUpdateInput = {
@@ -500,6 +505,7 @@ export type SettlementReceiptUpdateInput = {
   supersedesSettlementReceipt?: Prisma.SettlementReceiptUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.SettlementReceiptUpdateOneWithoutSupersedesSettlementReceiptNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateInput = {
@@ -523,6 +529,7 @@ export type SettlementReceiptUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.SettlementReceiptUncheckedUpdateOneWithoutSupersedesSettlementReceiptNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptCreateManyInput = {
@@ -872,6 +879,20 @@ export type SettlementReceiptUpdateOneRequiredWithoutForecastScoresNestedInput =
   update?: Prisma.XOR<Prisma.XOR<Prisma.SettlementReceiptUpdateToOneWithWhereWithoutForecastScoresInput, Prisma.SettlementReceiptUpdateWithoutForecastScoresInput>, Prisma.SettlementReceiptUncheckedUpdateWithoutForecastScoresInput>
 }
 
+export type SettlementReceiptCreateNestedOneWithoutValueSettlementsInput = {
+  create?: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutValueSettlementsInput, Prisma.SettlementReceiptUncheckedCreateWithoutValueSettlementsInput>
+  connectOrCreate?: Prisma.SettlementReceiptCreateOrConnectWithoutValueSettlementsInput
+  connect?: Prisma.SettlementReceiptWhereUniqueInput
+}
+
+export type SettlementReceiptUpdateOneRequiredWithoutValueSettlementsNestedInput = {
+  create?: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutValueSettlementsInput, Prisma.SettlementReceiptUncheckedCreateWithoutValueSettlementsInput>
+  connectOrCreate?: Prisma.SettlementReceiptCreateOrConnectWithoutValueSettlementsInput
+  upsert?: Prisma.SettlementReceiptUpsertWithoutValueSettlementsInput
+  connect?: Prisma.SettlementReceiptWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SettlementReceiptUpdateToOneWithWhereWithoutValueSettlementsInput, Prisma.SettlementReceiptUpdateWithoutValueSettlementsInput>, Prisma.SettlementReceiptUncheckedUpdateWithoutValueSettlementsInput>
+}
+
 export type SettlementReceiptCreateWithoutFixtureInput = {
   id: string
   revision: number
@@ -892,6 +913,7 @@ export type SettlementReceiptCreateWithoutFixtureInput = {
   supersedesSettlementReceipt?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersedesSettlementReceiptInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptUncheckedCreateWithoutFixtureInput = {
@@ -914,6 +936,7 @@ export type SettlementReceiptUncheckedCreateWithoutFixtureInput = {
   createdAt?: Date | string
   supersededBy?: Prisma.SettlementReceiptUncheckedCreateNestedOneWithoutSupersedesSettlementReceiptInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptCreateOrConnectWithoutFixtureInput = {
@@ -986,6 +1009,7 @@ export type SettlementReceiptCreateWithoutForecastSnapshotInput = {
   supersedesSettlementReceipt?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersedesSettlementReceiptInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptUncheckedCreateWithoutForecastSnapshotInput = {
@@ -1008,6 +1032,7 @@ export type SettlementReceiptUncheckedCreateWithoutForecastSnapshotInput = {
   createdAt?: Date | string
   supersededBy?: Prisma.SettlementReceiptUncheckedCreateNestedOneWithoutSupersedesSettlementReceiptInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptCreateOrConnectWithoutForecastSnapshotInput = {
@@ -1056,6 +1081,7 @@ export type SettlementReceiptCreateWithoutResultVersionInput = {
   supersedesSettlementReceipt?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersedesSettlementReceiptInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptUncheckedCreateWithoutResultVersionInput = {
@@ -1078,6 +1104,7 @@ export type SettlementReceiptUncheckedCreateWithoutResultVersionInput = {
   createdAt?: Date | string
   supersededBy?: Prisma.SettlementReceiptUncheckedCreateNestedOneWithoutSupersedesSettlementReceiptInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptCreateOrConnectWithoutResultVersionInput = {
@@ -1126,6 +1153,7 @@ export type SettlementReceiptCreateWithoutSupersededByInput = {
   forecastSnapshot: Prisma.ForecastSnapshotCreateNestedOneWithoutSettlementReceiptsInput
   supersedesSettlementReceipt?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersededByInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptUncheckedCreateWithoutSupersededByInput = {
@@ -1148,6 +1176,7 @@ export type SettlementReceiptUncheckedCreateWithoutSupersededByInput = {
   settledAt: Date | string
   createdAt?: Date | string
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptCreateOrConnectWithoutSupersededByInput = {
@@ -1175,6 +1204,7 @@ export type SettlementReceiptCreateWithoutSupersedesSettlementReceiptInput = {
   forecastSnapshot: Prisma.ForecastSnapshotCreateNestedOneWithoutSettlementReceiptsInput
   supersededBy?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersedesSettlementReceiptInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptUncheckedCreateWithoutSupersedesSettlementReceiptInput = {
@@ -1197,6 +1227,7 @@ export type SettlementReceiptUncheckedCreateWithoutSupersedesSettlementReceiptIn
   createdAt?: Date | string
   supersededBy?: Prisma.SettlementReceiptUncheckedCreateNestedOneWithoutSupersedesSettlementReceiptInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptCreateOrConnectWithoutSupersedesSettlementReceiptInput = {
@@ -1235,6 +1266,7 @@ export type SettlementReceiptUpdateWithoutSupersededByInput = {
   forecastSnapshot?: Prisma.ForecastSnapshotUpdateOneRequiredWithoutSettlementReceiptsNestedInput
   supersedesSettlementReceipt?: Prisma.SettlementReceiptUpdateOneWithoutSupersededByNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateWithoutSupersededByInput = {
@@ -1257,6 +1289,7 @@ export type SettlementReceiptUncheckedUpdateWithoutSupersededByInput = {
   settledAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptUpsertWithoutSupersedesSettlementReceiptInput = {
@@ -1290,6 +1323,7 @@ export type SettlementReceiptUpdateWithoutSupersedesSettlementReceiptInput = {
   forecastSnapshot?: Prisma.ForecastSnapshotUpdateOneRequiredWithoutSettlementReceiptsNestedInput
   supersededBy?: Prisma.SettlementReceiptUpdateOneWithoutSupersedesSettlementReceiptNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateWithoutSupersedesSettlementReceiptInput = {
@@ -1312,6 +1346,7 @@ export type SettlementReceiptUncheckedUpdateWithoutSupersedesSettlementReceiptIn
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.SettlementReceiptUncheckedUpdateOneWithoutSupersedesSettlementReceiptNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptCreateWithoutForecastScoresInput = {
@@ -1334,6 +1369,7 @@ export type SettlementReceiptCreateWithoutForecastScoresInput = {
   forecastSnapshot: Prisma.ForecastSnapshotCreateNestedOneWithoutSettlementReceiptsInput
   supersedesSettlementReceipt?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersedesSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptUncheckedCreateWithoutForecastScoresInput = {
@@ -1356,6 +1392,7 @@ export type SettlementReceiptUncheckedCreateWithoutForecastScoresInput = {
   settledAt: Date | string
   createdAt?: Date | string
   supersededBy?: Prisma.SettlementReceiptUncheckedCreateNestedOneWithoutSupersedesSettlementReceiptInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutSettlementReceiptInput
 }
 
 export type SettlementReceiptCreateOrConnectWithoutForecastScoresInput = {
@@ -1394,6 +1431,7 @@ export type SettlementReceiptUpdateWithoutForecastScoresInput = {
   forecastSnapshot?: Prisma.ForecastSnapshotUpdateOneRequiredWithoutSettlementReceiptsNestedInput
   supersedesSettlementReceipt?: Prisma.SettlementReceiptUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.SettlementReceiptUpdateOneWithoutSupersedesSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateWithoutForecastScoresInput = {
@@ -1416,6 +1454,115 @@ export type SettlementReceiptUncheckedUpdateWithoutForecastScoresInput = {
   settledAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.SettlementReceiptUncheckedUpdateOneWithoutSupersedesSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutSettlementReceiptNestedInput
+}
+
+export type SettlementReceiptCreateWithoutValueSettlementsInput = {
+  id: string
+  revision: number
+  policyVersion: string
+  policyHash: string
+  lifecycle: string
+  scoreability: string
+  financialEligibility: string
+  classOutcome: string
+  reason: string
+  receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  resultObservedAt: Date | string
+  forecastCutoff: Date | string
+  settledAt: Date | string
+  createdAt?: Date | string
+  fixture: Prisma.FixtureCreateNestedOneWithoutSettlementReceiptsInput
+  resultVersion: Prisma.ResultVersionCreateNestedOneWithoutSettlementReceiptsInput
+  forecastSnapshot: Prisma.ForecastSnapshotCreateNestedOneWithoutSettlementReceiptsInput
+  supersedesSettlementReceipt?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersededByInput
+  supersededBy?: Prisma.SettlementReceiptCreateNestedOneWithoutSupersedesSettlementReceiptInput
+  forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutSettlementReceiptInput
+}
+
+export type SettlementReceiptUncheckedCreateWithoutValueSettlementsInput = {
+  id: string
+  fixtureId: string
+  resultVersionId: string
+  forecastSnapshotId: string
+  revision: number
+  supersedesSettlementReceiptId?: string | null
+  policyVersion: string
+  policyHash: string
+  lifecycle: string
+  scoreability: string
+  financialEligibility: string
+  classOutcome: string
+  reason: string
+  receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  resultObservedAt: Date | string
+  forecastCutoff: Date | string
+  settledAt: Date | string
+  createdAt?: Date | string
+  supersededBy?: Prisma.SettlementReceiptUncheckedCreateNestedOneWithoutSupersedesSettlementReceiptInput
+  forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutSettlementReceiptInput
+}
+
+export type SettlementReceiptCreateOrConnectWithoutValueSettlementsInput = {
+  where: Prisma.SettlementReceiptWhereUniqueInput
+  create: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutValueSettlementsInput, Prisma.SettlementReceiptUncheckedCreateWithoutValueSettlementsInput>
+}
+
+export type SettlementReceiptUpsertWithoutValueSettlementsInput = {
+  update: Prisma.XOR<Prisma.SettlementReceiptUpdateWithoutValueSettlementsInput, Prisma.SettlementReceiptUncheckedUpdateWithoutValueSettlementsInput>
+  create: Prisma.XOR<Prisma.SettlementReceiptCreateWithoutValueSettlementsInput, Prisma.SettlementReceiptUncheckedCreateWithoutValueSettlementsInput>
+  where?: Prisma.SettlementReceiptWhereInput
+}
+
+export type SettlementReceiptUpdateToOneWithWhereWithoutValueSettlementsInput = {
+  where?: Prisma.SettlementReceiptWhereInput
+  data: Prisma.XOR<Prisma.SettlementReceiptUpdateWithoutValueSettlementsInput, Prisma.SettlementReceiptUncheckedUpdateWithoutValueSettlementsInput>
+}
+
+export type SettlementReceiptUpdateWithoutValueSettlementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  policyVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  policyHash?: Prisma.StringFieldUpdateOperationsInput | string
+  lifecycle?: Prisma.StringFieldUpdateOperationsInput | string
+  scoreability?: Prisma.StringFieldUpdateOperationsInput | string
+  financialEligibility?: Prisma.StringFieldUpdateOperationsInput | string
+  classOutcome?: Prisma.StringFieldUpdateOperationsInput | string
+  reason?: Prisma.StringFieldUpdateOperationsInput | string
+  receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  resultObservedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  settledAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  fixture?: Prisma.FixtureUpdateOneRequiredWithoutSettlementReceiptsNestedInput
+  resultVersion?: Prisma.ResultVersionUpdateOneRequiredWithoutSettlementReceiptsNestedInput
+  forecastSnapshot?: Prisma.ForecastSnapshotUpdateOneRequiredWithoutSettlementReceiptsNestedInput
+  supersedesSettlementReceipt?: Prisma.SettlementReceiptUpdateOneWithoutSupersededByNestedInput
+  supersededBy?: Prisma.SettlementReceiptUpdateOneWithoutSupersedesSettlementReceiptNestedInput
+  forecastScores?: Prisma.ForecastScoreUpdateManyWithoutSettlementReceiptNestedInput
+}
+
+export type SettlementReceiptUncheckedUpdateWithoutValueSettlementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
+  resultVersionId?: Prisma.StringFieldUpdateOperationsInput | string
+  forecastSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
+  revision?: Prisma.IntFieldUpdateOperationsInput | number
+  supersedesSettlementReceiptId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  policyVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  policyHash?: Prisma.StringFieldUpdateOperationsInput | string
+  lifecycle?: Prisma.StringFieldUpdateOperationsInput | string
+  scoreability?: Prisma.StringFieldUpdateOperationsInput | string
+  financialEligibility?: Prisma.StringFieldUpdateOperationsInput | string
+  classOutcome?: Prisma.StringFieldUpdateOperationsInput | string
+  reason?: Prisma.StringFieldUpdateOperationsInput | string
+  receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  resultObservedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  settledAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supersededBy?: Prisma.SettlementReceiptUncheckedUpdateOneWithoutSupersedesSettlementReceiptNestedInput
+  forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptCreateManyFixtureInput = {
@@ -1458,6 +1605,7 @@ export type SettlementReceiptUpdateWithoutFixtureInput = {
   supersedesSettlementReceipt?: Prisma.SettlementReceiptUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.SettlementReceiptUpdateOneWithoutSupersedesSettlementReceiptNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateWithoutFixtureInput = {
@@ -1480,6 +1628,7 @@ export type SettlementReceiptUncheckedUpdateWithoutFixtureInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.SettlementReceiptUncheckedUpdateOneWithoutSupersedesSettlementReceiptNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateManyWithoutFixtureInput = {
@@ -1542,6 +1691,7 @@ export type SettlementReceiptUpdateWithoutForecastSnapshotInput = {
   supersedesSettlementReceipt?: Prisma.SettlementReceiptUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.SettlementReceiptUpdateOneWithoutSupersedesSettlementReceiptNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateWithoutForecastSnapshotInput = {
@@ -1564,6 +1714,7 @@ export type SettlementReceiptUncheckedUpdateWithoutForecastSnapshotInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.SettlementReceiptUncheckedUpdateOneWithoutSupersedesSettlementReceiptNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateManyWithoutForecastSnapshotInput = {
@@ -1626,6 +1777,7 @@ export type SettlementReceiptUpdateWithoutResultVersionInput = {
   supersedesSettlementReceipt?: Prisma.SettlementReceiptUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.SettlementReceiptUpdateOneWithoutSupersedesSettlementReceiptNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateWithoutResultVersionInput = {
@@ -1648,6 +1800,7 @@ export type SettlementReceiptUncheckedUpdateWithoutResultVersionInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.SettlementReceiptUncheckedUpdateOneWithoutSupersedesSettlementReceiptNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutSettlementReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutSettlementReceiptNestedInput
 }
 
 export type SettlementReceiptUncheckedUpdateManyWithoutResultVersionInput = {
@@ -1677,10 +1830,12 @@ export type SettlementReceiptUncheckedUpdateManyWithoutResultVersionInput = {
 
 export type SettlementReceiptCountOutputType = {
   forecastScores: number
+  valueSettlements: number
 }
 
 export type SettlementReceiptCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   forecastScores?: boolean | SettlementReceiptCountOutputTypeCountForecastScoresArgs
+  valueSettlements?: boolean | SettlementReceiptCountOutputTypeCountValueSettlementsArgs
 }
 
 /**
@@ -1698,6 +1853,13 @@ export type SettlementReceiptCountOutputTypeDefaultArgs<ExtArgs extends runtime.
  */
 export type SettlementReceiptCountOutputTypeCountForecastScoresArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.ForecastScoreWhereInput
+}
+
+/**
+ * SettlementReceiptCountOutputType without action
+ */
+export type SettlementReceiptCountOutputTypeCountValueSettlementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ValueSettlementWhereInput
 }
 
 
@@ -1726,6 +1888,7 @@ export type SettlementReceiptSelect<ExtArgs extends runtime.Types.Extensions.Int
   supersedesSettlementReceipt?: boolean | Prisma.SettlementReceipt$supersedesSettlementReceiptArgs<ExtArgs>
   supersededBy?: boolean | Prisma.SettlementReceipt$supersededByArgs<ExtArgs>
   forecastScores?: boolean | Prisma.SettlementReceipt$forecastScoresArgs<ExtArgs>
+  valueSettlements?: boolean | Prisma.SettlementReceipt$valueSettlementsArgs<ExtArgs>
   _count?: boolean | Prisma.SettlementReceiptCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["settlementReceipt"]>
 
@@ -1808,6 +1971,7 @@ export type SettlementReceiptInclude<ExtArgs extends runtime.Types.Extensions.In
   supersedesSettlementReceipt?: boolean | Prisma.SettlementReceipt$supersedesSettlementReceiptArgs<ExtArgs>
   supersededBy?: boolean | Prisma.SettlementReceipt$supersededByArgs<ExtArgs>
   forecastScores?: boolean | Prisma.SettlementReceipt$forecastScoresArgs<ExtArgs>
+  valueSettlements?: boolean | Prisma.SettlementReceipt$valueSettlementsArgs<ExtArgs>
   _count?: boolean | Prisma.SettlementReceiptCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type SettlementReceiptIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1832,6 +1996,7 @@ export type $SettlementReceiptPayload<ExtArgs extends runtime.Types.Extensions.I
     supersedesSettlementReceipt: Prisma.$SettlementReceiptPayload<ExtArgs> | null
     supersededBy: Prisma.$SettlementReceiptPayload<ExtArgs> | null
     forecastScores: Prisma.$ForecastScorePayload<ExtArgs>[]
+    valueSettlements: Prisma.$ValueSettlementPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2252,6 +2417,7 @@ export interface Prisma__SettlementReceiptClient<T, Null = never, ExtArgs extend
   supersedesSettlementReceipt<T extends Prisma.SettlementReceipt$supersedesSettlementReceiptArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SettlementReceipt$supersedesSettlementReceiptArgs<ExtArgs>>): Prisma.Prisma__SettlementReceiptClient<runtime.Types.Result.GetResult<Prisma.$SettlementReceiptPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   supersededBy<T extends Prisma.SettlementReceipt$supersededByArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SettlementReceipt$supersededByArgs<ExtArgs>>): Prisma.Prisma__SettlementReceiptClient<runtime.Types.Result.GetResult<Prisma.$SettlementReceiptPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   forecastScores<T extends Prisma.SettlementReceipt$forecastScoresArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SettlementReceipt$forecastScoresArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ForecastScorePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  valueSettlements<T extends Prisma.SettlementReceipt$valueSettlementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SettlementReceipt$valueSettlementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ValueSettlementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2759,6 +2925,30 @@ export type SettlementReceipt$forecastScoresArgs<ExtArgs extends runtime.Types.E
   take?: number
   skip?: number
   distinct?: Prisma.ForecastScoreScalarFieldEnum | Prisma.ForecastScoreScalarFieldEnum[]
+}
+
+/**
+ * SettlementReceipt.valueSettlements
+ */
+export type SettlementReceipt$valueSettlementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ValueSettlement
+   */
+  select?: Prisma.ValueSettlementSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ValueSettlement
+   */
+  omit?: Prisma.ValueSettlementOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ValueSettlementInclude<ExtArgs> | null
+  where?: Prisma.ValueSettlementWhereInput
+  orderBy?: Prisma.ValueSettlementOrderByWithRelationInput | Prisma.ValueSettlementOrderByWithRelationInput[]
+  cursor?: Prisma.ValueSettlementWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ValueSettlementScalarFieldEnum | Prisma.ValueSettlementScalarFieldEnum[]
 }
 
 /**

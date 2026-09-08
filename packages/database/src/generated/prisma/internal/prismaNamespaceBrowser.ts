@@ -78,6 +78,8 @@ export const ModelName = {
   ResultVersion: 'ResultVersion',
   SettlementReceipt: 'SettlementReceipt',
   ForecastScore: 'ForecastScore',
+  ClosingOddsObservation: 'ClosingOddsObservation',
+  ValueSettlement: 'ValueSettlement',
   LeagueExternalRef: 'LeagueExternalRef',
   SeasonExternalRef: 'SeasonExternalRef',
   TeamExternalRef: 'TeamExternalRef',
@@ -550,6 +552,52 @@ export const ForecastScoreScalarFieldEnum = {
 } as const
 
 export type ForecastScoreScalarFieldEnum = (typeof ForecastScoreScalarFieldEnum)[keyof typeof ForecastScoreScalarFieldEnum]
+
+
+export const ClosingOddsObservationScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  market: 'market',
+  selection: 'selection',
+  decimalOdds: 'decimalOdds',
+  oddsFormat: 'oddsFormat',
+  sourceConvention: 'sourceConvention',
+  observationKind: 'observationKind',
+  observedAt: 'observedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ClosingOddsObservationScalarFieldEnum = (typeof ClosingOddsObservationScalarFieldEnum)[keyof typeof ClosingOddsObservationScalarFieldEnum]
+
+
+export const ValueSettlementScalarFieldEnum = {
+  id: 'id',
+  settlementReceiptId: 'settlementReceiptId',
+  valueReceiptId: 'valueReceiptId',
+  oddsSelectionId: 'oddsSelectionId',
+  closingOddsObservationId: 'closingOddsObservationId',
+  fixtureId: 'fixtureId',
+  market: 'market',
+  selection: 'selection',
+  result: 'result',
+  stakeUnits: 'stakeUnits',
+  returnUnits: 'returnUnits',
+  profitUnits: 'profitUnits',
+  policyVersion: 'policyVersion',
+  clvStatus: 'clvStatus',
+  clvReason: 'clvReason',
+  candidateOdds: 'candidateOdds',
+  candidateObservedAt: 'candidateObservedAt',
+  closingOdds: 'closingOdds',
+  closingObservedAt: 'closingObservedAt',
+  clv: 'clv',
+  clvPolicyVersion: 'clvPolicyVersion',
+  supersedesValueSettlementId: 'supersedesValueSettlementId',
+  receipt: 'receipt',
+  createdAt: 'createdAt'
+} as const
+
+export type ValueSettlementScalarFieldEnum = (typeof ValueSettlementScalarFieldEnum)[keyof typeof ValueSettlementScalarFieldEnum]
 
 
 export const LeagueExternalRefScalarFieldEnum = {

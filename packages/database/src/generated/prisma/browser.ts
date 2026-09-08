@@ -156,6 +156,16 @@ export type SettlementReceipt = Prisma.SettlementReceiptModel
  */
 export type ForecastScore = Prisma.ForecastScoreModel
 /**
+ * Model ClosingOddsObservation
+ * A timestamped price explicitly classified as a market-close observation.
+ */
+export type ClosingOddsObservation = Prisma.ClosingOddsObservationModel
+/**
+ * Model ValueSettlement
+ * Append-only flat-unit evidence for one exact frozen value candidate.
+ */
+export type ValueSettlement = Prisma.ValueSettlementModel
+/**
  * Model LeagueExternalRef
  * 
  */

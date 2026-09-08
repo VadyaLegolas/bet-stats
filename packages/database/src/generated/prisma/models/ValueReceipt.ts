@@ -263,6 +263,7 @@ export type ValueReceiptWhereInput = {
   oddsSnapshot?: Prisma.XOR<Prisma.ManualOddsSnapshotScalarRelationFilter, Prisma.ManualOddsSnapshotWhereInput>
   supersedesValueReceipt?: Prisma.XOR<Prisma.ValueReceiptNullableScalarRelationFilter, Prisma.ValueReceiptWhereInput> | null
   supersededBy?: Prisma.XOR<Prisma.ValueReceiptNullableScalarRelationFilter, Prisma.ValueReceiptWhereInput> | null
+  valueSettlements?: Prisma.ValueSettlementListRelationFilter
 }
 
 export type ValueReceiptOrderByWithRelationInput = {
@@ -286,6 +287,7 @@ export type ValueReceiptOrderByWithRelationInput = {
   oddsSnapshot?: Prisma.ManualOddsSnapshotOrderByWithRelationInput
   supersedesValueReceipt?: Prisma.ValueReceiptOrderByWithRelationInput
   supersededBy?: Prisma.ValueReceiptOrderByWithRelationInput
+  valueSettlements?: Prisma.ValueSettlementOrderByRelationAggregateInput
 }
 
 export type ValueReceiptWhereUniqueInput = Prisma.AtLeast<{
@@ -313,6 +315,7 @@ export type ValueReceiptWhereUniqueInput = Prisma.AtLeast<{
   oddsSnapshot?: Prisma.XOR<Prisma.ManualOddsSnapshotScalarRelationFilter, Prisma.ManualOddsSnapshotWhereInput>
   supersedesValueReceipt?: Prisma.XOR<Prisma.ValueReceiptNullableScalarRelationFilter, Prisma.ValueReceiptWhereInput> | null
   supersededBy?: Prisma.XOR<Prisma.ValueReceiptNullableScalarRelationFilter, Prisma.ValueReceiptWhereInput> | null
+  valueSettlements?: Prisma.ValueSettlementListRelationFilter
 }, "id" | "supersedesValueReceiptId" | "forecastSnapshotId_oddsSnapshotId_market_selection">
 
 export type ValueReceiptOrderByWithAggregationInput = {
@@ -374,6 +377,7 @@ export type ValueReceiptCreateInput = {
   oddsSnapshot: Prisma.ManualOddsSnapshotCreateNestedOneWithoutValueReceiptsInput
   supersedesValueReceipt?: Prisma.ValueReceiptCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.ValueReceiptCreateNestedOneWithoutSupersedesValueReceiptInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutValueReceiptInput
 }
 
 export type ValueReceiptUncheckedCreateInput = {
@@ -393,6 +397,7 @@ export type ValueReceiptUncheckedCreateInput = {
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   supersededBy?: Prisma.ValueReceiptUncheckedCreateNestedOneWithoutSupersedesValueReceiptInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutValueReceiptInput
 }
 
 export type ValueReceiptUpdateInput = {
@@ -412,6 +417,7 @@ export type ValueReceiptUpdateInput = {
   oddsSnapshot?: Prisma.ManualOddsSnapshotUpdateOneRequiredWithoutValueReceiptsNestedInput
   supersedesValueReceipt?: Prisma.ValueReceiptUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.ValueReceiptUpdateOneWithoutSupersedesValueReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutValueReceiptNestedInput
 }
 
 export type ValueReceiptUncheckedUpdateInput = {
@@ -431,6 +437,7 @@ export type ValueReceiptUncheckedUpdateInput = {
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.ValueReceiptUncheckedUpdateOneWithoutSupersedesValueReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutValueReceiptNestedInput
 }
 
 export type ValueReceiptCreateManyInput = {
@@ -555,6 +562,11 @@ export type ValueReceiptMinOrderByAggregateInput = {
   expectedValue?: Prisma.SortOrder
   supersedesValueReceiptId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+}
+
+export type ValueReceiptScalarRelationFilter = {
+  is?: Prisma.ValueReceiptWhereInput
+  isNot?: Prisma.ValueReceiptWhereInput
 }
 
 export type ValueReceiptCreateNestedManyWithoutFixtureInput = {
@@ -731,6 +743,20 @@ export type ValueReceiptUncheckedUpdateOneWithoutSupersedesValueReceiptNestedInp
   update?: Prisma.XOR<Prisma.XOR<Prisma.ValueReceiptUpdateToOneWithWhereWithoutSupersedesValueReceiptInput, Prisma.ValueReceiptUpdateWithoutSupersedesValueReceiptInput>, Prisma.ValueReceiptUncheckedUpdateWithoutSupersedesValueReceiptInput>
 }
 
+export type ValueReceiptCreateNestedOneWithoutValueSettlementsInput = {
+  create?: Prisma.XOR<Prisma.ValueReceiptCreateWithoutValueSettlementsInput, Prisma.ValueReceiptUncheckedCreateWithoutValueSettlementsInput>
+  connectOrCreate?: Prisma.ValueReceiptCreateOrConnectWithoutValueSettlementsInput
+  connect?: Prisma.ValueReceiptWhereUniqueInput
+}
+
+export type ValueReceiptUpdateOneRequiredWithoutValueSettlementsNestedInput = {
+  create?: Prisma.XOR<Prisma.ValueReceiptCreateWithoutValueSettlementsInput, Prisma.ValueReceiptUncheckedCreateWithoutValueSettlementsInput>
+  connectOrCreate?: Prisma.ValueReceiptCreateOrConnectWithoutValueSettlementsInput
+  upsert?: Prisma.ValueReceiptUpsertWithoutValueSettlementsInput
+  connect?: Prisma.ValueReceiptWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ValueReceiptUpdateToOneWithWhereWithoutValueSettlementsInput, Prisma.ValueReceiptUpdateWithoutValueSettlementsInput>, Prisma.ValueReceiptUncheckedUpdateWithoutValueSettlementsInput>
+}
+
 export type ValueReceiptCreateWithoutFixtureInput = {
   id?: string
   market: string
@@ -747,6 +773,7 @@ export type ValueReceiptCreateWithoutFixtureInput = {
   oddsSnapshot: Prisma.ManualOddsSnapshotCreateNestedOneWithoutValueReceiptsInput
   supersedesValueReceipt?: Prisma.ValueReceiptCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.ValueReceiptCreateNestedOneWithoutSupersedesValueReceiptInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutValueReceiptInput
 }
 
 export type ValueReceiptUncheckedCreateWithoutFixtureInput = {
@@ -765,6 +792,7 @@ export type ValueReceiptUncheckedCreateWithoutFixtureInput = {
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   supersededBy?: Prisma.ValueReceiptUncheckedCreateNestedOneWithoutSupersedesValueReceiptInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutValueReceiptInput
 }
 
 export type ValueReceiptCreateOrConnectWithoutFixtureInput = {
@@ -830,6 +858,7 @@ export type ValueReceiptCreateWithoutForecastSnapshotInput = {
   oddsSnapshot: Prisma.ManualOddsSnapshotCreateNestedOneWithoutValueReceiptsInput
   supersedesValueReceipt?: Prisma.ValueReceiptCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.ValueReceiptCreateNestedOneWithoutSupersedesValueReceiptInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutValueReceiptInput
 }
 
 export type ValueReceiptUncheckedCreateWithoutForecastSnapshotInput = {
@@ -848,6 +877,7 @@ export type ValueReceiptUncheckedCreateWithoutForecastSnapshotInput = {
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   supersededBy?: Prisma.ValueReceiptUncheckedCreateNestedOneWithoutSupersedesValueReceiptInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutValueReceiptInput
 }
 
 export type ValueReceiptCreateOrConnectWithoutForecastSnapshotInput = {
@@ -892,6 +922,7 @@ export type ValueReceiptCreateWithoutOddsSnapshotInput = {
   forecastSnapshot: Prisma.ForecastSnapshotCreateNestedOneWithoutValueReceiptsInput
   supersedesValueReceipt?: Prisma.ValueReceiptCreateNestedOneWithoutSupersededByInput
   supersededBy?: Prisma.ValueReceiptCreateNestedOneWithoutSupersedesValueReceiptInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutValueReceiptInput
 }
 
 export type ValueReceiptUncheckedCreateWithoutOddsSnapshotInput = {
@@ -910,6 +941,7 @@ export type ValueReceiptUncheckedCreateWithoutOddsSnapshotInput = {
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   supersededBy?: Prisma.ValueReceiptUncheckedCreateNestedOneWithoutSupersedesValueReceiptInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutValueReceiptInput
 }
 
 export type ValueReceiptCreateOrConnectWithoutOddsSnapshotInput = {
@@ -954,6 +986,7 @@ export type ValueReceiptCreateWithoutSupersededByInput = {
   forecastSnapshot: Prisma.ForecastSnapshotCreateNestedOneWithoutValueReceiptsInput
   oddsSnapshot: Prisma.ManualOddsSnapshotCreateNestedOneWithoutValueReceiptsInput
   supersedesValueReceipt?: Prisma.ValueReceiptCreateNestedOneWithoutSupersededByInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutValueReceiptInput
 }
 
 export type ValueReceiptUncheckedCreateWithoutSupersededByInput = {
@@ -972,6 +1005,7 @@ export type ValueReceiptUncheckedCreateWithoutSupersededByInput = {
   supersedesValueReceiptId?: string | null
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutValueReceiptInput
 }
 
 export type ValueReceiptCreateOrConnectWithoutSupersededByInput = {
@@ -995,6 +1029,7 @@ export type ValueReceiptCreateWithoutSupersedesValueReceiptInput = {
   forecastSnapshot: Prisma.ForecastSnapshotCreateNestedOneWithoutValueReceiptsInput
   oddsSnapshot: Prisma.ManualOddsSnapshotCreateNestedOneWithoutValueReceiptsInput
   supersededBy?: Prisma.ValueReceiptCreateNestedOneWithoutSupersedesValueReceiptInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutValueReceiptInput
 }
 
 export type ValueReceiptUncheckedCreateWithoutSupersedesValueReceiptInput = {
@@ -1013,6 +1048,7 @@ export type ValueReceiptUncheckedCreateWithoutSupersedesValueReceiptInput = {
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   supersededBy?: Prisma.ValueReceiptUncheckedCreateNestedOneWithoutSupersedesValueReceiptInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutValueReceiptInput
 }
 
 export type ValueReceiptCreateOrConnectWithoutSupersedesValueReceiptInput = {
@@ -1047,6 +1083,7 @@ export type ValueReceiptUpdateWithoutSupersededByInput = {
   forecastSnapshot?: Prisma.ForecastSnapshotUpdateOneRequiredWithoutValueReceiptsNestedInput
   oddsSnapshot?: Prisma.ManualOddsSnapshotUpdateOneRequiredWithoutValueReceiptsNestedInput
   supersedesValueReceipt?: Prisma.ValueReceiptUpdateOneWithoutSupersededByNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutValueReceiptNestedInput
 }
 
 export type ValueReceiptUncheckedUpdateWithoutSupersededByInput = {
@@ -1065,6 +1102,7 @@ export type ValueReceiptUncheckedUpdateWithoutSupersededByInput = {
   supersedesValueReceiptId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutValueReceiptNestedInput
 }
 
 export type ValueReceiptUpsertWithoutSupersedesValueReceiptInput = {
@@ -1094,6 +1132,7 @@ export type ValueReceiptUpdateWithoutSupersedesValueReceiptInput = {
   forecastSnapshot?: Prisma.ForecastSnapshotUpdateOneRequiredWithoutValueReceiptsNestedInput
   oddsSnapshot?: Prisma.ManualOddsSnapshotUpdateOneRequiredWithoutValueReceiptsNestedInput
   supersededBy?: Prisma.ValueReceiptUpdateOneWithoutSupersedesValueReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutValueReceiptNestedInput
 }
 
 export type ValueReceiptUncheckedUpdateWithoutSupersedesValueReceiptInput = {
@@ -1109,6 +1148,99 @@ export type ValueReceiptUncheckedUpdateWithoutSupersedesValueReceiptInput = {
   fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   edge?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   expectedValue?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  supersededBy?: Prisma.ValueReceiptUncheckedUpdateOneWithoutSupersedesValueReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutValueReceiptNestedInput
+}
+
+export type ValueReceiptCreateWithoutValueSettlementsInput = {
+  id?: string
+  market: string
+  outcome: string
+  selection: string
+  modelProbability?: string | null
+  noVigProbability?: string | null
+  fairOdds?: string | null
+  edge?: string | null
+  expectedValue?: string | null
+  receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  fixture: Prisma.FixtureCreateNestedOneWithoutValueReceiptsInput
+  forecastSnapshot: Prisma.ForecastSnapshotCreateNestedOneWithoutValueReceiptsInput
+  oddsSnapshot: Prisma.ManualOddsSnapshotCreateNestedOneWithoutValueReceiptsInput
+  supersedesValueReceipt?: Prisma.ValueReceiptCreateNestedOneWithoutSupersededByInput
+  supersededBy?: Prisma.ValueReceiptCreateNestedOneWithoutSupersedesValueReceiptInput
+}
+
+export type ValueReceiptUncheckedCreateWithoutValueSettlementsInput = {
+  id?: string
+  fixtureId: string
+  market: string
+  forecastSnapshotId: string
+  oddsSnapshotId: string
+  outcome: string
+  selection: string
+  modelProbability?: string | null
+  noVigProbability?: string | null
+  fairOdds?: string | null
+  edge?: string | null
+  expectedValue?: string | null
+  supersedesValueReceiptId?: string | null
+  receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  supersededBy?: Prisma.ValueReceiptUncheckedCreateNestedOneWithoutSupersedesValueReceiptInput
+}
+
+export type ValueReceiptCreateOrConnectWithoutValueSettlementsInput = {
+  where: Prisma.ValueReceiptWhereUniqueInput
+  create: Prisma.XOR<Prisma.ValueReceiptCreateWithoutValueSettlementsInput, Prisma.ValueReceiptUncheckedCreateWithoutValueSettlementsInput>
+}
+
+export type ValueReceiptUpsertWithoutValueSettlementsInput = {
+  update: Prisma.XOR<Prisma.ValueReceiptUpdateWithoutValueSettlementsInput, Prisma.ValueReceiptUncheckedUpdateWithoutValueSettlementsInput>
+  create: Prisma.XOR<Prisma.ValueReceiptCreateWithoutValueSettlementsInput, Prisma.ValueReceiptUncheckedCreateWithoutValueSettlementsInput>
+  where?: Prisma.ValueReceiptWhereInput
+}
+
+export type ValueReceiptUpdateToOneWithWhereWithoutValueSettlementsInput = {
+  where?: Prisma.ValueReceiptWhereInput
+  data: Prisma.XOR<Prisma.ValueReceiptUpdateWithoutValueSettlementsInput, Prisma.ValueReceiptUncheckedUpdateWithoutValueSettlementsInput>
+}
+
+export type ValueReceiptUpdateWithoutValueSettlementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  market?: Prisma.StringFieldUpdateOperationsInput | string
+  outcome?: Prisma.StringFieldUpdateOperationsInput | string
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
+  modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  edge?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  expectedValue?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  fixture?: Prisma.FixtureUpdateOneRequiredWithoutValueReceiptsNestedInput
+  forecastSnapshot?: Prisma.ForecastSnapshotUpdateOneRequiredWithoutValueReceiptsNestedInput
+  oddsSnapshot?: Prisma.ManualOddsSnapshotUpdateOneRequiredWithoutValueReceiptsNestedInput
+  supersedesValueReceipt?: Prisma.ValueReceiptUpdateOneWithoutSupersededByNestedInput
+  supersededBy?: Prisma.ValueReceiptUpdateOneWithoutSupersedesValueReceiptNestedInput
+}
+
+export type ValueReceiptUncheckedUpdateWithoutValueSettlementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
+  market?: Prisma.StringFieldUpdateOperationsInput | string
+  forecastSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
+  oddsSnapshotId?: Prisma.StringFieldUpdateOperationsInput | string
+  outcome?: Prisma.StringFieldUpdateOperationsInput | string
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
+  modelProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  noVigProbability?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fairOdds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  edge?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  expectedValue?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  supersedesValueReceiptId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.ValueReceiptUncheckedUpdateOneWithoutSupersedesValueReceiptNestedInput
@@ -1147,6 +1279,7 @@ export type ValueReceiptUpdateWithoutFixtureInput = {
   oddsSnapshot?: Prisma.ManualOddsSnapshotUpdateOneRequiredWithoutValueReceiptsNestedInput
   supersedesValueReceipt?: Prisma.ValueReceiptUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.ValueReceiptUpdateOneWithoutSupersedesValueReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutValueReceiptNestedInput
 }
 
 export type ValueReceiptUncheckedUpdateWithoutFixtureInput = {
@@ -1165,6 +1298,7 @@ export type ValueReceiptUncheckedUpdateWithoutFixtureInput = {
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.ValueReceiptUncheckedUpdateOneWithoutSupersedesValueReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutValueReceiptNestedInput
 }
 
 export type ValueReceiptUncheckedUpdateManyWithoutFixtureInput = {
@@ -1217,6 +1351,7 @@ export type ValueReceiptUpdateWithoutForecastSnapshotInput = {
   oddsSnapshot?: Prisma.ManualOddsSnapshotUpdateOneRequiredWithoutValueReceiptsNestedInput
   supersedesValueReceipt?: Prisma.ValueReceiptUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.ValueReceiptUpdateOneWithoutSupersedesValueReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutValueReceiptNestedInput
 }
 
 export type ValueReceiptUncheckedUpdateWithoutForecastSnapshotInput = {
@@ -1235,6 +1370,7 @@ export type ValueReceiptUncheckedUpdateWithoutForecastSnapshotInput = {
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.ValueReceiptUncheckedUpdateOneWithoutSupersedesValueReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutValueReceiptNestedInput
 }
 
 export type ValueReceiptUncheckedUpdateManyWithoutForecastSnapshotInput = {
@@ -1287,6 +1423,7 @@ export type ValueReceiptUpdateWithoutOddsSnapshotInput = {
   forecastSnapshot?: Prisma.ForecastSnapshotUpdateOneRequiredWithoutValueReceiptsNestedInput
   supersedesValueReceipt?: Prisma.ValueReceiptUpdateOneWithoutSupersededByNestedInput
   supersededBy?: Prisma.ValueReceiptUpdateOneWithoutSupersedesValueReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutValueReceiptNestedInput
 }
 
 export type ValueReceiptUncheckedUpdateWithoutOddsSnapshotInput = {
@@ -1305,6 +1442,7 @@ export type ValueReceiptUncheckedUpdateWithoutOddsSnapshotInput = {
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   supersededBy?: Prisma.ValueReceiptUncheckedUpdateOneWithoutSupersedesValueReceiptNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutValueReceiptNestedInput
 }
 
 export type ValueReceiptUncheckedUpdateManyWithoutOddsSnapshotInput = {
@@ -1324,6 +1462,35 @@ export type ValueReceiptUncheckedUpdateManyWithoutOddsSnapshotInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+
+/**
+ * Count Type ValueReceiptCountOutputType
+ */
+
+export type ValueReceiptCountOutputType = {
+  valueSettlements: number
+}
+
+export type ValueReceiptCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  valueSettlements?: boolean | ValueReceiptCountOutputTypeCountValueSettlementsArgs
+}
+
+/**
+ * ValueReceiptCountOutputType without action
+ */
+export type ValueReceiptCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ValueReceiptCountOutputType
+   */
+  select?: Prisma.ValueReceiptCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * ValueReceiptCountOutputType without action
+ */
+export type ValueReceiptCountOutputTypeCountValueSettlementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ValueSettlementWhereInput
+}
 
 
 export type ValueReceiptSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1347,6 +1514,8 @@ export type ValueReceiptSelect<ExtArgs extends runtime.Types.Extensions.Internal
   oddsSnapshot?: boolean | Prisma.ManualOddsSnapshotDefaultArgs<ExtArgs>
   supersedesValueReceipt?: boolean | Prisma.ValueReceipt$supersedesValueReceiptArgs<ExtArgs>
   supersededBy?: boolean | Prisma.ValueReceipt$supersededByArgs<ExtArgs>
+  valueSettlements?: boolean | Prisma.ValueReceipt$valueSettlementsArgs<ExtArgs>
+  _count?: boolean | Prisma.ValueReceiptCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["valueReceipt"]>
 
 export type ValueReceiptSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1418,6 +1587,8 @@ export type ValueReceiptInclude<ExtArgs extends runtime.Types.Extensions.Interna
   oddsSnapshot?: boolean | Prisma.ManualOddsSnapshotDefaultArgs<ExtArgs>
   supersedesValueReceipt?: boolean | Prisma.ValueReceipt$supersedesValueReceiptArgs<ExtArgs>
   supersededBy?: boolean | Prisma.ValueReceipt$supersededByArgs<ExtArgs>
+  valueSettlements?: boolean | Prisma.ValueReceipt$valueSettlementsArgs<ExtArgs>
+  _count?: boolean | Prisma.ValueReceiptCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ValueReceiptIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   fixture?: boolean | Prisma.FixtureDefaultArgs<ExtArgs>
@@ -1440,6 +1611,7 @@ export type $ValueReceiptPayload<ExtArgs extends runtime.Types.Extensions.Intern
     oddsSnapshot: Prisma.$ManualOddsSnapshotPayload<ExtArgs>
     supersedesValueReceipt: Prisma.$ValueReceiptPayload<ExtArgs> | null
     supersededBy: Prisma.$ValueReceiptPayload<ExtArgs> | null
+    valueSettlements: Prisma.$ValueSettlementPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1856,6 +2028,7 @@ export interface Prisma__ValueReceiptClient<T, Null = never, ExtArgs extends run
   oddsSnapshot<T extends Prisma.ManualOddsSnapshotDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ManualOddsSnapshotDefaultArgs<ExtArgs>>): Prisma.Prisma__ManualOddsSnapshotClient<runtime.Types.Result.GetResult<Prisma.$ManualOddsSnapshotPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   supersedesValueReceipt<T extends Prisma.ValueReceipt$supersedesValueReceiptArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ValueReceipt$supersedesValueReceiptArgs<ExtArgs>>): Prisma.Prisma__ValueReceiptClient<runtime.Types.Result.GetResult<Prisma.$ValueReceiptPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   supersededBy<T extends Prisma.ValueReceipt$supersededByArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ValueReceipt$supersededByArgs<ExtArgs>>): Prisma.Prisma__ValueReceiptClient<runtime.Types.Result.GetResult<Prisma.$ValueReceiptPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  valueSettlements<T extends Prisma.ValueReceipt$valueSettlementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ValueReceipt$valueSettlementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ValueSettlementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2336,6 +2509,30 @@ export type ValueReceipt$supersededByArgs<ExtArgs extends runtime.Types.Extensio
    */
   include?: Prisma.ValueReceiptInclude<ExtArgs> | null
   where?: Prisma.ValueReceiptWhereInput
+}
+
+/**
+ * ValueReceipt.valueSettlements
+ */
+export type ValueReceipt$valueSettlementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ValueSettlement
+   */
+  select?: Prisma.ValueSettlementSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ValueSettlement
+   */
+  omit?: Prisma.ValueSettlementOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ValueSettlementInclude<ExtArgs> | null
+  where?: Prisma.ValueSettlementWhereInput
+  orderBy?: Prisma.ValueSettlementOrderByWithRelationInput | Prisma.ValueSettlementOrderByWithRelationInput[]
+  cursor?: Prisma.ValueSettlementWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ValueSettlementScalarFieldEnum | Prisma.ValueSettlementScalarFieldEnum[]
 }
 
 /**

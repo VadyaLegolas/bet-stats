@@ -424,6 +424,8 @@ export const ModelName = {
   ResultVersion: 'ResultVersion',
   SettlementReceipt: 'SettlementReceipt',
   ForecastScore: 'ForecastScore',
+  ClosingOddsObservation: 'ClosingOddsObservation',
+  ValueSettlement: 'ValueSettlement',
   LeagueExternalRef: 'LeagueExternalRef',
   SeasonExternalRef: 'SeasonExternalRef',
   TeamExternalRef: 'TeamExternalRef',
@@ -448,7 +450,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2450,6 +2452,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ClosingOddsObservation: {
+      payload: Prisma.$ClosingOddsObservationPayload<ExtArgs>
+      fields: Prisma.ClosingOddsObservationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ClosingOddsObservationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClosingOddsObservationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ClosingOddsObservationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClosingOddsObservationPayload>
+        }
+        findFirst: {
+          args: Prisma.ClosingOddsObservationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClosingOddsObservationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ClosingOddsObservationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClosingOddsObservationPayload>
+        }
+        findMany: {
+          args: Prisma.ClosingOddsObservationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClosingOddsObservationPayload>[]
+        }
+        create: {
+          args: Prisma.ClosingOddsObservationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClosingOddsObservationPayload>
+        }
+        createMany: {
+          args: Prisma.ClosingOddsObservationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ClosingOddsObservationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClosingOddsObservationPayload>[]
+        }
+        delete: {
+          args: Prisma.ClosingOddsObservationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClosingOddsObservationPayload>
+        }
+        update: {
+          args: Prisma.ClosingOddsObservationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClosingOddsObservationPayload>
+        }
+        deleteMany: {
+          args: Prisma.ClosingOddsObservationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ClosingOddsObservationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ClosingOddsObservationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClosingOddsObservationPayload>[]
+        }
+        upsert: {
+          args: Prisma.ClosingOddsObservationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ClosingOddsObservationPayload>
+        }
+        aggregate: {
+          args: Prisma.ClosingOddsObservationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateClosingOddsObservation>
+        }
+        groupBy: {
+          args: Prisma.ClosingOddsObservationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ClosingOddsObservationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ClosingOddsObservationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ClosingOddsObservationCountAggregateOutputType> | number
+        }
+      }
+    }
+    ValueSettlement: {
+      payload: Prisma.$ValueSettlementPayload<ExtArgs>
+      fields: Prisma.ValueSettlementFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ValueSettlementFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ValueSettlementPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ValueSettlementFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ValueSettlementPayload>
+        }
+        findFirst: {
+          args: Prisma.ValueSettlementFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ValueSettlementPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ValueSettlementFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ValueSettlementPayload>
+        }
+        findMany: {
+          args: Prisma.ValueSettlementFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ValueSettlementPayload>[]
+        }
+        create: {
+          args: Prisma.ValueSettlementCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ValueSettlementPayload>
+        }
+        createMany: {
+          args: Prisma.ValueSettlementCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ValueSettlementCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ValueSettlementPayload>[]
+        }
+        delete: {
+          args: Prisma.ValueSettlementDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ValueSettlementPayload>
+        }
+        update: {
+          args: Prisma.ValueSettlementUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ValueSettlementPayload>
+        }
+        deleteMany: {
+          args: Prisma.ValueSettlementDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ValueSettlementUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ValueSettlementUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ValueSettlementPayload>[]
+        }
+        upsert: {
+          args: Prisma.ValueSettlementUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ValueSettlementPayload>
+        }
+        aggregate: {
+          args: Prisma.ValueSettlementAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateValueSettlement>
+        }
+        groupBy: {
+          args: Prisma.ValueSettlementGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ValueSettlementGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ValueSettlementCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ValueSettlementCountAggregateOutputType> | number
+        }
+      }
+    }
     LeagueExternalRef: {
       payload: Prisma.$LeagueExternalRefPayload<ExtArgs>
       fields: Prisma.LeagueExternalRefFieldRefs
@@ -3602,6 +3752,52 @@ export const ForecastScoreScalarFieldEnum = {
 export type ForecastScoreScalarFieldEnum = (typeof ForecastScoreScalarFieldEnum)[keyof typeof ForecastScoreScalarFieldEnum]
 
 
+export const ClosingOddsObservationScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  market: 'market',
+  selection: 'selection',
+  decimalOdds: 'decimalOdds',
+  oddsFormat: 'oddsFormat',
+  sourceConvention: 'sourceConvention',
+  observationKind: 'observationKind',
+  observedAt: 'observedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ClosingOddsObservationScalarFieldEnum = (typeof ClosingOddsObservationScalarFieldEnum)[keyof typeof ClosingOddsObservationScalarFieldEnum]
+
+
+export const ValueSettlementScalarFieldEnum = {
+  id: 'id',
+  settlementReceiptId: 'settlementReceiptId',
+  valueReceiptId: 'valueReceiptId',
+  oddsSelectionId: 'oddsSelectionId',
+  closingOddsObservationId: 'closingOddsObservationId',
+  fixtureId: 'fixtureId',
+  market: 'market',
+  selection: 'selection',
+  result: 'result',
+  stakeUnits: 'stakeUnits',
+  returnUnits: 'returnUnits',
+  profitUnits: 'profitUnits',
+  policyVersion: 'policyVersion',
+  clvStatus: 'clvStatus',
+  clvReason: 'clvReason',
+  candidateOdds: 'candidateOdds',
+  candidateObservedAt: 'candidateObservedAt',
+  closingOdds: 'closingOdds',
+  closingObservedAt: 'closingObservedAt',
+  clv: 'clv',
+  clvPolicyVersion: 'clvPolicyVersion',
+  supersedesValueSettlementId: 'supersedesValueSettlementId',
+  receipt: 'receipt',
+  createdAt: 'createdAt'
+} as const
+
+export type ValueSettlementScalarFieldEnum = (typeof ValueSettlementScalarFieldEnum)[keyof typeof ValueSettlementScalarFieldEnum]
+
+
 export const LeagueExternalRefScalarFieldEnum = {
   id: 'id',
   leagueId: 'leagueId',
@@ -4191,6 +4387,8 @@ export type GlobalOmitConfig = {
   resultVersion?: Prisma.ResultVersionOmit
   settlementReceipt?: Prisma.SettlementReceiptOmit
   forecastScore?: Prisma.ForecastScoreOmit
+  closingOddsObservation?: Prisma.ClosingOddsObservationOmit
+  valueSettlement?: Prisma.ValueSettlementOmit
   leagueExternalRef?: Prisma.LeagueExternalRefOmit
   seasonExternalRef?: Prisma.SeasonExternalRefOmit
   teamExternalRef?: Prisma.TeamExternalRefOmit

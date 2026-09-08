@@ -22,9 +22,9 @@ function waitForPostgres(): void {
   throw new Error("PostgreSQL did not become ready");
 }
 
-async function persist(id: string, settlementId: string, supersedes: string | null = null, closingId: string | null = "value-closing") {
+async function persist(id: string, settlementId: string, supersedes: string | null = null, closingId: string | null = "value-closing", valueId = "value-receipt", selectionId = "value-odds-selection") {
   return prisma.$queryRawUnsafe<Array<{ id: string; supersedesValueSettlementId: string | null }>>(
-    `SELECT * FROM persist_value_settlement($1,$2,'value-receipt','value-odds-selection',$3,$4)`, id, settlementId, closingId, supersedes,
+    `SELECT * FROM persist_value_settlement($1,$2,$3,$4,$5,$6)`, id, settlementId, valueId, selectionId, closingId, supersedes,
   );
 }
 
@@ -47,8 +47,9 @@ describe("immutable flat-unit value settlements", () => {
       INSERT INTO "ForecastSnapshot" (id,"fixtureId",kind,state,revision,cutoff,"modelVersion","modelHash","configVersion","configHash","inputHash","evidenceFingerprint","sourceRefs",probabilities,confidence,assumptions,receipt,"issuedAt") VALUES ('value-settle-forecast','value-settle-fixture','PRE_MATCH','ISSUED',1,'2026-09-10T17:00:00Z','poisson-v1','model-hash','forecast-config-v1','config-hash','input-hash','evidence-hash','[]','{}','{}','[]','{}','2026-09-10T17:00:01Z');
       INSERT INTO "ForecastMarket" (id,"forecastSnapshotId",market,probabilities) VALUES ('value-settle-market','value-settle-forecast','ONE_X_TWO','[{"selection":"HOME","probability":0.6},{"selection":"DRAW","probability":0.2},{"selection":"AWAY","probability":0.2}]');
       INSERT INTO "ManualOddsSnapshot" (id,"fixtureId",market,"inputHash",source,receipt,"submittedAt") VALUES ('value-odds','value-settle-fixture','ONE_X_TWO','odds-hash','BOOKMAKER_BACK','{"selections":[{"selection":"HOME","decimalOdds":"2.4","noVigProbability":"0.45"},{"selection":"DRAW","decimalOdds":"3","noVigProbability":"0.3"},{"selection":"AWAY","decimalOdds":"4","noVigProbability":"0.25"}]}','2026-09-10T16:00:00Z');
-      INSERT INTO "ManualOddsSelection" (id,"oddsSnapshotId",selection,"decimalOdds") VALUES ('value-odds-selection','value-odds','HOME','2.4');
+      INSERT INTO "ManualOddsSelection" (id,"oddsSnapshotId",selection,"decimalOdds") VALUES ('value-odds-selection','value-odds','HOME','2.4'),('value-odds-selection-away','value-odds','AWAY','4');
       INSERT INTO "ValueReceipt" (id,"fixtureId",market,"forecastSnapshotId","oddsSnapshotId",outcome,selection,"modelProbability","noVigProbability","fairOdds",edge,"expectedValue",receipt) VALUES ('value-receipt','value-settle-fixture','ONE_X_TWO','value-settle-forecast','value-odds','VALUE_CANDIDATE','HOME','0.6','0.45','1.66666666666666666667','0.15','0.44','{"market":"ONE_X_TWO","selection":"HOME","modelProbability":"0.6","noVigProbability":"0.45","decimalOdds":"2.4","fairOdds":"1.66666666666666666667","edge":"0.15","expectedValue":"0.44"}');
+      INSERT INTO "ValueReceipt" (id,"fixtureId",market,"forecastSnapshotId","oddsSnapshotId",outcome,selection,"modelProbability","noVigProbability","fairOdds",edge,"expectedValue",receipt) VALUES ('value-receipt-away','value-settle-fixture','ONE_X_TWO','value-settle-forecast','value-odds','VALUE_CANDIDATE','AWAY','0.2','0.25','5','-0.05','-0.2','{"market":"ONE_X_TWO","selection":"AWAY","modelProbability":"0.2","noVigProbability":"0.25","decimalOdds":"4","fairOdds":"5","edge":"-0.05","expectedValue":"-0.2"}');
       INSERT INTO "ClosingOddsObservation" (id,"fixtureId",market,selection,"decimalOdds","oddsFormat","sourceConvention","observationKind","observedAt") VALUES ('value-closing','value-settle-fixture','ONE_X_TWO','HOME','2','DECIMAL','BOOKMAKER_BACK','MARKET_CLOSE','2026-09-10T17:59:00Z');
     `);
     const receipt1 = { fixtureId: "value-settle-fixture", resultVersionId: "value-result-1", forecastSnapshotId: "value-settle-forecast", policyVersion: "settlement-policy-v1", policyHash: "value-policy", lifecycle: "FINISHED", scoreability: "SCOREABLE", financialEligibility: "ELIGIBLE", classOutcome: "SCORED", reason: "RESULT_FINISHED" };
@@ -75,7 +76,7 @@ describe("immutable flat-unit value settlements", () => {
   });
 
   it("stores a precise unavailable CLV reason when no closing price exists", async () => {
-    const rows = await persist("value-fact-no-close", "value-settlement-1", null, null);
+    const rows = await persist("value-fact-no-close", "value-settlement-1", null, null, "value-receipt-away", "value-odds-selection-away");
     const row = await prisma.$queryRawUnsafe<Array<{ clvStatus: string; clvReason: string }>>(`SELECT "clvStatus","clvReason" FROM "ValueSettlement" WHERE id=$1`, rows[0]!.id);
     expect(row[0]).toEqual({ clvStatus: "UNAVAILABLE", clvReason: "CLOSING_OBSERVATION_MISSING" });
   });
@@ -83,7 +84,7 @@ describe("immutable flat-unit value settlements", () => {
   it("rejects ineligible identity, source/timestamp mismatch, mutation, and forged P/L", async () => {
     await expect(prisma.$executeRawUnsafe(`UPDATE "ValueSettlement" SET "profitUnits"='99' WHERE id='value-fact-1'`)).rejects.toThrow(/immutable/i);
     await expect(prisma.$executeRawUnsafe(`INSERT INTO "ClosingOddsObservation" (id,"fixtureId",market,selection,"decimalOdds","oddsFormat","sourceConvention","observationKind","observedAt") VALUES ('bad-closing','value-settle-fixture','ONE_X_TWO','HOME','2','DECIMAL','EXCHANGE','MARKET_CLOSE','2026-09-10T18:00:00Z')`)).resolves.toBe(1);
-    await expect(persist("bad-source", "value-settlement-1", null, "bad-closing")).rejects.toThrow(/source|timestamp|comparable/i);
+    await expect(prisma.$executeRawUnsafe(`INSERT INTO "ValueSettlement" (id,"settlementReceiptId","valueReceiptId","oddsSelectionId","closingOddsObservationId","fixtureId",market,selection,result,"stakeUnits","returnUnits","profitUnits","policyVersion","clvStatus","candidateOdds","candidateObservedAt","closingOdds","closingObservedAt",clv,"clvPolicyVersion",receipt) SELECT 'bad-source',"settlementReceiptId","valueReceiptId","oddsSelectionId",'bad-closing',"fixtureId",market,selection,result,"stakeUnits","returnUnits","profitUnits","policyVersion",'AVAILABLE',"candidateOdds","candidateObservedAt",'2','2026-09-10T18:00:00Z','0.2',"clvPolicyVersion",receipt FROM "ValueSettlement" WHERE id='value-fact-1'`)).rejects.toThrow(/source|timestamp|comparable/i);
     await expect(prisma.$executeRawUnsafe(`INSERT INTO "ValueSettlement" (id,"settlementReceiptId","valueReceiptId","oddsSelectionId","fixtureId",market,selection,result,"stakeUnits","returnUnits","profitUnits","policyVersion","clvStatus","clvReason","clvPolicyVersion",receipt) SELECT 'forged',"settlementReceiptId","valueReceiptId","oddsSelectionId","fixtureId",market,selection,result,"stakeUnits","returnUnits",'99',"policyVersion","clvStatus","clvReason","clvPolicyVersion",receipt FROM "ValueSettlement" WHERE id='value-fact-1'`)).rejects.toThrow(/profit|arithmetic|identity/i);
   });
 });

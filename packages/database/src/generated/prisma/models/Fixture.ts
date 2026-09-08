@@ -227,6 +227,8 @@ export type FixtureWhereInput = {
   valueReceipts?: Prisma.ValueReceiptListRelationFilter
   settlementReceipts?: Prisma.SettlementReceiptListRelationFilter
   forecastScores?: Prisma.ForecastScoreListRelationFilter
+  closingOddsObservations?: Prisma.ClosingOddsObservationListRelationFilter
+  valueSettlements?: Prisma.ValueSettlementListRelationFilter
 }
 
 export type FixtureOrderByWithRelationInput = {
@@ -252,6 +254,8 @@ export type FixtureOrderByWithRelationInput = {
   valueReceipts?: Prisma.ValueReceiptOrderByRelationAggregateInput
   settlementReceipts?: Prisma.SettlementReceiptOrderByRelationAggregateInput
   forecastScores?: Prisma.ForecastScoreOrderByRelationAggregateInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationOrderByRelationAggregateInput
+  valueSettlements?: Prisma.ValueSettlementOrderByRelationAggregateInput
 }
 
 export type FixtureWhereUniqueInput = Prisma.AtLeast<{
@@ -280,6 +284,8 @@ export type FixtureWhereUniqueInput = Prisma.AtLeast<{
   valueReceipts?: Prisma.ValueReceiptListRelationFilter
   settlementReceipts?: Prisma.SettlementReceiptListRelationFilter
   forecastScores?: Prisma.ForecastScoreListRelationFilter
+  closingOddsObservations?: Prisma.ClosingOddsObservationListRelationFilter
+  valueSettlements?: Prisma.ValueSettlementListRelationFilter
 }, "id">
 
 export type FixtureOrderByWithAggregationInput = {
@@ -331,6 +337,8 @@ export type FixtureCreateInput = {
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateInput = {
@@ -352,6 +360,8 @@ export type FixtureUncheckedCreateInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUpdateInput = {
@@ -373,6 +383,8 @@ export type FixtureUpdateInput = {
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateInput = {
@@ -394,6 +406,8 @@ export type FixtureUncheckedUpdateInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureCreateManyInput = {
@@ -745,6 +759,34 @@ export type FixtureUpdateOneRequiredWithoutForecastScoresNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.FixtureUpdateToOneWithWhereWithoutForecastScoresInput, Prisma.FixtureUpdateWithoutForecastScoresInput>, Prisma.FixtureUncheckedUpdateWithoutForecastScoresInput>
 }
 
+export type FixtureCreateNestedOneWithoutClosingOddsObservationsInput = {
+  create?: Prisma.XOR<Prisma.FixtureCreateWithoutClosingOddsObservationsInput, Prisma.FixtureUncheckedCreateWithoutClosingOddsObservationsInput>
+  connectOrCreate?: Prisma.FixtureCreateOrConnectWithoutClosingOddsObservationsInput
+  connect?: Prisma.FixtureWhereUniqueInput
+}
+
+export type FixtureUpdateOneRequiredWithoutClosingOddsObservationsNestedInput = {
+  create?: Prisma.XOR<Prisma.FixtureCreateWithoutClosingOddsObservationsInput, Prisma.FixtureUncheckedCreateWithoutClosingOddsObservationsInput>
+  connectOrCreate?: Prisma.FixtureCreateOrConnectWithoutClosingOddsObservationsInput
+  upsert?: Prisma.FixtureUpsertWithoutClosingOddsObservationsInput
+  connect?: Prisma.FixtureWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.FixtureUpdateToOneWithWhereWithoutClosingOddsObservationsInput, Prisma.FixtureUpdateWithoutClosingOddsObservationsInput>, Prisma.FixtureUncheckedUpdateWithoutClosingOddsObservationsInput>
+}
+
+export type FixtureCreateNestedOneWithoutValueSettlementsInput = {
+  create?: Prisma.XOR<Prisma.FixtureCreateWithoutValueSettlementsInput, Prisma.FixtureUncheckedCreateWithoutValueSettlementsInput>
+  connectOrCreate?: Prisma.FixtureCreateOrConnectWithoutValueSettlementsInput
+  connect?: Prisma.FixtureWhereUniqueInput
+}
+
+export type FixtureUpdateOneRequiredWithoutValueSettlementsNestedInput = {
+  create?: Prisma.XOR<Prisma.FixtureCreateWithoutValueSettlementsInput, Prisma.FixtureUncheckedCreateWithoutValueSettlementsInput>
+  connectOrCreate?: Prisma.FixtureCreateOrConnectWithoutValueSettlementsInput
+  upsert?: Prisma.FixtureUpsertWithoutValueSettlementsInput
+  connect?: Prisma.FixtureWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.FixtureUpdateToOneWithWhereWithoutValueSettlementsInput, Prisma.FixtureUpdateWithoutValueSettlementsInput>, Prisma.FixtureUncheckedUpdateWithoutValueSettlementsInput>
+}
+
 export type FixtureCreateNestedOneWithoutExternalRefsInput = {
   create?: Prisma.XOR<Prisma.FixtureCreateWithoutExternalRefsInput, Prisma.FixtureUncheckedCreateWithoutExternalRefsInput>
   connectOrCreate?: Prisma.FixtureCreateOrConnectWithoutExternalRefsInput
@@ -791,6 +833,8 @@ export type FixtureCreateWithoutLeagueInput = {
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateWithoutLeagueInput = {
@@ -811,6 +855,8 @@ export type FixtureUncheckedCreateWithoutLeagueInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureCreateOrConnectWithoutLeagueInput = {
@@ -872,6 +918,8 @@ export type FixtureCreateWithoutSeasonInput = {
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateWithoutSeasonInput = {
@@ -892,6 +940,8 @@ export type FixtureUncheckedCreateWithoutSeasonInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureCreateOrConnectWithoutSeasonInput = {
@@ -938,6 +988,8 @@ export type FixtureCreateWithoutHomeTeamInput = {
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateWithoutHomeTeamInput = {
@@ -958,6 +1010,8 @@ export type FixtureUncheckedCreateWithoutHomeTeamInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureCreateOrConnectWithoutHomeTeamInput = {
@@ -988,6 +1042,8 @@ export type FixtureCreateWithoutAwayTeamInput = {
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateWithoutAwayTeamInput = {
@@ -1008,6 +1064,8 @@ export type FixtureUncheckedCreateWithoutAwayTeamInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureCreateOrConnectWithoutAwayTeamInput = {
@@ -1070,6 +1128,8 @@ export type FixtureCreateWithoutLineupObservationsInput = {
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateWithoutLineupObservationsInput = {
@@ -1090,6 +1150,8 @@ export type FixtureUncheckedCreateWithoutLineupObservationsInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureCreateOrConnectWithoutLineupObservationsInput = {
@@ -1126,6 +1188,8 @@ export type FixtureUpdateWithoutLineupObservationsInput = {
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateWithoutLineupObservationsInput = {
@@ -1146,6 +1210,8 @@ export type FixtureUncheckedUpdateWithoutLineupObservationsInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureCreateWithoutForecastSnapshotsInput = {
@@ -1166,6 +1232,8 @@ export type FixtureCreateWithoutForecastSnapshotsInput = {
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateWithoutForecastSnapshotsInput = {
@@ -1186,6 +1254,8 @@ export type FixtureUncheckedCreateWithoutForecastSnapshotsInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureCreateOrConnectWithoutForecastSnapshotsInput = {
@@ -1222,6 +1292,8 @@ export type FixtureUpdateWithoutForecastSnapshotsInput = {
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateWithoutForecastSnapshotsInput = {
@@ -1242,6 +1314,8 @@ export type FixtureUncheckedUpdateWithoutForecastSnapshotsInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureCreateWithoutManualOddsSnapshotsInput = {
@@ -1262,6 +1336,8 @@ export type FixtureCreateWithoutManualOddsSnapshotsInput = {
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateWithoutManualOddsSnapshotsInput = {
@@ -1282,6 +1358,8 @@ export type FixtureUncheckedCreateWithoutManualOddsSnapshotsInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureCreateOrConnectWithoutManualOddsSnapshotsInput = {
@@ -1318,6 +1396,8 @@ export type FixtureUpdateWithoutManualOddsSnapshotsInput = {
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateWithoutManualOddsSnapshotsInput = {
@@ -1338,6 +1418,8 @@ export type FixtureUncheckedUpdateWithoutManualOddsSnapshotsInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureCreateWithoutValueReceiptsInput = {
@@ -1358,6 +1440,8 @@ export type FixtureCreateWithoutValueReceiptsInput = {
   manualOddsSnapshots?: Prisma.ManualOddsSnapshotCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateWithoutValueReceiptsInput = {
@@ -1378,6 +1462,8 @@ export type FixtureUncheckedCreateWithoutValueReceiptsInput = {
   manualOddsSnapshots?: Prisma.ManualOddsSnapshotUncheckedCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureCreateOrConnectWithoutValueReceiptsInput = {
@@ -1414,6 +1500,8 @@ export type FixtureUpdateWithoutValueReceiptsInput = {
   manualOddsSnapshots?: Prisma.ManualOddsSnapshotUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateWithoutValueReceiptsInput = {
@@ -1434,6 +1522,8 @@ export type FixtureUncheckedUpdateWithoutValueReceiptsInput = {
   manualOddsSnapshots?: Prisma.ManualOddsSnapshotUncheckedUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureCreateWithoutResultVersionsInput = {
@@ -1454,6 +1544,8 @@ export type FixtureCreateWithoutResultVersionsInput = {
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateWithoutResultVersionsInput = {
@@ -1474,6 +1566,8 @@ export type FixtureUncheckedCreateWithoutResultVersionsInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureCreateOrConnectWithoutResultVersionsInput = {
@@ -1510,6 +1604,8 @@ export type FixtureUpdateWithoutResultVersionsInput = {
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateWithoutResultVersionsInput = {
@@ -1530,6 +1626,8 @@ export type FixtureUncheckedUpdateWithoutResultVersionsInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureCreateWithoutSettlementReceiptsInput = {
@@ -1550,6 +1648,8 @@ export type FixtureCreateWithoutSettlementReceiptsInput = {
   manualOddsSnapshots?: Prisma.ManualOddsSnapshotCreateNestedManyWithoutFixtureInput
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateWithoutSettlementReceiptsInput = {
@@ -1570,6 +1670,8 @@ export type FixtureUncheckedCreateWithoutSettlementReceiptsInput = {
   manualOddsSnapshots?: Prisma.ManualOddsSnapshotUncheckedCreateNestedManyWithoutFixtureInput
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureCreateOrConnectWithoutSettlementReceiptsInput = {
@@ -1606,6 +1708,8 @@ export type FixtureUpdateWithoutSettlementReceiptsInput = {
   manualOddsSnapshots?: Prisma.ManualOddsSnapshotUpdateManyWithoutFixtureNestedInput
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateWithoutSettlementReceiptsInput = {
@@ -1626,6 +1730,8 @@ export type FixtureUncheckedUpdateWithoutSettlementReceiptsInput = {
   manualOddsSnapshots?: Prisma.ManualOddsSnapshotUncheckedUpdateManyWithoutFixtureNestedInput
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureCreateWithoutForecastScoresInput = {
@@ -1646,6 +1752,8 @@ export type FixtureCreateWithoutForecastScoresInput = {
   manualOddsSnapshots?: Prisma.ManualOddsSnapshotCreateNestedManyWithoutFixtureInput
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateWithoutForecastScoresInput = {
@@ -1666,6 +1774,8 @@ export type FixtureUncheckedCreateWithoutForecastScoresInput = {
   manualOddsSnapshots?: Prisma.ManualOddsSnapshotUncheckedCreateNestedManyWithoutFixtureInput
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureCreateOrConnectWithoutForecastScoresInput = {
@@ -1702,6 +1812,8 @@ export type FixtureUpdateWithoutForecastScoresInput = {
   manualOddsSnapshots?: Prisma.ManualOddsSnapshotUpdateManyWithoutFixtureNestedInput
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateWithoutForecastScoresInput = {
@@ -1722,6 +1834,216 @@ export type FixtureUncheckedUpdateWithoutForecastScoresInput = {
   manualOddsSnapshots?: Prisma.ManualOddsSnapshotUncheckedUpdateManyWithoutFixtureNestedInput
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
+}
+
+export type FixtureCreateWithoutClosingOddsObservationsInput = {
+  id?: string
+  kickoffUtc: Date | string
+  status: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  league: Prisma.LeagueCreateNestedOneWithoutFixturesInput
+  season: Prisma.SeasonCreateNestedOneWithoutFixturesInput
+  homeTeam: Prisma.TeamCreateNestedOneWithoutHomeFixturesInput
+  awayTeam: Prisma.TeamCreateNestedOneWithoutAwayFixturesInput
+  externalRefs?: Prisma.FixtureExternalRefCreateNestedManyWithoutFixtureInput
+  provenance?: Prisma.FixtureProvenanceCreateNestedManyWithoutFixtureInput
+  resultVersions?: Prisma.ResultVersionCreateNestedManyWithoutFixtureInput
+  lineupObservations?: Prisma.LineupObservationCreateNestedManyWithoutFixtureInput
+  forecastSnapshots?: Prisma.ForecastSnapshotCreateNestedManyWithoutFixtureInput
+  manualOddsSnapshots?: Prisma.ManualOddsSnapshotCreateNestedManyWithoutFixtureInput
+  valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
+  forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
+}
+
+export type FixtureUncheckedCreateWithoutClosingOddsObservationsInput = {
+  id?: string
+  leagueId: string
+  seasonId: string
+  homeTeamId: string
+  awayTeamId: string
+  kickoffUtc: Date | string
+  status: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  externalRefs?: Prisma.FixtureExternalRefUncheckedCreateNestedManyWithoutFixtureInput
+  provenance?: Prisma.FixtureProvenanceUncheckedCreateNestedManyWithoutFixtureInput
+  resultVersions?: Prisma.ResultVersionUncheckedCreateNestedManyWithoutFixtureInput
+  lineupObservations?: Prisma.LineupObservationUncheckedCreateNestedManyWithoutFixtureInput
+  forecastSnapshots?: Prisma.ForecastSnapshotUncheckedCreateNestedManyWithoutFixtureInput
+  manualOddsSnapshots?: Prisma.ManualOddsSnapshotUncheckedCreateNestedManyWithoutFixtureInput
+  valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
+  forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
+}
+
+export type FixtureCreateOrConnectWithoutClosingOddsObservationsInput = {
+  where: Prisma.FixtureWhereUniqueInput
+  create: Prisma.XOR<Prisma.FixtureCreateWithoutClosingOddsObservationsInput, Prisma.FixtureUncheckedCreateWithoutClosingOddsObservationsInput>
+}
+
+export type FixtureUpsertWithoutClosingOddsObservationsInput = {
+  update: Prisma.XOR<Prisma.FixtureUpdateWithoutClosingOddsObservationsInput, Prisma.FixtureUncheckedUpdateWithoutClosingOddsObservationsInput>
+  create: Prisma.XOR<Prisma.FixtureCreateWithoutClosingOddsObservationsInput, Prisma.FixtureUncheckedCreateWithoutClosingOddsObservationsInput>
+  where?: Prisma.FixtureWhereInput
+}
+
+export type FixtureUpdateToOneWithWhereWithoutClosingOddsObservationsInput = {
+  where?: Prisma.FixtureWhereInput
+  data: Prisma.XOR<Prisma.FixtureUpdateWithoutClosingOddsObservationsInput, Prisma.FixtureUncheckedUpdateWithoutClosingOddsObservationsInput>
+}
+
+export type FixtureUpdateWithoutClosingOddsObservationsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kickoffUtc?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  league?: Prisma.LeagueUpdateOneRequiredWithoutFixturesNestedInput
+  season?: Prisma.SeasonUpdateOneRequiredWithoutFixturesNestedInput
+  homeTeam?: Prisma.TeamUpdateOneRequiredWithoutHomeFixturesNestedInput
+  awayTeam?: Prisma.TeamUpdateOneRequiredWithoutAwayFixturesNestedInput
+  externalRefs?: Prisma.FixtureExternalRefUpdateManyWithoutFixtureNestedInput
+  provenance?: Prisma.FixtureProvenanceUpdateManyWithoutFixtureNestedInput
+  resultVersions?: Prisma.ResultVersionUpdateManyWithoutFixtureNestedInput
+  lineupObservations?: Prisma.LineupObservationUpdateManyWithoutFixtureNestedInput
+  forecastSnapshots?: Prisma.ForecastSnapshotUpdateManyWithoutFixtureNestedInput
+  manualOddsSnapshots?: Prisma.ManualOddsSnapshotUpdateManyWithoutFixtureNestedInput
+  valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
+  forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
+}
+
+export type FixtureUncheckedUpdateWithoutClosingOddsObservationsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  leagueId?: Prisma.StringFieldUpdateOperationsInput | string
+  seasonId?: Prisma.StringFieldUpdateOperationsInput | string
+  homeTeamId?: Prisma.StringFieldUpdateOperationsInput | string
+  awayTeamId?: Prisma.StringFieldUpdateOperationsInput | string
+  kickoffUtc?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  externalRefs?: Prisma.FixtureExternalRefUncheckedUpdateManyWithoutFixtureNestedInput
+  provenance?: Prisma.FixtureProvenanceUncheckedUpdateManyWithoutFixtureNestedInput
+  resultVersions?: Prisma.ResultVersionUncheckedUpdateManyWithoutFixtureNestedInput
+  lineupObservations?: Prisma.LineupObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  forecastSnapshots?: Prisma.ForecastSnapshotUncheckedUpdateManyWithoutFixtureNestedInput
+  manualOddsSnapshots?: Prisma.ManualOddsSnapshotUncheckedUpdateManyWithoutFixtureNestedInput
+  valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
+  forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
+}
+
+export type FixtureCreateWithoutValueSettlementsInput = {
+  id?: string
+  kickoffUtc: Date | string
+  status: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  league: Prisma.LeagueCreateNestedOneWithoutFixturesInput
+  season: Prisma.SeasonCreateNestedOneWithoutFixturesInput
+  homeTeam: Prisma.TeamCreateNestedOneWithoutHomeFixturesInput
+  awayTeam: Prisma.TeamCreateNestedOneWithoutAwayFixturesInput
+  externalRefs?: Prisma.FixtureExternalRefCreateNestedManyWithoutFixtureInput
+  provenance?: Prisma.FixtureProvenanceCreateNestedManyWithoutFixtureInput
+  resultVersions?: Prisma.ResultVersionCreateNestedManyWithoutFixtureInput
+  lineupObservations?: Prisma.LineupObservationCreateNestedManyWithoutFixtureInput
+  forecastSnapshots?: Prisma.ForecastSnapshotCreateNestedManyWithoutFixtureInput
+  manualOddsSnapshots?: Prisma.ManualOddsSnapshotCreateNestedManyWithoutFixtureInput
+  valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
+  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
+  forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+}
+
+export type FixtureUncheckedCreateWithoutValueSettlementsInput = {
+  id?: string
+  leagueId: string
+  seasonId: string
+  homeTeamId: string
+  awayTeamId: string
+  kickoffUtc: Date | string
+  status: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  externalRefs?: Prisma.FixtureExternalRefUncheckedCreateNestedManyWithoutFixtureInput
+  provenance?: Prisma.FixtureProvenanceUncheckedCreateNestedManyWithoutFixtureInput
+  resultVersions?: Prisma.ResultVersionUncheckedCreateNestedManyWithoutFixtureInput
+  lineupObservations?: Prisma.LineupObservationUncheckedCreateNestedManyWithoutFixtureInput
+  forecastSnapshots?: Prisma.ForecastSnapshotUncheckedCreateNestedManyWithoutFixtureInput
+  manualOddsSnapshots?: Prisma.ManualOddsSnapshotUncheckedCreateNestedManyWithoutFixtureInput
+  valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
+  forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+}
+
+export type FixtureCreateOrConnectWithoutValueSettlementsInput = {
+  where: Prisma.FixtureWhereUniqueInput
+  create: Prisma.XOR<Prisma.FixtureCreateWithoutValueSettlementsInput, Prisma.FixtureUncheckedCreateWithoutValueSettlementsInput>
+}
+
+export type FixtureUpsertWithoutValueSettlementsInput = {
+  update: Prisma.XOR<Prisma.FixtureUpdateWithoutValueSettlementsInput, Prisma.FixtureUncheckedUpdateWithoutValueSettlementsInput>
+  create: Prisma.XOR<Prisma.FixtureCreateWithoutValueSettlementsInput, Prisma.FixtureUncheckedCreateWithoutValueSettlementsInput>
+  where?: Prisma.FixtureWhereInput
+}
+
+export type FixtureUpdateToOneWithWhereWithoutValueSettlementsInput = {
+  where?: Prisma.FixtureWhereInput
+  data: Prisma.XOR<Prisma.FixtureUpdateWithoutValueSettlementsInput, Prisma.FixtureUncheckedUpdateWithoutValueSettlementsInput>
+}
+
+export type FixtureUpdateWithoutValueSettlementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kickoffUtc?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  league?: Prisma.LeagueUpdateOneRequiredWithoutFixturesNestedInput
+  season?: Prisma.SeasonUpdateOneRequiredWithoutFixturesNestedInput
+  homeTeam?: Prisma.TeamUpdateOneRequiredWithoutHomeFixturesNestedInput
+  awayTeam?: Prisma.TeamUpdateOneRequiredWithoutAwayFixturesNestedInput
+  externalRefs?: Prisma.FixtureExternalRefUpdateManyWithoutFixtureNestedInput
+  provenance?: Prisma.FixtureProvenanceUpdateManyWithoutFixtureNestedInput
+  resultVersions?: Prisma.ResultVersionUpdateManyWithoutFixtureNestedInput
+  lineupObservations?: Prisma.LineupObservationUpdateManyWithoutFixtureNestedInput
+  forecastSnapshots?: Prisma.ForecastSnapshotUpdateManyWithoutFixtureNestedInput
+  manualOddsSnapshots?: Prisma.ManualOddsSnapshotUpdateManyWithoutFixtureNestedInput
+  valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
+  forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+}
+
+export type FixtureUncheckedUpdateWithoutValueSettlementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  leagueId?: Prisma.StringFieldUpdateOperationsInput | string
+  seasonId?: Prisma.StringFieldUpdateOperationsInput | string
+  homeTeamId?: Prisma.StringFieldUpdateOperationsInput | string
+  awayTeamId?: Prisma.StringFieldUpdateOperationsInput | string
+  kickoffUtc?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  externalRefs?: Prisma.FixtureExternalRefUncheckedUpdateManyWithoutFixtureNestedInput
+  provenance?: Prisma.FixtureProvenanceUncheckedUpdateManyWithoutFixtureNestedInput
+  resultVersions?: Prisma.ResultVersionUncheckedUpdateManyWithoutFixtureNestedInput
+  lineupObservations?: Prisma.LineupObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  forecastSnapshots?: Prisma.ForecastSnapshotUncheckedUpdateManyWithoutFixtureNestedInput
+  manualOddsSnapshots?: Prisma.ManualOddsSnapshotUncheckedUpdateManyWithoutFixtureNestedInput
+  valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
+  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
+  forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureCreateWithoutExternalRefsInput = {
@@ -1742,6 +2064,8 @@ export type FixtureCreateWithoutExternalRefsInput = {
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateWithoutExternalRefsInput = {
@@ -1762,6 +2086,8 @@ export type FixtureUncheckedCreateWithoutExternalRefsInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureCreateOrConnectWithoutExternalRefsInput = {
@@ -1798,6 +2124,8 @@ export type FixtureUpdateWithoutExternalRefsInput = {
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateWithoutExternalRefsInput = {
@@ -1818,6 +2146,8 @@ export type FixtureUncheckedUpdateWithoutExternalRefsInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureCreateWithoutProvenanceInput = {
@@ -1838,6 +2168,8 @@ export type FixtureCreateWithoutProvenanceInput = {
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureUncheckedCreateWithoutProvenanceInput = {
@@ -1858,6 +2190,8 @@ export type FixtureUncheckedCreateWithoutProvenanceInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutFixtureInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutFixtureInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutFixtureInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedCreateNestedManyWithoutFixtureInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedCreateNestedManyWithoutFixtureInput
 }
 
 export type FixtureCreateOrConnectWithoutProvenanceInput = {
@@ -1894,6 +2228,8 @@ export type FixtureUpdateWithoutProvenanceInput = {
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateWithoutProvenanceInput = {
@@ -1914,6 +2250,8 @@ export type FixtureUncheckedUpdateWithoutProvenanceInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureCreateManyLeagueInput = {
@@ -1945,6 +2283,8 @@ export type FixtureUpdateWithoutLeagueInput = {
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateWithoutLeagueInput = {
@@ -1965,6 +2305,8 @@ export type FixtureUncheckedUpdateWithoutLeagueInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateManyWithoutLeagueInput = {
@@ -2007,6 +2349,8 @@ export type FixtureUpdateWithoutSeasonInput = {
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateWithoutSeasonInput = {
@@ -2027,6 +2371,8 @@ export type FixtureUncheckedUpdateWithoutSeasonInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateManyWithoutSeasonInput = {
@@ -2080,6 +2426,8 @@ export type FixtureUpdateWithoutHomeTeamInput = {
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateWithoutHomeTeamInput = {
@@ -2100,6 +2448,8 @@ export type FixtureUncheckedUpdateWithoutHomeTeamInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateManyWithoutHomeTeamInput = {
@@ -2131,6 +2481,8 @@ export type FixtureUpdateWithoutAwayTeamInput = {
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateWithoutAwayTeamInput = {
@@ -2151,6 +2503,8 @@ export type FixtureUncheckedUpdateWithoutAwayTeamInput = {
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutFixtureNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutFixtureNestedInput
+  closingOddsObservations?: Prisma.ClosingOddsObservationUncheckedUpdateManyWithoutFixtureNestedInput
+  valueSettlements?: Prisma.ValueSettlementUncheckedUpdateManyWithoutFixtureNestedInput
 }
 
 export type FixtureUncheckedUpdateManyWithoutAwayTeamInput = {
@@ -2179,6 +2533,8 @@ export type FixtureCountOutputType = {
   valueReceipts: number
   settlementReceipts: number
   forecastScores: number
+  closingOddsObservations: number
+  valueSettlements: number
 }
 
 export type FixtureCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2191,6 +2547,8 @@ export type FixtureCountOutputTypeSelect<ExtArgs extends runtime.Types.Extension
   valueReceipts?: boolean | FixtureCountOutputTypeCountValueReceiptsArgs
   settlementReceipts?: boolean | FixtureCountOutputTypeCountSettlementReceiptsArgs
   forecastScores?: boolean | FixtureCountOutputTypeCountForecastScoresArgs
+  closingOddsObservations?: boolean | FixtureCountOutputTypeCountClosingOddsObservationsArgs
+  valueSettlements?: boolean | FixtureCountOutputTypeCountValueSettlementsArgs
 }
 
 /**
@@ -2266,6 +2624,20 @@ export type FixtureCountOutputTypeCountForecastScoresArgs<ExtArgs extends runtim
   where?: Prisma.ForecastScoreWhereInput
 }
 
+/**
+ * FixtureCountOutputType without action
+ */
+export type FixtureCountOutputTypeCountClosingOddsObservationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ClosingOddsObservationWhereInput
+}
+
+/**
+ * FixtureCountOutputType without action
+ */
+export type FixtureCountOutputTypeCountValueSettlementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ValueSettlementWhereInput
+}
+
 
 export type FixtureSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -2290,6 +2662,8 @@ export type FixtureSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   valueReceipts?: boolean | Prisma.Fixture$valueReceiptsArgs<ExtArgs>
   settlementReceipts?: boolean | Prisma.Fixture$settlementReceiptsArgs<ExtArgs>
   forecastScores?: boolean | Prisma.Fixture$forecastScoresArgs<ExtArgs>
+  closingOddsObservations?: boolean | Prisma.Fixture$closingOddsObservationsArgs<ExtArgs>
+  valueSettlements?: boolean | Prisma.Fixture$valueSettlementsArgs<ExtArgs>
   _count?: boolean | Prisma.FixtureCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["fixture"]>
 
@@ -2352,6 +2726,8 @@ export type FixtureInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs
   valueReceipts?: boolean | Prisma.Fixture$valueReceiptsArgs<ExtArgs>
   settlementReceipts?: boolean | Prisma.Fixture$settlementReceiptsArgs<ExtArgs>
   forecastScores?: boolean | Prisma.Fixture$forecastScoresArgs<ExtArgs>
+  closingOddsObservations?: boolean | Prisma.Fixture$closingOddsObservationsArgs<ExtArgs>
+  valueSettlements?: boolean | Prisma.Fixture$valueSettlementsArgs<ExtArgs>
   _count?: boolean | Prisma.FixtureCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type FixtureIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2383,6 +2759,8 @@ export type $FixturePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     valueReceipts: Prisma.$ValueReceiptPayload<ExtArgs>[]
     settlementReceipts: Prisma.$SettlementReceiptPayload<ExtArgs>[]
     forecastScores: Prisma.$ForecastScorePayload<ExtArgs>[]
+    closingOddsObservations: Prisma.$ClosingOddsObservationPayload<ExtArgs>[]
+    valueSettlements: Prisma.$ValueSettlementPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2801,6 +3179,8 @@ export interface Prisma__FixtureClient<T, Null = never, ExtArgs extends runtime.
   valueReceipts<T extends Prisma.Fixture$valueReceiptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Fixture$valueReceiptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ValueReceiptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   settlementReceipts<T extends Prisma.Fixture$settlementReceiptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Fixture$settlementReceiptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SettlementReceiptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   forecastScores<T extends Prisma.Fixture$forecastScoresArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Fixture$forecastScoresArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ForecastScorePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  closingOddsObservations<T extends Prisma.Fixture$closingOddsObservationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Fixture$closingOddsObservationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ClosingOddsObservationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  valueSettlements<T extends Prisma.Fixture$valueSettlementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Fixture$valueSettlementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ValueSettlementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3453,6 +3833,54 @@ export type Fixture$forecastScoresArgs<ExtArgs extends runtime.Types.Extensions.
   take?: number
   skip?: number
   distinct?: Prisma.ForecastScoreScalarFieldEnum | Prisma.ForecastScoreScalarFieldEnum[]
+}
+
+/**
+ * Fixture.closingOddsObservations
+ */
+export type Fixture$closingOddsObservationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ClosingOddsObservation
+   */
+  select?: Prisma.ClosingOddsObservationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ClosingOddsObservation
+   */
+  omit?: Prisma.ClosingOddsObservationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ClosingOddsObservationInclude<ExtArgs> | null
+  where?: Prisma.ClosingOddsObservationWhereInput
+  orderBy?: Prisma.ClosingOddsObservationOrderByWithRelationInput | Prisma.ClosingOddsObservationOrderByWithRelationInput[]
+  cursor?: Prisma.ClosingOddsObservationWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ClosingOddsObservationScalarFieldEnum | Prisma.ClosingOddsObservationScalarFieldEnum[]
+}
+
+/**
+ * Fixture.valueSettlements
+ */
+export type Fixture$valueSettlementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ValueSettlement
+   */
+  select?: Prisma.ValueSettlementSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ValueSettlement
+   */
+  omit?: Prisma.ValueSettlementOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ValueSettlementInclude<ExtArgs> | null
+  where?: Prisma.ValueSettlementWhereInput
+  orderBy?: Prisma.ValueSettlementOrderByWithRelationInput | Prisma.ValueSettlementOrderByWithRelationInput[]
+  cursor?: Prisma.ValueSettlementWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ValueSettlementScalarFieldEnum | Prisma.ValueSettlementScalarFieldEnum[]
 }
 
 /**

@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 13
+open_count: 14
 waived_count: 0
 fixed_count: 0
-total_count: 13
-last_updated: 2026-09-08T07:07:44.088Z
+total_count: 14
+last_updated: 2026-09-08T07:18:47.219Z
 ---
 
 # Broken Windows Ledger
@@ -28,6 +28,7 @@ last_updated: 2026-09-08T07:07:44.088Z
 | 11 | 03 | unrun-verify | tests/integration/forecast-snapshots.test.ts |  | PostgreSQL migration and concurrent forecast revision gate unrun because Docker daemon and DATABASE_URL were unavailable | open |  | 2026-09-08T07:06:41.815Z |  |
 | 12 | 03 | unrun-verify | tests/integration/manual-odds.test.ts |  | PostgreSQL manual-odds verification was not run because DATABASE_URL is unset and Docker Engine is unavailable | open |  | 2026-09-08T07:07:43.665Z |  |
 | 13 | 03 | deviation | apps/web/app/fixtures/[fixtureId]/forecast-workbench.tsx |  | Kept client odds validation self-contained so direct web tests do not consume stale package build output | open |  | 2026-09-08T07:07:44.088Z |  |
+| 14 | 03 | unrun-verify | tests/integration/value-receipt.test.ts |  | PostgreSQL receipt lifecycle, membership, and derived-field integration suite was not run because DATABASE_URL was unavailable | open |  | 2026-09-08T07:18:47.219Z |  |
 
 ````json
 [
@@ -185,6 +186,18 @@ last_updated: 2026-09-08T07:07:44.088Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-08T07:07:44.088Z",
+    "resolved_at": null
+  },
+  {
+    "id": 14,
+    "kind": "unrun-verify",
+    "phase": "03",
+    "file": "tests/integration/value-receipt.test.ts",
+    "line": null,
+    "description": "PostgreSQL receipt lifecycle, membership, and derived-field integration suite was not run because DATABASE_URL was unavailable",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-08T07:18:47.219Z",
     "resolved_at": null
   }
 ]

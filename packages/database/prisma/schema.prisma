@@ -195,10 +195,55 @@ model Fixture {
   forecastScores          ForecastScore[]
   closingOddsObservations ClosingOddsObservation[]
   valueSettlements        ValueSettlement[]
+  backtestWindows         BacktestWindow[]
 
   // D-10: deliberately non-unique; this index finds ±36h candidates only.
   @@index([homeTeamId, awayTeamId, kickoffUtc])
   @@index([leagueId, kickoffUtc])
+}
+
+model BacktestPlan {
+  id           String           @id
+  version      String
+  planHash     String           @unique
+  modelVersion String
+  configHash   String
+  rangeFrom    DateTime         @db.Timestamptz(3)
+  rangeTo      DateTime         @db.Timestamptz(3)
+  concurrency  Int
+  state        String
+  correlationId String
+  receipt      Json
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  completedAt  DateTime?        @db.Timestamptz(3)
+  windows      BacktestWindow[]
+
+  @@index([state, createdAt])
+}
+
+model BacktestWindow {
+  id                 String       @id
+  planId             String
+  fixtureId          String
+  ordinal            Int
+  trainingEndsAt     DateTime     @db.Timestamptz(3)
+  forecastCutoff     DateTime     @db.Timestamptz(3)
+  state              String
+  evidenceBuildIds   Json?
+  forecastSnapshotId String?
+  scoreIds           Json?
+  failureCode        String?
+  correlationId      String
+  receipt            Json
+  createdAt          DateTime     @default(now()) @db.Timestamptz(3)
+  completedAt        DateTime?    @db.Timestamptz(3)
+  plan               BacktestPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  fixture            Fixture      @relation(fields: [fixtureId], references: [id], onDelete: Restrict)
+
+  @@unique([planId, ordinal])
+  @@unique([planId, fixtureId, forecastCutoff])
+  @@index([planId, state, ordinal])
+  @@index([fixtureId, forecastCutoff])
 }
 
 model SourceObservation {

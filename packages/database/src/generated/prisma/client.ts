@@ -77,6 +77,16 @@ export type Player = Prisma.PlayerModel
  */
 export type Fixture = Prisma.FixtureModel
 /**
+ * Model BacktestPlan
+ * 
+ */
+export type BacktestPlan = Prisma.BacktestPlanModel
+/**
+ * Model BacktestWindow
+ * 
+ */
+export type BacktestWindow = Prisma.BacktestWindowModel
+/**
  * Model SourceObservation
  * 
  */

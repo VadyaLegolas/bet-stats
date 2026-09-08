@@ -58,6 +58,8 @@ export const ModelName = {
   Team: 'Team',
   Player: 'Player',
   Fixture: 'Fixture',
+  BacktestPlan: 'BacktestPlan',
+  BacktestWindow: 'BacktestWindow',
   SourceObservation: 'SourceObservation',
   StandingSnapshot: 'StandingSnapshot',
   StandingSnapshotRow: 'StandingSnapshotRow',
@@ -197,6 +199,46 @@ export const FixtureScalarFieldEnum = {
 } as const
 
 export type FixtureScalarFieldEnum = (typeof FixtureScalarFieldEnum)[keyof typeof FixtureScalarFieldEnum]
+
+
+export const BacktestPlanScalarFieldEnum = {
+  id: 'id',
+  version: 'version',
+  planHash: 'planHash',
+  modelVersion: 'modelVersion',
+  configHash: 'configHash',
+  rangeFrom: 'rangeFrom',
+  rangeTo: 'rangeTo',
+  concurrency: 'concurrency',
+  state: 'state',
+  correlationId: 'correlationId',
+  receipt: 'receipt',
+  createdAt: 'createdAt',
+  completedAt: 'completedAt'
+} as const
+
+export type BacktestPlanScalarFieldEnum = (typeof BacktestPlanScalarFieldEnum)[keyof typeof BacktestPlanScalarFieldEnum]
+
+
+export const BacktestWindowScalarFieldEnum = {
+  id: 'id',
+  planId: 'planId',
+  fixtureId: 'fixtureId',
+  ordinal: 'ordinal',
+  trainingEndsAt: 'trainingEndsAt',
+  forecastCutoff: 'forecastCutoff',
+  state: 'state',
+  evidenceBuildIds: 'evidenceBuildIds',
+  forecastSnapshotId: 'forecastSnapshotId',
+  scoreIds: 'scoreIds',
+  failureCode: 'failureCode',
+  correlationId: 'correlationId',
+  receipt: 'receipt',
+  createdAt: 'createdAt',
+  completedAt: 'completedAt'
+} as const
+
+export type BacktestWindowScalarFieldEnum = (typeof BacktestWindowScalarFieldEnum)[keyof typeof BacktestWindowScalarFieldEnum]
 
 
 export const SourceObservationScalarFieldEnum = {

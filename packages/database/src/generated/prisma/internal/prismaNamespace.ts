@@ -404,6 +404,8 @@ export const ModelName = {
   Team: 'Team',
   Player: 'Player',
   Fixture: 'Fixture',
+  BacktestPlan: 'BacktestPlan',
+  BacktestWindow: 'BacktestWindow',
   SourceObservation: 'SourceObservation',
   StandingSnapshot: 'StandingSnapshot',
   StandingSnapshotRow: 'StandingSnapshotRow',
@@ -450,7 +452,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -969,6 +971,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.FixtureCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.FixtureCountAggregateOutputType> | number
+        }
+      }
+    }
+    BacktestPlan: {
+      payload: Prisma.$BacktestPlanPayload<ExtArgs>
+      fields: Prisma.BacktestPlanFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BacktestPlanFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestPlanPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BacktestPlanFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestPlanPayload>
+        }
+        findFirst: {
+          args: Prisma.BacktestPlanFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestPlanPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BacktestPlanFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestPlanPayload>
+        }
+        findMany: {
+          args: Prisma.BacktestPlanFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestPlanPayload>[]
+        }
+        create: {
+          args: Prisma.BacktestPlanCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestPlanPayload>
+        }
+        createMany: {
+          args: Prisma.BacktestPlanCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BacktestPlanCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestPlanPayload>[]
+        }
+        delete: {
+          args: Prisma.BacktestPlanDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestPlanPayload>
+        }
+        update: {
+          args: Prisma.BacktestPlanUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestPlanPayload>
+        }
+        deleteMany: {
+          args: Prisma.BacktestPlanDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BacktestPlanUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BacktestPlanUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestPlanPayload>[]
+        }
+        upsert: {
+          args: Prisma.BacktestPlanUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestPlanPayload>
+        }
+        aggregate: {
+          args: Prisma.BacktestPlanAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBacktestPlan>
+        }
+        groupBy: {
+          args: Prisma.BacktestPlanGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BacktestPlanGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BacktestPlanCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BacktestPlanCountAggregateOutputType> | number
+        }
+      }
+    }
+    BacktestWindow: {
+      payload: Prisma.$BacktestWindowPayload<ExtArgs>
+      fields: Prisma.BacktestWindowFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BacktestWindowFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestWindowPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BacktestWindowFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestWindowPayload>
+        }
+        findFirst: {
+          args: Prisma.BacktestWindowFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestWindowPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BacktestWindowFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestWindowPayload>
+        }
+        findMany: {
+          args: Prisma.BacktestWindowFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestWindowPayload>[]
+        }
+        create: {
+          args: Prisma.BacktestWindowCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestWindowPayload>
+        }
+        createMany: {
+          args: Prisma.BacktestWindowCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BacktestWindowCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestWindowPayload>[]
+        }
+        delete: {
+          args: Prisma.BacktestWindowDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestWindowPayload>
+        }
+        update: {
+          args: Prisma.BacktestWindowUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestWindowPayload>
+        }
+        deleteMany: {
+          args: Prisma.BacktestWindowDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BacktestWindowUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BacktestWindowUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestWindowPayload>[]
+        }
+        upsert: {
+          args: Prisma.BacktestWindowUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestWindowPayload>
+        }
+        aggregate: {
+          args: Prisma.BacktestWindowAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBacktestWindow>
+        }
+        groupBy: {
+          args: Prisma.BacktestWindowGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BacktestWindowGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BacktestWindowCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BacktestWindowCountAggregateOutputType> | number
         }
       }
     }
@@ -3397,6 +3547,46 @@ export const FixtureScalarFieldEnum = {
 export type FixtureScalarFieldEnum = (typeof FixtureScalarFieldEnum)[keyof typeof FixtureScalarFieldEnum]
 
 
+export const BacktestPlanScalarFieldEnum = {
+  id: 'id',
+  version: 'version',
+  planHash: 'planHash',
+  modelVersion: 'modelVersion',
+  configHash: 'configHash',
+  rangeFrom: 'rangeFrom',
+  rangeTo: 'rangeTo',
+  concurrency: 'concurrency',
+  state: 'state',
+  correlationId: 'correlationId',
+  receipt: 'receipt',
+  createdAt: 'createdAt',
+  completedAt: 'completedAt'
+} as const
+
+export type BacktestPlanScalarFieldEnum = (typeof BacktestPlanScalarFieldEnum)[keyof typeof BacktestPlanScalarFieldEnum]
+
+
+export const BacktestWindowScalarFieldEnum = {
+  id: 'id',
+  planId: 'planId',
+  fixtureId: 'fixtureId',
+  ordinal: 'ordinal',
+  trainingEndsAt: 'trainingEndsAt',
+  forecastCutoff: 'forecastCutoff',
+  state: 'state',
+  evidenceBuildIds: 'evidenceBuildIds',
+  forecastSnapshotId: 'forecastSnapshotId',
+  scoreIds: 'scoreIds',
+  failureCode: 'failureCode',
+  correlationId: 'correlationId',
+  receipt: 'receipt',
+  createdAt: 'createdAt',
+  completedAt: 'completedAt'
+} as const
+
+export type BacktestWindowScalarFieldEnum = (typeof BacktestWindowScalarFieldEnum)[keyof typeof BacktestWindowScalarFieldEnum]
+
+
 export const SourceObservationScalarFieldEnum = {
   id: 'id',
   provider: 'provider',
@@ -4001,20 +4191,6 @@ export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel,
 
 
 /**
- * Reference to a field of type 'Json'
- */
-export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
-    
-
-
-/**
- * Reference to a field of type 'QueryMode'
- */
-export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
-    
-
-
-/**
  * Reference to a field of type 'Int'
  */
 export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
@@ -4025,6 +4201,20 @@ export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'In
  * Reference to a field of type 'Int[]'
  */
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
+ * Reference to a field of type 'Json'
+ */
+export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
+    
+
+
+/**
+ * Reference to a field of type 'QueryMode'
+ */
+export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
     
 
 
@@ -4367,6 +4557,8 @@ export type GlobalOmitConfig = {
   team?: Prisma.TeamOmit
   player?: Prisma.PlayerOmit
   fixture?: Prisma.FixtureOmit
+  backtestPlan?: Prisma.BacktestPlanOmit
+  backtestWindow?: Prisma.BacktestWindowOmit
   sourceObservation?: Prisma.SourceObservationOmit
   standingSnapshot?: Prisma.StandingSnapshotOmit
   standingSnapshotRow?: Prisma.StandingSnapshotRowOmit

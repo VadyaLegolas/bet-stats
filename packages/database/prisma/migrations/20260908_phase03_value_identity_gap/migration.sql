@@ -28,6 +28,7 @@ DECLARE source_decimal_odds NUMERIC;
 DECLARE source_no_vig_probability NUMERIC;
 DECLARE expected_edge NUMERIC;
 DECLARE expected_value NUMERIC;
+DECLARE expected_fair_odds NUMERIC;
 DECLARE tolerance CONSTANT NUMERIC := 0.000000000001;
 BEGIN
   SELECT "fixtureId", state INTO forecast_fixture, forecast_state
@@ -63,11 +64,16 @@ BEGIN
   source_no_vig_probability := (odds_selection->>'noVigProbability')::NUMERIC;
   expected_edge := source_model_probability - source_no_vig_probability;
   expected_value := source_model_probability * source_decimal_odds - 1;
+  expected_fair_odds := 1 / source_model_probability;
 
   IF NEW."modelProbability" IS NULL OR NEW."noVigProbability" IS NULL
-     OR NEW.edge IS NULL OR NEW."expectedValue" IS NULL
+     OR NEW."fairOdds" IS NULL OR NEW.edge IS NULL OR NEW."expectedValue" IS NULL
+     OR NEW.receipt->>'decimalOdds' IS NULL
+     OR NEW.receipt->>'modelProbability' IS NULL
+     OR NEW.receipt->>'noVigProbability' IS NULL
      OR abs(NEW."modelProbability"::NUMERIC - source_model_probability) > tolerance
      OR abs(NEW."noVigProbability"::NUMERIC - source_no_vig_probability) > tolerance
+     OR abs(NEW."fairOdds"::NUMERIC - expected_fair_odds) > tolerance
      OR abs(NEW.edge::NUMERIC - expected_edge) > tolerance
      OR abs(NEW."expectedValue"::NUMERIC - expected_value) > tolerance
      OR NEW.receipt->>'market' IS DISTINCT FROM NEW.market

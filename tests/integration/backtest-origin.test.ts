@@ -6,7 +6,14 @@ import {
   type EvidenceProjectionDto,
   type ForecastOrchestratorRepository,
 } from "@bet-stats/domain";
-import { runBacktestOrigin } from "../../workers/data-sync/src/jobs/backtests.js";
+import {
+  BACKTEST_LIMITS,
+  admitBacktestPlan,
+  createBacktestJob,
+  runBacktestPlan,
+  runBacktestOrigin,
+  type BacktestReceiptRepository,
+} from "../../workers/data-sync/src/jobs/backtests.js";
 
 const cutoff = "2026-08-01T12:00:00.000Z";
 const source = {
@@ -111,5 +118,43 @@ describe("rolling-origin backtest", () => {
       correlationId: "backtest-poison",
     })).rejects.toMatchObject({ code: "LEAKAGE_DETECTED" });
     expect(trace.some((entry) => entry.startsWith("publish:"))).toBe(false);
+  });
+
+  it("admits only bounded chronological plans and rejects random split vocabulary", () => {
+    const windows = [
+      { id: "w-1", fixtureId: "fixture-1", trainingEndsAt: "2026-07-01T00:00:00.000Z", forecastCutoff: "2026-07-02T00:00:00.000Z" },
+      { id: "w-2", fixtureId: "fixture-2", trainingEndsAt: "2026-07-02T00:00:00.000Z", forecastCutoff: "2026-07-03T00:00:00.000Z" },
+    ];
+    const admitted = admitBacktestPlan({ id: "plan-1", version: "rolling-origin-v1", modelVersion: "poisson-ensemble-v1", configHash: currentForecastConfigHash(), rangeFrom: "2026-07-01T00:00:00.000Z", rangeTo: "2026-07-03T00:00:00.000Z", concurrency: 2, windows });
+    expect(admitted.windows.map((window) => window.id)).toEqual(["w-1", "w-2"]);
+    expect(createBacktestJob(admitted)).toMatchObject({ name: "rolling-origin", jobId: expect.stringMatching(/^backtest:/), attempts: 3 });
+    expect(() => admitBacktestPlan({ ...admitted, split: "random" } as never)).toThrowError(expect.objectContaining({ code: "RANDOM_SPLIT_REJECTED" }));
+    expect(() => admitBacktestPlan({ ...admitted, windows: [...windows].reverse() })).toThrowError(expect.objectContaining({ code: "LEAKAGE_DETECTED" }));
+    expect(() => admitBacktestPlan({ ...admitted, concurrency: BACKTEST_LIMITS.maxConcurrency + 1 })).toThrowError(expect.objectContaining({ code: "BACKTEST_LIMIT_EXCEEDED" }));
+  });
+
+  it("converges duplicate delivery by deterministic plan and window identities", async () => {
+    const plan = admitBacktestPlan({ id: "plan-repeat", version: "rolling-origin-v1", modelVersion: "poisson-ensemble-v1", configHash: currentForecastConfigHash(), rangeFrom: "2026-07-01T00:00:00.000Z", rangeTo: cutoff, concurrency: 1, windows: [{ id: "w-repeat", fixtureId: "fixture-1", trainingEndsAt: "2026-07-31T00:00:00.000Z", forecastCutoff: cutoff }] });
+    const plans = new Map<string, unknown>();
+    const windows = new Map<string, { state: string; forecastSnapshotId?: string }>();
+    const receipts: BacktestReceiptRepository = {
+      createPlan: async (receipt) => { plans.set(receipt.id, receipt); },
+      findPlan: async (id) => plans.get(id) as never,
+      claimWindow: async (receipt) => {
+        const existing = windows.get(receipt.id);
+        if (existing?.state === "SUCCEEDED") return { claimed: false, receipt: existing as never };
+        windows.set(receipt.id, { state: "RUNNING" });
+        return { claimed: true, receipt: { ...receipt, state: "RUNNING" } };
+      },
+      completeWindow: async (id, output) => { windows.set(id, { state: "SUCCEEDED", forecastSnapshotId: output.forecastSnapshotId }); },
+      failWindow: async (id) => { windows.set(id, { state: "FAILED" }); },
+      completePlan: async () => undefined,
+    };
+    const execute = () => runBacktestPlan({ plan, receipts, orchestrator: new ForecastOrchestrator(), repository: repository([]), correlationId: "repeat" });
+    const first = await execute();
+    const retry = await execute();
+    expect(first).toMatchObject({ state: "SUCCEEDED", completedWindowIds: ["w-repeat"] });
+    expect(retry).toMatchObject({ state: "SUCCEEDED", completedWindowIds: ["w-repeat"], duplicateWindowIds: ["w-repeat"] });
+    expect(windows.size).toBe(1);
   });
 });

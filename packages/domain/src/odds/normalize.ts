@@ -20,7 +20,7 @@ export function normalizeOddsBook(input: OddsBookInput): NormalizedOddsBook {
   });
   const total = implied.reduce((sum, value) => sum.plus(value), new Decimal(0));
   return {
-    ...input,
+    ...parsed,
     schemaVersion: "manual-odds-v1",
     normalizationVersion: "multiplicative-v1",
     selections: ordered.map((selection, index) => ({ ...selection, decimalOdds: new Decimal(selection.decimalOdds).toString(), impliedProbability: implied[index]!.toString(), noVigProbability: implied[index]!.div(total).toString() })),

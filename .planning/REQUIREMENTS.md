@@ -57,10 +57,10 @@
 - [x] **EVAL-01**: The system resolves completed, postponed, cancelled, abandoned, and void fixtures using explicit versioned settlement rules.
 - [x] **EVAL-02**: The system scores the exact frozen pre-match prediction rather than recomputing it with later data.
 - [x] **EVAL-03**: A user can view Brier Score and Log Loss by model version, competition, market, and evaluation period with sample size.
-- [ ] **EVAL-04**: A user can view calibration/reliability results by probability bucket and identify under-confident or over-confident cohorts.
+- [x] **EVAL-04**: A user can view calibration/reliability results by probability bucket and identify under-confident or over-confident cohorts.
 - [ ] **EVAL-05**: A user can view the outcome and unit profit/loss of each frozen value candidate and aggregate ROI and Yield with denominator and sample size.
 - [ ] **EVAL-06**: Backtests and model comparisons use chronological rolling-origin evaluation and enforce the same as-of feature contract as production.
-- [ ] **EVAL-07**: The system suppresses or labels performance/value claims when configured minimum sample-size or calibration-quality gates are not met.
+- [x] **EVAL-07**: The system suppresses or labels performance/value claims when configured minimum sample-size or calibration-quality gates are not met.
 - [ ] **EVAL-08**: CLV is displayed only when comparable timestamped market prices exist; it is otherwise explicitly unavailable.
 
 ### Provider Fallback and Enrichment
@@ -159,10 +159,10 @@
 | EVAL-01 | Phase 4 | Complete |
 | EVAL-02 | Phase 4 | Complete |
 | EVAL-03 | Phase 4 | Complete |
-| EVAL-04 | Phase 4 | Pending |
+| EVAL-04 | Phase 4 | Complete |
 | EVAL-05 | Phase 4 | Pending |
 | EVAL-06 | Phase 4 | Pending |
-| EVAL-07 | Phase 4 | Pending |
+| EVAL-07 | Phase 4 | Complete |
 | EVAL-08 | Phase 4 | Pending |
 | PROV-01 | Phase 5 | Pending |
 | PROV-02 | Phase 5 | Pending |

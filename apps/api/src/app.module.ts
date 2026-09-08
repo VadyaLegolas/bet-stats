@@ -15,9 +15,10 @@ import { ReconciliationController } from "./modules/reconciliation/reconciliatio
 import { ReconciliationService } from "./modules/reconciliation/reconciliation.service.js";
 import { ReplayController } from "./modules/replay/replay.controller.js";
 import { ReplayService } from "./modules/replay/replay.service.js";
+import { EvaluationModule } from "./modules/evaluation/evaluation.module.js";
 
 @Module({
-  imports: [ForecastsModule, OddsModule, ValueModule],
+  imports: [EvaluationModule, ForecastsModule, OddsModule, ValueModule],
   controllers: [EligibilityController, EvidenceController, FixturesController, HealthController, ReconciliationController, ReplayController],
   providers: [EligibilityGuard, EvidenceService, FixturesService, OperatorGuard, ReconciliationService, ReplayService],
 })

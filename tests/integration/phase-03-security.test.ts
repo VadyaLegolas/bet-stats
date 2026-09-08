@@ -7,7 +7,7 @@ import {
   generateForecast,
   type ForecastPublicationRepository,
 } from "../../apps/api/src/modules/forecasts/forecasts.service.js";
-import { createPrismaManualOddsRepository, submitManualOdds } from "../../apps/api/src/modules/odds/odds.service.js";
+import { createPrismaManualOddsRepository, getManualOddsSnapshot, submitManualOdds } from "../../apps/api/src/modules/odds/odds.service.js";
 import { compareValue, createPrismaValueRepository, receiptDownload } from "../../apps/api/src/modules/value/value.service.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -121,6 +121,53 @@ describe("Phase 3 trust boundaries", () => {
     await expect(repository.findOfficialLineup(id("security-fixture"), cutoff)).resolves.toEqual({ id: lineupId });
   });
 
+  it("CR-03 binds each official lineup observation to a distinct forecast identity", async () => {
+    let officialLineupObservationId = "official-lineup-a";
+    const repository = forecastRepository({
+      findOfficialLineup: async () => ({ id: officialLineupObservationId }),
+    });
+    const lineupRequest = { ...request, kind: "LINEUP_CONFIRMED" as const };
+    const first = await generateForecast(lineupRequest, repository);
+    officialLineupObservationId = "official-lineup-b";
+    const corrected = await generateForecast(lineupRequest, repository);
+
+    expect(corrected.id).not.toBe(first.id);
+    expect(corrected.inputHash).not.toBe(first.inputHash);
+    expect(first.receipt.officialLineupObservationId).toBe("official-lineup-a");
+    expect(corrected.receipt.officialLineupObservationId).toBe("official-lineup-b");
+  });
+
+  it("CR-06 rejects bounded-decimal counterexamples before repository access", async () => {
+    let appends = 0;
+    const base = {
+      fixtureId: "fixture-1", oddsSnapshotId: "bounded-odds", market: "BTTS" as const,
+      sourceLabel: "Security matrix", capturedAt: cutoff,
+      selections: [{ selection: "YES" as const, decimalOdds: "2" }, { selection: "NO" as const, decimalOdds: "2" }],
+    };
+    for (const decimalOdds of ["1e3", "+2", "-2", " 2", `1${"0".repeat(128)}`, "2.123456789012345678901"]) {
+      await expect(submitManualOdds({ ...base, selections: [{ selection: "YES", decimalOdds }, base.selections[1]] }, {
+        append: async () => { appends += 1; throw new Error("must not append"); },
+      })).rejects.toMatchObject({ code: "INVALID_DECIMAL_ODDS" });
+    }
+    expect(appends).toBe(0);
+  });
+
+  it("WR-02 enforces canonical capture chronology before durable append", async () => {
+    let appends = 0;
+    const repository = {
+      findFixture: async () => ({ id: "fixture-1", kickoffUtc: "2026-09-11T12:00:00.000Z" }),
+      append: async () => { appends += 1; throw new Error("must not append"); },
+    };
+    const base = {
+      fixtureId: "fixture-1", oddsSnapshotId: "chronology-odds", market: "BTTS" as const,
+      sourceLabel: "Security matrix", capturedAt: cutoff,
+      selections: [{ selection: "YES" as const, decimalOdds: "2" }, { selection: "NO" as const, decimalOdds: "2" }],
+    };
+    await expect(submitManualOdds({ ...base, capturedAt: "2026-09-10 12:00:00Z" }, repository)).rejects.toMatchObject({ code: "INVALID_ODDS_CAPTURED_AT" });
+    await expect(submitManualOdds({ ...base, capturedAt: "2026-09-11T12:00:00.000Z" }, repository, new Date(cutoff))).rejects.toMatchObject({ code: "ODDS_CAPTURE_NOT_BEFORE_KICKOFF" });
+    expect(appends).toBe(0);
+  });
+
   it("rejects client-derived odds/value fields before mutation and keeps hostile labels out of download headers", async () => {
     let mutations = 0;
     const book = {
@@ -139,7 +186,7 @@ describe("Phase 3 trust boundaries", () => {
     expect(mutations).toBe(0);
   });
 
-  it("converges concurrent identical forecast, odds, and value commands on one durable identity", async () => {
+  it("WR-01 serializes concurrent distinct forecast revisions and converges identical retries", async () => {
     const fixtureId = id("security-fixture");
     const forecastId = id("concurrent-forecast");
     const oddsId = id("concurrent-odds");
@@ -162,6 +209,10 @@ describe("Phase 3 trust boundaries", () => {
     const forecastResults = await Promise.all([forecastRepository.publish(forecast), forecastRepository.publish(forecast)]);
     expect(forecastResults.map(({ id }) => id)).toEqual([forecastId, forecastId]);
 
+    const changed = { ...forecast, id: id("concurrent-forecast-changed"), inputHash: id("forecast-input-changed"), evidenceFingerprint: id("evidence-changed"), receipt: { ...forecast.receipt, forecastSnapshotId: id("concurrent-forecast-changed") } };
+    const [firstDistinct, secondDistinct] = await Promise.all([forecastRepository.publish(changed), forecastRepository.publish({ ...changed, id: id("concurrent-forecast-changed-2"), inputHash: id("forecast-input-changed-2"), evidenceFingerprint: id("evidence-changed-2"), receipt: { ...changed.receipt, forecastSnapshotId: id("concurrent-forecast-changed-2") } })]);
+    expect([firstDistinct.revision, secondDistinct.revision].sort((a, b) => a - b)).toEqual([2, 3]);
+
     const book = {
       fixtureId, oddsSnapshotId: oddsId, market: "ONE_X_TWO" as const, sourceLabel: "Manual source", capturedAt: cutoff,
       selections: [{ selection: "HOME" as const, decimalOdds: "2" }, { selection: "DRAW" as const, decimalOdds: "3.5" }, { selection: "AWAY" as const, decimalOdds: "5" }],
@@ -175,5 +226,51 @@ describe("Phase 3 trust boundaries", () => {
     const valueResults = await Promise.all([compareValue(command, valueRepository), compareValue(command, valueRepository)]);
     expect(new Set(valueResults.map(({ id }) => id))).toHaveLength(1);
     await expect(prisma.valueReceipt.count({ where: { forecastSnapshotId: forecastId, oddsSnapshotId: oddsId } })).resolves.toBe(1);
+  });
+
+  it("CR-04 discovers the exact non-round issued cutoff without synthesizing time", async () => {
+    const repository = createPrismaForecastRepository(prisma);
+    const issued = await repository.listIssued?.(id("security-fixture"));
+    expect(issued?.some(({ id: snapshotId, cutoff: exactCutoff }) => snapshotId === id("concurrent-forecast") && exactCutoff === cutoff)).toBe(true);
+  });
+
+  it("CR-05 denies an odds snapshot through a different fixture-scoped resource", async () => {
+    const repository = createPrismaManualOddsRepository(prisma);
+    await expect(getManualOddsSnapshot(id("other-security-fixture"), id("concurrent-odds"), repository)).rejects.toMatchObject({
+      response: { code: "ODDS_SNAPSHOT_NOT_FOUND" },
+    });
+  });
+
+  it("CR-02 keeps source provenance and replacement lineage in immutable odds identity", async () => {
+    const repository = createPrismaManualOddsRepository(prisma);
+    const base = {
+      fixtureId: id("security-fixture"), market: "BTTS" as const, capturedAt: cutoff,
+      selections: [{ selection: "YES" as const, decimalOdds: "2.2" }, { selection: "NO" as const, decimalOdds: "1.8" }],
+    };
+    const first = await submitManualOdds({ ...base, oddsSnapshotId: id("provenance-a"), sourceLabel: "Book A" }, repository, new Date(cutoff));
+    const sourceChanged = await submitManualOdds({ ...base, oddsSnapshotId: id("provenance-b"), sourceLabel: "Book B" }, repository, new Date(cutoff));
+    const replacement = await submitManualOdds({ ...base, oddsSnapshotId: id("provenance-c"), sourceLabel: "Book A", replacementOfOddsSnapshotId: first.oddsSnapshotId }, repository, new Date(cutoff));
+    expect(new Set([first.oddsSnapshotId, sourceChanged.oddsSnapshotId, replacement.oddsSnapshotId])).toHaveLength(3);
+    expect(replacement.replacementOfOddsSnapshotId).toBe(first.oddsSnapshotId);
+  });
+
+  it("CR-01 stores HOME and DRAW as distinct exact-pair receipts", async () => {
+    const repository = createPrismaValueRepository(prisma);
+    const base = { fixtureId: id("security-fixture"), forecastSnapshotId: id("concurrent-forecast"), oddsSnapshotId: id("concurrent-odds"), market: "ONE_X_TWO" as const };
+    const home = await compareValue({ ...base, selection: "HOME" }, repository);
+    const draw = await compareValue({ ...base, selection: "DRAW" }, repository);
+    expect(draw.id).not.toBe(home.id);
+    expect(home.selection).toBe("HOME");
+    expect(draw.selection).toBe("DRAW");
+  });
+
+  it("WR-03 rejects a receipt whose derived decision fields disagree with immutable sources", async () => {
+    const stored = await prisma.valueReceipt.findFirstOrThrow({ where: { forecastSnapshotId: id("concurrent-forecast"), oddsSnapshotId: id("concurrent-odds"), selection: "HOME" } });
+    await expect(prisma.$executeRawUnsafe(
+      `INSERT INTO "ValueReceipt" (id,"fixtureId",market,"forecastSnapshotId","oddsSnapshotId",outcome,selection,"modelProbability","noVigProbability","fairOdds",edge,"expectedValue",receipt)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb)`,
+      id("tampered-receipt"), stored.fixtureId, stored.market, stored.forecastSnapshotId, stored.oddsSnapshotId,
+      stored.outcome, stored.selection, stored.modelProbability, stored.noVigProbability, stored.fairOdds, "0.999", stored.expectedValue, JSON.stringify(stored.receipt),
+    )).rejects.toThrow(/derived fields disagree/i);
   });
 });

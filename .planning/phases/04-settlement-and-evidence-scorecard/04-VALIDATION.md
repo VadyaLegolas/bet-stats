@@ -35,7 +35,7 @@ created: 2026-09-08
 | EVAL-03 | 02,08,06,07 | golden score vectors, persisted facts and grouped API counts | MISSING — Plans 02/08/06 create |
 | EVAL-04 | 03,06,07 | deterministic reliability boundaries, directions and accessible table | MISSING — Plans 03/06 create |
 | EVAL-05 | 04,08,06,07 | per-candidate unit P/L list plus aggregate parity, cursor pagination | MISSING — Plans 04/08/06 create |
-| EVAL-06 | 05,07,09 | rolling-origin chronology, production queue/repository execution, scored exact snapshots and matched model comparison | MISSING — Plan 09 closes production witness |
+| EVAL-06 | 05,07,09 | distinct forecastCutoff/evaluationAsOf chronology, durable admit-persist-enqueue-reconcile-consume execution, exact scored snapshots, correction-safe current leaves and matched model comparison | MISSING — Plan 09 closes production witness |
 | EVAL-07 | 03,06,07 | unavailable/limited/available gates, deterministic default cohort, no broadening | MISSING — Plans 03/06 create |
 | EVAL-08 | 04,06,07 | exact closing tuple and reason-coded unavailable CLV | MISSING — Plans 04/06 create |
 
@@ -45,7 +45,9 @@ created: 2026-09-08
 - Deliver the same settlement job twice and after a forced mid-pipeline failure; assert one leaf receipt/fact per deterministic identity.
 - Append a corrected `ResultVersion`; assert linked new settlement/score/value facts, immutable prior revisions, and current-leaf aggregates only.
 - Attempt direct update/delete and cross-fixture/source forgery; PostgreSQL must reject them.
-- Enqueue two compatible rolling-origin plans through the production BullMQ consumer; assert each successful BacktestWindow stores non-empty current ForecastScore IDs and the database-backed comparison reports matched Brier/Log Loss samples without cohort substitution.
+- Admit and persist two compatible rolling-origin plans before deterministic BullMQ enqueue; assert failed delivery reconciliation and consumer restart load the durable hash-matched plan rather than inline windows.
+- Assert forecast evidence is bounded by forecastCutoff while the exact unique ResultVersion correction leaf is bounded independently by evaluationAsOf; poison, missing, forked and malformed lineages fail closed.
+- Append a ResultVersion correction after an initially scored window; assert an immutable linked evaluation revision preserves prior scoreIds, advances the deterministic current leaf, and keeps the matched Brier/Log Loss cohort non-empty without substitution.
 
 ## Manual-Only Verifications
 

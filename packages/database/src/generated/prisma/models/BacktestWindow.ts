@@ -41,6 +41,7 @@ export type BacktestWindowMinAggregateOutputType = {
   ordinal: number | null
   trainingEndsAt: Date | null
   forecastCutoff: Date | null
+  evaluationAsOf: Date | null
   state: string | null
   forecastSnapshotId: string | null
   failureCode: string | null
@@ -56,6 +57,7 @@ export type BacktestWindowMaxAggregateOutputType = {
   ordinal: number | null
   trainingEndsAt: Date | null
   forecastCutoff: Date | null
+  evaluationAsOf: Date | null
   state: string | null
   forecastSnapshotId: string | null
   failureCode: string | null
@@ -71,6 +73,7 @@ export type BacktestWindowCountAggregateOutputType = {
   ordinal: number
   trainingEndsAt: number
   forecastCutoff: number
+  evaluationAsOf: number
   state: number
   evidenceBuildIds: number
   forecastSnapshotId: number
@@ -99,6 +102,7 @@ export type BacktestWindowMinAggregateInputType = {
   ordinal?: true
   trainingEndsAt?: true
   forecastCutoff?: true
+  evaluationAsOf?: true
   state?: true
   forecastSnapshotId?: true
   failureCode?: true
@@ -114,6 +118,7 @@ export type BacktestWindowMaxAggregateInputType = {
   ordinal?: true
   trainingEndsAt?: true
   forecastCutoff?: true
+  evaluationAsOf?: true
   state?: true
   forecastSnapshotId?: true
   failureCode?: true
@@ -129,6 +134,7 @@ export type BacktestWindowCountAggregateInputType = {
   ordinal?: true
   trainingEndsAt?: true
   forecastCutoff?: true
+  evaluationAsOf?: true
   state?: true
   evidenceBuildIds?: true
   forecastSnapshotId?: true
@@ -234,6 +240,7 @@ export type BacktestWindowGroupByOutputType = {
   ordinal: number
   trainingEndsAt: Date
   forecastCutoff: Date
+  evaluationAsOf: Date
   state: string
   evidenceBuildIds: runtime.JsonValue | null
   forecastSnapshotId: string | null
@@ -275,6 +282,7 @@ export type BacktestWindowWhereInput = {
   ordinal?: Prisma.IntFilter<"BacktestWindow"> | number
   trainingEndsAt?: Prisma.DateTimeFilter<"BacktestWindow"> | Date | string
   forecastCutoff?: Prisma.DateTimeFilter<"BacktestWindow"> | Date | string
+  evaluationAsOf?: Prisma.DateTimeFilter<"BacktestWindow"> | Date | string
   state?: Prisma.StringFilter<"BacktestWindow"> | string
   evidenceBuildIds?: Prisma.JsonNullableFilter<"BacktestWindow">
   forecastSnapshotId?: Prisma.StringNullableFilter<"BacktestWindow"> | string | null
@@ -286,6 +294,7 @@ export type BacktestWindowWhereInput = {
   completedAt?: Prisma.DateTimeNullableFilter<"BacktestWindow"> | Date | string | null
   plan?: Prisma.XOR<Prisma.BacktestPlanScalarRelationFilter, Prisma.BacktestPlanWhereInput>
   fixture?: Prisma.XOR<Prisma.FixtureScalarRelationFilter, Prisma.FixtureWhereInput>
+  evaluations?: Prisma.BacktestEvaluationListRelationFilter
 }
 
 export type BacktestWindowOrderByWithRelationInput = {
@@ -295,6 +304,7 @@ export type BacktestWindowOrderByWithRelationInput = {
   ordinal?: Prisma.SortOrder
   trainingEndsAt?: Prisma.SortOrder
   forecastCutoff?: Prisma.SortOrder
+  evaluationAsOf?: Prisma.SortOrder
   state?: Prisma.SortOrder
   evidenceBuildIds?: Prisma.SortOrderInput | Prisma.SortOrder
   forecastSnapshotId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -306,6 +316,7 @@ export type BacktestWindowOrderByWithRelationInput = {
   completedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   plan?: Prisma.BacktestPlanOrderByWithRelationInput
   fixture?: Prisma.FixtureOrderByWithRelationInput
+  evaluations?: Prisma.BacktestEvaluationOrderByRelationAggregateInput
 }
 
 export type BacktestWindowWhereUniqueInput = Prisma.AtLeast<{
@@ -320,6 +331,7 @@ export type BacktestWindowWhereUniqueInput = Prisma.AtLeast<{
   ordinal?: Prisma.IntFilter<"BacktestWindow"> | number
   trainingEndsAt?: Prisma.DateTimeFilter<"BacktestWindow"> | Date | string
   forecastCutoff?: Prisma.DateTimeFilter<"BacktestWindow"> | Date | string
+  evaluationAsOf?: Prisma.DateTimeFilter<"BacktestWindow"> | Date | string
   state?: Prisma.StringFilter<"BacktestWindow"> | string
   evidenceBuildIds?: Prisma.JsonNullableFilter<"BacktestWindow">
   forecastSnapshotId?: Prisma.StringNullableFilter<"BacktestWindow"> | string | null
@@ -331,6 +343,7 @@ export type BacktestWindowWhereUniqueInput = Prisma.AtLeast<{
   completedAt?: Prisma.DateTimeNullableFilter<"BacktestWindow"> | Date | string | null
   plan?: Prisma.XOR<Prisma.BacktestPlanScalarRelationFilter, Prisma.BacktestPlanWhereInput>
   fixture?: Prisma.XOR<Prisma.FixtureScalarRelationFilter, Prisma.FixtureWhereInput>
+  evaluations?: Prisma.BacktestEvaluationListRelationFilter
 }, "id" | "planId_ordinal" | "planId_fixtureId_forecastCutoff">
 
 export type BacktestWindowOrderByWithAggregationInput = {
@@ -340,6 +353,7 @@ export type BacktestWindowOrderByWithAggregationInput = {
   ordinal?: Prisma.SortOrder
   trainingEndsAt?: Prisma.SortOrder
   forecastCutoff?: Prisma.SortOrder
+  evaluationAsOf?: Prisma.SortOrder
   state?: Prisma.SortOrder
   evidenceBuildIds?: Prisma.SortOrderInput | Prisma.SortOrder
   forecastSnapshotId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -366,6 +380,7 @@ export type BacktestWindowScalarWhereWithAggregatesInput = {
   ordinal?: Prisma.IntWithAggregatesFilter<"BacktestWindow"> | number
   trainingEndsAt?: Prisma.DateTimeWithAggregatesFilter<"BacktestWindow"> | Date | string
   forecastCutoff?: Prisma.DateTimeWithAggregatesFilter<"BacktestWindow"> | Date | string
+  evaluationAsOf?: Prisma.DateTimeWithAggregatesFilter<"BacktestWindow"> | Date | string
   state?: Prisma.StringWithAggregatesFilter<"BacktestWindow"> | string
   evidenceBuildIds?: Prisma.JsonNullableWithAggregatesFilter<"BacktestWindow">
   forecastSnapshotId?: Prisma.StringNullableWithAggregatesFilter<"BacktestWindow"> | string | null
@@ -382,6 +397,7 @@ export type BacktestWindowCreateInput = {
   ordinal: number
   trainingEndsAt: Date | string
   forecastCutoff: Date | string
+  evaluationAsOf: Date | string
   state: string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: string | null
@@ -393,6 +409,7 @@ export type BacktestWindowCreateInput = {
   completedAt?: Date | string | null
   plan: Prisma.BacktestPlanCreateNestedOneWithoutWindowsInput
   fixture: Prisma.FixtureCreateNestedOneWithoutBacktestWindowsInput
+  evaluations?: Prisma.BacktestEvaluationCreateNestedManyWithoutWindowInput
 }
 
 export type BacktestWindowUncheckedCreateInput = {
@@ -402,6 +419,7 @@ export type BacktestWindowUncheckedCreateInput = {
   ordinal: number
   trainingEndsAt: Date | string
   forecastCutoff: Date | string
+  evaluationAsOf: Date | string
   state: string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: string | null
@@ -411,6 +429,7 @@ export type BacktestWindowUncheckedCreateInput = {
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   completedAt?: Date | string | null
+  evaluations?: Prisma.BacktestEvaluationUncheckedCreateNestedManyWithoutWindowInput
 }
 
 export type BacktestWindowUpdateInput = {
@@ -418,6 +437,7 @@ export type BacktestWindowUpdateInput = {
   ordinal?: Prisma.IntFieldUpdateOperationsInput | number
   trainingEndsAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  evaluationAsOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.StringFieldUpdateOperationsInput | string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -429,6 +449,7 @@ export type BacktestWindowUpdateInput = {
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   plan?: Prisma.BacktestPlanUpdateOneRequiredWithoutWindowsNestedInput
   fixture?: Prisma.FixtureUpdateOneRequiredWithoutBacktestWindowsNestedInput
+  evaluations?: Prisma.BacktestEvaluationUpdateManyWithoutWindowNestedInput
 }
 
 export type BacktestWindowUncheckedUpdateInput = {
@@ -438,6 +459,7 @@ export type BacktestWindowUncheckedUpdateInput = {
   ordinal?: Prisma.IntFieldUpdateOperationsInput | number
   trainingEndsAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  evaluationAsOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.StringFieldUpdateOperationsInput | string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -447,6 +469,7 @@ export type BacktestWindowUncheckedUpdateInput = {
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  evaluations?: Prisma.BacktestEvaluationUncheckedUpdateManyWithoutWindowNestedInput
 }
 
 export type BacktestWindowCreateManyInput = {
@@ -456,6 +479,7 @@ export type BacktestWindowCreateManyInput = {
   ordinal: number
   trainingEndsAt: Date | string
   forecastCutoff: Date | string
+  evaluationAsOf: Date | string
   state: string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: string | null
@@ -472,6 +496,7 @@ export type BacktestWindowUpdateManyMutationInput = {
   ordinal?: Prisma.IntFieldUpdateOperationsInput | number
   trainingEndsAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  evaluationAsOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.StringFieldUpdateOperationsInput | string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -490,6 +515,7 @@ export type BacktestWindowUncheckedUpdateManyInput = {
   ordinal?: Prisma.IntFieldUpdateOperationsInput | number
   trainingEndsAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  evaluationAsOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.StringFieldUpdateOperationsInput | string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -529,6 +555,7 @@ export type BacktestWindowCountOrderByAggregateInput = {
   ordinal?: Prisma.SortOrder
   trainingEndsAt?: Prisma.SortOrder
   forecastCutoff?: Prisma.SortOrder
+  evaluationAsOf?: Prisma.SortOrder
   state?: Prisma.SortOrder
   evidenceBuildIds?: Prisma.SortOrder
   forecastSnapshotId?: Prisma.SortOrder
@@ -551,6 +578,7 @@ export type BacktestWindowMaxOrderByAggregateInput = {
   ordinal?: Prisma.SortOrder
   trainingEndsAt?: Prisma.SortOrder
   forecastCutoff?: Prisma.SortOrder
+  evaluationAsOf?: Prisma.SortOrder
   state?: Prisma.SortOrder
   forecastSnapshotId?: Prisma.SortOrder
   failureCode?: Prisma.SortOrder
@@ -566,6 +594,7 @@ export type BacktestWindowMinOrderByAggregateInput = {
   ordinal?: Prisma.SortOrder
   trainingEndsAt?: Prisma.SortOrder
   forecastCutoff?: Prisma.SortOrder
+  evaluationAsOf?: Prisma.SortOrder
   state?: Prisma.SortOrder
   forecastSnapshotId?: Prisma.SortOrder
   failureCode?: Prisma.SortOrder
@@ -576,6 +605,11 @@ export type BacktestWindowMinOrderByAggregateInput = {
 
 export type BacktestWindowSumOrderByAggregateInput = {
   ordinal?: Prisma.SortOrder
+}
+
+export type BacktestWindowScalarRelationFilter = {
+  is?: Prisma.BacktestWindowWhereInput
+  isNot?: Prisma.BacktestWindowWhereInput
 }
 
 export type BacktestWindowCreateNestedManyWithoutFixtureInput = {
@@ -662,11 +696,26 @@ export type BacktestWindowUncheckedUpdateManyWithoutPlanNestedInput = {
   deleteMany?: Prisma.BacktestWindowScalarWhereInput | Prisma.BacktestWindowScalarWhereInput[]
 }
 
+export type BacktestWindowCreateNestedOneWithoutEvaluationsInput = {
+  create?: Prisma.XOR<Prisma.BacktestWindowCreateWithoutEvaluationsInput, Prisma.BacktestWindowUncheckedCreateWithoutEvaluationsInput>
+  connectOrCreate?: Prisma.BacktestWindowCreateOrConnectWithoutEvaluationsInput
+  connect?: Prisma.BacktestWindowWhereUniqueInput
+}
+
+export type BacktestWindowUpdateOneRequiredWithoutEvaluationsNestedInput = {
+  create?: Prisma.XOR<Prisma.BacktestWindowCreateWithoutEvaluationsInput, Prisma.BacktestWindowUncheckedCreateWithoutEvaluationsInput>
+  connectOrCreate?: Prisma.BacktestWindowCreateOrConnectWithoutEvaluationsInput
+  upsert?: Prisma.BacktestWindowUpsertWithoutEvaluationsInput
+  connect?: Prisma.BacktestWindowWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.BacktestWindowUpdateToOneWithWhereWithoutEvaluationsInput, Prisma.BacktestWindowUpdateWithoutEvaluationsInput>, Prisma.BacktestWindowUncheckedUpdateWithoutEvaluationsInput>
+}
+
 export type BacktestWindowCreateWithoutFixtureInput = {
   id: string
   ordinal: number
   trainingEndsAt: Date | string
   forecastCutoff: Date | string
+  evaluationAsOf: Date | string
   state: string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: string | null
@@ -677,6 +726,7 @@ export type BacktestWindowCreateWithoutFixtureInput = {
   createdAt?: Date | string
   completedAt?: Date | string | null
   plan: Prisma.BacktestPlanCreateNestedOneWithoutWindowsInput
+  evaluations?: Prisma.BacktestEvaluationCreateNestedManyWithoutWindowInput
 }
 
 export type BacktestWindowUncheckedCreateWithoutFixtureInput = {
@@ -685,6 +735,7 @@ export type BacktestWindowUncheckedCreateWithoutFixtureInput = {
   ordinal: number
   trainingEndsAt: Date | string
   forecastCutoff: Date | string
+  evaluationAsOf: Date | string
   state: string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: string | null
@@ -694,6 +745,7 @@ export type BacktestWindowUncheckedCreateWithoutFixtureInput = {
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   completedAt?: Date | string | null
+  evaluations?: Prisma.BacktestEvaluationUncheckedCreateNestedManyWithoutWindowInput
 }
 
 export type BacktestWindowCreateOrConnectWithoutFixtureInput = {
@@ -732,6 +784,7 @@ export type BacktestWindowScalarWhereInput = {
   ordinal?: Prisma.IntFilter<"BacktestWindow"> | number
   trainingEndsAt?: Prisma.DateTimeFilter<"BacktestWindow"> | Date | string
   forecastCutoff?: Prisma.DateTimeFilter<"BacktestWindow"> | Date | string
+  evaluationAsOf?: Prisma.DateTimeFilter<"BacktestWindow"> | Date | string
   state?: Prisma.StringFilter<"BacktestWindow"> | string
   evidenceBuildIds?: Prisma.JsonNullableFilter<"BacktestWindow">
   forecastSnapshotId?: Prisma.StringNullableFilter<"BacktestWindow"> | string | null
@@ -748,6 +801,7 @@ export type BacktestWindowCreateWithoutPlanInput = {
   ordinal: number
   trainingEndsAt: Date | string
   forecastCutoff: Date | string
+  evaluationAsOf: Date | string
   state: string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: string | null
@@ -758,6 +812,7 @@ export type BacktestWindowCreateWithoutPlanInput = {
   createdAt?: Date | string
   completedAt?: Date | string | null
   fixture: Prisma.FixtureCreateNestedOneWithoutBacktestWindowsInput
+  evaluations?: Prisma.BacktestEvaluationCreateNestedManyWithoutWindowInput
 }
 
 export type BacktestWindowUncheckedCreateWithoutPlanInput = {
@@ -766,6 +821,7 @@ export type BacktestWindowUncheckedCreateWithoutPlanInput = {
   ordinal: number
   trainingEndsAt: Date | string
   forecastCutoff: Date | string
+  evaluationAsOf: Date | string
   state: string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: string | null
@@ -775,6 +831,7 @@ export type BacktestWindowUncheckedCreateWithoutPlanInput = {
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   completedAt?: Date | string | null
+  evaluations?: Prisma.BacktestEvaluationUncheckedCreateNestedManyWithoutWindowInput
 }
 
 export type BacktestWindowCreateOrConnectWithoutPlanInput = {
@@ -803,12 +860,105 @@ export type BacktestWindowUpdateManyWithWhereWithoutPlanInput = {
   data: Prisma.XOR<Prisma.BacktestWindowUpdateManyMutationInput, Prisma.BacktestWindowUncheckedUpdateManyWithoutPlanInput>
 }
 
+export type BacktestWindowCreateWithoutEvaluationsInput = {
+  id: string
+  ordinal: number
+  trainingEndsAt: Date | string
+  forecastCutoff: Date | string
+  evaluationAsOf: Date | string
+  state: string
+  evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  forecastSnapshotId?: string | null
+  scoreIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  failureCode?: string | null
+  correlationId: string
+  receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  completedAt?: Date | string | null
+  plan: Prisma.BacktestPlanCreateNestedOneWithoutWindowsInput
+  fixture: Prisma.FixtureCreateNestedOneWithoutBacktestWindowsInput
+}
+
+export type BacktestWindowUncheckedCreateWithoutEvaluationsInput = {
+  id: string
+  planId: string
+  fixtureId: string
+  ordinal: number
+  trainingEndsAt: Date | string
+  forecastCutoff: Date | string
+  evaluationAsOf: Date | string
+  state: string
+  evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  forecastSnapshotId?: string | null
+  scoreIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  failureCode?: string | null
+  correlationId: string
+  receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  completedAt?: Date | string | null
+}
+
+export type BacktestWindowCreateOrConnectWithoutEvaluationsInput = {
+  where: Prisma.BacktestWindowWhereUniqueInput
+  create: Prisma.XOR<Prisma.BacktestWindowCreateWithoutEvaluationsInput, Prisma.BacktestWindowUncheckedCreateWithoutEvaluationsInput>
+}
+
+export type BacktestWindowUpsertWithoutEvaluationsInput = {
+  update: Prisma.XOR<Prisma.BacktestWindowUpdateWithoutEvaluationsInput, Prisma.BacktestWindowUncheckedUpdateWithoutEvaluationsInput>
+  create: Prisma.XOR<Prisma.BacktestWindowCreateWithoutEvaluationsInput, Prisma.BacktestWindowUncheckedCreateWithoutEvaluationsInput>
+  where?: Prisma.BacktestWindowWhereInput
+}
+
+export type BacktestWindowUpdateToOneWithWhereWithoutEvaluationsInput = {
+  where?: Prisma.BacktestWindowWhereInput
+  data: Prisma.XOR<Prisma.BacktestWindowUpdateWithoutEvaluationsInput, Prisma.BacktestWindowUncheckedUpdateWithoutEvaluationsInput>
+}
+
+export type BacktestWindowUpdateWithoutEvaluationsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  ordinal?: Prisma.IntFieldUpdateOperationsInput | number
+  trainingEndsAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  evaluationAsOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  state?: Prisma.StringFieldUpdateOperationsInput | string
+  evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  forecastSnapshotId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scoreIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  failureCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  correlationId?: Prisma.StringFieldUpdateOperationsInput | string
+  receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  plan?: Prisma.BacktestPlanUpdateOneRequiredWithoutWindowsNestedInput
+  fixture?: Prisma.FixtureUpdateOneRequiredWithoutBacktestWindowsNestedInput
+}
+
+export type BacktestWindowUncheckedUpdateWithoutEvaluationsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  planId?: Prisma.StringFieldUpdateOperationsInput | string
+  fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
+  ordinal?: Prisma.IntFieldUpdateOperationsInput | number
+  trainingEndsAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  evaluationAsOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  state?: Prisma.StringFieldUpdateOperationsInput | string
+  evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  forecastSnapshotId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scoreIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  failureCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  correlationId?: Prisma.StringFieldUpdateOperationsInput | string
+  receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
 export type BacktestWindowCreateManyFixtureInput = {
   id: string
   planId: string
   ordinal: number
   trainingEndsAt: Date | string
   forecastCutoff: Date | string
+  evaluationAsOf: Date | string
   state: string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: string | null
@@ -825,6 +975,7 @@ export type BacktestWindowUpdateWithoutFixtureInput = {
   ordinal?: Prisma.IntFieldUpdateOperationsInput | number
   trainingEndsAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  evaluationAsOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.StringFieldUpdateOperationsInput | string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -835,6 +986,7 @@ export type BacktestWindowUpdateWithoutFixtureInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   plan?: Prisma.BacktestPlanUpdateOneRequiredWithoutWindowsNestedInput
+  evaluations?: Prisma.BacktestEvaluationUpdateManyWithoutWindowNestedInput
 }
 
 export type BacktestWindowUncheckedUpdateWithoutFixtureInput = {
@@ -843,6 +995,7 @@ export type BacktestWindowUncheckedUpdateWithoutFixtureInput = {
   ordinal?: Prisma.IntFieldUpdateOperationsInput | number
   trainingEndsAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  evaluationAsOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.StringFieldUpdateOperationsInput | string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -852,6 +1005,7 @@ export type BacktestWindowUncheckedUpdateWithoutFixtureInput = {
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  evaluations?: Prisma.BacktestEvaluationUncheckedUpdateManyWithoutWindowNestedInput
 }
 
 export type BacktestWindowUncheckedUpdateManyWithoutFixtureInput = {
@@ -860,6 +1014,7 @@ export type BacktestWindowUncheckedUpdateManyWithoutFixtureInput = {
   ordinal?: Prisma.IntFieldUpdateOperationsInput | number
   trainingEndsAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  evaluationAsOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.StringFieldUpdateOperationsInput | string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -877,6 +1032,7 @@ export type BacktestWindowCreateManyPlanInput = {
   ordinal: number
   trainingEndsAt: Date | string
   forecastCutoff: Date | string
+  evaluationAsOf: Date | string
   state: string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: string | null
@@ -893,6 +1049,7 @@ export type BacktestWindowUpdateWithoutPlanInput = {
   ordinal?: Prisma.IntFieldUpdateOperationsInput | number
   trainingEndsAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  evaluationAsOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.StringFieldUpdateOperationsInput | string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -903,6 +1060,7 @@ export type BacktestWindowUpdateWithoutPlanInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fixture?: Prisma.FixtureUpdateOneRequiredWithoutBacktestWindowsNestedInput
+  evaluations?: Prisma.BacktestEvaluationUpdateManyWithoutWindowNestedInput
 }
 
 export type BacktestWindowUncheckedUpdateWithoutPlanInput = {
@@ -911,6 +1069,7 @@ export type BacktestWindowUncheckedUpdateWithoutPlanInput = {
   ordinal?: Prisma.IntFieldUpdateOperationsInput | number
   trainingEndsAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  evaluationAsOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.StringFieldUpdateOperationsInput | string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -920,6 +1079,7 @@ export type BacktestWindowUncheckedUpdateWithoutPlanInput = {
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  evaluations?: Prisma.BacktestEvaluationUncheckedUpdateManyWithoutWindowNestedInput
 }
 
 export type BacktestWindowUncheckedUpdateManyWithoutPlanInput = {
@@ -928,6 +1088,7 @@ export type BacktestWindowUncheckedUpdateManyWithoutPlanInput = {
   ordinal?: Prisma.IntFieldUpdateOperationsInput | number
   trainingEndsAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   forecastCutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  evaluationAsOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   state?: Prisma.StringFieldUpdateOperationsInput | string
   evidenceBuildIds?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   forecastSnapshotId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -939,6 +1100,35 @@ export type BacktestWindowUncheckedUpdateManyWithoutPlanInput = {
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
+
+/**
+ * Count Type BacktestWindowCountOutputType
+ */
+
+export type BacktestWindowCountOutputType = {
+  evaluations: number
+}
+
+export type BacktestWindowCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  evaluations?: boolean | BacktestWindowCountOutputTypeCountEvaluationsArgs
+}
+
+/**
+ * BacktestWindowCountOutputType without action
+ */
+export type BacktestWindowCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BacktestWindowCountOutputType
+   */
+  select?: Prisma.BacktestWindowCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * BacktestWindowCountOutputType without action
+ */
+export type BacktestWindowCountOutputTypeCountEvaluationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.BacktestEvaluationWhereInput
+}
 
 
 export type BacktestWindowSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -948,6 +1138,7 @@ export type BacktestWindowSelect<ExtArgs extends runtime.Types.Extensions.Intern
   ordinal?: boolean
   trainingEndsAt?: boolean
   forecastCutoff?: boolean
+  evaluationAsOf?: boolean
   state?: boolean
   evidenceBuildIds?: boolean
   forecastSnapshotId?: boolean
@@ -959,6 +1150,8 @@ export type BacktestWindowSelect<ExtArgs extends runtime.Types.Extensions.Intern
   completedAt?: boolean
   plan?: boolean | Prisma.BacktestPlanDefaultArgs<ExtArgs>
   fixture?: boolean | Prisma.FixtureDefaultArgs<ExtArgs>
+  evaluations?: boolean | Prisma.BacktestWindow$evaluationsArgs<ExtArgs>
+  _count?: boolean | Prisma.BacktestWindowCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["backtestWindow"]>
 
 export type BacktestWindowSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -968,6 +1161,7 @@ export type BacktestWindowSelectCreateManyAndReturn<ExtArgs extends runtime.Type
   ordinal?: boolean
   trainingEndsAt?: boolean
   forecastCutoff?: boolean
+  evaluationAsOf?: boolean
   state?: boolean
   evidenceBuildIds?: boolean
   forecastSnapshotId?: boolean
@@ -988,6 +1182,7 @@ export type BacktestWindowSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   ordinal?: boolean
   trainingEndsAt?: boolean
   forecastCutoff?: boolean
+  evaluationAsOf?: boolean
   state?: boolean
   evidenceBuildIds?: boolean
   forecastSnapshotId?: boolean
@@ -1008,6 +1203,7 @@ export type BacktestWindowSelectScalar = {
   ordinal?: boolean
   trainingEndsAt?: boolean
   forecastCutoff?: boolean
+  evaluationAsOf?: boolean
   state?: boolean
   evidenceBuildIds?: boolean
   forecastSnapshotId?: boolean
@@ -1019,10 +1215,12 @@ export type BacktestWindowSelectScalar = {
   completedAt?: boolean
 }
 
-export type BacktestWindowOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "planId" | "fixtureId" | "ordinal" | "trainingEndsAt" | "forecastCutoff" | "state" | "evidenceBuildIds" | "forecastSnapshotId" | "scoreIds" | "failureCode" | "correlationId" | "receipt" | "createdAt" | "completedAt", ExtArgs["result"]["backtestWindow"]>
+export type BacktestWindowOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "planId" | "fixtureId" | "ordinal" | "trainingEndsAt" | "forecastCutoff" | "evaluationAsOf" | "state" | "evidenceBuildIds" | "forecastSnapshotId" | "scoreIds" | "failureCode" | "correlationId" | "receipt" | "createdAt" | "completedAt", ExtArgs["result"]["backtestWindow"]>
 export type BacktestWindowInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   plan?: boolean | Prisma.BacktestPlanDefaultArgs<ExtArgs>
   fixture?: boolean | Prisma.FixtureDefaultArgs<ExtArgs>
+  evaluations?: boolean | Prisma.BacktestWindow$evaluationsArgs<ExtArgs>
+  _count?: boolean | Prisma.BacktestWindowCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type BacktestWindowIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   plan?: boolean | Prisma.BacktestPlanDefaultArgs<ExtArgs>
@@ -1038,6 +1236,7 @@ export type $BacktestWindowPayload<ExtArgs extends runtime.Types.Extensions.Inte
   objects: {
     plan: Prisma.$BacktestPlanPayload<ExtArgs>
     fixture: Prisma.$FixturePayload<ExtArgs>
+    evaluations: Prisma.$BacktestEvaluationPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1046,6 +1245,7 @@ export type $BacktestWindowPayload<ExtArgs extends runtime.Types.Extensions.Inte
     ordinal: number
     trainingEndsAt: Date
     forecastCutoff: Date
+    evaluationAsOf: Date
     state: string
     evidenceBuildIds: runtime.JsonValue | null
     forecastSnapshotId: string | null
@@ -1451,6 +1651,7 @@ export interface Prisma__BacktestWindowClient<T, Null = never, ExtArgs extends r
   readonly [Symbol.toStringTag]: "PrismaPromise"
   plan<T extends Prisma.BacktestPlanDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.BacktestPlanDefaultArgs<ExtArgs>>): Prisma.Prisma__BacktestPlanClient<runtime.Types.Result.GetResult<Prisma.$BacktestPlanPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   fixture<T extends Prisma.FixtureDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.FixtureDefaultArgs<ExtArgs>>): Prisma.Prisma__FixtureClient<runtime.Types.Result.GetResult<Prisma.$FixturePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  evaluations<T extends Prisma.BacktestWindow$evaluationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.BacktestWindow$evaluationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BacktestEvaluationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1486,6 +1687,7 @@ export interface BacktestWindowFieldRefs {
   readonly ordinal: Prisma.FieldRef<"BacktestWindow", 'Int'>
   readonly trainingEndsAt: Prisma.FieldRef<"BacktestWindow", 'DateTime'>
   readonly forecastCutoff: Prisma.FieldRef<"BacktestWindow", 'DateTime'>
+  readonly evaluationAsOf: Prisma.FieldRef<"BacktestWindow", 'DateTime'>
   readonly state: Prisma.FieldRef<"BacktestWindow", 'String'>
   readonly evidenceBuildIds: Prisma.FieldRef<"BacktestWindow", 'Json'>
   readonly forecastSnapshotId: Prisma.FieldRef<"BacktestWindow", 'String'>
@@ -1893,6 +2095,30 @@ export type BacktestWindowDeleteManyArgs<ExtArgs extends runtime.Types.Extension
    * Limit how many BacktestWindows to delete.
    */
   limit?: number
+}
+
+/**
+ * BacktestWindow.evaluations
+ */
+export type BacktestWindow$evaluationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BacktestEvaluation
+   */
+  select?: Prisma.BacktestEvaluationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BacktestEvaluation
+   */
+  omit?: Prisma.BacktestEvaluationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BacktestEvaluationInclude<ExtArgs> | null
+  where?: Prisma.BacktestEvaluationWhereInput
+  orderBy?: Prisma.BacktestEvaluationOrderByWithRelationInput | Prisma.BacktestEvaluationOrderByWithRelationInput[]
+  cursor?: Prisma.BacktestEvaluationWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.BacktestEvaluationScalarFieldEnum | Prisma.BacktestEvaluationScalarFieldEnum[]
 }
 
 /**

@@ -63,6 +63,11 @@ export type BacktestPlan = Prisma.BacktestPlanModel
  */
 export type BacktestWindow = Prisma.BacktestWindowModel
 /**
+ * Model BacktestEvaluation
+ * Append-only evaluation of one immutable rolling-origin forecast at an explicit result boundary.
+ */
+export type BacktestEvaluation = Prisma.BacktestEvaluationModel
+/**
  * Model SourceObservation
  * 
  */

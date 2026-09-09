@@ -406,6 +406,7 @@ export const ModelName = {
   Fixture: 'Fixture',
   BacktestPlan: 'BacktestPlan',
   BacktestWindow: 'BacktestWindow',
+  BacktestEvaluation: 'BacktestEvaluation',
   SourceObservation: 'SourceObservation',
   StandingSnapshot: 'StandingSnapshot',
   StandingSnapshotRow: 'StandingSnapshotRow',
@@ -452,7 +453,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1119,6 +1120,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.BacktestWindowCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.BacktestWindowCountAggregateOutputType> | number
+        }
+      }
+    }
+    BacktestEvaluation: {
+      payload: Prisma.$BacktestEvaluationPayload<ExtArgs>
+      fields: Prisma.BacktestEvaluationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BacktestEvaluationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestEvaluationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BacktestEvaluationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestEvaluationPayload>
+        }
+        findFirst: {
+          args: Prisma.BacktestEvaluationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestEvaluationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BacktestEvaluationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestEvaluationPayload>
+        }
+        findMany: {
+          args: Prisma.BacktestEvaluationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestEvaluationPayload>[]
+        }
+        create: {
+          args: Prisma.BacktestEvaluationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestEvaluationPayload>
+        }
+        createMany: {
+          args: Prisma.BacktestEvaluationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BacktestEvaluationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestEvaluationPayload>[]
+        }
+        delete: {
+          args: Prisma.BacktestEvaluationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestEvaluationPayload>
+        }
+        update: {
+          args: Prisma.BacktestEvaluationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestEvaluationPayload>
+        }
+        deleteMany: {
+          args: Prisma.BacktestEvaluationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BacktestEvaluationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BacktestEvaluationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestEvaluationPayload>[]
+        }
+        upsert: {
+          args: Prisma.BacktestEvaluationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BacktestEvaluationPayload>
+        }
+        aggregate: {
+          args: Prisma.BacktestEvaluationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBacktestEvaluation>
+        }
+        groupBy: {
+          args: Prisma.BacktestEvaluationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BacktestEvaluationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BacktestEvaluationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BacktestEvaluationCountAggregateOutputType> | number
         }
       }
     }
@@ -3560,7 +3635,10 @@ export const BacktestPlanScalarFieldEnum = {
   correlationId: 'correlationId',
   receipt: 'receipt',
   createdAt: 'createdAt',
-  completedAt: 'completedAt'
+  completedAt: 'completedAt',
+  deliveryState: 'deliveryState',
+  deliveryAttempts: 'deliveryAttempts',
+  enqueuedAt: 'enqueuedAt'
 } as const
 
 export type BacktestPlanScalarFieldEnum = (typeof BacktestPlanScalarFieldEnum)[keyof typeof BacktestPlanScalarFieldEnum]
@@ -3573,6 +3651,7 @@ export const BacktestWindowScalarFieldEnum = {
   ordinal: 'ordinal',
   trainingEndsAt: 'trainingEndsAt',
   forecastCutoff: 'forecastCutoff',
+  evaluationAsOf: 'evaluationAsOf',
   state: 'state',
   evidenceBuildIds: 'evidenceBuildIds',
   forecastSnapshotId: 'forecastSnapshotId',
@@ -3585,6 +3664,23 @@ export const BacktestWindowScalarFieldEnum = {
 } as const
 
 export type BacktestWindowScalarFieldEnum = (typeof BacktestWindowScalarFieldEnum)[keyof typeof BacktestWindowScalarFieldEnum]
+
+
+export const BacktestEvaluationScalarFieldEnum = {
+  id: 'id',
+  windowId: 'windowId',
+  evaluationAsOf: 'evaluationAsOf',
+  resultVersionId: 'resultVersionId',
+  settlementReceiptId: 'settlementReceiptId',
+  scoreIds: 'scoreIds',
+  revision: 'revision',
+  supersedesEvaluationId: 'supersedesEvaluationId',
+  isCurrent: 'isCurrent',
+  receipt: 'receipt',
+  createdAt: 'createdAt'
+} as const
+
+export type BacktestEvaluationScalarFieldEnum = (typeof BacktestEvaluationScalarFieldEnum)[keyof typeof BacktestEvaluationScalarFieldEnum]
 
 
 export const SourceObservationScalarFieldEnum = {
@@ -4559,6 +4655,7 @@ export type GlobalOmitConfig = {
   fixture?: Prisma.FixtureOmit
   backtestPlan?: Prisma.BacktestPlanOmit
   backtestWindow?: Prisma.BacktestWindowOmit
+  backtestEvaluation?: Prisma.BacktestEvaluationOmit
   sourceObservation?: Prisma.SourceObservationOmit
   standingSnapshot?: Prisma.StandingSnapshotOmit
   standingSnapshotRow?: Prisma.StandingSnapshotRowOmit

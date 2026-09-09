@@ -28,10 +28,12 @@ export type AggregateBacktestPlan = {
 
 export type BacktestPlanAvgAggregateOutputType = {
   concurrency: number | null
+  deliveryAttempts: number | null
 }
 
 export type BacktestPlanSumAggregateOutputType = {
   concurrency: number | null
+  deliveryAttempts: number | null
 }
 
 export type BacktestPlanMinAggregateOutputType = {
@@ -47,6 +49,9 @@ export type BacktestPlanMinAggregateOutputType = {
   correlationId: string | null
   createdAt: Date | null
   completedAt: Date | null
+  deliveryState: string | null
+  deliveryAttempts: number | null
+  enqueuedAt: Date | null
 }
 
 export type BacktestPlanMaxAggregateOutputType = {
@@ -62,6 +67,9 @@ export type BacktestPlanMaxAggregateOutputType = {
   correlationId: string | null
   createdAt: Date | null
   completedAt: Date | null
+  deliveryState: string | null
+  deliveryAttempts: number | null
+  enqueuedAt: Date | null
 }
 
 export type BacktestPlanCountAggregateOutputType = {
@@ -78,16 +86,21 @@ export type BacktestPlanCountAggregateOutputType = {
   receipt: number
   createdAt: number
   completedAt: number
+  deliveryState: number
+  deliveryAttempts: number
+  enqueuedAt: number
   _all: number
 }
 
 
 export type BacktestPlanAvgAggregateInputType = {
   concurrency?: true
+  deliveryAttempts?: true
 }
 
 export type BacktestPlanSumAggregateInputType = {
   concurrency?: true
+  deliveryAttempts?: true
 }
 
 export type BacktestPlanMinAggregateInputType = {
@@ -103,6 +116,9 @@ export type BacktestPlanMinAggregateInputType = {
   correlationId?: true
   createdAt?: true
   completedAt?: true
+  deliveryState?: true
+  deliveryAttempts?: true
+  enqueuedAt?: true
 }
 
 export type BacktestPlanMaxAggregateInputType = {
@@ -118,6 +134,9 @@ export type BacktestPlanMaxAggregateInputType = {
   correlationId?: true
   createdAt?: true
   completedAt?: true
+  deliveryState?: true
+  deliveryAttempts?: true
+  enqueuedAt?: true
 }
 
 export type BacktestPlanCountAggregateInputType = {
@@ -134,6 +153,9 @@ export type BacktestPlanCountAggregateInputType = {
   receipt?: true
   createdAt?: true
   completedAt?: true
+  deliveryState?: true
+  deliveryAttempts?: true
+  enqueuedAt?: true
   _all?: true
 }
 
@@ -237,6 +259,9 @@ export type BacktestPlanGroupByOutputType = {
   receipt: runtime.JsonValue
   createdAt: Date
   completedAt: Date | null
+  deliveryState: string
+  deliveryAttempts: number
+  enqueuedAt: Date | null
   _count: BacktestPlanCountAggregateOutputType | null
   _avg: BacktestPlanAvgAggregateOutputType | null
   _sum: BacktestPlanSumAggregateOutputType | null
@@ -276,6 +301,9 @@ export type BacktestPlanWhereInput = {
   receipt?: Prisma.JsonFilter<"BacktestPlan">
   createdAt?: Prisma.DateTimeFilter<"BacktestPlan"> | Date | string
   completedAt?: Prisma.DateTimeNullableFilter<"BacktestPlan"> | Date | string | null
+  deliveryState?: Prisma.StringFilter<"BacktestPlan"> | string
+  deliveryAttempts?: Prisma.IntFilter<"BacktestPlan"> | number
+  enqueuedAt?: Prisma.DateTimeNullableFilter<"BacktestPlan"> | Date | string | null
   windows?: Prisma.BacktestWindowListRelationFilter
 }
 
@@ -293,6 +321,9 @@ export type BacktestPlanOrderByWithRelationInput = {
   receipt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   completedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryState?: Prisma.SortOrder
+  deliveryAttempts?: Prisma.SortOrder
+  enqueuedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   windows?: Prisma.BacktestWindowOrderByRelationAggregateInput
 }
 
@@ -313,6 +344,9 @@ export type BacktestPlanWhereUniqueInput = Prisma.AtLeast<{
   receipt?: Prisma.JsonFilter<"BacktestPlan">
   createdAt?: Prisma.DateTimeFilter<"BacktestPlan"> | Date | string
   completedAt?: Prisma.DateTimeNullableFilter<"BacktestPlan"> | Date | string | null
+  deliveryState?: Prisma.StringFilter<"BacktestPlan"> | string
+  deliveryAttempts?: Prisma.IntFilter<"BacktestPlan"> | number
+  enqueuedAt?: Prisma.DateTimeNullableFilter<"BacktestPlan"> | Date | string | null
   windows?: Prisma.BacktestWindowListRelationFilter
 }, "id" | "planHash">
 
@@ -330,6 +364,9 @@ export type BacktestPlanOrderByWithAggregationInput = {
   receipt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   completedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryState?: Prisma.SortOrder
+  deliveryAttempts?: Prisma.SortOrder
+  enqueuedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.BacktestPlanCountOrderByAggregateInput
   _avg?: Prisma.BacktestPlanAvgOrderByAggregateInput
   _max?: Prisma.BacktestPlanMaxOrderByAggregateInput
@@ -354,6 +391,9 @@ export type BacktestPlanScalarWhereWithAggregatesInput = {
   receipt?: Prisma.JsonWithAggregatesFilter<"BacktestPlan">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"BacktestPlan"> | Date | string
   completedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"BacktestPlan"> | Date | string | null
+  deliveryState?: Prisma.StringWithAggregatesFilter<"BacktestPlan"> | string
+  deliveryAttempts?: Prisma.IntWithAggregatesFilter<"BacktestPlan"> | number
+  enqueuedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"BacktestPlan"> | Date | string | null
 }
 
 export type BacktestPlanCreateInput = {
@@ -370,6 +410,9 @@ export type BacktestPlanCreateInput = {
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   completedAt?: Date | string | null
+  deliveryState?: string
+  deliveryAttempts?: number
+  enqueuedAt?: Date | string | null
   windows?: Prisma.BacktestWindowCreateNestedManyWithoutPlanInput
 }
 
@@ -387,6 +430,9 @@ export type BacktestPlanUncheckedCreateInput = {
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   completedAt?: Date | string | null
+  deliveryState?: string
+  deliveryAttempts?: number
+  enqueuedAt?: Date | string | null
   windows?: Prisma.BacktestWindowUncheckedCreateNestedManyWithoutPlanInput
 }
 
@@ -404,6 +450,9 @@ export type BacktestPlanUpdateInput = {
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deliveryState?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  enqueuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   windows?: Prisma.BacktestWindowUpdateManyWithoutPlanNestedInput
 }
 
@@ -421,6 +470,9 @@ export type BacktestPlanUncheckedUpdateInput = {
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deliveryState?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  enqueuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   windows?: Prisma.BacktestWindowUncheckedUpdateManyWithoutPlanNestedInput
 }
 
@@ -438,6 +490,9 @@ export type BacktestPlanCreateManyInput = {
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   completedAt?: Date | string | null
+  deliveryState?: string
+  deliveryAttempts?: number
+  enqueuedAt?: Date | string | null
 }
 
 export type BacktestPlanUpdateManyMutationInput = {
@@ -454,6 +509,9 @@ export type BacktestPlanUpdateManyMutationInput = {
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deliveryState?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  enqueuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type BacktestPlanUncheckedUpdateManyInput = {
@@ -470,6 +528,9 @@ export type BacktestPlanUncheckedUpdateManyInput = {
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deliveryState?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  enqueuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type BacktestPlanCountOrderByAggregateInput = {
@@ -486,10 +547,14 @@ export type BacktestPlanCountOrderByAggregateInput = {
   receipt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   completedAt?: Prisma.SortOrder
+  deliveryState?: Prisma.SortOrder
+  deliveryAttempts?: Prisma.SortOrder
+  enqueuedAt?: Prisma.SortOrder
 }
 
 export type BacktestPlanAvgOrderByAggregateInput = {
   concurrency?: Prisma.SortOrder
+  deliveryAttempts?: Prisma.SortOrder
 }
 
 export type BacktestPlanMaxOrderByAggregateInput = {
@@ -505,6 +570,9 @@ export type BacktestPlanMaxOrderByAggregateInput = {
   correlationId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   completedAt?: Prisma.SortOrder
+  deliveryState?: Prisma.SortOrder
+  deliveryAttempts?: Prisma.SortOrder
+  enqueuedAt?: Prisma.SortOrder
 }
 
 export type BacktestPlanMinOrderByAggregateInput = {
@@ -520,10 +588,14 @@ export type BacktestPlanMinOrderByAggregateInput = {
   correlationId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   completedAt?: Prisma.SortOrder
+  deliveryState?: Prisma.SortOrder
+  deliveryAttempts?: Prisma.SortOrder
+  enqueuedAt?: Prisma.SortOrder
 }
 
 export type BacktestPlanSumOrderByAggregateInput = {
   concurrency?: Prisma.SortOrder
+  deliveryAttempts?: Prisma.SortOrder
 }
 
 export type BacktestPlanScalarRelationFilter = {
@@ -567,6 +639,9 @@ export type BacktestPlanCreateWithoutWindowsInput = {
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   completedAt?: Date | string | null
+  deliveryState?: string
+  deliveryAttempts?: number
+  enqueuedAt?: Date | string | null
 }
 
 export type BacktestPlanUncheckedCreateWithoutWindowsInput = {
@@ -583,6 +658,9 @@ export type BacktestPlanUncheckedCreateWithoutWindowsInput = {
   receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   completedAt?: Date | string | null
+  deliveryState?: string
+  deliveryAttempts?: number
+  enqueuedAt?: Date | string | null
 }
 
 export type BacktestPlanCreateOrConnectWithoutWindowsInput = {
@@ -615,6 +693,9 @@ export type BacktestPlanUpdateWithoutWindowsInput = {
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deliveryState?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  enqueuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type BacktestPlanUncheckedUpdateWithoutWindowsInput = {
@@ -631,6 +712,9 @@ export type BacktestPlanUncheckedUpdateWithoutWindowsInput = {
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deliveryState?: Prisma.StringFieldUpdateOperationsInput | string
+  deliveryAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  enqueuedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 
@@ -678,6 +762,9 @@ export type BacktestPlanSelect<ExtArgs extends runtime.Types.Extensions.Internal
   receipt?: boolean
   createdAt?: boolean
   completedAt?: boolean
+  deliveryState?: boolean
+  deliveryAttempts?: boolean
+  enqueuedAt?: boolean
   windows?: boolean | Prisma.BacktestPlan$windowsArgs<ExtArgs>
   _count?: boolean | Prisma.BacktestPlanCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["backtestPlan"]>
@@ -696,6 +783,9 @@ export type BacktestPlanSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   receipt?: boolean
   createdAt?: boolean
   completedAt?: boolean
+  deliveryState?: boolean
+  deliveryAttempts?: boolean
+  enqueuedAt?: boolean
 }, ExtArgs["result"]["backtestPlan"]>
 
 export type BacktestPlanSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -712,6 +802,9 @@ export type BacktestPlanSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   receipt?: boolean
   createdAt?: boolean
   completedAt?: boolean
+  deliveryState?: boolean
+  deliveryAttempts?: boolean
+  enqueuedAt?: boolean
 }, ExtArgs["result"]["backtestPlan"]>
 
 export type BacktestPlanSelectScalar = {
@@ -728,9 +821,12 @@ export type BacktestPlanSelectScalar = {
   receipt?: boolean
   createdAt?: boolean
   completedAt?: boolean
+  deliveryState?: boolean
+  deliveryAttempts?: boolean
+  enqueuedAt?: boolean
 }
 
-export type BacktestPlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "version" | "planHash" | "modelVersion" | "configHash" | "rangeFrom" | "rangeTo" | "concurrency" | "state" | "correlationId" | "receipt" | "createdAt" | "completedAt", ExtArgs["result"]["backtestPlan"]>
+export type BacktestPlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "version" | "planHash" | "modelVersion" | "configHash" | "rangeFrom" | "rangeTo" | "concurrency" | "state" | "correlationId" | "receipt" | "createdAt" | "completedAt" | "deliveryState" | "deliveryAttempts" | "enqueuedAt", ExtArgs["result"]["backtestPlan"]>
 export type BacktestPlanInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   windows?: boolean | Prisma.BacktestPlan$windowsArgs<ExtArgs>
   _count?: boolean | Prisma.BacktestPlanCountOutputTypeDefaultArgs<ExtArgs>
@@ -757,6 +853,9 @@ export type $BacktestPlanPayload<ExtArgs extends runtime.Types.Extensions.Intern
     receipt: runtime.JsonValue
     createdAt: Date
     completedAt: Date | null
+    deliveryState: string
+    deliveryAttempts: number
+    enqueuedAt: Date | null
   }, ExtArgs["result"]["backtestPlan"]>
   composites: {}
 }
@@ -1194,6 +1293,9 @@ export interface BacktestPlanFieldRefs {
   readonly receipt: Prisma.FieldRef<"BacktestPlan", 'Json'>
   readonly createdAt: Prisma.FieldRef<"BacktestPlan", 'DateTime'>
   readonly completedAt: Prisma.FieldRef<"BacktestPlan", 'DateTime'>
+  readonly deliveryState: Prisma.FieldRef<"BacktestPlan", 'String'>
+  readonly deliveryAttempts: Prisma.FieldRef<"BacktestPlan", 'Int'>
+  readonly enqueuedAt: Prisma.FieldRef<"BacktestPlan", 'DateTime'>
 }
     
 

@@ -60,6 +60,7 @@ export const ModelName = {
   Fixture: 'Fixture',
   BacktestPlan: 'BacktestPlan',
   BacktestWindow: 'BacktestWindow',
+  BacktestEvaluation: 'BacktestEvaluation',
   SourceObservation: 'SourceObservation',
   StandingSnapshot: 'StandingSnapshot',
   StandingSnapshotRow: 'StandingSnapshotRow',
@@ -214,7 +215,10 @@ export const BacktestPlanScalarFieldEnum = {
   correlationId: 'correlationId',
   receipt: 'receipt',
   createdAt: 'createdAt',
-  completedAt: 'completedAt'
+  completedAt: 'completedAt',
+  deliveryState: 'deliveryState',
+  deliveryAttempts: 'deliveryAttempts',
+  enqueuedAt: 'enqueuedAt'
 } as const
 
 export type BacktestPlanScalarFieldEnum = (typeof BacktestPlanScalarFieldEnum)[keyof typeof BacktestPlanScalarFieldEnum]
@@ -227,6 +231,7 @@ export const BacktestWindowScalarFieldEnum = {
   ordinal: 'ordinal',
   trainingEndsAt: 'trainingEndsAt',
   forecastCutoff: 'forecastCutoff',
+  evaluationAsOf: 'evaluationAsOf',
   state: 'state',
   evidenceBuildIds: 'evidenceBuildIds',
   forecastSnapshotId: 'forecastSnapshotId',
@@ -239,6 +244,23 @@ export const BacktestWindowScalarFieldEnum = {
 } as const
 
 export type BacktestWindowScalarFieldEnum = (typeof BacktestWindowScalarFieldEnum)[keyof typeof BacktestWindowScalarFieldEnum]
+
+
+export const BacktestEvaluationScalarFieldEnum = {
+  id: 'id',
+  windowId: 'windowId',
+  evaluationAsOf: 'evaluationAsOf',
+  resultVersionId: 'resultVersionId',
+  settlementReceiptId: 'settlementReceiptId',
+  scoreIds: 'scoreIds',
+  revision: 'revision',
+  supersedesEvaluationId: 'supersedesEvaluationId',
+  isCurrent: 'isCurrent',
+  receipt: 'receipt',
+  createdAt: 'createdAt'
+} as const
+
+export type BacktestEvaluationScalarFieldEnum = (typeof BacktestEvaluationScalarFieldEnum)[keyof typeof BacktestEvaluationScalarFieldEnum]
 
 
 export const SourceObservationScalarFieldEnum = {

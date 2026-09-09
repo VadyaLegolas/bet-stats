@@ -235,18 +235,40 @@ Plans:
   4. A user can compare INITIAL, PRE_MATCH, and available LINEUP_CONFIRMED snapshots and see which evidence changed the forecast.
   5. TheSportsDB may suggest reconciliation names and logos for administrator review but cannot supply match statistics or silently resolve ambiguity.
 
-**Plans**: 8 plans
+**Plans**: 10 plans
 
 Plans:
 
+**Wave 1**
+
 - [ ] 05-01-PLAN.md — Promote the provider-neutral contract and add the strict API-Football core adapter.
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 05-02-PLAN.md — Persist migration-proven route, attempt, quota and throttle evidence.
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 05-06-PLAN.md — Provide server-authoritative exact forecast-pair comparison.
+- [ ] 05-09-PLAN.md — Register the authenticated operator provider-policy approval boundary in the production Nest graph.
+
+**Wave 4** *(routing/enrichment blocked on 05-09; UI comparison blocked on 05-06)*
+
 - [ ] 05-03-PLAN.md — Route core ingestion with canonical-identity-safe fallback and no-fallback outcomes.
 - [ ] 05-04-PLAN.md — Admit and schedule quota-safe optional pre-match enrichment.
-- [ ] 05-05-PLAN.md — Surface exact provider degradation states on fixture collection and detail.
-- [ ] 05-06-PLAN.md — Provide server-authoritative exact forecast-pair comparison.
 - [ ] 05-07-PLAN.md — Deliver URL-stable accessible forecast comparison UI.
-- [ ] 05-08-PLAN.md — Add suggestion-only TheSportsDB review and close security/UI acceptance.
+
+**Wave 5** *(blocked on core routing)*
+
+- [ ] 05-05-PLAN.md — Surface exact provider degradation states on fixture collection and detail.
+
+**Wave 6** *(blocked on routing, enrichment, provider-state and comparison UI)*
+
+- [ ] 05-08-PLAN.md — Add suggestion-only TheSportsDB review and server-side logo validation.
+
+**Wave 7** *(blocked on suggestion/logo service and authenticated provider module registration)*
+
+- [ ] 05-10-PLAN.md — Register the validated provider-logo HTTP boundary and close held-out security/UI acceptance.
 **UI hint**: yes
 
 ### Phase 6: Release Experience and Operations

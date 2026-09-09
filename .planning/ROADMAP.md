@@ -193,7 +193,7 @@ Plans:
 
 ### Phase 4: Settlement and Evidence Scorecard
 
-**Goal**: Users can measure the quality and financial outcome of frozen forecasts without hindsight leakage or unsupported performance claims.
+**Goal:** As a user, I want to review settled frozen forecasts, so that I can judge predictive and financial quality.
 **Mode:** mvp
 **Depends on**: Phase 3
 **Requirements**: EVAL-01, EVAL-02, EVAL-03, EVAL-04, EVAL-05, EVAL-06, EVAL-07, EVAL-08

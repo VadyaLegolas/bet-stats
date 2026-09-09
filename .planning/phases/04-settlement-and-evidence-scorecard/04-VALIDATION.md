@@ -35,7 +35,7 @@ created: 2026-09-08
 | EVAL-03 | 02,08,06,07 | golden score vectors, persisted facts and grouped API counts | MISSING — Plans 02/08/06 create |
 | EVAL-04 | 03,06,07 | deterministic reliability boundaries, directions and accessible table | MISSING — Plans 03/06 create |
 | EVAL-05 | 04,08,06,07 | per-candidate unit P/L list plus aggregate parity, cursor pagination | MISSING — Plans 04/08/06 create |
-| EVAL-06 | 05,07 | rolling-origin chronology and production/backtest orchestration parity | MISSING — Plan 05 creates |
+| EVAL-06 | 05,07,09 | rolling-origin chronology, production queue/repository execution, scored exact snapshots and matched model comparison | MISSING — Plan 09 closes production witness |
 | EVAL-07 | 03,06,07 | unavailable/limited/available gates, deterministic default cohort, no broadening | MISSING — Plans 03/06 create |
 | EVAL-08 | 04,06,07 | exact closing tuple and reason-coded unavailable CLV | MISSING — Plans 04/06 create |
 
@@ -45,6 +45,7 @@ created: 2026-09-08
 - Deliver the same settlement job twice and after a forced mid-pipeline failure; assert one leaf receipt/fact per deterministic identity.
 - Append a corrected `ResultVersion`; assert linked new settlement/score/value facts, immutable prior revisions, and current-leaf aggregates only.
 - Attempt direct update/delete and cross-fixture/source forgery; PostgreSQL must reject them.
+- Enqueue two compatible rolling-origin plans through the production BullMQ consumer; assert each successful BacktestWindow stores non-empty current ForecastScore IDs and the database-backed comparison reports matched Brier/Log Loss samples without cohort substitution.
 
 ## Manual-Only Verifications
 

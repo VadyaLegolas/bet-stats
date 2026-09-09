@@ -205,7 +205,7 @@ Plans:
   4. Frozen value candidates show per-result unit profit/loss and aggregate ROI and Yield with denominators and sample sizes; weak cohorts are labeled or suppressed.
   5. Backtests use rolling-origin chronology and production-equivalent as-of features, while CLV is shown only when comparable timestamped prices exist and explicitly unavailable otherwise.
 
-**Plans**: 8/8 plans executed
+**Plans**: 8/9 plans executed
 
 Plans:
 
@@ -217,6 +217,7 @@ Plans:
 - [x] 04-06-PLAN.md — Guarded URL-stable evidence scorecard API and UI
 - [x] 04-07-PLAN.md — PostgreSQL security matrix and production Chromium acceptance
 - [x] 04-08-PLAN.md — Idempotent result-to-settlement-to-score/value worker pipeline
+- [ ] 04-09-PLAN.md — Production scored rolling-origin worker and matched model comparison
 
 **UI hint**: yes
 

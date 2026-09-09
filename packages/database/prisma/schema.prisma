@@ -216,6 +216,9 @@ model BacktestPlan {
   receipt      Json
   createdAt    DateTime         @default(now()) @db.Timestamptz(3)
   completedAt  DateTime?        @db.Timestamptz(3)
+  deliveryState String          @default("PENDING")
+  deliveryAttempts Int          @default(0)
+  enqueuedAt   DateTime?        @db.Timestamptz(3)
   windows      BacktestWindow[]
 
   @@index([state, createdAt])
@@ -228,6 +231,7 @@ model BacktestWindow {
   ordinal            Int
   trainingEndsAt     DateTime     @db.Timestamptz(3)
   forecastCutoff     DateTime     @db.Timestamptz(3)
+  evaluationAsOf     DateTime     @db.Timestamptz(3)
   state              String
   evidenceBuildIds   Json?
   forecastSnapshotId String?
@@ -239,11 +243,35 @@ model BacktestWindow {
   completedAt        DateTime?    @db.Timestamptz(3)
   plan               BacktestPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
   fixture            Fixture      @relation(fields: [fixtureId], references: [id], onDelete: Restrict)
+  evaluations        BacktestEvaluation[]
 
   @@unique([planId, ordinal])
   @@unique([planId, fixtureId, forecastCutoff])
   @@index([planId, state, ordinal])
   @@index([fixtureId, forecastCutoff])
+}
+
+/// Append-only evaluation of one immutable rolling-origin forecast at an explicit result boundary.
+model BacktestEvaluation {
+  id                     String       @id
+  windowId               String
+  evaluationAsOf         DateTime     @db.Timestamptz(3)
+  resultVersionId        String
+  settlementReceiptId    String
+  scoreIds               Json
+  revision               Int
+  supersedesEvaluationId String?      @unique
+  isCurrent              Boolean      @default(true)
+  receipt                Json
+  createdAt              DateTime     @default(now()) @db.Timestamptz(3)
+  window                 BacktestWindow @relation(fields: [windowId], references: [id], onDelete: Restrict)
+  supersedesEvaluation   BacktestEvaluation? @relation("BacktestEvaluationSupersession", fields: [supersedesEvaluationId], references: [id], onDelete: Restrict)
+  supersededBy           BacktestEvaluation? @relation("BacktestEvaluationSupersession")
+
+  @@unique([windowId, evaluationAsOf])
+  @@unique([windowId, revision])
+  @@index([windowId, isCurrent])
+  @@index([resultVersionId])
 }
 
 model SourceObservation {

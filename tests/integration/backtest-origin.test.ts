@@ -16,6 +16,7 @@ import {
 } from "../../workers/data-sync/src/jobs/backtests.js";
 
 const cutoff = "2026-08-01T12:00:00.000Z";
+const evaluationAsOf = "2026-08-03T12:00:00.000Z";
 const source = {
   fixtureId: "history-1",
   effectiveAt: "2026-07-20T12:00:00.000Z",
@@ -89,7 +90,7 @@ describe("rolling-origin backtest", () => {
     const replay = await runBacktestOrigin({
       orchestrator,
       repository: repository(backtestTrace),
-      window: { id: "window-1", trainingEndsAt: "2026-07-31T23:59:59.999Z", forecastCutoff: cutoff, fixtureId: "fixture-1" },
+      window: { id: "window-1", trainingEndsAt: "2026-07-31T23:59:59.999Z", forecastCutoff: cutoff, evaluationAsOf, fixtureId: "fixture-1" },
       modelVersion: input.modelVersion,
       configHash: input.configHash,
       correlationId: "backtest-1",
@@ -112,7 +113,7 @@ describe("rolling-origin backtest", () => {
     await expect(runBacktestOrigin({
       orchestrator: new ForecastOrchestrator(),
       repository: repository(trace, future),
-      window: { id: "window-poison", trainingEndsAt: "2026-07-31T23:59:59.999Z", forecastCutoff: cutoff, fixtureId: "fixture-1" },
+      window: { id: "window-poison", trainingEndsAt: "2026-07-31T23:59:59.999Z", forecastCutoff: cutoff, evaluationAsOf, fixtureId: "fixture-1" },
       modelVersion: "poisson-ensemble-v1",
       configHash: currentForecastConfigHash(),
       correlationId: "backtest-poison",
@@ -122,8 +123,8 @@ describe("rolling-origin backtest", () => {
 
   it("admits only bounded chronological plans and rejects random split vocabulary", () => {
     const windows = [
-      { id: "w-1", fixtureId: "fixture-1", trainingEndsAt: "2026-07-01T00:00:00.000Z", forecastCutoff: "2026-07-02T00:00:00.000Z" },
-      { id: "w-2", fixtureId: "fixture-2", trainingEndsAt: "2026-07-02T00:00:00.000Z", forecastCutoff: "2026-07-03T00:00:00.000Z" },
+      { id: "w-1", fixtureId: "fixture-1", trainingEndsAt: "2026-07-01T00:00:00.000Z", forecastCutoff: "2026-07-02T00:00:00.000Z", evaluationAsOf: "2026-07-04T00:00:00.000Z" },
+      { id: "w-2", fixtureId: "fixture-2", trainingEndsAt: "2026-07-02T00:00:00.000Z", forecastCutoff: "2026-07-03T00:00:00.000Z", evaluationAsOf: "2026-07-05T00:00:00.000Z" },
     ];
     const admitted = admitBacktestPlan({ id: "plan-1", version: "rolling-origin-v1", modelVersion: "poisson-ensemble-v1", configHash: currentForecastConfigHash(), rangeFrom: "2026-07-01T00:00:00.000Z", rangeTo: "2026-07-03T00:00:00.000Z", concurrency: 2, windows });
     expect(admitted.windows.map((window) => window.id)).toEqual(["w-1", "w-2"]);
@@ -134,7 +135,7 @@ describe("rolling-origin backtest", () => {
   });
 
   it("converges duplicate delivery by deterministic plan and window identities", async () => {
-    const plan = admitBacktestPlan({ id: "plan-repeat", version: "rolling-origin-v1", modelVersion: "poisson-ensemble-v1", configHash: currentForecastConfigHash(), rangeFrom: "2026-07-01T00:00:00.000Z", rangeTo: cutoff, concurrency: 1, windows: [{ id: "w-repeat", fixtureId: "fixture-1", trainingEndsAt: "2026-07-31T00:00:00.000Z", forecastCutoff: cutoff }] });
+    const plan = admitBacktestPlan({ id: "plan-repeat", version: "rolling-origin-v1", modelVersion: "poisson-ensemble-v1", configHash: currentForecastConfigHash(), rangeFrom: "2026-07-01T00:00:00.000Z", rangeTo: cutoff, concurrency: 1, windows: [{ id: "w-repeat", fixtureId: "fixture-1", trainingEndsAt: "2026-07-31T00:00:00.000Z", forecastCutoff: cutoff, evaluationAsOf }] });
     const plans = new Map<string, unknown>();
     const windows = new Map<string, { state: string; forecastSnapshotId?: string }>();
     const receipts: BacktestReceiptRepository = {
@@ -147,6 +148,7 @@ describe("rolling-origin backtest", () => {
         return { claimed: true, receipt: { ...receipt, state: "RUNNING" } };
       },
       completeWindow: async (id, output) => { windows.set(id, { state: "SUCCEEDED", forecastSnapshotId: output.forecastSnapshotId }); },
+      evaluateWindow: async () => ({ resultVersionId: "result-1", settlementReceiptId: "settlement-1", scoreIds: ["score-1"] }),
       failWindow: async (id) => { windows.set(id, { state: "FAILED" }); },
       completePlan: async () => undefined,
     };

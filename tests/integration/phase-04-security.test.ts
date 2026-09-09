@@ -89,7 +89,7 @@ describe("Phase 04 migrated PostgreSQL security matrix", () => {
   });
 
   it("EVAL-08/T-04-07-02 rejects rolling-origin poison and hostile bounded filters", () => {
-    const base = { id: "matrix-backtest", version: "rolling-origin-v1", modelVersion: "poisson-ensemble-v1", configHash: currentForecastConfigHash(), rangeFrom: bounds.from, rangeTo: bounds.to, concurrency: 1, windows: [{ id: "w1", fixtureId: "matrix-fixture", trainingEndsAt: "2026-09-09T00:00:00.000Z", forecastCutoff: "2026-09-10T17:00:00.000Z" }] };
+    const base = { id: "matrix-backtest", version: "rolling-origin-v1", modelVersion: "poisson-ensemble-v1", configHash: currentForecastConfigHash(), rangeFrom: bounds.from, rangeTo: bounds.to, concurrency: 1, windows: [{ id: "w1", fixtureId: "matrix-fixture", trainingEndsAt: "2026-09-09T00:00:00.000Z", forecastCutoff: "2026-09-10T17:00:00.000Z", evaluationAsOf: "2026-09-12T17:00:00.000Z" }] };
     expect(() => admitBacktestPlan({ ...base, split: "random" } as never)).toThrowError(expect.objectContaining({ code: "RANDOM_SPLIT_REJECTED" }));
     expect(() => admitBacktestPlan({ ...base, concurrency: BACKTEST_LIMITS.maxConcurrency + 1 })).toThrowError(expect.objectContaining({ code: "BACKTEST_LIMIT_EXCEEDED" }));
     expect(() => parseCohortQuery({ modelVersion: "all", competitionId: "all", market: "ONE_X_TWO", from: bounds.to, to: bounds.from })).toThrow(/INVALID_COHORT_PERIOD/);

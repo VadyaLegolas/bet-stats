@@ -186,11 +186,21 @@ Probability movement uses neutral slate text by default. If direction color is a
 | Element | Copy |
 |---------|------|
 | Fixture filter primary CTA | Apply filters |
+| Fixture collection empty | No fixtures match these filters. Change the competition or date range, then apply filters again. |
+| Fixture collection error | Fixtures could not be loaded. Your filters were kept. Select Try loading fixtures again. |
+| Fixture collection retry | Try loading fixtures again |
+| Provider notice error | Provider coverage could not be checked. This fixture remains available, but current source coverage is not available. Select Check provider coverage again. |
+| Provider notice retry | Check provider coverage again |
+| Snapshot availability error | Forecast snapshots could not be refreshed. Verified snapshots already shown were kept. Select Try loading snapshots again. |
+| Snapshot availability retry | Try loading snapshots again |
 | Comparison primary CTA | Compare revisions |
 | Comparison empty heading | No comparable forecast pair yet |
 | Comparison empty body | This fixture does not have two issued forecast snapshots. Review each absent snapshot reason below. |
 | Comparison loading | Comparing the selected immutable snapshots… |
 | Comparison error | These forecast revisions could not be compared. Your selected snapshot IDs were kept. Review the reason and try again. |
+| Comparison retry | Compare these revisions again |
+| Receipt details error | Exact receipt details could not be loaded. The comparison result and selected snapshot IDs were kept. Select Try loading receipt details again. |
+| Receipt details retry | Try loading receipt details again |
 | No material changes | No displayed model components changed between these exact snapshots. |
 | Fallback state heading | Fallback source used |
 | No-fallback heading | Limited data — no production fallback |
@@ -199,6 +209,8 @@ Probability movement uses neutral slate text by default. If direction color is a
 | Missing enrichment | {Enrichment} is not available: {safe reason}. Missing evidence is not treated as zero. |
 | No confirmed lineup | No LINEUP_CONFIRMED snapshot: no official confirmed lineup receipt was available before the cutoff. |
 | Suggestion-only notice | Names, aliases, and logos in this panel are review aids only. They are not production match evidence and cannot approve or change canonical identity. |
+| Suggestion panel error | Suggestions could not be loaded. The reconciliation case and decisions were not changed. Select Try loading suggestions again. |
+| Suggestion panel retry | Try loading suggestions again |
 | Destructive confirmation | Create canonical entity: Create a new canonical entity? This may affect future reconciliation. Suggestions remain review evidence only, and the original evidence and decision remain in audit history. |
 
 Copy rules:
@@ -215,13 +227,13 @@ Copy rules:
 
 | Surface | Loading | Empty | Error | Partial / degraded |
 |---------|---------|-------|-------|--------------------|
-| Fixture collection | Stable neutral skeleton cards and one status; filter controls remain usable | Preserve filters and use existing no-fixtures copy | Preserve URL filters, show retry, reveal no raw provider error | Render valid canonical fixtures once; each limited/stale item carries provider, reason, and time |
-| Provider notice | Keep canonical fixture header; announce `Checking provider coverage` | Not applicable; absent provider projection is unavailable/error | Fail closed to sanitized unavailable notice | Fallback, last-valid, stale, unsupported, pending, and no-fallback remain distinct |
-| Snapshot availability | Three reserved rows labelled by kind | Three explicit absent reasons; never blank cards | Keep any verified entries; retry exact fixture | Available and absent kinds coexist, with absence reason per kind |
-| Pair selectors | Selectors remain visible and disabled only during compare request | Fewer than two snapshots shows documented empty state | Preserve both exact IDs and focus blocking alert | A newly discovered snapshot may appear as an option but never replaces either selection |
-| Comparison result | Preserve previous result but label it `Previous comparison` while loading only if pair IDs differ visibly | No material changes is a populated result, not an empty state | No substitute pair or client-side delta; retry exact IDs | Null components show reasons and no numeric delta; valid siblings remain visible |
-| Receipt details | Summary skeleton only | Not applicable for a successful comparison | `Exact receipt details could not be loaded` with retry | Missing required provenance blocks the affected comparison section |
-| Suggestion panel | Candidate placeholders are non-interactive; one loading status | `No suggestion-only enrichment is available for this case.` | `Suggestions could not be loaded. The reconciliation case and decisions were not changed.` | Invalid/broken logos use placeholder; valid text suggestions remain review-only |
+| Fixture collection | Stable neutral skeleton cards and one status; filter controls remain usable | Preserve filters and show `No fixtures match these filters. Change the competition or date range, then apply filters again.` | Preserve URL filters and show `Fixtures could not be loaded. Your filters were kept. Select Try loading fixtures again.` with `Try loading fixtures again`; reveal no raw provider error | Render valid canonical fixtures once; each limited/stale item carries provider, reason, and time |
+| Provider notice | Keep canonical fixture header; announce `Checking provider coverage` | Not applicable; absent provider projection is unavailable/error | Keep the fixture header and show `Provider coverage could not be checked. This fixture remains available, but current source coverage is not available. Select Check provider coverage again.` with `Check provider coverage again` | Fallback, last-valid, stale, unsupported, pending, and no-fallback remain distinct |
+| Snapshot availability | Three reserved rows labelled by kind | Three explicit absent reasons; never blank cards | Keep verified entries and show `Forecast snapshots could not be refreshed. Verified snapshots already shown were kept. Select Try loading snapshots again.` with `Try loading snapshots again` for the same fixture | Available and absent kinds coexist, with absence reason per kind |
+| Pair selectors | Selectors remain visible and disabled only during compare request | Show `No comparable forecast pair yet` and `This fixture does not have two issued forecast snapshots. Review each absent snapshot reason below.` | Preserve both exact IDs and focus `These forecast revisions could not be compared. Your selected snapshot IDs were kept. Review the reason and try again.` | A newly discovered snapshot may appear as an option but never replaces either selection |
+| Comparison result | Preserve previous result but label it `Previous comparison` while loading only if pair IDs differ visibly | No material changes is a populated result, not an empty state | Show `These forecast revisions could not be compared. Your selected snapshot IDs were kept. Review the reason and try again.` with `Compare these revisions again`; resubmit the same two IDs and never substitute a pair or calculate a client-side delta | Null components show reasons and no numeric delta; valid siblings remain visible |
+| Receipt details | Summary skeleton only | Not applicable for a successful comparison | Show `Exact receipt details could not be loaded. The comparison result and selected snapshot IDs were kept. Select Try loading receipt details again.` with `Try loading receipt details again` | Missing required provenance blocks the affected comparison section |
+| Suggestion panel | Candidate placeholders are non-interactive; one loading status | `No suggestion-only enrichment is available for this case.` | Show `Suggestions could not be loaded. The reconciliation case and decisions were not changed. Select Try loading suggestions again.` with `Try loading suggestions again`; retry reloads suggestions only and cannot submit, approve, reject, create, or otherwise change the reconciliation case or its decisions | Invalid/broken logos use placeholder; valid text suggestions remain review-only |
 | Reconciliation submit | Preserve selected target and note; disable duplicate actions | Not applicable | Preserve fields; conflict requires reload | Missing suggestion data never blocks manual review based on production evidence |
 
 - Any operation over 10 seconds adds `This is taking longer than expected` with a safe retry where applicable.
@@ -253,7 +265,7 @@ Applicable state considerations resolved: 31 covered, 7 backstop, 0 unresolved.
 |----------|------------|--------|---------------------|
 | empty | fixture collection | ✅ covered | Preserve competition/date filters and show the existing no-fixtures state without implying provider failure. |
 | loading | fixture collection | ✅ covered | Stable skeletons plus one status; filters remain usable and canonical identities are never guessed. |
-| error | fixture collection | ✅ covered | Preserve URL state, offer retry, and expose no raw provider response. |
+| error | fixture collection | ✅ covered | Preserve URL state; show the exact fixture-load error and `Try loading fixtures again`; expose no raw provider response. |
 | populated | fixture collection | ✅ covered | Canonical fixtures appear once in date/kickoff order with compact provider and freshness metadata. |
 | partial | fixture collection | ✅ covered | Valid fixtures remain visible while limited/stale siblings carry explicit reasons and timestamps. |
 | overflow | fixture cards/filter | 🧪 backstop | Visual tests at 320px and 200% zoom prove long competition/team/provider text reflows without page scrolling. |
@@ -272,7 +284,7 @@ Applicable state considerations resolved: 31 covered, 7 backstop, 0 unresolved.
 | long-text | snapshot options | 🧪 backstop | Long labels wrap in adjacent selected-summary text; full ID stays copyable even if native option display truncates. |
 | empty | comparison pair | ✅ covered | Fewer than two snapshots renders documented empty copy and absent-kind panel. |
 | loading | comparison request | ✅ covered | Exact selectors remain visible, duplicate submit is disabled, and progress names the selected pair. |
-| error | comparison request | ✅ covered | Preserve exact IDs, never substitute latest, and offer retry after a safe reason. |
+| error | comparison request | ✅ covered | Preserve exact IDs, never substitute latest, show the exact comparison error, and offer `Compare these revisions again`. |
 | populated | comparison result | ✅ covered | Lead with material evidence/model/limitation changes, then stable market probability deltas and receipt. |
 | partial | comparison values | ✅ covered | Missing side/value has a specific reason and no numeric delta; valid sibling rows remain visible. |
 | overflow | delta table/receipt | 🧪 backstop | Only labelled table/code regions scroll; controls and pair identity remain on page. |

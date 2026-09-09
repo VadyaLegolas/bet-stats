@@ -47,16 +47,46 @@ export function admitBacktestPlan(raw: unknown): BacktestPlanReceipt {
   return Object.freeze({ ...canonical, planHash });
 }
 
-export function createBacktestJob(plan: BacktestPlanReceipt) {
-  return { name: "rolling-origin" as const, jobId: `backtest:${plan.id}:${plan.planHash}`, attempts: 3, backoff: { type: "exponential" as const, delay: 1_000 }, removeOnFail: false, data: { planId: plan.id, planHash: plan.planHash } };
+export function createBacktestJob(plan: BacktestPlanReceipt, correlationId = `backtest:${plan.id}`) {
+  return { name: "rolling-origin" as const, jobId: `backtest:${plan.id}:${plan.planHash}`, attempts: 3, backoff: { type: "exponential" as const, delay: 1_000 }, removeOnFail: false, data: { planId: plan.id, planHash: plan.planHash, correlationId } };
+}
+
+export async function admitPersistEnqueueBacktest(raw: unknown, input: {
+  receipts: BacktestReceiptRepository & { markDelivery(id: string, state: "PENDING" | "RETRYABLE" | "DELIVERED"): Promise<void> };
+  queue: { enqueue(data: { planId: string; planHash: string; correlationId: string }): Promise<unknown> };
+  correlationId: string;
+}): Promise<BacktestPlanReceipt> {
+  const plan = admitBacktestPlan(raw);
+  await input.receipts.createPlan(plan, input.correlationId);
+  try {
+    await input.queue.enqueue({ planId: plan.id, planHash: plan.planHash, correlationId: input.correlationId });
+    await input.receipts.markDelivery(plan.id, "DELIVERED");
+  } catch (cause) {
+    await input.receipts.markDelivery(plan.id, "RETRYABLE");
+    throw Object.assign(new Error("BACKTEST_QUEUE_DELIVERY_FAILED"), { code: "BACKTEST_QUEUE_DELIVERY_FAILED", cause });
+  }
+  return plan;
+}
+
+export async function reconcileBacktestDelivery(input: {
+  receipts: { listPendingDelivery(): Promise<Array<{ id: string; planHash: string; correlationId: string }>>; markDelivery(id: string, state: "PENDING" | "RETRYABLE" | "DELIVERED"): Promise<void> };
+  queue: { enqueue(data: { planId: string; planHash: string; correlationId: string }): Promise<unknown> };
+}): Promise<number> {
+  const pending = await input.receipts.listPendingDelivery();
+  for (const data of pending) {
+    await input.queue.enqueue({ planId: data.id, planHash: data.planHash, correlationId: data.correlationId });
+    await input.receipts.markDelivery(data.id, "DELIVERED");
+  }
+  return pending.length;
 }
 
 export interface BacktestWindowReceipt extends RollingOriginWindow { readonly planId: string; readonly state: "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED"; readonly evidenceBuildIds?: readonly string[]; readonly forecastSnapshotId?: string; readonly scoreIds?: readonly string[]; readonly correlationId: string }
 export interface BacktestReceiptRepository {
-  createPlan(plan: BacktestPlanReceipt): Promise<void>;
+  createPlan(plan: BacktestPlanReceipt, correlationId?: string): Promise<void>;
   findPlan(id: string): Promise<BacktestPlanReceipt | null>;
   claimWindow(receipt: BacktestWindowReceipt): Promise<{ claimed: boolean; receipt: BacktestWindowReceipt }>;
   completeWindow(id: string, output: { evidenceBuildIds: readonly string[]; forecastSnapshotId: string; scoreIds: readonly string[] }): Promise<void>;
+  evaluateWindow(id: string, input: { fixtureId: string; forecastSnapshotId: string; evaluationAsOf: string; correlationId: string }): Promise<{ resultVersionId: string; settlementReceiptId: string; scoreIds: unknown }>;
   failWindow(id: string, code: string): Promise<void>;
   completePlan(id: string): Promise<void>;
 }
@@ -64,7 +94,7 @@ export interface BacktestReceiptRepository {
 export async function runBacktestPlan(input: { plan: BacktestPlanReceipt; receipts: BacktestReceiptRepository; orchestrator: ForecastOrchestrator; repository: ForecastOrchestratorRepository; correlationId: string }) {
   const existing = await input.receipts.findPlan(input.plan.id);
   if (existing && existing.planHash !== input.plan.planHash) throw error("BACKTEST_PLAN_ID_CONFLICT");
-  if (!existing) await input.receipts.createPlan(input.plan);
+  if (!existing) await input.receipts.createPlan(input.plan, input.correlationId);
   const completedWindowIds: string[] = []; const duplicateWindowIds: string[] = [];
   for (const window of input.plan.windows) {
     const receipt: BacktestWindowReceipt = { ...window, planId: input.plan.id, state: "PENDING", correlationId: input.correlationId };
@@ -72,7 +102,10 @@ export async function runBacktestPlan(input: { plan: BacktestPlanReceipt; receip
     if (!claim.claimed) { duplicateWindowIds.push(window.id); completedWindowIds.push(window.id); continue; }
     try {
       const result = await runBacktestOrigin({ orchestrator: input.orchestrator, repository: input.repository, window, modelVersion: input.plan.modelVersion, configHash: input.plan.configHash, correlationId: input.correlationId, planId: input.plan.id });
-      await input.receipts.completeWindow(window.id, { evidenceBuildIds: result.forecast.evidenceBuildIds, forecastSnapshotId: result.forecast.id, scoreIds: [] });
+      const evaluation = await input.receipts.evaluateWindow(window.id, { fixtureId: window.fixtureId, forecastSnapshotId: result.forecast.id, evaluationAsOf: window.evaluationAsOf, correlationId: input.correlationId });
+      const scoreIds = evaluation.scoreIds as readonly string[];
+      if (!Array.isArray(scoreIds) || scoreIds.length === 0) throw error("BACKTEST_SCORE_IDS_EMPTY");
+      await input.receipts.completeWindow(window.id, { evidenceBuildIds: result.forecast.evidenceBuildIds, forecastSnapshotId: result.forecast.id, scoreIds });
       completedWindowIds.push(window.id);
     } catch (cause) { await input.receipts.failWindow(window.id, cause instanceof Error ? cause.message : "BACKTEST_FAILED"); throw cause; }
   }

@@ -1,6 +1,7 @@
 import { Queue, Worker, UnrecoverableError, type Job, type JobsOptions, type Processor } from "bullmq";
 import type { PrismaClient } from "@bet-stats/database";
 import { claimReplayExecution, type ReplayExecutionContext, type ReplayExecutionLeaseOptions } from "./replay-execution.js";
+import type { BacktestPlanReceipt } from "../jobs/backtests.js";
 
 export type SyncLane = "critical" | "standard" | "optional";
 export type CriticalJobName = "fixtures" | "results";
@@ -11,6 +12,30 @@ export const optionalQueue = (prefix = "bet-stats") => `${prefix}-sync-optional`
 
 export const SYNC_MAX_ATTEMPTS = 3;
 export const SETTLEMENT_MAX_ATTEMPTS = 3;
+export const BACKTEST_MAX_ATTEMPTS = 3;
+
+export interface BacktestJobData { planId: string; planHash: string; correlationId: string }
+export function backtestQueue(prefix = "bet-stats"): string {
+  if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) throw new Error("Queue prefix contains unsupported characters");
+  return `${prefix}-backtest`;
+}
+export function createBacktestQueue(input: { redisUrl: string; prefix?: string }) {
+  const queue = new Queue<BacktestJobData>(backtestQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
+  return {
+    enqueue: (data: BacktestJobData) => queue.add("rolling-origin", data, { attempts: BACKTEST_MAX_ATTEMPTS, backoff: { type: "exponential", delay: 1_000, jitter: 0.25 }, removeOnComplete: { age: 86_400, count: 1_000 }, removeOnFail: { age: 604_800, count: 5_000 }, jobId: `backtest-${data.planId}-${data.planHash}` }),
+    close: () => queue.close(),
+  };
+}
+export function createBacktestWorker(input: { redisUrl: string; prefix?: string; loadPlan: (id: string) => Promise<BacktestPlanReceipt | null>; execute: (plan: BacktestPlanReceipt, data: BacktestJobData) => Promise<unknown> }) {
+  return new Worker<BacktestJobData>(backtestQueue(input.prefix), async (job) => {
+    const data = job.data;
+    if (!data || typeof data.planId !== "string" || typeof data.planHash !== "string" || typeof data.correlationId !== "string") throw new UnrecoverableError("INVALID_BACKTEST_JOB");
+    const plan = await input.loadPlan(data.planId);
+    if (!plan) throw new UnrecoverableError("BACKTEST_PLAN_NOT_FOUND");
+    if (plan.planHash !== data.planHash) throw new UnrecoverableError("BACKTEST_PLAN_HASH_MISMATCH");
+    return input.execute(plan, data);
+  }, { connection: redisConnection(input.redisUrl), concurrency: 1, maxStalledCount: 2, lockDuration: 60_000 });
+}
 
 export interface SettlementJobData {
   fixtureId: string;

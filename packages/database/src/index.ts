@@ -4,3 +4,6 @@ export { createReplayProviderPolicyRepository, DEFAULT_REPLAY_PROVIDER_POLICIES 
 export type { ReplayProviderPolicyConfig, ReplayProviderPolicyRepository } from "./replay-provider-policy.js";
 export { createSettlementPipelineService, SETTLEMENT_PIPELINE_POLICY_HASH } from "./evaluation/settlement-pipeline.js";
 export type { SettlementPipelineCommand, SettlementPipelineResult } from "./evaluation/settlement-pipeline.js";
+export { compareBacktestPlans, createPrismaBacktestReceiptRepository, resolveHistoricalResultGraph } from "./evaluation/backtest-repository.js";
+export { createPrismaForecastRepository } from "./forecast-repository.js";
+export type { ForecastPublicationRepository } from "./forecast-repository.js";

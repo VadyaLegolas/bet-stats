@@ -2,17 +2,18 @@
 gsd_state_version: 1.0
 current_phase: 4
 current_phase_name: Settlement and Evidence Scorecard
-current_plan: 6
+current_plan: 8
 status: executing
-stopped_at: Completed 04-06-PLAN.md
-last_updated: "2026-09-08T22:19:16.537Z"
+stopped_at: Completed 04-07-PLAN.md
+last_updated: "2026-09-09T03:35:42.276Z"
 last_activity: 2026-09-09
 last_activity_desc: Phase 03 complete, transitioned to Phase 4
+state_head: 4d62c643f8a5d3634251b5b6155f54debb88cc0f
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 60
-  completed_plans: 59
+  completed_plans: 60
   percent: 50
 ---
 
@@ -28,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 4 — Settlement and Evidence Scorecard
-Current Plan: 6
+Current Plan: 8
 Total Plans in Phase: 8
 Status: Ready to execute
 Last Activity: 2026-09-09
@@ -89,6 +90,7 @@ Progress: [█████░░░░░] 50%
 | Phase 04 P04 | 16min | 2 tasks | 20 files |
 | Phase 04 P05 | 12min | 2 tasks | 21 files |
 | Phase 04 P06 | 18min | 2 tasks | 9 files |
+| Phase 04 P07 | 34min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -132,6 +134,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 4]: Phase 04: ROI and Yield are disclosed aliases of totalProfitUnits / totalStakedUnits under flat-one-unit-v1.
 - [Phase 4]: Phase 04: CLV requires an explicitly labeled market-close observation with an exact comparable tuple.
 - [Phase 4]: Phase 04: Production and backtest forecasts share ForecastOrchestrator.run; future evidence fails closed before publication.
+- [Phase 4]: Phase 04 acceptance seeds canonical sources and invokes the production settlement service before comparing PostgreSQL, Nest JSON and browser DOM.
 
 ### Pending Todos
 
@@ -151,6 +154,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-08T22:19:16.375Z
-Stopped at: Completed 04-06-PLAN.md
+Last session: 2026-09-09T03:35:08.747Z
+Stopped at: Completed 04-07-PLAN.md
 Resume file: None

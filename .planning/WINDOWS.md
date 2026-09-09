@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 16
+open_count: 17
 waived_count: 0
 fixed_count: 0
-total_count: 16
-last_updated: 2026-09-08T11:15:03.119Z
+total_count: 17
+last_updated: 2026-09-09T03:34:56.324Z
 ---
 
 # Broken Windows Ledger
@@ -31,6 +31,7 @@ last_updated: 2026-09-08T11:15:03.119Z
 | 14 | 03 | unrun-verify | tests/integration/value-receipt.test.ts |  | PostgreSQL receipt lifecycle, membership, and derived-field integration suite was not run because DATABASE_URL was unavailable | open |  | 2026-09-08T07:18:47.219Z |  |
 | 15 | 03 | unrun-verify | tests/integration/phase-03-security.test.ts |  | PostgreSQL security matrix not run: DATABASE_URL unset and Docker Engine unavailable | open |  | 2026-09-08T11:15:02.661Z |  |
 | 16 | 03 | unrun-verify | tests/e2e/forecast-workbench.spec.ts |  | Production-backed Chromium workbench not run: PostgreSQL environment unavailable | open |  | 2026-09-08T11:15:03.119Z |  |
+| 17 | 04 | unrun-verify | tests/integration |  | Repository-wide integration command requires external shared database state; plan-owned PostgreSQL acceptance passed | open |  | 2026-09-09T03:34:56.324Z |  |
 
 ````json
 [
@@ -224,6 +225,18 @@ last_updated: 2026-09-08T11:15:03.119Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-08T11:15:03.119Z",
+    "resolved_at": null
+  },
+  {
+    "id": 17,
+    "kind": "unrun-verify",
+    "phase": "04",
+    "file": "tests/integration",
+    "line": null,
+    "description": "Repository-wide integration command requires external shared database state; plan-owned PostgreSQL acceptance passed",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-09T03:34:56.324Z",
     "resolved_at": null
   }
 ]

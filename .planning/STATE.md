@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 current_phase: 4
 current_phase_name: Settlement and Evidence Scorecard
 current_plan: 8
-status: executing
-stopped_at: Completed 04-07-PLAN.md
-last_updated: "2026-09-09T03:35:42.276Z"
+status: verifying
+stopped_at: Completed 04-09-PLAN.md
+last_updated: "2026-09-09T09:00:50.808Z"
 last_activity: 2026-09-09
 last_activity_desc: Phase 03 complete, transitioned to Phase 4
-state_head: 4d62c643f8a5d3634251b5b6155f54debb88cc0f
+state_head: ecc27f0b5340e684af538eff0be050e71cec764c
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 60
-  completed_plans: 60
+  total_plans: 61
+  completed_plans: 61
   percent: 50
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 Phase: 4 — Settlement and Evidence Scorecard
 Current Plan: 8
 Total Plans in Phase: 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last Activity: 2026-09-09
 Last Activity Description: Phase 03 complete, transitioned to Phase 4
 
@@ -91,6 +91,7 @@ Progress: [█████░░░░░] 50%
 | Phase 04 P05 | 12min | 2 tasks | 21 files |
 | Phase 04 P06 | 18min | 2 tasks | 9 files |
 | Phase 04 P07 | 34min | 2 tasks | 4 files |
+| Phase 04 P09 | 18min | 3 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 4]: Phase 04: CLV requires an explicitly labeled market-close observation with an exact comparable tuple.
 - [Phase 4]: Phase 04: Production and backtest forecasts share ForecastOrchestrator.run; future evidence fails closed before publication.
 - [Phase 4]: Phase 04 acceptance seeds canonical sources and invokes the production settlement service before comparing PostgreSQL, Nest JSON and browser DOM.
+- [Phase 4]: Phase 04: Forecast evidence uses forecastCutoff while result knowledge independently uses evaluationAsOf.
+- [Phase 4]: Phase 04: BullMQ carries only plan identity and hash; workers reconstruct immutable work from PostgreSQL.
 
 ### Pending Todos
 
@@ -154,6 +157,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-09T03:35:08.747Z
-Stopped at: Completed 04-07-PLAN.md
+Last session: 2026-09-09T09:00:49.642Z
+Stopped at: Completed 04-09-PLAN.md
 Resume file: None

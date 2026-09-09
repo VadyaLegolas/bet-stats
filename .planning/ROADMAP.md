@@ -205,7 +205,7 @@ Plans:
   4. Frozen value candidates show per-result unit profit/loss and aggregate ROI and Yield with denominators and sample sizes; weak cohorts are labeled or suppressed.
   5. Backtests use rolling-origin chronology and production-equivalent as-of features, while CLV is shown only when comparable timestamped prices exist and explicitly unavailable otherwise.
 
-**Plans**: 8/9 plans executed
+**Plans**: 9/9 plans executed
 
 Plans:
 
@@ -217,7 +217,7 @@ Plans:
 - [x] 04-06-PLAN.md — Guarded URL-stable evidence scorecard API and UI
 - [x] 04-07-PLAN.md — PostgreSQL security matrix and production Chromium acceptance
 - [x] 04-08-PLAN.md — Idempotent result-to-settlement-to-score/value worker pipeline
-- [ ] 04-09-PLAN.md — Production scored rolling-origin worker and matched model comparison
+- [x] 04-09-PLAN.md — Production scored rolling-origin worker and matched model comparison
 
 **UI hint**: yes
 
@@ -262,6 +262,6 @@ Plans:
 | 1. Trustworthy Fixture Discovery | 12/12 | Complete    | 2026-08-29 |
 | 2. Historical Evidence Pipeline | 28/28 | Complete    | 2026-09-05 |
 | 3. Forecast and Manual Value Workbench | 12/12 | Complete    | 2026-09-08 |
-| 4. Settlement and Evidence Scorecard | 8/8 | In Progress|  |
+| 4. Settlement and Evidence Scorecard | 9/9 | In Progress|  |
 | 5. Provider-Aware Coverage and Enrichment | 0/TBD | Not started | - |
 | 6. Release Experience and Operations | 0/TBD | Not started | - |

@@ -281,19 +281,21 @@ This preserves the existing exact-key capability behavior; new circuit/reservati
 | A3 | Proposed provider registry and new circuit/reservation DTO shapes. | Code Examples | Compile/schema mismatch; define before implementation. |
 | A4 | Retry default: 3 attempts, exponential 1s base with jitter, circuit opens after 5 retryable failures for 5 minutes. | Open Questions | Provider SLA and quota impact; credentialed degradation tests must tune. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **What are the live credential-specific quota/reset facts?**
-   - Public docs describe football-data.org's minute throttle and API-Football's daily/per-minute headers.
-   - Exact API-Football daily reset instant, subscribed allowance, and proxy-specific headers must be captured from live credentials.
-   - Plan a non-production credential probe that stores redacted headers and fails closed if reset semantics remain unknown.
-2. **What are the exact API-Football IDs and current-season coverage flags for UCL, UEL and UECL?**
-   - The official `/leagues` coverage object is authoritative per season, while public coverage notes variability.
-   - Seed no guessed numeric IDs; ingest and approve mappings from a credentialed `/leagues` receipt.
-3. **How much kickoff drift exists between providers?**
-   - Begin with configurable ±15 minutes [ASSUMED], run a shadow reconciliation sample, and require human approval before locking.
-4. **Retry/circuit defaults?**
-   - Recommended [ASSUMED]: three attempts, exponential 1-second base plus jitter; circuit opens after five consecutive retryable failures for five minutes, one leased half-open probe, and honors a valid retry-after signal.
+1. **Credential-specific quota and reset semantics**
+   - Resolution: public documentation supplies only documented defaults; deployment facts are admitted only from an explicit, non-production credentialed probe. The probe is opt-in, operator-approved, redacts credentials and non-allowlisted headers, and emits a review artifact rather than mutating route policy automatically. [CITED: https://docs.football-data.org/general/v4/policies.html] [CITED: https://www.api-football.com/news/post/how-ratelimit-works]
+   - Fail-closed rule: missing credentials, absent/malformed limit headers, an unknown reset instant, or disagreement between configured policy and observed metadata denies that provider/endpoint admission until an operator approves a versioned policy update. This denial is provider/endpoint-local and must not fail the deterministic CI suite or disable unrelated providers/endpoints.
+   - No numeric daily allowance, reset instant, league ID, or proxy-header behavior is asserted without a probe-confirmed receipt. The documented football-data.org free-plan minute throttle remains a documented default, not proof of the active account's deployment allowance.
+2. **API-Football competition/season IDs and coverage**
+   - Resolution: do not seed guessed IDs. A credentialed `/leagues` probe must return a request-bound, redacted receipt; an operator then approves the exact `(provider, competition, season, endpoint)` mapping and coverage flags as versioned capability records. [CITED: https://www.api-football.com/news/post/how-to-optimize-api-sports-calls-and-quota-usage]
+   - Fail-closed rule: missing, stale, contradictory, or season-mismatched metadata yields `unknown/unsupported` admission for only that provider/competition/season/endpoint. UEL/UECL therefore surface the locked no-fallback limited-data state; top-five/UCL may use only an independently eligible, exact route.
+3. **Cross-provider kickoff drift**
+   - Resolution: use a configurable, versioned ±15-minute reconciliation candidate window as the documented planning default [ASSUMED], but never as sufficient identity proof. Acceptance still requires canonical home/away participants and exactly one candidate; zero or multiple candidates create/reuse an audited reconciliation case and block publication.
+   - Before promoting the default beyond shadow mode, run a held-out recorded corpus containing exact matches, drift within/outside the window, reschedules, reversed participants, and collisions. Changing the window requires a new policy version and regression evidence; no credential-derived fixture IDs are committed as universal constants.
+4. **Retry and circuit defaults**
+   - Resolution: use configurable defaults of at most three total attempts, exponential backoff from 1 second with bounded jitter, and a circuit that opens after five consecutive retryable failures for five minutes with one leased half-open probe [ASSUMED]. A valid provider `Retry-After`/reset observation may lengthen the delay but may never widen capacity.
+   - Retries apply only to classified transient transport, 429, and 5xx failures. Validation errors, identity ambiguity, unsupported/stale capability, protected-budget denial, unknown reset semantics, and provider metadata disagreement fail closed without retry storms. Deterministic tests use injected clocks/randomness and recorded responses; the credentialed probe is a separate manual gate.
 
 ## Environment Availability
 

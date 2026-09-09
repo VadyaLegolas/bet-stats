@@ -20,7 +20,9 @@ The phase plans own creation of the following missing test artifacts before or a
 |------|------------------|------------|
 | `tests/unit/provider-contract.test.ts` | Provider-neutral round trip, request-bound validation, provider IDs excluded from canonical authority | 05-01 |
 | `tests/integration/api-football-provider.test.ts` | Strict `/leagues`, `/fixtures`, `/standings`, `/teams` envelopes; 429/5xx/malformed redaction | 05-01 |
+| `tests/unit/provider-policy-probe.test.ts` | Opt-in/non-production refusal, redacted pending artifact schema, unknown/disagreement fail-closed behavior | 05-01 |
 | `tests/integration/provider-routing.test.ts` | Versioned route receipts, primary/sole-source policy, admission and append-only attempts | 05-02, 05-03 |
+| `tests/integration/provider-policy-approval.test.ts` | Authenticated approval boundary, exact-scope versioning, stale/mismatched/unknown rejection | 05-02 |
 | `tests/integration/provider-fallback-identity.test.ts` | Exact-ref-first fallback, held-out kickoff drift, ambiguity quarantine, canonical ID stability | 05-03 |
 | `tests/integration/enrichment-admission.test.ts` | Capability/circuit/budget ordering, protected headroom, official lineup and cutoff rules | 05-04 |
 | `tests/integration/provider-state-api.test.ts` | Safe limited/stale/unavailable/pending provider projections | 05-05 |
@@ -70,6 +72,8 @@ Run from the repository root under the required Node 24 runtime.
 ```powershell
 corepack pnpm exec vitest run tests/unit/provider-contract.test.ts --project unit
 corepack pnpm exec vitest run tests/integration/api-football-provider.test.ts --project integration
+corepack pnpm exec vitest run tests/unit/provider-policy-probe.test.ts --project unit
+corepack pnpm exec vitest run tests/integration/provider-policy-approval.test.ts --project integration
 corepack pnpm exec vitest run tests/integration/provider-routing.test.ts tests/integration/provider-fallback-identity.test.ts --project integration
 corepack pnpm exec vitest run tests/integration/enrichment-admission.test.ts tests/integration/forecast-snapshots.test.ts --project integration
 corepack pnpm exec vitest run tests/unit/provider-state-ui.test.tsx --project unit

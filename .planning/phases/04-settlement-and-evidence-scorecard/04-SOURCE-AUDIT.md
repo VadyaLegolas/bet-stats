@@ -27,7 +27,7 @@
 | Exact frozen categorical scoring and persisted facts | COVERED | 04-02 |
 | Deterministic reliability buckets and cohort health | COVERED | 04-03 |
 | Decimal flat-unit settlement and CLV comparability | COVERED | 04-04 |
-| Production-equivalent rolling-origin receipts using the same production orchestration entry point, separate forecast/evaluation as-of boundaries, durable admit-persist-enqueue-reconcile lifecycle, correction-safe exact scoring and matched comparison | COVERED | 04-05, 04-09 gap closure |
+| Production-equivalent rolling-origin receipts using the same production orchestration entry point, separate forecast/evaluation as-of boundaries, historical in-slice correction leaves, durable admit-persist-enqueue-reconcile lifecycle, correction-safe exact scoring and matched comparison | COVERED | 04-05, 04-09 gap closure |
 | Canonical query identity, deterministic default cohort/no-gate behavior and health-first UI | COVERED | 04-06 |
 | Page-by-page per-candidate P/L with aggregate reconciliation | COVERED | 04-06, 04-07 |
 | PostgreSQL, correction/retry, security and production-browser validation gaps | COVERED | 04-VALIDATION; 04-08; consolidated in 04-07 |

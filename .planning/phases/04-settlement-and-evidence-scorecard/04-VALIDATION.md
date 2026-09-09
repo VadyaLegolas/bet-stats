@@ -46,8 +46,8 @@ created: 2026-09-08
 - Append a corrected `ResultVersion`; assert linked new settlement/score/value facts, immutable prior revisions, and current-leaf aggregates only.
 - Attempt direct update/delete and cross-fixture/source forgery; PostgreSQL must reject them.
 - Admit and persist two compatible rolling-origin plans before deterministic BullMQ enqueue; assert failed delivery reconciliation and consumer restart load the durable hash-matched plan rather than inline windows.
-- Assert forecast evidence is bounded by forecastCutoff while the exact unique ResultVersion correction leaf is bounded independently by evaluationAsOf; poison, missing, forked and malformed lineages fail closed.
-- Append a ResultVersion correction after an initially scored window; assert an immutable linked evaluation revision preserves prior scoreIds, advances the deterministic current leaf, and keeps the matched Brier/Log Loss cohort non-empty without substitution.
+- Assert forecast evidence is bounded by forecastCutoff. For result truth, first filter ResultVersion rows by `observedAt <= evaluationAsOf AND effectiveAt <= evaluationAsOf`, then require one acyclic leaf inside only that historical subgraph; poison, missing, in-slice forked and malformed lineages fail closed.
+- Persist v1 before the first evaluationAsOf and correcting v2 after it; assert the historical evaluation remains v1 even when v2 exists. Advance evaluationAsOf past v2; assert an immutable linked v2 evaluation revision preserves v1 scoreIds, becomes current, and keeps the matched Brier/Log Loss cohort non-empty.
 
 ## Manual-Only Verifications
 

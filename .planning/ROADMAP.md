@@ -235,7 +235,18 @@ Plans:
   4. A user can compare INITIAL, PRE_MATCH, and available LINEUP_CONFIRMED snapshots and see which evidence changed the forecast.
   5. TheSportsDB may suggest reconciliation names and logos for administrator review but cannot supply match statistics or silently resolve ambiguity.
 
-**Plans**: TBD
+**Plans**: 8 plans
+
+Plans:
+
+- [ ] 05-01-PLAN.md — Promote the provider-neutral contract and add the strict API-Football core adapter.
+- [ ] 05-02-PLAN.md — Persist migration-proven route, attempt, quota and throttle evidence.
+- [ ] 05-03-PLAN.md — Route core ingestion with canonical-identity-safe fallback and no-fallback outcomes.
+- [ ] 05-04-PLAN.md — Admit and schedule quota-safe optional pre-match enrichment.
+- [ ] 05-05-PLAN.md — Surface exact provider degradation states on fixture collection and detail.
+- [ ] 05-06-PLAN.md — Provide server-authoritative exact forecast-pair comparison.
+- [ ] 05-07-PLAN.md — Deliver URL-stable accessible forecast comparison UI.
+- [ ] 05-08-PLAN.md — Add suggestion-only TheSportsDB review and close security/UI acceptance.
 **UI hint**: yes
 
 ### Phase 6: Release Experience and Operations

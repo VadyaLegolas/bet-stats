@@ -21,7 +21,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "corepack pnpm --filter @bet-stats/config build && corepack pnpm --filter @bet-stats/domain build && corepack pnpm --filter @bet-stats/api build && corepack pnpm --filter @bet-stats/api dev",
+      command: "corepack pnpm --filter @bet-stats/config build && corepack pnpm --filter @bet-stats/domain build && corepack pnpm --filter @bet-stats/football-data build && corepack pnpm --filter @bet-stats/database build && corepack pnpm --filter @bet-stats/api build && corepack pnpm --filter @bet-stats/api dev",
       port: 3001,
       reuseExistingServer: false,
       timeout: 120_000,

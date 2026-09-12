@@ -67,6 +67,20 @@ describe("provider policy approval", () => {
     expect(responses.map((response) => response.status)).toEqual([201, 201]);
     expect(await database.providerRouteAttempt.count({ where: { attemptKey: "approval-concurrent" } })).toBe(1);
   });
+
+  it.each([
+    ["stale", (command: any) => { command.artifact.capturedAt = "2020-01-01T00:00:00.000Z"; }, "ARTIFACT_STALE"],
+    ["mismatch", (command: any) => { command.artifact.scope.endpoint = "RESULTS"; }, "ARTIFACT_SCOPE_MISMATCH"],
+    ["disagreement", (command: any) => { command.artifact.disagreements = ["SEASON_MISMATCH"]; }, "ARTIFACT_DISAGREEMENT"],
+    ["version", (command: any) => { command.expectedPolicyVersion = "provider-route-policy/v0"; }, "POLICY_VERSION_CONFLICT"],
+  ])("rejects %s authority changes with stable scoped evidence", async (suffix, mutate, code) => {
+    const command = approvalCommand(`approval-${suffix}`);
+    mutate(command);
+    const response = await authorized(command);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ code });
+    expect(await database.providerRouteAttempt.findUnique({ where: { attemptKey: `approval-${suffix}` } })).toMatchObject({ admitted: false, reason: code });
+  });
 });
 
 function authorized(command: ReturnType<typeof approvalCommand>) {

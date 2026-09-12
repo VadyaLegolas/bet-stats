@@ -416,6 +416,10 @@ export const ModelName = {
   ReplayDelivery: 'ReplayDelivery',
   SyncAttempt: 'SyncAttempt',
   ProviderCircuitState: 'ProviderCircuitState',
+  ProviderRouteReceipt: 'ProviderRouteReceipt',
+  ProviderRouteAttempt: 'ProviderRouteAttempt',
+  ProviderQuotaObservation: 'ProviderQuotaObservation',
+  ProviderThrottleReservation: 'ProviderThrottleReservation',
   EvidenceBuild: 'EvidenceBuild',
   EvidenceComponent: 'EvidenceComponent',
   LineupObservation: 'LineupObservation',
@@ -453,7 +457,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1860,6 +1864,302 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ProviderCircuitStateCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ProviderCircuitStateCountAggregateOutputType> | number
+        }
+      }
+    }
+    ProviderRouteReceipt: {
+      payload: Prisma.$ProviderRouteReceiptPayload<ExtArgs>
+      fields: Prisma.ProviderRouteReceiptFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ProviderRouteReceiptFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteReceiptPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ProviderRouteReceiptFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteReceiptPayload>
+        }
+        findFirst: {
+          args: Prisma.ProviderRouteReceiptFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteReceiptPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ProviderRouteReceiptFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteReceiptPayload>
+        }
+        findMany: {
+          args: Prisma.ProviderRouteReceiptFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteReceiptPayload>[]
+        }
+        create: {
+          args: Prisma.ProviderRouteReceiptCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteReceiptPayload>
+        }
+        createMany: {
+          args: Prisma.ProviderRouteReceiptCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ProviderRouteReceiptCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteReceiptPayload>[]
+        }
+        delete: {
+          args: Prisma.ProviderRouteReceiptDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteReceiptPayload>
+        }
+        update: {
+          args: Prisma.ProviderRouteReceiptUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteReceiptPayload>
+        }
+        deleteMany: {
+          args: Prisma.ProviderRouteReceiptDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ProviderRouteReceiptUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ProviderRouteReceiptUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteReceiptPayload>[]
+        }
+        upsert: {
+          args: Prisma.ProviderRouteReceiptUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteReceiptPayload>
+        }
+        aggregate: {
+          args: Prisma.ProviderRouteReceiptAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateProviderRouteReceipt>
+        }
+        groupBy: {
+          args: Prisma.ProviderRouteReceiptGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProviderRouteReceiptGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ProviderRouteReceiptCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProviderRouteReceiptCountAggregateOutputType> | number
+        }
+      }
+    }
+    ProviderRouteAttempt: {
+      payload: Prisma.$ProviderRouteAttemptPayload<ExtArgs>
+      fields: Prisma.ProviderRouteAttemptFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ProviderRouteAttemptFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteAttemptPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ProviderRouteAttemptFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteAttemptPayload>
+        }
+        findFirst: {
+          args: Prisma.ProviderRouteAttemptFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteAttemptPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ProviderRouteAttemptFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteAttemptPayload>
+        }
+        findMany: {
+          args: Prisma.ProviderRouteAttemptFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteAttemptPayload>[]
+        }
+        create: {
+          args: Prisma.ProviderRouteAttemptCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteAttemptPayload>
+        }
+        createMany: {
+          args: Prisma.ProviderRouteAttemptCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ProviderRouteAttemptCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteAttemptPayload>[]
+        }
+        delete: {
+          args: Prisma.ProviderRouteAttemptDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteAttemptPayload>
+        }
+        update: {
+          args: Prisma.ProviderRouteAttemptUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteAttemptPayload>
+        }
+        deleteMany: {
+          args: Prisma.ProviderRouteAttemptDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ProviderRouteAttemptUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ProviderRouteAttemptUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteAttemptPayload>[]
+        }
+        upsert: {
+          args: Prisma.ProviderRouteAttemptUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderRouteAttemptPayload>
+        }
+        aggregate: {
+          args: Prisma.ProviderRouteAttemptAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateProviderRouteAttempt>
+        }
+        groupBy: {
+          args: Prisma.ProviderRouteAttemptGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProviderRouteAttemptGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ProviderRouteAttemptCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProviderRouteAttemptCountAggregateOutputType> | number
+        }
+      }
+    }
+    ProviderQuotaObservation: {
+      payload: Prisma.$ProviderQuotaObservationPayload<ExtArgs>
+      fields: Prisma.ProviderQuotaObservationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ProviderQuotaObservationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderQuotaObservationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ProviderQuotaObservationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderQuotaObservationPayload>
+        }
+        findFirst: {
+          args: Prisma.ProviderQuotaObservationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderQuotaObservationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ProviderQuotaObservationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderQuotaObservationPayload>
+        }
+        findMany: {
+          args: Prisma.ProviderQuotaObservationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderQuotaObservationPayload>[]
+        }
+        create: {
+          args: Prisma.ProviderQuotaObservationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderQuotaObservationPayload>
+        }
+        createMany: {
+          args: Prisma.ProviderQuotaObservationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ProviderQuotaObservationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderQuotaObservationPayload>[]
+        }
+        delete: {
+          args: Prisma.ProviderQuotaObservationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderQuotaObservationPayload>
+        }
+        update: {
+          args: Prisma.ProviderQuotaObservationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderQuotaObservationPayload>
+        }
+        deleteMany: {
+          args: Prisma.ProviderQuotaObservationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ProviderQuotaObservationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ProviderQuotaObservationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderQuotaObservationPayload>[]
+        }
+        upsert: {
+          args: Prisma.ProviderQuotaObservationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderQuotaObservationPayload>
+        }
+        aggregate: {
+          args: Prisma.ProviderQuotaObservationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateProviderQuotaObservation>
+        }
+        groupBy: {
+          args: Prisma.ProviderQuotaObservationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProviderQuotaObservationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ProviderQuotaObservationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProviderQuotaObservationCountAggregateOutputType> | number
+        }
+      }
+    }
+    ProviderThrottleReservation: {
+      payload: Prisma.$ProviderThrottleReservationPayload<ExtArgs>
+      fields: Prisma.ProviderThrottleReservationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ProviderThrottleReservationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderThrottleReservationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ProviderThrottleReservationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderThrottleReservationPayload>
+        }
+        findFirst: {
+          args: Prisma.ProviderThrottleReservationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderThrottleReservationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ProviderThrottleReservationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderThrottleReservationPayload>
+        }
+        findMany: {
+          args: Prisma.ProviderThrottleReservationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderThrottleReservationPayload>[]
+        }
+        create: {
+          args: Prisma.ProviderThrottleReservationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderThrottleReservationPayload>
+        }
+        createMany: {
+          args: Prisma.ProviderThrottleReservationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ProviderThrottleReservationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderThrottleReservationPayload>[]
+        }
+        delete: {
+          args: Prisma.ProviderThrottleReservationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderThrottleReservationPayload>
+        }
+        update: {
+          args: Prisma.ProviderThrottleReservationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderThrottleReservationPayload>
+        }
+        deleteMany: {
+          args: Prisma.ProviderThrottleReservationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ProviderThrottleReservationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ProviderThrottleReservationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderThrottleReservationPayload>[]
+        }
+        upsert: {
+          args: Prisma.ProviderThrottleReservationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProviderThrottleReservationPayload>
+        }
+        aggregate: {
+          args: Prisma.ProviderThrottleReservationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateProviderThrottleReservation>
+        }
+        groupBy: {
+          args: Prisma.ProviderThrottleReservationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProviderThrottleReservationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ProviderThrottleReservationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProviderThrottleReservationCountAggregateOutputType> | number
         }
       }
     }
@@ -3844,6 +4144,71 @@ export const ProviderCircuitStateScalarFieldEnum = {
 export type ProviderCircuitStateScalarFieldEnum = (typeof ProviderCircuitStateScalarFieldEnum)[keyof typeof ProviderCircuitStateScalarFieldEnum]
 
 
+export const ProviderRouteReceiptScalarFieldEnum = {
+  id: 'id',
+  contentHash: 'contentHash',
+  policyVersion: 'policyVersion',
+  policyHash: 'policyHash',
+  competitionId: 'competitionId',
+  seasonId: 'seasonId',
+  endpointFamily: 'endpointFamily',
+  candidates: 'candidates',
+  selectedProvider: 'selectedProvider',
+  trigger: 'trigger',
+  outcome: 'outcome',
+  capabilitySnapshot: 'capabilitySnapshot',
+  budgetSnapshot: 'budgetSnapshot',
+  circuitSnapshot: 'circuitSnapshot',
+  correlationId: 'correlationId',
+  createdAt: 'createdAt'
+} as const
+
+export type ProviderRouteReceiptScalarFieldEnum = (typeof ProviderRouteReceiptScalarFieldEnum)[keyof typeof ProviderRouteReceiptScalarFieldEnum]
+
+
+export const ProviderRouteAttemptScalarFieldEnum = {
+  id: 'id',
+  routeReceiptId: 'routeReceiptId',
+  attemptKey: 'attemptKey',
+  provider: 'provider',
+  state: 'state',
+  reason: 'reason',
+  observationId: 'observationId',
+  admitted: 'admitted',
+  createdAt: 'createdAt'
+} as const
+
+export type ProviderRouteAttemptScalarFieldEnum = (typeof ProviderRouteAttemptScalarFieldEnum)[keyof typeof ProviderRouteAttemptScalarFieldEnum]
+
+
+export const ProviderQuotaObservationScalarFieldEnum = {
+  id: 'id',
+  routeAttemptId: 'routeAttemptId',
+  provider: 'provider',
+  endpointFamily: 'endpointFamily',
+  observedLimit: 'observedLimit',
+  observedRemaining: 'observedRemaining',
+  resetAt: 'resetAt',
+  observedAt: 'observedAt'
+} as const
+
+export type ProviderQuotaObservationScalarFieldEnum = (typeof ProviderQuotaObservationScalarFieldEnum)[keyof typeof ProviderQuotaObservationScalarFieldEnum]
+
+
+export const ProviderThrottleReservationScalarFieldEnum = {
+  id: 'id',
+  routeAttemptId: 'routeAttemptId',
+  provider: 'provider',
+  endpointFamily: 'endpointFamily',
+  reservationKey: 'reservationKey',
+  windowStart: 'windowStart',
+  windowEnd: 'windowEnd',
+  reservedAt: 'reservedAt'
+} as const
+
+export type ProviderThrottleReservationScalarFieldEnum = (typeof ProviderThrottleReservationScalarFieldEnum)[keyof typeof ProviderThrottleReservationScalarFieldEnum]
+
+
 export const EvidenceBuildScalarFieldEnum = {
   id: 'id',
   teamId: 'teamId',
@@ -4665,6 +5030,10 @@ export type GlobalOmitConfig = {
   replayDelivery?: Prisma.ReplayDeliveryOmit
   syncAttempt?: Prisma.SyncAttemptOmit
   providerCircuitState?: Prisma.ProviderCircuitStateOmit
+  providerRouteReceipt?: Prisma.ProviderRouteReceiptOmit
+  providerRouteAttempt?: Prisma.ProviderRouteAttemptOmit
+  providerQuotaObservation?: Prisma.ProviderQuotaObservationOmit
+  providerThrottleReservation?: Prisma.ProviderThrottleReservationOmit
   evidenceBuild?: Prisma.EvidenceBuildOmit
   evidenceComponent?: Prisma.EvidenceComponentOmit
   lineupObservation?: Prisma.LineupObservationOmit

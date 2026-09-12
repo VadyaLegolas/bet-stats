@@ -202,6 +202,7 @@ export type SeasonWhereInput = {
   fixtures?: Prisma.FixtureListRelationFilter
   externalRefs?: Prisma.SeasonExternalRefListRelationFilter
   providerCapabilities?: Prisma.ProviderCapabilityListRelationFilter
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptListRelationFilter
 }
 
 export type SeasonOrderByWithRelationInput = {
@@ -216,6 +217,7 @@ export type SeasonOrderByWithRelationInput = {
   fixtures?: Prisma.FixtureOrderByRelationAggregateInput
   externalRefs?: Prisma.SeasonExternalRefOrderByRelationAggregateInput
   providerCapabilities?: Prisma.ProviderCapabilityOrderByRelationAggregateInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptOrderByRelationAggregateInput
 }
 
 export type SeasonWhereUniqueInput = Prisma.AtLeast<{
@@ -234,6 +236,7 @@ export type SeasonWhereUniqueInput = Prisma.AtLeast<{
   fixtures?: Prisma.FixtureListRelationFilter
   externalRefs?: Prisma.SeasonExternalRefListRelationFilter
   providerCapabilities?: Prisma.ProviderCapabilityListRelationFilter
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptListRelationFilter
 }, "id" | "leagueId_label">
 
 export type SeasonOrderByWithAggregationInput = {
@@ -273,6 +276,7 @@ export type SeasonCreateInput = {
   fixtures?: Prisma.FixtureCreateNestedManyWithoutSeasonInput
   externalRefs?: Prisma.SeasonExternalRefCreateNestedManyWithoutSeasonInput
   providerCapabilities?: Prisma.ProviderCapabilityCreateNestedManyWithoutSeasonInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptCreateNestedManyWithoutSeasonInput
 }
 
 export type SeasonUncheckedCreateInput = {
@@ -286,6 +290,7 @@ export type SeasonUncheckedCreateInput = {
   fixtures?: Prisma.FixtureUncheckedCreateNestedManyWithoutSeasonInput
   externalRefs?: Prisma.SeasonExternalRefUncheckedCreateNestedManyWithoutSeasonInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedCreateNestedManyWithoutSeasonInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedCreateNestedManyWithoutSeasonInput
 }
 
 export type SeasonUpdateInput = {
@@ -299,6 +304,7 @@ export type SeasonUpdateInput = {
   fixtures?: Prisma.FixtureUpdateManyWithoutSeasonNestedInput
   externalRefs?: Prisma.SeasonExternalRefUpdateManyWithoutSeasonNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUpdateManyWithoutSeasonNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUpdateManyWithoutSeasonNestedInput
 }
 
 export type SeasonUncheckedUpdateInput = {
@@ -312,6 +318,7 @@ export type SeasonUncheckedUpdateInput = {
   fixtures?: Prisma.FixtureUncheckedUpdateManyWithoutSeasonNestedInput
   externalRefs?: Prisma.SeasonExternalRefUncheckedUpdateManyWithoutSeasonNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedUpdateManyWithoutSeasonNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedUpdateManyWithoutSeasonNestedInput
 }
 
 export type SeasonCreateManyInput = {
@@ -463,6 +470,20 @@ export type SeasonUpdateOneRequiredWithoutFixturesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.SeasonUpdateToOneWithWhereWithoutFixturesInput, Prisma.SeasonUpdateWithoutFixturesInput>, Prisma.SeasonUncheckedUpdateWithoutFixturesInput>
 }
 
+export type SeasonCreateNestedOneWithoutProviderRouteReceiptsInput = {
+  create?: Prisma.XOR<Prisma.SeasonCreateWithoutProviderRouteReceiptsInput, Prisma.SeasonUncheckedCreateWithoutProviderRouteReceiptsInput>
+  connectOrCreate?: Prisma.SeasonCreateOrConnectWithoutProviderRouteReceiptsInput
+  connect?: Prisma.SeasonWhereUniqueInput
+}
+
+export type SeasonUpdateOneRequiredWithoutProviderRouteReceiptsNestedInput = {
+  create?: Prisma.XOR<Prisma.SeasonCreateWithoutProviderRouteReceiptsInput, Prisma.SeasonUncheckedCreateWithoutProviderRouteReceiptsInput>
+  connectOrCreate?: Prisma.SeasonCreateOrConnectWithoutProviderRouteReceiptsInput
+  upsert?: Prisma.SeasonUpsertWithoutProviderRouteReceiptsInput
+  connect?: Prisma.SeasonWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SeasonUpdateToOneWithWhereWithoutProviderRouteReceiptsInput, Prisma.SeasonUpdateWithoutProviderRouteReceiptsInput>, Prisma.SeasonUncheckedUpdateWithoutProviderRouteReceiptsInput>
+}
+
 export type SeasonCreateNestedOneWithoutExternalRefsInput = {
   create?: Prisma.XOR<Prisma.SeasonCreateWithoutExternalRefsInput, Prisma.SeasonUncheckedCreateWithoutExternalRefsInput>
   connectOrCreate?: Prisma.SeasonCreateOrConnectWithoutExternalRefsInput
@@ -487,6 +508,7 @@ export type SeasonCreateWithoutLeagueInput = {
   fixtures?: Prisma.FixtureCreateNestedManyWithoutSeasonInput
   externalRefs?: Prisma.SeasonExternalRefCreateNestedManyWithoutSeasonInput
   providerCapabilities?: Prisma.ProviderCapabilityCreateNestedManyWithoutSeasonInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptCreateNestedManyWithoutSeasonInput
 }
 
 export type SeasonUncheckedCreateWithoutLeagueInput = {
@@ -499,6 +521,7 @@ export type SeasonUncheckedCreateWithoutLeagueInput = {
   fixtures?: Prisma.FixtureUncheckedCreateNestedManyWithoutSeasonInput
   externalRefs?: Prisma.SeasonExternalRefUncheckedCreateNestedManyWithoutSeasonInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedCreateNestedManyWithoutSeasonInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedCreateNestedManyWithoutSeasonInput
 }
 
 export type SeasonCreateOrConnectWithoutLeagueInput = {
@@ -550,6 +573,7 @@ export type SeasonCreateWithoutProviderCapabilitiesInput = {
   league: Prisma.LeagueCreateNestedOneWithoutSeasonsInput
   fixtures?: Prisma.FixtureCreateNestedManyWithoutSeasonInput
   externalRefs?: Prisma.SeasonExternalRefCreateNestedManyWithoutSeasonInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptCreateNestedManyWithoutSeasonInput
 }
 
 export type SeasonUncheckedCreateWithoutProviderCapabilitiesInput = {
@@ -562,6 +586,7 @@ export type SeasonUncheckedCreateWithoutProviderCapabilitiesInput = {
   updatedAt?: Date | string
   fixtures?: Prisma.FixtureUncheckedCreateNestedManyWithoutSeasonInput
   externalRefs?: Prisma.SeasonExternalRefUncheckedCreateNestedManyWithoutSeasonInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedCreateNestedManyWithoutSeasonInput
 }
 
 export type SeasonCreateOrConnectWithoutProviderCapabilitiesInput = {
@@ -590,6 +615,7 @@ export type SeasonUpdateWithoutProviderCapabilitiesInput = {
   league?: Prisma.LeagueUpdateOneRequiredWithoutSeasonsNestedInput
   fixtures?: Prisma.FixtureUpdateManyWithoutSeasonNestedInput
   externalRefs?: Prisma.SeasonExternalRefUpdateManyWithoutSeasonNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUpdateManyWithoutSeasonNestedInput
 }
 
 export type SeasonUncheckedUpdateWithoutProviderCapabilitiesInput = {
@@ -602,6 +628,7 @@ export type SeasonUncheckedUpdateWithoutProviderCapabilitiesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   fixtures?: Prisma.FixtureUncheckedUpdateManyWithoutSeasonNestedInput
   externalRefs?: Prisma.SeasonExternalRefUncheckedUpdateManyWithoutSeasonNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedUpdateManyWithoutSeasonNestedInput
 }
 
 export type SeasonCreateWithoutFixturesInput = {
@@ -614,6 +641,7 @@ export type SeasonCreateWithoutFixturesInput = {
   league: Prisma.LeagueCreateNestedOneWithoutSeasonsInput
   externalRefs?: Prisma.SeasonExternalRefCreateNestedManyWithoutSeasonInput
   providerCapabilities?: Prisma.ProviderCapabilityCreateNestedManyWithoutSeasonInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptCreateNestedManyWithoutSeasonInput
 }
 
 export type SeasonUncheckedCreateWithoutFixturesInput = {
@@ -626,6 +654,7 @@ export type SeasonUncheckedCreateWithoutFixturesInput = {
   updatedAt?: Date | string
   externalRefs?: Prisma.SeasonExternalRefUncheckedCreateNestedManyWithoutSeasonInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedCreateNestedManyWithoutSeasonInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedCreateNestedManyWithoutSeasonInput
 }
 
 export type SeasonCreateOrConnectWithoutFixturesInput = {
@@ -654,6 +683,7 @@ export type SeasonUpdateWithoutFixturesInput = {
   league?: Prisma.LeagueUpdateOneRequiredWithoutSeasonsNestedInput
   externalRefs?: Prisma.SeasonExternalRefUpdateManyWithoutSeasonNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUpdateManyWithoutSeasonNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUpdateManyWithoutSeasonNestedInput
 }
 
 export type SeasonUncheckedUpdateWithoutFixturesInput = {
@@ -664,6 +694,75 @@ export type SeasonUncheckedUpdateWithoutFixturesInput = {
   endsOn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  externalRefs?: Prisma.SeasonExternalRefUncheckedUpdateManyWithoutSeasonNestedInput
+  providerCapabilities?: Prisma.ProviderCapabilityUncheckedUpdateManyWithoutSeasonNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedUpdateManyWithoutSeasonNestedInput
+}
+
+export type SeasonCreateWithoutProviderRouteReceiptsInput = {
+  id?: string
+  label: string
+  startsOn: Date | string
+  endsOn: Date | string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  league: Prisma.LeagueCreateNestedOneWithoutSeasonsInput
+  fixtures?: Prisma.FixtureCreateNestedManyWithoutSeasonInput
+  externalRefs?: Prisma.SeasonExternalRefCreateNestedManyWithoutSeasonInput
+  providerCapabilities?: Prisma.ProviderCapabilityCreateNestedManyWithoutSeasonInput
+}
+
+export type SeasonUncheckedCreateWithoutProviderRouteReceiptsInput = {
+  id?: string
+  leagueId: string
+  label: string
+  startsOn: Date | string
+  endsOn: Date | string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  fixtures?: Prisma.FixtureUncheckedCreateNestedManyWithoutSeasonInput
+  externalRefs?: Prisma.SeasonExternalRefUncheckedCreateNestedManyWithoutSeasonInput
+  providerCapabilities?: Prisma.ProviderCapabilityUncheckedCreateNestedManyWithoutSeasonInput
+}
+
+export type SeasonCreateOrConnectWithoutProviderRouteReceiptsInput = {
+  where: Prisma.SeasonWhereUniqueInput
+  create: Prisma.XOR<Prisma.SeasonCreateWithoutProviderRouteReceiptsInput, Prisma.SeasonUncheckedCreateWithoutProviderRouteReceiptsInput>
+}
+
+export type SeasonUpsertWithoutProviderRouteReceiptsInput = {
+  update: Prisma.XOR<Prisma.SeasonUpdateWithoutProviderRouteReceiptsInput, Prisma.SeasonUncheckedUpdateWithoutProviderRouteReceiptsInput>
+  create: Prisma.XOR<Prisma.SeasonCreateWithoutProviderRouteReceiptsInput, Prisma.SeasonUncheckedCreateWithoutProviderRouteReceiptsInput>
+  where?: Prisma.SeasonWhereInput
+}
+
+export type SeasonUpdateToOneWithWhereWithoutProviderRouteReceiptsInput = {
+  where?: Prisma.SeasonWhereInput
+  data: Prisma.XOR<Prisma.SeasonUpdateWithoutProviderRouteReceiptsInput, Prisma.SeasonUncheckedUpdateWithoutProviderRouteReceiptsInput>
+}
+
+export type SeasonUpdateWithoutProviderRouteReceiptsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  label?: Prisma.StringFieldUpdateOperationsInput | string
+  startsOn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  endsOn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  league?: Prisma.LeagueUpdateOneRequiredWithoutSeasonsNestedInput
+  fixtures?: Prisma.FixtureUpdateManyWithoutSeasonNestedInput
+  externalRefs?: Prisma.SeasonExternalRefUpdateManyWithoutSeasonNestedInput
+  providerCapabilities?: Prisma.ProviderCapabilityUpdateManyWithoutSeasonNestedInput
+}
+
+export type SeasonUncheckedUpdateWithoutProviderRouteReceiptsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  leagueId?: Prisma.StringFieldUpdateOperationsInput | string
+  label?: Prisma.StringFieldUpdateOperationsInput | string
+  startsOn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  endsOn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  fixtures?: Prisma.FixtureUncheckedUpdateManyWithoutSeasonNestedInput
   externalRefs?: Prisma.SeasonExternalRefUncheckedUpdateManyWithoutSeasonNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedUpdateManyWithoutSeasonNestedInput
 }
@@ -678,6 +777,7 @@ export type SeasonCreateWithoutExternalRefsInput = {
   league: Prisma.LeagueCreateNestedOneWithoutSeasonsInput
   fixtures?: Prisma.FixtureCreateNestedManyWithoutSeasonInput
   providerCapabilities?: Prisma.ProviderCapabilityCreateNestedManyWithoutSeasonInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptCreateNestedManyWithoutSeasonInput
 }
 
 export type SeasonUncheckedCreateWithoutExternalRefsInput = {
@@ -690,6 +790,7 @@ export type SeasonUncheckedCreateWithoutExternalRefsInput = {
   updatedAt?: Date | string
   fixtures?: Prisma.FixtureUncheckedCreateNestedManyWithoutSeasonInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedCreateNestedManyWithoutSeasonInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedCreateNestedManyWithoutSeasonInput
 }
 
 export type SeasonCreateOrConnectWithoutExternalRefsInput = {
@@ -718,6 +819,7 @@ export type SeasonUpdateWithoutExternalRefsInput = {
   league?: Prisma.LeagueUpdateOneRequiredWithoutSeasonsNestedInput
   fixtures?: Prisma.FixtureUpdateManyWithoutSeasonNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUpdateManyWithoutSeasonNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUpdateManyWithoutSeasonNestedInput
 }
 
 export type SeasonUncheckedUpdateWithoutExternalRefsInput = {
@@ -730,6 +832,7 @@ export type SeasonUncheckedUpdateWithoutExternalRefsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   fixtures?: Prisma.FixtureUncheckedUpdateManyWithoutSeasonNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedUpdateManyWithoutSeasonNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedUpdateManyWithoutSeasonNestedInput
 }
 
 export type SeasonCreateManyLeagueInput = {
@@ -751,6 +854,7 @@ export type SeasonUpdateWithoutLeagueInput = {
   fixtures?: Prisma.FixtureUpdateManyWithoutSeasonNestedInput
   externalRefs?: Prisma.SeasonExternalRefUpdateManyWithoutSeasonNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUpdateManyWithoutSeasonNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUpdateManyWithoutSeasonNestedInput
 }
 
 export type SeasonUncheckedUpdateWithoutLeagueInput = {
@@ -763,6 +867,7 @@ export type SeasonUncheckedUpdateWithoutLeagueInput = {
   fixtures?: Prisma.FixtureUncheckedUpdateManyWithoutSeasonNestedInput
   externalRefs?: Prisma.SeasonExternalRefUncheckedUpdateManyWithoutSeasonNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedUpdateManyWithoutSeasonNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedUpdateManyWithoutSeasonNestedInput
 }
 
 export type SeasonUncheckedUpdateManyWithoutLeagueInput = {
@@ -783,12 +888,14 @@ export type SeasonCountOutputType = {
   fixtures: number
   externalRefs: number
   providerCapabilities: number
+  providerRouteReceipts: number
 }
 
 export type SeasonCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   fixtures?: boolean | SeasonCountOutputTypeCountFixturesArgs
   externalRefs?: boolean | SeasonCountOutputTypeCountExternalRefsArgs
   providerCapabilities?: boolean | SeasonCountOutputTypeCountProviderCapabilitiesArgs
+  providerRouteReceipts?: boolean | SeasonCountOutputTypeCountProviderRouteReceiptsArgs
 }
 
 /**
@@ -822,6 +929,13 @@ export type SeasonCountOutputTypeCountProviderCapabilitiesArgs<ExtArgs extends r
   where?: Prisma.ProviderCapabilityWhereInput
 }
 
+/**
+ * SeasonCountOutputType without action
+ */
+export type SeasonCountOutputTypeCountProviderRouteReceiptsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ProviderRouteReceiptWhereInput
+}
+
 
 export type SeasonSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -835,6 +949,7 @@ export type SeasonSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   fixtures?: boolean | Prisma.Season$fixturesArgs<ExtArgs>
   externalRefs?: boolean | Prisma.Season$externalRefsArgs<ExtArgs>
   providerCapabilities?: boolean | Prisma.Season$providerCapabilitiesArgs<ExtArgs>
+  providerRouteReceipts?: boolean | Prisma.Season$providerRouteReceiptsArgs<ExtArgs>
   _count?: boolean | Prisma.SeasonCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["season"]>
 
@@ -876,6 +991,7 @@ export type SeasonInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   fixtures?: boolean | Prisma.Season$fixturesArgs<ExtArgs>
   externalRefs?: boolean | Prisma.Season$externalRefsArgs<ExtArgs>
   providerCapabilities?: boolean | Prisma.Season$providerCapabilitiesArgs<ExtArgs>
+  providerRouteReceipts?: boolean | Prisma.Season$providerRouteReceiptsArgs<ExtArgs>
   _count?: boolean | Prisma.SeasonCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type SeasonIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -892,6 +1008,7 @@ export type $SeasonPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     fixtures: Prisma.$FixturePayload<ExtArgs>[]
     externalRefs: Prisma.$SeasonExternalRefPayload<ExtArgs>[]
     providerCapabilities: Prisma.$ProviderCapabilityPayload<ExtArgs>[]
+    providerRouteReceipts: Prisma.$ProviderRouteReceiptPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1299,6 +1416,7 @@ export interface Prisma__SeasonClient<T, Null = never, ExtArgs extends runtime.T
   fixtures<T extends Prisma.Season$fixturesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Season$fixturesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FixturePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   externalRefs<T extends Prisma.Season$externalRefsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Season$externalRefsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SeasonExternalRefPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   providerCapabilities<T extends Prisma.Season$providerCapabilitiesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Season$providerCapabilitiesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProviderCapabilityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  providerRouteReceipts<T extends Prisma.Season$providerRouteReceiptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Season$providerRouteReceiptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProviderRouteReceiptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1805,6 +1923,30 @@ export type Season$providerCapabilitiesArgs<ExtArgs extends runtime.Types.Extens
   take?: number
   skip?: number
   distinct?: Prisma.ProviderCapabilityScalarFieldEnum | Prisma.ProviderCapabilityScalarFieldEnum[]
+}
+
+/**
+ * Season.providerRouteReceipts
+ */
+export type Season$providerRouteReceiptsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ProviderRouteReceipt
+   */
+  select?: Prisma.ProviderRouteReceiptSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ProviderRouteReceipt
+   */
+  omit?: Prisma.ProviderRouteReceiptOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ProviderRouteReceiptInclude<ExtArgs> | null
+  where?: Prisma.ProviderRouteReceiptWhereInput
+  orderBy?: Prisma.ProviderRouteReceiptOrderByWithRelationInput | Prisma.ProviderRouteReceiptOrderByWithRelationInput[]
+  cursor?: Prisma.ProviderRouteReceiptWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ProviderRouteReceiptScalarFieldEnum | Prisma.ProviderRouteReceiptScalarFieldEnum[]
 }
 
 /**

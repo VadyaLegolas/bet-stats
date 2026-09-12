@@ -647,14 +647,6 @@ export type ResultVersionUncheckedCreateNestedOneWithoutSupersedesResultVersionI
   connect?: Prisma.ResultVersionWhereUniqueInput
 }
 
-export type NullableIntFieldUpdateOperationsInput = {
-  set?: number | null
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type ResultVersionUpdateOneWithoutSupersededByNestedInput = {
   create?: Prisma.XOR<Prisma.ResultVersionCreateWithoutSupersededByInput, Prisma.ResultVersionUncheckedCreateWithoutSupersededByInput>
   connectOrCreate?: Prisma.ResultVersionCreateOrConnectWithoutSupersededByInput

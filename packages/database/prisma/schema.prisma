@@ -91,6 +91,7 @@ model League {
   externalRefs         LeagueExternalRef[]
   providerCapabilities ProviderCapability[]
   forecastScores       ForecastScore[]
+  providerRouteReceipts ProviderRouteReceipt[]
 
   @@index([countryCode, name])
 }
@@ -107,6 +108,7 @@ model Season {
   fixtures             Fixture[]
   externalRefs         SeasonExternalRef[]
   providerCapabilities ProviderCapability[]
+  providerRouteReceipts ProviderRouteReceipt[]
 
   @@unique([leagueId, label])
 }
@@ -293,6 +295,7 @@ model SourceObservation {
   standingSnapshots StandingSnapshot[]
   syncAttempts      SyncAttempt[]
   lineupObservation LineupObservation?
+  providerRouteAttempts ProviderRouteAttempt[]
 
   @@unique([provider, endpointFamily, payloadHash])
   @@index([provider, endpointFamily, observedAt])
@@ -455,6 +458,80 @@ model ProviderCircuitState {
 
   @@unique([provider, endpointFamily])
   @@index([provider, endpointFamily, state, nextProbeAt, probeLeaseExpiresAt])
+}
+
+/// Immutable decision over a versioned provider routing policy.
+model ProviderRouteReceipt {
+  id                 String                 @id
+  contentHash        String                 @unique
+  policyVersion      String
+  policyHash         String
+  competitionId      String
+  seasonId           String
+  endpointFamily     String
+  candidates         Json
+  selectedProvider   String?
+  trigger            String
+  outcome            String
+  capabilitySnapshot Json
+  budgetSnapshot     Json
+  circuitSnapshot    Json
+  correlationId      String
+  createdAt          DateTime               @default(now()) @db.Timestamptz(3)
+  competition        League                 @relation(fields: [competitionId], references: [id], onDelete: Restrict)
+  season             Season                 @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+  attempts           ProviderRouteAttempt[]
+
+  @@index([competitionId, seasonId, endpointFamily, createdAt])
+  @@index([correlationId])
+}
+
+/// One immutable admitted, denied, failed or completed provider attempt.
+model ProviderRouteAttempt {
+  id               String                    @id
+  routeReceiptId   String
+  attemptKey       String                    @unique
+  provider         String?
+  state            String
+  reason           String?
+  observationId    String?
+  admitted         Boolean
+  createdAt        DateTime                  @default(now()) @db.Timestamptz(3)
+  routeReceipt     ProviderRouteReceipt      @relation(fields: [routeReceiptId], references: [id], onDelete: Restrict)
+  observation      SourceObservation?        @relation(fields: [observationId], references: [id], onDelete: Restrict)
+  quotaObservations ProviderQuotaObservation[]
+  throttleReservations ProviderThrottleReservation[]
+
+  @@index([routeReceiptId, createdAt])
+  @@index([provider, state, createdAt])
+}
+
+model ProviderQuotaObservation {
+  id                String               @id
+  routeAttemptId    String
+  provider          String
+  endpointFamily    String
+  observedLimit     Int?
+  observedRemaining Int?
+  resetAt           DateTime?            @db.Timestamptz(3)
+  observedAt        DateTime             @db.Timestamptz(3)
+  routeAttempt      ProviderRouteAttempt @relation(fields: [routeAttemptId], references: [id], onDelete: Restrict)
+
+  @@index([provider, endpointFamily, observedAt])
+}
+
+model ProviderThrottleReservation {
+  id             String               @id
+  routeAttemptId String
+  provider       String
+  endpointFamily String
+  reservationKey String               @unique
+  windowStart    DateTime             @db.Timestamptz(3)
+  windowEnd      DateTime             @db.Timestamptz(3)
+  reservedAt     DateTime             @default(now()) @db.Timestamptz(3)
+  routeAttempt   ProviderRouteAttempt @relation(fields: [routeAttemptId], references: [id], onDelete: Restrict)
+
+  @@index([provider, endpointFamily, windowStart, windowEnd])
 }
 
 model EvidenceBuild {

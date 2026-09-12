@@ -27,6 +27,8 @@ describe("provider routing repository", () => {
   afterAll(async () => { await database?.$disconnect(); try { docker("rm", "-f", container); } catch { /* owned cleanup */ } }, 30_000);
 
   it("minimal migrated repository appends and reads a complete denial route", async () => {
+    await database.league.create({ data: { id: "league-pl", name: "Premier League", countryCode: "GB" } });
+    await database.season.create({ data: { id: "season-2026", leagueId: "league-pl", label: "2026/27", startsOn: new Date("2026-08-01"), endsOn: new Date("2027-06-01") } });
     const repository = createProviderRoutingRepository({ database });
     const receipt = {
       policyVersion: PROVIDER_ROUTE_POLICY_VERSION,

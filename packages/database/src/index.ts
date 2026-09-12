@@ -7,3 +7,5 @@ export type { SettlementPipelineCommand, SettlementPipelineResult } from "./eval
 export { compareBacktestPlans, createPrismaBacktestReceiptRepository, resolveHistoricalResultGraph } from "./evaluation/backtest-repository.js";
 export { createPrismaForecastRepository } from "./forecast-repository.js";
 export type { ForecastPublicationRepository } from "./forecast-repository.js";
+export { createProviderRoutingRepository } from "./provider-routing/repository.js";
+export type { AppendRouteInput } from "./provider-routing/repository.js";

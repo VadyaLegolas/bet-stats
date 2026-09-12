@@ -288,6 +288,7 @@ export type SourceObservationWhereInput = {
   standingSnapshots?: Prisma.StandingSnapshotListRelationFilter
   syncAttempts?: Prisma.SyncAttemptListRelationFilter
   lineupObservation?: Prisma.XOR<Prisma.LineupObservationNullableScalarRelationFilter, Prisma.LineupObservationWhereInput> | null
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptListRelationFilter
 }
 
 export type SourceObservationOrderByWithRelationInput = {
@@ -309,6 +310,7 @@ export type SourceObservationOrderByWithRelationInput = {
   standingSnapshots?: Prisma.StandingSnapshotOrderByRelationAggregateInput
   syncAttempts?: Prisma.SyncAttemptOrderByRelationAggregateInput
   lineupObservation?: Prisma.LineupObservationOrderByWithRelationInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptOrderByRelationAggregateInput
 }
 
 export type SourceObservationWhereUniqueInput = Prisma.AtLeast<{
@@ -334,6 +336,7 @@ export type SourceObservationWhereUniqueInput = Prisma.AtLeast<{
   standingSnapshots?: Prisma.StandingSnapshotListRelationFilter
   syncAttempts?: Prisma.SyncAttemptListRelationFilter
   lineupObservation?: Prisma.XOR<Prisma.LineupObservationNullableScalarRelationFilter, Prisma.LineupObservationWhereInput> | null
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptListRelationFilter
 }, "id" | "provider_endpointFamily_payloadHash">
 
 export type SourceObservationOrderByWithAggregationInput = {
@@ -397,6 +400,7 @@ export type SourceObservationCreateInput = {
   standingSnapshots?: Prisma.StandingSnapshotCreateNestedManyWithoutObservationInput
   syncAttempts?: Prisma.SyncAttemptCreateNestedManyWithoutObservationInput
   lineupObservation?: Prisma.LineupObservationCreateNestedOneWithoutObservationInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptCreateNestedManyWithoutObservationInput
 }
 
 export type SourceObservationUncheckedCreateInput = {
@@ -418,6 +422,7 @@ export type SourceObservationUncheckedCreateInput = {
   standingSnapshots?: Prisma.StandingSnapshotUncheckedCreateNestedManyWithoutObservationInput
   syncAttempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutObservationInput
   lineupObservation?: Prisma.LineupObservationUncheckedCreateNestedOneWithoutObservationInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUncheckedCreateNestedManyWithoutObservationInput
 }
 
 export type SourceObservationUpdateInput = {
@@ -439,6 +444,7 @@ export type SourceObservationUpdateInput = {
   standingSnapshots?: Prisma.StandingSnapshotUpdateManyWithoutObservationNestedInput
   syncAttempts?: Prisma.SyncAttemptUpdateManyWithoutObservationNestedInput
   lineupObservation?: Prisma.LineupObservationUpdateOneWithoutObservationNestedInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUpdateManyWithoutObservationNestedInput
 }
 
 export type SourceObservationUncheckedUpdateInput = {
@@ -460,6 +466,7 @@ export type SourceObservationUncheckedUpdateInput = {
   standingSnapshots?: Prisma.StandingSnapshotUncheckedUpdateManyWithoutObservationNestedInput
   syncAttempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutObservationNestedInput
   lineupObservation?: Prisma.LineupObservationUncheckedUpdateOneWithoutObservationNestedInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUncheckedUpdateManyWithoutObservationNestedInput
 }
 
 export type SourceObservationCreateManyInput = {
@@ -616,6 +623,22 @@ export type SourceObservationUpdateOneWithoutSyncAttemptsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.SourceObservationUpdateToOneWithWhereWithoutSyncAttemptsInput, Prisma.SourceObservationUpdateWithoutSyncAttemptsInput>, Prisma.SourceObservationUncheckedUpdateWithoutSyncAttemptsInput>
 }
 
+export type SourceObservationCreateNestedOneWithoutProviderRouteAttemptsInput = {
+  create?: Prisma.XOR<Prisma.SourceObservationCreateWithoutProviderRouteAttemptsInput, Prisma.SourceObservationUncheckedCreateWithoutProviderRouteAttemptsInput>
+  connectOrCreate?: Prisma.SourceObservationCreateOrConnectWithoutProviderRouteAttemptsInput
+  connect?: Prisma.SourceObservationWhereUniqueInput
+}
+
+export type SourceObservationUpdateOneWithoutProviderRouteAttemptsNestedInput = {
+  create?: Prisma.XOR<Prisma.SourceObservationCreateWithoutProviderRouteAttemptsInput, Prisma.SourceObservationUncheckedCreateWithoutProviderRouteAttemptsInput>
+  connectOrCreate?: Prisma.SourceObservationCreateOrConnectWithoutProviderRouteAttemptsInput
+  upsert?: Prisma.SourceObservationUpsertWithoutProviderRouteAttemptsInput
+  disconnect?: Prisma.SourceObservationWhereInput | boolean
+  delete?: Prisma.SourceObservationWhereInput | boolean
+  connect?: Prisma.SourceObservationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SourceObservationUpdateToOneWithWhereWithoutProviderRouteAttemptsInput, Prisma.SourceObservationUpdateWithoutProviderRouteAttemptsInput>, Prisma.SourceObservationUncheckedUpdateWithoutProviderRouteAttemptsInput>
+}
+
 export type SourceObservationCreateNestedOneWithoutLineupObservationInput = {
   create?: Prisma.XOR<Prisma.SourceObservationCreateWithoutLineupObservationInput, Prisma.SourceObservationUncheckedCreateWithoutLineupObservationInput>
   connectOrCreate?: Prisma.SourceObservationCreateOrConnectWithoutLineupObservationInput
@@ -662,6 +685,7 @@ export type SourceObservationCreateWithoutStandingSnapshotsInput = {
   resultVersions?: Prisma.ResultVersionCreateNestedManyWithoutObservationInput
   syncAttempts?: Prisma.SyncAttemptCreateNestedManyWithoutObservationInput
   lineupObservation?: Prisma.LineupObservationCreateNestedOneWithoutObservationInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptCreateNestedManyWithoutObservationInput
 }
 
 export type SourceObservationUncheckedCreateWithoutStandingSnapshotsInput = {
@@ -682,6 +706,7 @@ export type SourceObservationUncheckedCreateWithoutStandingSnapshotsInput = {
   resultVersions?: Prisma.ResultVersionUncheckedCreateNestedManyWithoutObservationInput
   syncAttempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutObservationInput
   lineupObservation?: Prisma.LineupObservationUncheckedCreateNestedOneWithoutObservationInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUncheckedCreateNestedManyWithoutObservationInput
 }
 
 export type SourceObservationCreateOrConnectWithoutStandingSnapshotsInput = {
@@ -718,6 +743,7 @@ export type SourceObservationUpdateWithoutStandingSnapshotsInput = {
   resultVersions?: Prisma.ResultVersionUpdateManyWithoutObservationNestedInput
   syncAttempts?: Prisma.SyncAttemptUpdateManyWithoutObservationNestedInput
   lineupObservation?: Prisma.LineupObservationUpdateOneWithoutObservationNestedInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUpdateManyWithoutObservationNestedInput
 }
 
 export type SourceObservationUncheckedUpdateWithoutStandingSnapshotsInput = {
@@ -738,6 +764,7 @@ export type SourceObservationUncheckedUpdateWithoutStandingSnapshotsInput = {
   resultVersions?: Prisma.ResultVersionUncheckedUpdateManyWithoutObservationNestedInput
   syncAttempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutObservationNestedInput
   lineupObservation?: Prisma.LineupObservationUncheckedUpdateOneWithoutObservationNestedInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUncheckedUpdateManyWithoutObservationNestedInput
 }
 
 export type SourceObservationCreateWithoutSyncAttemptsInput = {
@@ -758,6 +785,7 @@ export type SourceObservationCreateWithoutSyncAttemptsInput = {
   resultVersions?: Prisma.ResultVersionCreateNestedManyWithoutObservationInput
   standingSnapshots?: Prisma.StandingSnapshotCreateNestedManyWithoutObservationInput
   lineupObservation?: Prisma.LineupObservationCreateNestedOneWithoutObservationInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptCreateNestedManyWithoutObservationInput
 }
 
 export type SourceObservationUncheckedCreateWithoutSyncAttemptsInput = {
@@ -778,6 +806,7 @@ export type SourceObservationUncheckedCreateWithoutSyncAttemptsInput = {
   resultVersions?: Prisma.ResultVersionUncheckedCreateNestedManyWithoutObservationInput
   standingSnapshots?: Prisma.StandingSnapshotUncheckedCreateNestedManyWithoutObservationInput
   lineupObservation?: Prisma.LineupObservationUncheckedCreateNestedOneWithoutObservationInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUncheckedCreateNestedManyWithoutObservationInput
 }
 
 export type SourceObservationCreateOrConnectWithoutSyncAttemptsInput = {
@@ -814,6 +843,7 @@ export type SourceObservationUpdateWithoutSyncAttemptsInput = {
   resultVersions?: Prisma.ResultVersionUpdateManyWithoutObservationNestedInput
   standingSnapshots?: Prisma.StandingSnapshotUpdateManyWithoutObservationNestedInput
   lineupObservation?: Prisma.LineupObservationUpdateOneWithoutObservationNestedInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUpdateManyWithoutObservationNestedInput
 }
 
 export type SourceObservationUncheckedUpdateWithoutSyncAttemptsInput = {
@@ -833,6 +863,107 @@ export type SourceObservationUncheckedUpdateWithoutSyncAttemptsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   resultVersions?: Prisma.ResultVersionUncheckedUpdateManyWithoutObservationNestedInput
   standingSnapshots?: Prisma.StandingSnapshotUncheckedUpdateManyWithoutObservationNestedInput
+  lineupObservation?: Prisma.LineupObservationUncheckedUpdateOneWithoutObservationNestedInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUncheckedUpdateManyWithoutObservationNestedInput
+}
+
+export type SourceObservationCreateWithoutProviderRouteAttemptsInput = {
+  id?: string
+  provider: string
+  endpointFamily: string
+  externalIdentity: string
+  requestedFrom?: Date | string | null
+  requestedTo?: Date | string | null
+  returnedFrom?: Date | string | null
+  returnedTo?: Date | string | null
+  observedAt: Date | string
+  sourceUpdatedAt?: Date | string | null
+  payloadHash: string
+  rawPayload: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  payloadBytes: number
+  createdAt?: Date | string
+  resultVersions?: Prisma.ResultVersionCreateNestedManyWithoutObservationInput
+  standingSnapshots?: Prisma.StandingSnapshotCreateNestedManyWithoutObservationInput
+  syncAttempts?: Prisma.SyncAttemptCreateNestedManyWithoutObservationInput
+  lineupObservation?: Prisma.LineupObservationCreateNestedOneWithoutObservationInput
+}
+
+export type SourceObservationUncheckedCreateWithoutProviderRouteAttemptsInput = {
+  id?: string
+  provider: string
+  endpointFamily: string
+  externalIdentity: string
+  requestedFrom?: Date | string | null
+  requestedTo?: Date | string | null
+  returnedFrom?: Date | string | null
+  returnedTo?: Date | string | null
+  observedAt: Date | string
+  sourceUpdatedAt?: Date | string | null
+  payloadHash: string
+  rawPayload: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  payloadBytes: number
+  createdAt?: Date | string
+  resultVersions?: Prisma.ResultVersionUncheckedCreateNestedManyWithoutObservationInput
+  standingSnapshots?: Prisma.StandingSnapshotUncheckedCreateNestedManyWithoutObservationInput
+  syncAttempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutObservationInput
+  lineupObservation?: Prisma.LineupObservationUncheckedCreateNestedOneWithoutObservationInput
+}
+
+export type SourceObservationCreateOrConnectWithoutProviderRouteAttemptsInput = {
+  where: Prisma.SourceObservationWhereUniqueInput
+  create: Prisma.XOR<Prisma.SourceObservationCreateWithoutProviderRouteAttemptsInput, Prisma.SourceObservationUncheckedCreateWithoutProviderRouteAttemptsInput>
+}
+
+export type SourceObservationUpsertWithoutProviderRouteAttemptsInput = {
+  update: Prisma.XOR<Prisma.SourceObservationUpdateWithoutProviderRouteAttemptsInput, Prisma.SourceObservationUncheckedUpdateWithoutProviderRouteAttemptsInput>
+  create: Prisma.XOR<Prisma.SourceObservationCreateWithoutProviderRouteAttemptsInput, Prisma.SourceObservationUncheckedCreateWithoutProviderRouteAttemptsInput>
+  where?: Prisma.SourceObservationWhereInput
+}
+
+export type SourceObservationUpdateToOneWithWhereWithoutProviderRouteAttemptsInput = {
+  where?: Prisma.SourceObservationWhereInput
+  data: Prisma.XOR<Prisma.SourceObservationUpdateWithoutProviderRouteAttemptsInput, Prisma.SourceObservationUncheckedUpdateWithoutProviderRouteAttemptsInput>
+}
+
+export type SourceObservationUpdateWithoutProviderRouteAttemptsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  provider?: Prisma.StringFieldUpdateOperationsInput | string
+  endpointFamily?: Prisma.StringFieldUpdateOperationsInput | string
+  externalIdentity?: Prisma.StringFieldUpdateOperationsInput | string
+  requestedFrom?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  requestedTo?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  returnedFrom?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  returnedTo?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  observedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  payloadHash?: Prisma.StringFieldUpdateOperationsInput | string
+  rawPayload?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  payloadBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  resultVersions?: Prisma.ResultVersionUpdateManyWithoutObservationNestedInput
+  standingSnapshots?: Prisma.StandingSnapshotUpdateManyWithoutObservationNestedInput
+  syncAttempts?: Prisma.SyncAttemptUpdateManyWithoutObservationNestedInput
+  lineupObservation?: Prisma.LineupObservationUpdateOneWithoutObservationNestedInput
+}
+
+export type SourceObservationUncheckedUpdateWithoutProviderRouteAttemptsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  provider?: Prisma.StringFieldUpdateOperationsInput | string
+  endpointFamily?: Prisma.StringFieldUpdateOperationsInput | string
+  externalIdentity?: Prisma.StringFieldUpdateOperationsInput | string
+  requestedFrom?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  requestedTo?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  returnedFrom?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  returnedTo?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  observedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceUpdatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  payloadHash?: Prisma.StringFieldUpdateOperationsInput | string
+  rawPayload?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  payloadBytes?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  resultVersions?: Prisma.ResultVersionUncheckedUpdateManyWithoutObservationNestedInput
+  standingSnapshots?: Prisma.StandingSnapshotUncheckedUpdateManyWithoutObservationNestedInput
+  syncAttempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutObservationNestedInput
   lineupObservation?: Prisma.LineupObservationUncheckedUpdateOneWithoutObservationNestedInput
 }
 
@@ -854,6 +985,7 @@ export type SourceObservationCreateWithoutLineupObservationInput = {
   resultVersions?: Prisma.ResultVersionCreateNestedManyWithoutObservationInput
   standingSnapshots?: Prisma.StandingSnapshotCreateNestedManyWithoutObservationInput
   syncAttempts?: Prisma.SyncAttemptCreateNestedManyWithoutObservationInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptCreateNestedManyWithoutObservationInput
 }
 
 export type SourceObservationUncheckedCreateWithoutLineupObservationInput = {
@@ -874,6 +1006,7 @@ export type SourceObservationUncheckedCreateWithoutLineupObservationInput = {
   resultVersions?: Prisma.ResultVersionUncheckedCreateNestedManyWithoutObservationInput
   standingSnapshots?: Prisma.StandingSnapshotUncheckedCreateNestedManyWithoutObservationInput
   syncAttempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutObservationInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUncheckedCreateNestedManyWithoutObservationInput
 }
 
 export type SourceObservationCreateOrConnectWithoutLineupObservationInput = {
@@ -910,6 +1043,7 @@ export type SourceObservationUpdateWithoutLineupObservationInput = {
   resultVersions?: Prisma.ResultVersionUpdateManyWithoutObservationNestedInput
   standingSnapshots?: Prisma.StandingSnapshotUpdateManyWithoutObservationNestedInput
   syncAttempts?: Prisma.SyncAttemptUpdateManyWithoutObservationNestedInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUpdateManyWithoutObservationNestedInput
 }
 
 export type SourceObservationUncheckedUpdateWithoutLineupObservationInput = {
@@ -930,6 +1064,7 @@ export type SourceObservationUncheckedUpdateWithoutLineupObservationInput = {
   resultVersions?: Prisma.ResultVersionUncheckedUpdateManyWithoutObservationNestedInput
   standingSnapshots?: Prisma.StandingSnapshotUncheckedUpdateManyWithoutObservationNestedInput
   syncAttempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutObservationNestedInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUncheckedUpdateManyWithoutObservationNestedInput
 }
 
 export type SourceObservationCreateWithoutResultVersionsInput = {
@@ -950,6 +1085,7 @@ export type SourceObservationCreateWithoutResultVersionsInput = {
   standingSnapshots?: Prisma.StandingSnapshotCreateNestedManyWithoutObservationInput
   syncAttempts?: Prisma.SyncAttemptCreateNestedManyWithoutObservationInput
   lineupObservation?: Prisma.LineupObservationCreateNestedOneWithoutObservationInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptCreateNestedManyWithoutObservationInput
 }
 
 export type SourceObservationUncheckedCreateWithoutResultVersionsInput = {
@@ -970,6 +1106,7 @@ export type SourceObservationUncheckedCreateWithoutResultVersionsInput = {
   standingSnapshots?: Prisma.StandingSnapshotUncheckedCreateNestedManyWithoutObservationInput
   syncAttempts?: Prisma.SyncAttemptUncheckedCreateNestedManyWithoutObservationInput
   lineupObservation?: Prisma.LineupObservationUncheckedCreateNestedOneWithoutObservationInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUncheckedCreateNestedManyWithoutObservationInput
 }
 
 export type SourceObservationCreateOrConnectWithoutResultVersionsInput = {
@@ -1006,6 +1143,7 @@ export type SourceObservationUpdateWithoutResultVersionsInput = {
   standingSnapshots?: Prisma.StandingSnapshotUpdateManyWithoutObservationNestedInput
   syncAttempts?: Prisma.SyncAttemptUpdateManyWithoutObservationNestedInput
   lineupObservation?: Prisma.LineupObservationUpdateOneWithoutObservationNestedInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUpdateManyWithoutObservationNestedInput
 }
 
 export type SourceObservationUncheckedUpdateWithoutResultVersionsInput = {
@@ -1026,6 +1164,7 @@ export type SourceObservationUncheckedUpdateWithoutResultVersionsInput = {
   standingSnapshots?: Prisma.StandingSnapshotUncheckedUpdateManyWithoutObservationNestedInput
   syncAttempts?: Prisma.SyncAttemptUncheckedUpdateManyWithoutObservationNestedInput
   lineupObservation?: Prisma.LineupObservationUncheckedUpdateOneWithoutObservationNestedInput
+  providerRouteAttempts?: Prisma.ProviderRouteAttemptUncheckedUpdateManyWithoutObservationNestedInput
 }
 
 
@@ -1037,12 +1176,14 @@ export type SourceObservationCountOutputType = {
   resultVersions: number
   standingSnapshots: number
   syncAttempts: number
+  providerRouteAttempts: number
 }
 
 export type SourceObservationCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   resultVersions?: boolean | SourceObservationCountOutputTypeCountResultVersionsArgs
   standingSnapshots?: boolean | SourceObservationCountOutputTypeCountStandingSnapshotsArgs
   syncAttempts?: boolean | SourceObservationCountOutputTypeCountSyncAttemptsArgs
+  providerRouteAttempts?: boolean | SourceObservationCountOutputTypeCountProviderRouteAttemptsArgs
 }
 
 /**
@@ -1076,6 +1217,13 @@ export type SourceObservationCountOutputTypeCountSyncAttemptsArgs<ExtArgs extend
   where?: Prisma.SyncAttemptWhereInput
 }
 
+/**
+ * SourceObservationCountOutputType without action
+ */
+export type SourceObservationCountOutputTypeCountProviderRouteAttemptsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ProviderRouteAttemptWhereInput
+}
+
 
 export type SourceObservationSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1096,6 +1244,7 @@ export type SourceObservationSelect<ExtArgs extends runtime.Types.Extensions.Int
   standingSnapshots?: boolean | Prisma.SourceObservation$standingSnapshotsArgs<ExtArgs>
   syncAttempts?: boolean | Prisma.SourceObservation$syncAttemptsArgs<ExtArgs>
   lineupObservation?: boolean | Prisma.SourceObservation$lineupObservationArgs<ExtArgs>
+  providerRouteAttempts?: boolean | Prisma.SourceObservation$providerRouteAttemptsArgs<ExtArgs>
   _count?: boolean | Prisma.SourceObservationCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["sourceObservation"]>
 
@@ -1156,6 +1305,7 @@ export type SourceObservationInclude<ExtArgs extends runtime.Types.Extensions.In
   standingSnapshots?: boolean | Prisma.SourceObservation$standingSnapshotsArgs<ExtArgs>
   syncAttempts?: boolean | Prisma.SourceObservation$syncAttemptsArgs<ExtArgs>
   lineupObservation?: boolean | Prisma.SourceObservation$lineupObservationArgs<ExtArgs>
+  providerRouteAttempts?: boolean | Prisma.SourceObservation$providerRouteAttemptsArgs<ExtArgs>
   _count?: boolean | Prisma.SourceObservationCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type SourceObservationIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -1168,6 +1318,7 @@ export type $SourceObservationPayload<ExtArgs extends runtime.Types.Extensions.I
     standingSnapshots: Prisma.$StandingSnapshotPayload<ExtArgs>[]
     syncAttempts: Prisma.$SyncAttemptPayload<ExtArgs>[]
     lineupObservation: Prisma.$LineupObservationPayload<ExtArgs> | null
+    providerRouteAttempts: Prisma.$ProviderRouteAttemptPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1582,6 +1733,7 @@ export interface Prisma__SourceObservationClient<T, Null = never, ExtArgs extend
   standingSnapshots<T extends Prisma.SourceObservation$standingSnapshotsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SourceObservation$standingSnapshotsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StandingSnapshotPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   syncAttempts<T extends Prisma.SourceObservation$syncAttemptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SourceObservation$syncAttemptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SyncAttemptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   lineupObservation<T extends Prisma.SourceObservation$lineupObservationArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SourceObservation$lineupObservationArgs<ExtArgs>>): Prisma.Prisma__LineupObservationClient<runtime.Types.Result.GetResult<Prisma.$LineupObservationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  providerRouteAttempts<T extends Prisma.SourceObservation$providerRouteAttemptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SourceObservation$providerRouteAttemptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProviderRouteAttemptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2106,6 +2258,30 @@ export type SourceObservation$lineupObservationArgs<ExtArgs extends runtime.Type
    */
   include?: Prisma.LineupObservationInclude<ExtArgs> | null
   where?: Prisma.LineupObservationWhereInput
+}
+
+/**
+ * SourceObservation.providerRouteAttempts
+ */
+export type SourceObservation$providerRouteAttemptsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ProviderRouteAttempt
+   */
+  select?: Prisma.ProviderRouteAttemptSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ProviderRouteAttempt
+   */
+  omit?: Prisma.ProviderRouteAttemptOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ProviderRouteAttemptInclude<ExtArgs> | null
+  where?: Prisma.ProviderRouteAttemptWhereInput
+  orderBy?: Prisma.ProviderRouteAttemptOrderByWithRelationInput | Prisma.ProviderRouteAttemptOrderByWithRelationInput[]
+  cursor?: Prisma.ProviderRouteAttemptWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ProviderRouteAttemptScalarFieldEnum | Prisma.ProviderRouteAttemptScalarFieldEnum[]
 }
 
 /**

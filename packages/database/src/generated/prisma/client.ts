@@ -140,6 +140,26 @@ export type SyncAttempt = Prisma.SyncAttemptModel
  */
 export type ProviderCircuitState = Prisma.ProviderCircuitStateModel
 /**
+ * Model ProviderRouteReceipt
+ * Immutable decision over a versioned provider routing policy.
+ */
+export type ProviderRouteReceipt = Prisma.ProviderRouteReceiptModel
+/**
+ * Model ProviderRouteAttempt
+ * One immutable admitted, denied, failed or completed provider attempt.
+ */
+export type ProviderRouteAttempt = Prisma.ProviderRouteAttemptModel
+/**
+ * Model ProviderQuotaObservation
+ * 
+ */
+export type ProviderQuotaObservation = Prisma.ProviderQuotaObservationModel
+/**
+ * Model ProviderThrottleReservation
+ * 
+ */
+export type ProviderThrottleReservation = Prisma.ProviderThrottleReservationModel
+/**
  * Model EvidenceBuild
  * 
  */

@@ -70,6 +70,10 @@ export const ModelName = {
   ReplayDelivery: 'ReplayDelivery',
   SyncAttempt: 'SyncAttempt',
   ProviderCircuitState: 'ProviderCircuitState',
+  ProviderRouteReceipt: 'ProviderRouteReceipt',
+  ProviderRouteAttempt: 'ProviderRouteAttempt',
+  ProviderQuotaObservation: 'ProviderQuotaObservation',
+  ProviderThrottleReservation: 'ProviderThrottleReservation',
   EvidenceBuild: 'EvidenceBuild',
   EvidenceComponent: 'EvidenceComponent',
   LineupObservation: 'LineupObservation',
@@ -422,6 +426,71 @@ export const ProviderCircuitStateScalarFieldEnum = {
 } as const
 
 export type ProviderCircuitStateScalarFieldEnum = (typeof ProviderCircuitStateScalarFieldEnum)[keyof typeof ProviderCircuitStateScalarFieldEnum]
+
+
+export const ProviderRouteReceiptScalarFieldEnum = {
+  id: 'id',
+  contentHash: 'contentHash',
+  policyVersion: 'policyVersion',
+  policyHash: 'policyHash',
+  competitionId: 'competitionId',
+  seasonId: 'seasonId',
+  endpointFamily: 'endpointFamily',
+  candidates: 'candidates',
+  selectedProvider: 'selectedProvider',
+  trigger: 'trigger',
+  outcome: 'outcome',
+  capabilitySnapshot: 'capabilitySnapshot',
+  budgetSnapshot: 'budgetSnapshot',
+  circuitSnapshot: 'circuitSnapshot',
+  correlationId: 'correlationId',
+  createdAt: 'createdAt'
+} as const
+
+export type ProviderRouteReceiptScalarFieldEnum = (typeof ProviderRouteReceiptScalarFieldEnum)[keyof typeof ProviderRouteReceiptScalarFieldEnum]
+
+
+export const ProviderRouteAttemptScalarFieldEnum = {
+  id: 'id',
+  routeReceiptId: 'routeReceiptId',
+  attemptKey: 'attemptKey',
+  provider: 'provider',
+  state: 'state',
+  reason: 'reason',
+  observationId: 'observationId',
+  admitted: 'admitted',
+  createdAt: 'createdAt'
+} as const
+
+export type ProviderRouteAttemptScalarFieldEnum = (typeof ProviderRouteAttemptScalarFieldEnum)[keyof typeof ProviderRouteAttemptScalarFieldEnum]
+
+
+export const ProviderQuotaObservationScalarFieldEnum = {
+  id: 'id',
+  routeAttemptId: 'routeAttemptId',
+  provider: 'provider',
+  endpointFamily: 'endpointFamily',
+  observedLimit: 'observedLimit',
+  observedRemaining: 'observedRemaining',
+  resetAt: 'resetAt',
+  observedAt: 'observedAt'
+} as const
+
+export type ProviderQuotaObservationScalarFieldEnum = (typeof ProviderQuotaObservationScalarFieldEnum)[keyof typeof ProviderQuotaObservationScalarFieldEnum]
+
+
+export const ProviderThrottleReservationScalarFieldEnum = {
+  id: 'id',
+  routeAttemptId: 'routeAttemptId',
+  provider: 'provider',
+  endpointFamily: 'endpointFamily',
+  reservationKey: 'reservationKey',
+  windowStart: 'windowStart',
+  windowEnd: 'windowEnd',
+  reservedAt: 'reservedAt'
+} as const
+
+export type ProviderThrottleReservationScalarFieldEnum = (typeof ProviderThrottleReservationScalarFieldEnum)[keyof typeof ProviderThrottleReservationScalarFieldEnum]
 
 
 export const EvidenceBuildScalarFieldEnum = {

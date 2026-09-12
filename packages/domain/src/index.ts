@@ -5,6 +5,7 @@ export * from "./forecast-eligibility.js";
 export * from "./reconciliation.js";
 export * from "./request-budget.js";
 export * from "./replay-provider-policy.js";
+export * from "./provider-routing.js";
 export * from "./evidence/contract.js";
 export * from "./evidence/eligibility.js";
 export * from "./evidence/form.js";

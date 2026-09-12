@@ -187,6 +187,7 @@ export type LeagueWhereInput = {
   externalRefs?: Prisma.LeagueExternalRefListRelationFilter
   providerCapabilities?: Prisma.ProviderCapabilityListRelationFilter
   forecastScores?: Prisma.ForecastScoreListRelationFilter
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptListRelationFilter
 }
 
 export type LeagueOrderByWithRelationInput = {
@@ -200,6 +201,7 @@ export type LeagueOrderByWithRelationInput = {
   externalRefs?: Prisma.LeagueExternalRefOrderByRelationAggregateInput
   providerCapabilities?: Prisma.ProviderCapabilityOrderByRelationAggregateInput
   forecastScores?: Prisma.ForecastScoreOrderByRelationAggregateInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptOrderByRelationAggregateInput
 }
 
 export type LeagueWhereUniqueInput = Prisma.AtLeast<{
@@ -216,6 +218,7 @@ export type LeagueWhereUniqueInput = Prisma.AtLeast<{
   externalRefs?: Prisma.LeagueExternalRefListRelationFilter
   providerCapabilities?: Prisma.ProviderCapabilityListRelationFilter
   forecastScores?: Prisma.ForecastScoreListRelationFilter
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptListRelationFilter
 }, "id">
 
 export type LeagueOrderByWithAggregationInput = {
@@ -251,6 +254,7 @@ export type LeagueCreateInput = {
   externalRefs?: Prisma.LeagueExternalRefCreateNestedManyWithoutLeagueInput
   providerCapabilities?: Prisma.ProviderCapabilityCreateNestedManyWithoutLeagueInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutLeagueInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptCreateNestedManyWithoutCompetitionInput
 }
 
 export type LeagueUncheckedCreateInput = {
@@ -264,6 +268,7 @@ export type LeagueUncheckedCreateInput = {
   externalRefs?: Prisma.LeagueExternalRefUncheckedCreateNestedManyWithoutLeagueInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedCreateNestedManyWithoutLeagueInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutLeagueInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedCreateNestedManyWithoutCompetitionInput
 }
 
 export type LeagueUpdateInput = {
@@ -277,6 +282,7 @@ export type LeagueUpdateInput = {
   externalRefs?: Prisma.LeagueExternalRefUpdateManyWithoutLeagueNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUpdateManyWithoutLeagueNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutLeagueNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUpdateManyWithoutCompetitionNestedInput
 }
 
 export type LeagueUncheckedUpdateInput = {
@@ -290,6 +296,7 @@ export type LeagueUncheckedUpdateInput = {
   externalRefs?: Prisma.LeagueExternalRefUncheckedUpdateManyWithoutLeagueNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedUpdateManyWithoutLeagueNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutLeagueNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedUpdateManyWithoutCompetitionNestedInput
 }
 
 export type LeagueCreateManyInput = {
@@ -395,6 +402,20 @@ export type LeagueUpdateOneRequiredWithoutFixturesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.LeagueUpdateToOneWithWhereWithoutFixturesInput, Prisma.LeagueUpdateWithoutFixturesInput>, Prisma.LeagueUncheckedUpdateWithoutFixturesInput>
 }
 
+export type LeagueCreateNestedOneWithoutProviderRouteReceiptsInput = {
+  create?: Prisma.XOR<Prisma.LeagueCreateWithoutProviderRouteReceiptsInput, Prisma.LeagueUncheckedCreateWithoutProviderRouteReceiptsInput>
+  connectOrCreate?: Prisma.LeagueCreateOrConnectWithoutProviderRouteReceiptsInput
+  connect?: Prisma.LeagueWhereUniqueInput
+}
+
+export type LeagueUpdateOneRequiredWithoutProviderRouteReceiptsNestedInput = {
+  create?: Prisma.XOR<Prisma.LeagueCreateWithoutProviderRouteReceiptsInput, Prisma.LeagueUncheckedCreateWithoutProviderRouteReceiptsInput>
+  connectOrCreate?: Prisma.LeagueCreateOrConnectWithoutProviderRouteReceiptsInput
+  upsert?: Prisma.LeagueUpsertWithoutProviderRouteReceiptsInput
+  connect?: Prisma.LeagueWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.LeagueUpdateToOneWithWhereWithoutProviderRouteReceiptsInput, Prisma.LeagueUpdateWithoutProviderRouteReceiptsInput>, Prisma.LeagueUncheckedUpdateWithoutProviderRouteReceiptsInput>
+}
+
 export type LeagueCreateNestedOneWithoutForecastScoresInput = {
   create?: Prisma.XOR<Prisma.LeagueCreateWithoutForecastScoresInput, Prisma.LeagueUncheckedCreateWithoutForecastScoresInput>
   connectOrCreate?: Prisma.LeagueCreateOrConnectWithoutForecastScoresInput
@@ -433,6 +454,7 @@ export type LeagueCreateWithoutSeasonsInput = {
   externalRefs?: Prisma.LeagueExternalRefCreateNestedManyWithoutLeagueInput
   providerCapabilities?: Prisma.ProviderCapabilityCreateNestedManyWithoutLeagueInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutLeagueInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptCreateNestedManyWithoutCompetitionInput
 }
 
 export type LeagueUncheckedCreateWithoutSeasonsInput = {
@@ -445,6 +467,7 @@ export type LeagueUncheckedCreateWithoutSeasonsInput = {
   externalRefs?: Prisma.LeagueExternalRefUncheckedCreateNestedManyWithoutLeagueInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedCreateNestedManyWithoutLeagueInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutLeagueInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedCreateNestedManyWithoutCompetitionInput
 }
 
 export type LeagueCreateOrConnectWithoutSeasonsInput = {
@@ -473,6 +496,7 @@ export type LeagueUpdateWithoutSeasonsInput = {
   externalRefs?: Prisma.LeagueExternalRefUpdateManyWithoutLeagueNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUpdateManyWithoutLeagueNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutLeagueNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUpdateManyWithoutCompetitionNestedInput
 }
 
 export type LeagueUncheckedUpdateWithoutSeasonsInput = {
@@ -485,6 +509,7 @@ export type LeagueUncheckedUpdateWithoutSeasonsInput = {
   externalRefs?: Prisma.LeagueExternalRefUncheckedUpdateManyWithoutLeagueNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedUpdateManyWithoutLeagueNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutLeagueNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedUpdateManyWithoutCompetitionNestedInput
 }
 
 export type LeagueCreateWithoutProviderCapabilitiesInput = {
@@ -497,6 +522,7 @@ export type LeagueCreateWithoutProviderCapabilitiesInput = {
   fixtures?: Prisma.FixtureCreateNestedManyWithoutLeagueInput
   externalRefs?: Prisma.LeagueExternalRefCreateNestedManyWithoutLeagueInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutLeagueInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptCreateNestedManyWithoutCompetitionInput
 }
 
 export type LeagueUncheckedCreateWithoutProviderCapabilitiesInput = {
@@ -509,6 +535,7 @@ export type LeagueUncheckedCreateWithoutProviderCapabilitiesInput = {
   fixtures?: Prisma.FixtureUncheckedCreateNestedManyWithoutLeagueInput
   externalRefs?: Prisma.LeagueExternalRefUncheckedCreateNestedManyWithoutLeagueInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutLeagueInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedCreateNestedManyWithoutCompetitionInput
 }
 
 export type LeagueCreateOrConnectWithoutProviderCapabilitiesInput = {
@@ -537,6 +564,7 @@ export type LeagueUpdateWithoutProviderCapabilitiesInput = {
   fixtures?: Prisma.FixtureUpdateManyWithoutLeagueNestedInput
   externalRefs?: Prisma.LeagueExternalRefUpdateManyWithoutLeagueNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutLeagueNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUpdateManyWithoutCompetitionNestedInput
 }
 
 export type LeagueUncheckedUpdateWithoutProviderCapabilitiesInput = {
@@ -549,6 +577,7 @@ export type LeagueUncheckedUpdateWithoutProviderCapabilitiesInput = {
   fixtures?: Prisma.FixtureUncheckedUpdateManyWithoutLeagueNestedInput
   externalRefs?: Prisma.LeagueExternalRefUncheckedUpdateManyWithoutLeagueNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutLeagueNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedUpdateManyWithoutCompetitionNestedInput
 }
 
 export type LeagueCreateWithoutFixturesInput = {
@@ -561,6 +590,7 @@ export type LeagueCreateWithoutFixturesInput = {
   externalRefs?: Prisma.LeagueExternalRefCreateNestedManyWithoutLeagueInput
   providerCapabilities?: Prisma.ProviderCapabilityCreateNestedManyWithoutLeagueInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutLeagueInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptCreateNestedManyWithoutCompetitionInput
 }
 
 export type LeagueUncheckedCreateWithoutFixturesInput = {
@@ -573,6 +603,7 @@ export type LeagueUncheckedCreateWithoutFixturesInput = {
   externalRefs?: Prisma.LeagueExternalRefUncheckedCreateNestedManyWithoutLeagueInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedCreateNestedManyWithoutLeagueInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutLeagueInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedCreateNestedManyWithoutCompetitionInput
 }
 
 export type LeagueCreateOrConnectWithoutFixturesInput = {
@@ -601,6 +632,7 @@ export type LeagueUpdateWithoutFixturesInput = {
   externalRefs?: Prisma.LeagueExternalRefUpdateManyWithoutLeagueNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUpdateManyWithoutLeagueNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutLeagueNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUpdateManyWithoutCompetitionNestedInput
 }
 
 export type LeagueUncheckedUpdateWithoutFixturesInput = {
@@ -610,6 +642,75 @@ export type LeagueUncheckedUpdateWithoutFixturesInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   seasons?: Prisma.SeasonUncheckedUpdateManyWithoutLeagueNestedInput
+  externalRefs?: Prisma.LeagueExternalRefUncheckedUpdateManyWithoutLeagueNestedInput
+  providerCapabilities?: Prisma.ProviderCapabilityUncheckedUpdateManyWithoutLeagueNestedInput
+  forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutLeagueNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedUpdateManyWithoutCompetitionNestedInput
+}
+
+export type LeagueCreateWithoutProviderRouteReceiptsInput = {
+  id?: string
+  name: string
+  countryCode: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  seasons?: Prisma.SeasonCreateNestedManyWithoutLeagueInput
+  fixtures?: Prisma.FixtureCreateNestedManyWithoutLeagueInput
+  externalRefs?: Prisma.LeagueExternalRefCreateNestedManyWithoutLeagueInput
+  providerCapabilities?: Prisma.ProviderCapabilityCreateNestedManyWithoutLeagueInput
+  forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutLeagueInput
+}
+
+export type LeagueUncheckedCreateWithoutProviderRouteReceiptsInput = {
+  id?: string
+  name: string
+  countryCode: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  seasons?: Prisma.SeasonUncheckedCreateNestedManyWithoutLeagueInput
+  fixtures?: Prisma.FixtureUncheckedCreateNestedManyWithoutLeagueInput
+  externalRefs?: Prisma.LeagueExternalRefUncheckedCreateNestedManyWithoutLeagueInput
+  providerCapabilities?: Prisma.ProviderCapabilityUncheckedCreateNestedManyWithoutLeagueInput
+  forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutLeagueInput
+}
+
+export type LeagueCreateOrConnectWithoutProviderRouteReceiptsInput = {
+  where: Prisma.LeagueWhereUniqueInput
+  create: Prisma.XOR<Prisma.LeagueCreateWithoutProviderRouteReceiptsInput, Prisma.LeagueUncheckedCreateWithoutProviderRouteReceiptsInput>
+}
+
+export type LeagueUpsertWithoutProviderRouteReceiptsInput = {
+  update: Prisma.XOR<Prisma.LeagueUpdateWithoutProviderRouteReceiptsInput, Prisma.LeagueUncheckedUpdateWithoutProviderRouteReceiptsInput>
+  create: Prisma.XOR<Prisma.LeagueCreateWithoutProviderRouteReceiptsInput, Prisma.LeagueUncheckedCreateWithoutProviderRouteReceiptsInput>
+  where?: Prisma.LeagueWhereInput
+}
+
+export type LeagueUpdateToOneWithWhereWithoutProviderRouteReceiptsInput = {
+  where?: Prisma.LeagueWhereInput
+  data: Prisma.XOR<Prisma.LeagueUpdateWithoutProviderRouteReceiptsInput, Prisma.LeagueUncheckedUpdateWithoutProviderRouteReceiptsInput>
+}
+
+export type LeagueUpdateWithoutProviderRouteReceiptsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  seasons?: Prisma.SeasonUpdateManyWithoutLeagueNestedInput
+  fixtures?: Prisma.FixtureUpdateManyWithoutLeagueNestedInput
+  externalRefs?: Prisma.LeagueExternalRefUpdateManyWithoutLeagueNestedInput
+  providerCapabilities?: Prisma.ProviderCapabilityUpdateManyWithoutLeagueNestedInput
+  forecastScores?: Prisma.ForecastScoreUpdateManyWithoutLeagueNestedInput
+}
+
+export type LeagueUncheckedUpdateWithoutProviderRouteReceiptsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  countryCode?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  seasons?: Prisma.SeasonUncheckedUpdateManyWithoutLeagueNestedInput
+  fixtures?: Prisma.FixtureUncheckedUpdateManyWithoutLeagueNestedInput
   externalRefs?: Prisma.LeagueExternalRefUncheckedUpdateManyWithoutLeagueNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedUpdateManyWithoutLeagueNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutLeagueNestedInput
@@ -625,6 +726,7 @@ export type LeagueCreateWithoutForecastScoresInput = {
   fixtures?: Prisma.FixtureCreateNestedManyWithoutLeagueInput
   externalRefs?: Prisma.LeagueExternalRefCreateNestedManyWithoutLeagueInput
   providerCapabilities?: Prisma.ProviderCapabilityCreateNestedManyWithoutLeagueInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptCreateNestedManyWithoutCompetitionInput
 }
 
 export type LeagueUncheckedCreateWithoutForecastScoresInput = {
@@ -637,6 +739,7 @@ export type LeagueUncheckedCreateWithoutForecastScoresInput = {
   fixtures?: Prisma.FixtureUncheckedCreateNestedManyWithoutLeagueInput
   externalRefs?: Prisma.LeagueExternalRefUncheckedCreateNestedManyWithoutLeagueInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedCreateNestedManyWithoutLeagueInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedCreateNestedManyWithoutCompetitionInput
 }
 
 export type LeagueCreateOrConnectWithoutForecastScoresInput = {
@@ -665,6 +768,7 @@ export type LeagueUpdateWithoutForecastScoresInput = {
   fixtures?: Prisma.FixtureUpdateManyWithoutLeagueNestedInput
   externalRefs?: Prisma.LeagueExternalRefUpdateManyWithoutLeagueNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUpdateManyWithoutLeagueNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUpdateManyWithoutCompetitionNestedInput
 }
 
 export type LeagueUncheckedUpdateWithoutForecastScoresInput = {
@@ -677,6 +781,7 @@ export type LeagueUncheckedUpdateWithoutForecastScoresInput = {
   fixtures?: Prisma.FixtureUncheckedUpdateManyWithoutLeagueNestedInput
   externalRefs?: Prisma.LeagueExternalRefUncheckedUpdateManyWithoutLeagueNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedUpdateManyWithoutLeagueNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedUpdateManyWithoutCompetitionNestedInput
 }
 
 export type LeagueCreateWithoutExternalRefsInput = {
@@ -689,6 +794,7 @@ export type LeagueCreateWithoutExternalRefsInput = {
   fixtures?: Prisma.FixtureCreateNestedManyWithoutLeagueInput
   providerCapabilities?: Prisma.ProviderCapabilityCreateNestedManyWithoutLeagueInput
   forecastScores?: Prisma.ForecastScoreCreateNestedManyWithoutLeagueInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptCreateNestedManyWithoutCompetitionInput
 }
 
 export type LeagueUncheckedCreateWithoutExternalRefsInput = {
@@ -701,6 +807,7 @@ export type LeagueUncheckedCreateWithoutExternalRefsInput = {
   fixtures?: Prisma.FixtureUncheckedCreateNestedManyWithoutLeagueInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedCreateNestedManyWithoutLeagueInput
   forecastScores?: Prisma.ForecastScoreUncheckedCreateNestedManyWithoutLeagueInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedCreateNestedManyWithoutCompetitionInput
 }
 
 export type LeagueCreateOrConnectWithoutExternalRefsInput = {
@@ -729,6 +836,7 @@ export type LeagueUpdateWithoutExternalRefsInput = {
   fixtures?: Prisma.FixtureUpdateManyWithoutLeagueNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUpdateManyWithoutLeagueNestedInput
   forecastScores?: Prisma.ForecastScoreUpdateManyWithoutLeagueNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUpdateManyWithoutCompetitionNestedInput
 }
 
 export type LeagueUncheckedUpdateWithoutExternalRefsInput = {
@@ -741,6 +849,7 @@ export type LeagueUncheckedUpdateWithoutExternalRefsInput = {
   fixtures?: Prisma.FixtureUncheckedUpdateManyWithoutLeagueNestedInput
   providerCapabilities?: Prisma.ProviderCapabilityUncheckedUpdateManyWithoutLeagueNestedInput
   forecastScores?: Prisma.ForecastScoreUncheckedUpdateManyWithoutLeagueNestedInput
+  providerRouteReceipts?: Prisma.ProviderRouteReceiptUncheckedUpdateManyWithoutCompetitionNestedInput
 }
 
 
@@ -754,6 +863,7 @@ export type LeagueCountOutputType = {
   externalRefs: number
   providerCapabilities: number
   forecastScores: number
+  providerRouteReceipts: number
 }
 
 export type LeagueCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -762,6 +872,7 @@ export type LeagueCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions
   externalRefs?: boolean | LeagueCountOutputTypeCountExternalRefsArgs
   providerCapabilities?: boolean | LeagueCountOutputTypeCountProviderCapabilitiesArgs
   forecastScores?: boolean | LeagueCountOutputTypeCountForecastScoresArgs
+  providerRouteReceipts?: boolean | LeagueCountOutputTypeCountProviderRouteReceiptsArgs
 }
 
 /**
@@ -809,6 +920,13 @@ export type LeagueCountOutputTypeCountForecastScoresArgs<ExtArgs extends runtime
   where?: Prisma.ForecastScoreWhereInput
 }
 
+/**
+ * LeagueCountOutputType without action
+ */
+export type LeagueCountOutputTypeCountProviderRouteReceiptsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ProviderRouteReceiptWhereInput
+}
+
 
 export type LeagueSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -821,6 +939,7 @@ export type LeagueSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   externalRefs?: boolean | Prisma.League$externalRefsArgs<ExtArgs>
   providerCapabilities?: boolean | Prisma.League$providerCapabilitiesArgs<ExtArgs>
   forecastScores?: boolean | Prisma.League$forecastScoresArgs<ExtArgs>
+  providerRouteReceipts?: boolean | Prisma.League$providerRouteReceiptsArgs<ExtArgs>
   _count?: boolean | Prisma.LeagueCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["league"]>
 
@@ -855,6 +974,7 @@ export type LeagueInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   externalRefs?: boolean | Prisma.League$externalRefsArgs<ExtArgs>
   providerCapabilities?: boolean | Prisma.League$providerCapabilitiesArgs<ExtArgs>
   forecastScores?: boolean | Prisma.League$forecastScoresArgs<ExtArgs>
+  providerRouteReceipts?: boolean | Prisma.League$providerRouteReceiptsArgs<ExtArgs>
   _count?: boolean | Prisma.LeagueCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type LeagueIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -868,6 +988,7 @@ export type $LeaguePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     externalRefs: Prisma.$LeagueExternalRefPayload<ExtArgs>[]
     providerCapabilities: Prisma.$ProviderCapabilityPayload<ExtArgs>[]
     forecastScores: Prisma.$ForecastScorePayload<ExtArgs>[]
+    providerRouteReceipts: Prisma.$ProviderRouteReceiptPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1274,6 +1395,7 @@ export interface Prisma__LeagueClient<T, Null = never, ExtArgs extends runtime.T
   externalRefs<T extends Prisma.League$externalRefsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.League$externalRefsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LeagueExternalRefPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   providerCapabilities<T extends Prisma.League$providerCapabilitiesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.League$providerCapabilitiesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProviderCapabilityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   forecastScores<T extends Prisma.League$forecastScoresArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.League$forecastScoresArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ForecastScorePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  providerRouteReceipts<T extends Prisma.League$providerRouteReceiptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.League$providerRouteReceiptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProviderRouteReceiptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1818,6 +1940,30 @@ export type League$forecastScoresArgs<ExtArgs extends runtime.Types.Extensions.I
   take?: number
   skip?: number
   distinct?: Prisma.ForecastScoreScalarFieldEnum | Prisma.ForecastScoreScalarFieldEnum[]
+}
+
+/**
+ * League.providerRouteReceipts
+ */
+export type League$providerRouteReceiptsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ProviderRouteReceipt
+   */
+  select?: Prisma.ProviderRouteReceiptSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ProviderRouteReceipt
+   */
+  omit?: Prisma.ProviderRouteReceiptOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ProviderRouteReceiptInclude<ExtArgs> | null
+  where?: Prisma.ProviderRouteReceiptWhereInput
+  orderBy?: Prisma.ProviderRouteReceiptOrderByWithRelationInput | Prisma.ProviderRouteReceiptOrderByWithRelationInput[]
+  cursor?: Prisma.ProviderRouteReceiptWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ProviderRouteReceiptScalarFieldEnum | Prisma.ProviderRouteReceiptScalarFieldEnum[]
 }
 
 /**

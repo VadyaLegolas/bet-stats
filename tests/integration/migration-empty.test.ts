@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -10,6 +11,10 @@ const prismaCli = resolve(databaseRoot, "node_modules/prisma/build/index.js");
 
 function docker(...args: string[]): string {
   return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+}
+
+function dockerInput(args: string[], input: string): string {
+  return execFileSync("docker", args, { encoding: "utf8", input, stdio: ["pipe", "pipe", "pipe"] }).trim();
 }
 
 function waitForPostgres(): void {
@@ -71,7 +76,7 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
       },
       stdio: "pipe",
     });
-  }, 120_000);
+  }, 180_000);
 
   afterAll(() => {
     try {
@@ -235,4 +240,19 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
       "ProviderQuotaObservation:ProviderQuotaObservation_append_only",
     ]));
   });
+
+  it("upgrades the exact Phase 4 schema with only the forward Phase 5 migration", () => {
+    docker("exec", containerName, "createdb", "-U", "postgres", "phase4_upgrade");
+    const migrationsRoot = resolve(databaseRoot, "prisma/migrations");
+    const phase5Migration = "20260909_phase05_provider_routing";
+    for (const directory of readdirSync(migrationsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort()) {
+      if (directory === phase5Migration) continue;
+      const migration = readFileSync(join(migrationsRoot, directory, "migration.sql"), "utf8");
+      dockerInput(["exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "phase4_upgrade"], `BEGIN;\n${migration}\nCOMMIT;`);
+    }
+    const forward = readFileSync(join(migrationsRoot, phase5Migration, "migration.sql"), "utf8");
+    dockerInput(["exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "phase4_upgrade"], `BEGIN;\n${forward}\nCOMMIT;`);
+    const tables = docker("exec", containerName, "psql", "-U", "postgres", "-d", "phase4_upgrade", "-At", "-c", `SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename LIKE 'ProviderRoute%';`);
+    expect(tables.split(/\r?\n/).sort()).toEqual(["ProviderRouteAttempt", "ProviderRouteReceipt"]);
+  }, 120_000);
 });

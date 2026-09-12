@@ -2,7 +2,7 @@ import { createElement } from "../../apps/web/node_modules/react/index.js";
 import { renderToStaticMarkup } from "../../apps/web/node_modules/react-dom/server.js";
 import { describe, expect, it } from "vitest";
 
-import { ForecastComparisonPanel, initializeComparisonPair, swapComparisonPair } from "../../apps/web/app/fixtures/[fixtureId]/forecast-workbench.js";
+import { ForecastComparisonPanel, ForecastWorkbench, initializeComparisonPair, swapComparisonPair } from "../../apps/web/app/fixtures/[fixtureId]/forecast-workbench.js";
 import { compareForecastPair } from "../../packages/domain/src/forecast/comparison.js";
 import { snapshot } from "./forecast-comparison.test.js";
 
@@ -22,6 +22,13 @@ describe("forecast revision comparison UI", () => {
     expect(markup).toContain("+5.0%");
     expect(markup).toContain("left");
     expect(markup).toContain("right");
+    expect(markup).toContain("Probabilities are estimates, not guarantees. You can lose money when betting.");
+  });
+
+  it("renders documented one-snapshot and absent-lineup states with persistent risk disclosure", () => {
+    const markup = renderToStaticMarkup(createElement(ForecastWorkbench, { fixtureId: "fixture-1", forecasts: [snapshot("only", "INITIAL", 0.45, [], 0.6, 1.2)] }));
+    expect(markup).toContain("No comparable forecast pair yet");
+    expect(markup).toContain("No LINEUP_CONFIRMED snapshot: no official confirmed lineup receipt was available before the cutoff.");
     expect(markup).toContain("Probabilities are estimates, not guarantees. You can lose money when betting.");
   });
 });

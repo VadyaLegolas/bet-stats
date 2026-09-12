@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { SETTLEMENT_PIPELINE_POLICY_HASH, type PrismaClient, type ReplayProviderPolicyRepository } from "@bet-stats/database";
 import { reservePriorityRequest } from "@bet-stats/domain";
-import type { NormalizedResult, RequestedDateWindow, ResultProvider } from "@bet-stats/football-data";
+import { createProviderRoute, providerRouteJobId, type NormalizedResult, type RequestedDateWindow, type ResultProvider } from "@bet-stats/football-data";
 
 import { runGatedIngestion, type CircuitProbeRegistry, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
 import type { ReplayJobData, SettlementJobData } from "../queues/index.js";
@@ -11,6 +11,11 @@ import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js
 
 interface ResultProviderCompatibility extends Partial<ResultProvider> {
   fetchResults?: () => Promise<readonly NormalizedResult[] | { data: readonly NormalizedResult[]; quota?: unknown }>;
+}
+
+export function createResultJobRoute(scope: { competition: string; season: string }) {
+  const route = createProviderRoute({ ...scope, endpoint: "RESULTS" });
+  return { jobId: providerRouteJobId(route), route };
 }
 
 export interface ResultSyncJobInput {

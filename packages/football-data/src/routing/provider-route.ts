@@ -27,6 +27,10 @@ export function createProviderRoute(input: { competition: string; season: string
   };
 }
 
+export function providerRouteJobId(route: ProviderRoute): string {
+  return `${route.version}:${route.competition}:${route.season}:${route.endpoint}`;
+}
+
 export type ProviderFailureTrigger = "UPSTREAM_UNAVAILABLE" | "RATE_LIMITED" | "PRIMARY_DATA_ABSENT";
 
 export function classifyProviderFailure(error: unknown): { eligible: true; trigger: ProviderFailureTrigger } | { eligible: false; reason: string } {

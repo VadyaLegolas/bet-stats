@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import type { PrismaClient, ReplayProviderPolicyRepository } from "@bet-stats/database";
 import { evaluateCapability, reservePriorityRequest, type CapabilityDecision } from "@bet-stats/domain";
-import { isConfiguredCompetitionCode, type FixtureProvider, type NormalizedFixture, type RequestedDateWindow } from "@bet-stats/football-data";
+import { createProviderRoute, isConfiguredCompetitionCode, providerRouteJobId, type FixtureProvider, type NormalizedFixture, type RequestedDateWindow } from "@bet-stats/football-data";
 
 import { runGatedIngestion, type CircuitProbeRegistry, type IngestionLane } from "../ingestion/runner.js";
 import type { ReplayJobData } from "../queues/index.js";
@@ -11,6 +11,11 @@ import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js
 
 const PROVIDER = "football-data.org";
 const ENDPOINT = "FIXTURES";
+
+export function createFixtureJobRoute(scope: { competition: string; season: string }) {
+  const route = createProviderRoute({ ...scope, endpoint: "FIXTURES" });
+  return { jobId: providerRouteJobId(route), route };
+}
 
 export interface FixtureSyncJobInput {
   database: PrismaClient;

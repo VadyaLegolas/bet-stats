@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import type { PrismaClient, ReplayProviderPolicyRepository } from "@bet-stats/database";
 import { reservePriorityRequest } from "@bet-stats/domain";
-import type { NormalizedStandingSnapshot, StandingsProvider, StandingsRequestCoverage } from "@bet-stats/football-data";
+import { createProviderRoute, providerRouteJobId, type NormalizedStandingSnapshot, type StandingsProvider, type StandingsRequestCoverage } from "@bet-stats/football-data";
 
 import { runGatedIngestion, type CircuitProbeRegistry, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
 import type { ReplayJobData } from "../queues/index.js";
@@ -31,6 +31,11 @@ export interface StandingsSyncInput {
   now?: Date;
   beforeDispatch?: () => Promise<void>;
   publish?: (snapshot: NormalizedStandingSnapshot) => Promise<void>;
+}
+
+export function createStandingsJobRoute(scope: { competition: string; season: string }) {
+  const route = createProviderRoute({ ...scope, endpoint: "STANDINGS" });
+  return { jobId: providerRouteJobId(route), route };
 }
 
 export function runStandingsSync(input: StandingsSyncInput): Promise<GatedIngestionResult<NormalizedStandingSnapshot>> {

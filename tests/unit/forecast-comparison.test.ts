@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { compareForecastPair, parseForecastComparisonRequest } from "../../packages/domain/src/forecast/comparison.js";
+import { compareForecastPair, parseForecastAvailability, parseForecastComparisonRequest } from "../../packages/domain/src/forecast/comparison.js";
 import type { ForecastResponseDto } from "../../packages/domain/src/forecast/contract.js";
 
 describe("forecast comparison contract", () => {
@@ -18,6 +18,16 @@ describe("forecast comparison contract", () => {
     expect(result.sources).toEqual({ added: ["provider:B"], removed: ["provider:A"] });
     expect(result.probabilities.map((entry) => `${entry.market}:${entry.selection}`)).toEqual(["ONE_X_TWO:HOME", "ONE_X_TWO:DRAW", "ONE_X_TWO:AWAY", "OVER_UNDER_2_5:OVER_2_5", "OVER_UNDER_2_5:UNDER_2_5", "BTTS:YES", "BTTS:NO"]);
     expect(result.probabilities[0]).toMatchObject({ left: 0.45, right: 0.5, delta: 0.05, direction: "increase" });
+  });
+
+  it("parses fixed-order availability without accepting fabricated fields", () => {
+    const availability = [
+      { kind: "INITIAL", status: "absent", reason: "INSUFFICIENT_EVIDENCE" },
+      { kind: "PRE_MATCH", status: "absent", reason: "PROVIDER_UNAVAILABLE" },
+      { kind: "LINEUP_CONFIRMED", status: "absent", reason: "NO_CONFIRMED_LINEUP" },
+    ];
+    expect(parseForecastAvailability(availability)).toEqual(availability);
+    expect(() => parseForecastAvailability([{ ...availability[0], inferred: true }, availability[1], availability[2]])).toThrow("UNKNOWN_FORECAST_AVAILABILITY_KEY");
   });
 });
 

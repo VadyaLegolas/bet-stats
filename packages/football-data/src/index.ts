@@ -2,3 +2,6 @@ export * from "./provider.interface.js";
 export * from "./providers/football-data-org/client.js";
 export * from "./providers/football-data-org/normalize.js";
 export * from "./providers/football-data-org/schema.js";
+export * from "./providers/api-football/client.js";
+export * from "./providers/api-football/normalize.js";
+export * from "./providers/api-football/schema.js";

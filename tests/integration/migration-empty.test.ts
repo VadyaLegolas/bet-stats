@@ -114,6 +114,10 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
         "ManualOddsSnapshot",
         "ManualOddsSelection",
         "ValueReceipt",
+        "ProviderRouteReceipt",
+        "ProviderRouteAttempt",
+        "ProviderQuotaObservation",
+        "ProviderThrottleReservation",
       ]),
     );
 
@@ -219,4 +223,16 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
       "ValueReceipt:ValueReceipt_append_only",
     ]));
   }, 30_000);
+
+  it("installs append-only guards for provider route evidence", () => {
+    const triggers = sql(
+      `SELECT event_object_table || ':' || trigger_name FROM information_schema.triggers
+       WHERE event_object_schema='public' AND event_object_table IN ('ProviderRouteReceipt','ProviderRouteAttempt','ProviderQuotaObservation') ORDER BY 1;`,
+    );
+    expect(triggers).toEqual(expect.arrayContaining([
+      "ProviderRouteReceipt:ProviderRouteReceipt_append_only",
+      "ProviderRouteAttempt:ProviderRouteAttempt_guarded_immutable",
+      "ProviderQuotaObservation:ProviderQuotaObservation_append_only",
+    ]));
+  });
 });

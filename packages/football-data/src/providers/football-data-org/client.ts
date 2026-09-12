@@ -1,5 +1,5 @@
-import { isConfiguredCompetitionCode, type FixtureProvider, type NormalizedFixture, type NormalizedResult, type NormalizedStandingSnapshot, type RequestedDateWindow, type ResultProvider, type StandingsProvider, type StandingsRequestCoverage } from "../../provider.interface.js";
-import { normalizeCompetitionMatches, normalizeCompetitionResults, normalizeCompetitionStandings, ProviderPayloadError } from "./normalize.js";
+import { isConfiguredCompetitionCode, ProviderPayloadError, type FixtureProvider, type NormalizedFixture, type NormalizedResult, type NormalizedStandingSnapshot, type RequestedDateWindow, type ResultProvider, type StandingsProvider, type StandingsRequestCoverage } from "../../provider.interface.js";
+import { normalizeCompetitionMatches, normalizeCompetitionResults, normalizeCompetitionStandings } from "./normalize.js";
 import { requestedCompetitionMatchesSchema } from "./schema.js";
 
 type Fetcher = (input: string | URL, init?: RequestInit) => Promise<Response>;

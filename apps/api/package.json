@@ -12,6 +12,7 @@
     "@bet-stats/config": "workspace:*",
     "@bet-stats/database": "workspace:*",
     "@bet-stats/domain": "workspace:*",
+    "@bet-stats/football-data": "workspace:*",
     "@nestjs/common": "11.1.29",
     "@nestjs/core": "11.1.29",
     "@nestjs/platform-express": "11.1.29",

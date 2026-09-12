@@ -24,7 +24,7 @@ export default defineConfig({
       command: "corepack pnpm --filter @bet-stats/config build && corepack pnpm --filter @bet-stats/domain build && corepack pnpm --filter @bet-stats/football-data build && corepack pnpm --filter @bet-stats/database build && corepack pnpm --filter @bet-stats/api build && corepack pnpm --filter @bet-stats/api dev",
       port: 3001,
       reuseExistingServer: false,
-      timeout: 120_000,
+      timeout: 240_000,
       env: {
         NODE_ENV: "test",
         DATA_PROVIDER_MODE: "deterministic",
@@ -37,7 +37,7 @@ export default defineConfig({
       command: "corepack pnpm --filter @bet-stats/web dev:e2e",
       url: "http://127.0.0.1:3000",
       reuseExistingServer: false,
-      timeout: 120_000,
+      timeout: 240_000,
       env: {
         API_ORIGIN: "http://127.0.0.1:3001",
         DISPLAY_TIME_ZONE: "Europe/Warsaw",

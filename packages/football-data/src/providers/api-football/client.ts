@@ -1,6 +1,6 @@
 import { ProviderPayloadError, type ConfiguredCompetitionCode, type NormalizedFixture, type NormalizedStandingSnapshot, type NormalizedTeamObservation } from "../../provider.interface.js";
 import { normalizeApiFootballFixtures, normalizeApiFootballStandings, normalizeApiFootballTeams } from "./normalize.js";
-import { apiFootballFixturesEnvelopeSchema, apiFootballLeaguesEnvelopeSchema, apiFootballStandingsEnvelopeSchema, apiFootballTeamsEnvelopeSchema, parametersMatch } from "./schema.js";
+import { apiFootballFixturesEnvelopeSchema, apiFootballLeaguesEnvelopeSchema, apiFootballStandingsEnvelopeSchema, apiFootballTeamsEnvelopeSchema, parametersMatch, parseApiFootballEnrichmentEnvelope, type ApiFootballEnrichmentEndpoint } from "./schema.js";
 
 type Fetcher = (input: string | URL, init?: RequestInit) => Promise<Response>;
 type FailureCode = "TRANSPORT_FAILURE" | "RATE_LIMITED" | "PROVIDER_UNAVAILABLE" | "REQUEST_REJECTED" | "INVALID_PAYLOAD" | "PAYLOAD_MISMATCH";
@@ -74,6 +74,11 @@ export class ApiFootballClient {
     if (!parsed.success) throw failure("INVALID_PAYLOAD", "quarantine");
     this.#assertEnvelope(parsed.data.parameters, parameters, parsed.data.results, parsed.data.response.length);
     return normalizeApiFootballTeams(parsed.data, request.leagueId, request.season, this.#now());
+  }
+
+  async fetchEnrichment(endpoint: ApiFootballEnrichmentEndpoint, fixtureId: number) {
+    const parameters = { fixture: String(fixtureId) };
+    return parseApiFootballEnrichmentEnvelope(endpoint, await this.#request(endpoint, parameters), parameters);
   }
 
   async #request(endpoint: string, parameters: Record<string, string>): Promise<unknown> {

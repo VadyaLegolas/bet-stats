@@ -81,3 +81,20 @@ export function parametersMatch(actual: Record<string, string>, expected: Record
   return actualKeys.length === expectedKeys.length
     && actualKeys.every((key, index) => key === expectedKeys[index] && actual[key] === expected[key]);
 }
+
+export const apiFootballEnrichmentEndpoints = ["lineups", "injuries", "odds", "fixtures"] as const;
+export type ApiFootballEnrichmentEndpoint = (typeof apiFootballEnrichmentEndpoints)[number];
+
+const lineupItemSchema = z.object({ fixture: z.number().int().positive(), confirmed: z.boolean(), players: z.array(z.object({ id: z.number().int().positive(), name: z.string().min(1) }).strict()).min(1).max(100) }).strict();
+const injuryItemSchema = z.object({ fixture: z.number().int().positive(), player: teamSchema, type: z.string().min(1), reason: z.string().min(1) }).strict();
+const oddsItemSchema = z.object({ fixture: z.number().int().positive(), bookmaker: z.string().min(1), market: z.string().min(1), value: z.string().min(1) }).strict();
+const statisticsItemSchema = z.object({ fixture: z.number().int().positive(), team: teamSchema, statistics: z.record(z.string(), z.number().finite().nullable()) }).strict();
+
+export function parseApiFootballEnrichmentEnvelope(endpoint: ApiFootballEnrichmentEndpoint, value: unknown, expectedParameters: Record<string, string>) {
+  const item = endpoint === "lineups" ? lineupItemSchema : endpoint === "injuries" ? injuryItemSchema : endpoint === "odds" ? oddsItemSchema : statisticsItemSchema;
+  const parsed = z.object({ ...envelopeBase, get: z.literal(endpoint), response: z.array(item).max(1_000) }).strict().safeParse(value);
+  if (!parsed.success || !parametersMatch(parsed.data.parameters, expectedParameters) || parsed.data.results !== parsed.data.response.length) throw new Error("INVALID_ENRICHMENT_PAYLOAD");
+  return parsed.data.response.length === 0
+    ? { state: "observed-empty" as const, payload: null }
+    : { state: "observed" as const, payload: parsed.data.response };
+}

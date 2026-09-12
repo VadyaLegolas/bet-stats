@@ -1,9 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { createPrismaClient, createPrismaForecastRepository, type PrismaClient } from "@bet-stats/database";
 import type { ForecastResponseDto } from "@bet-stats/domain";
-
-import { createPrismaForecastRepository } from "../../apps/api/src/modules/forecasts/forecasts.service.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required");
@@ -54,16 +52,17 @@ describe("append-only forecast snapshots", () => {
       VALUES ('${id("lineup-no-source")}','${id("p3-fixture")}','LINEUP_CONFIRMED','ISSUED',1,'2026-09-10T17:00:00Z','poisson-v1','${id("m")}', 'forecast-config-v1','${id("c")}','${id("i")}','${id("e")}','[]','{}','{}','[]','{}',now())
     `)).rejects.toThrow(/official confirmed-lineup/i);
 
-    await prisma.$executeRawUnsafe(`INSERT INTO "SourceObservation" (id,provider,"endpointFamily","externalIdentity","observedAt","payloadHash","rawPayload","payloadBytes") VALUES ($1,'official-provider','LINEUPS',$3,now(),$2,'{}',2)`, id("lineup-source"), id("lineup-hash"), id("p3-fixture"));
-    await prisma.$executeRawUnsafe(`INSERT INTO "LineupObservation" (id,"fixtureId","observationId",status,"confirmedAt") VALUES ($1,$3,$2,'OFFICIAL_CONFIRMED',now())`, id("lineup-observation"), id("lineup-source"), id("p3-fixture"));
+    await prisma.$executeRawUnsafe(`INSERT INTO "SourceObservation" (id,provider,"endpointFamily","externalIdentity","observedAt","payloadHash","rawPayload","payloadBytes") VALUES ($1,'official-provider','LINEUPS',$3,'2026-09-10T16:55:00Z',$2,'{}',2)`, id("lineup-source"), id("lineup-hash"), id("p3-fixture"));
+    await prisma.$executeRawUnsafe(`INSERT INTO "LineupObservation" (id,"fixtureId","observationId",status,"confirmedAt") VALUES ($1,$3,$2,'OFFICIAL_CONFIRMED','2026-09-10T16:55:00Z')`, id("lineup-observation"), id("lineup-source"), id("p3-fixture"));
     await expect(prisma.$executeRawUnsafe(`
       INSERT INTO "ForecastSnapshot" (id,"fixtureId",kind,state,revision,"officialLineupObservationId",cutoff,"modelVersion","modelHash","configVersion","configHash","inputHash","evidenceFingerprint","sourceRefs",probabilities,confidence,assumptions,receipt,"issuedAt")
-      VALUES ($1,'${id("p3-fixture")}','LINEUP_CONFIRMED','ISSUED',1,$2,'2026-09-10T17:00:00Z','poisson-v1',$3,'forecast-config-v1',$4,$5,$6,'[]','{}','{}','[]','{}',now())
+      VALUES ($1,'${id("p3-fixture")}','LINEUP_CONFIRMED','ISSUED',1,$2,'2026-09-10T17:00:00Z','poisson-v1',$3,'forecast-config-v1',$4,$5,$6,'[]','{}','{}','[]',jsonb_build_object('officialLineupObservationId',$2::text),now())
     `, id("lineup-valid"), id("lineup-observation"), id("m2"), id("c2"), id("i2"), id("e2"))).resolves.toBe(1);
   });
 
   it("does not expose an official lineup whose source receipt was captured after cutoff", async () => {
-    const fixtureId = id("p3-fixture");
+    const fixtureId = id("late-fixture");
+    await prisma.fixture.create({ data: { id: fixtureId, leagueId: "p3-league", seasonId: "p3-season", homeTeamId: "p3-home", awayTeamId: "p3-away", kickoffUtc: new Date("2026-09-10T18:00:00Z"), status: "SCHEDULED" } });
     await prisma.$executeRawUnsafe(`INSERT INTO "SourceObservation" (id,provider,"endpointFamily","externalIdentity","observedAt","payloadHash","rawPayload","payloadBytes") VALUES ($1,'api-football','LINEUPS',$2,'2026-09-10T17:05:00Z',$3,'{}',2)`, id("late-source"), fixtureId, id("late-hash"));
     await prisma.$executeRawUnsafe(`INSERT INTO "LineupObservation" (id,"fixtureId","observationId",status,"confirmedAt") VALUES ($1,$2,$3,'OFFICIAL_CONFIRMED','2026-09-10T16:55:00Z')`, id("late-lineup"), fixtureId, id("late-source"));
     const repository = createPrismaForecastRepository(prisma);

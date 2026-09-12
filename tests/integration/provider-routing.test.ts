@@ -5,6 +5,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createPrismaClient, createProviderRoutingRepository, type PrismaClient } from "@bet-stats/database";
 import { PROVIDER_ROUTE_POLICY_VERSION, routeReceiptContentHash } from "@bet-stats/domain";
+import { classifyProviderFailure } from "@bet-stats/football-data";
+import { createFixtureJobRoute } from "../../workers/data-sync/src/jobs/fixtures.js";
+import { createResultJobRoute } from "../../workers/data-sync/src/jobs/results.js";
+import { createStandingsJobRoute } from "../../workers/data-sync/src/jobs/standings.js";
+import { runProviderRoute } from "../../workers/data-sync/src/ingestion/runner.js";
 
 const root = resolve(import.meta.dirname, "../..");
 const databaseRoot = resolve(root, "packages/database");
@@ -111,6 +116,29 @@ describe("provider routing repository", () => {
     const approved = await repository.approveCapability({ provider: "api-football", leagueId: "league-pl", seasonId: "season-2026", endpoint: "STANDINGS", supported: true, verifiedAt: new Date("2026-09-12T12:00:00.000Z"), expiresAt: new Date("2026-09-13T12:00:00.000Z") });
     expect(approved).toMatchObject({ provider: "api-football", leagueId: "league-pl", seasonId: "season-2026", endpoint: "STANDINGS", supported: true });
     expect(await database.providerCapability.count()).toBe(1);
+  });
+
+  it("builds deterministic routes for every job and configured competition family", () => {
+    const scope = { competition: "PL", season: "2026" };
+    expect(createFixtureJobRoute(scope)).toMatchObject({ jobId: "provider-route-v1:PL:2026:FIXTURES", route: { candidates: ["football-data.org", "api-football"] } });
+    expect(createResultJobRoute(scope)).toMatchObject({ jobId: "provider-route-v1:PL:2026:RESULTS", route: { candidates: ["football-data.org", "api-football"] } });
+    expect(createStandingsJobRoute(scope)).toMatchObject({ jobId: "provider-route-v1:PL:2026:STANDINGS", route: { candidates: ["football-data.org", "api-football"] } });
+    expect(createFixtureJobRoute({ competition: "UECL", season: "2026" }).route).toMatchObject({ candidates: ["api-football"], soleSource: true });
+  });
+
+  it("falls back once for eligible failures and returns timestamped last-valid state for sole source", async () => {
+    const attempts: string[] = [];
+    const fallback = await runProviderRoute({
+      candidates: [{ provider: "football-data.org", factory: () => "primary" }, { provider: "api-football", factory: () => "fallback" }],
+      persistRoute: async () => { attempts.push("route"); },
+      persistAttempt: async ({ provider }) => { attempts.push(provider); },
+      call: async (provider) => { if (provider === "primary") throw Object.assign(new Error(), { code: "UPSTREAM_5XX" }); return "facts"; },
+      classifyFailure: classifyProviderFailure,
+    });
+    expect(fallback).toEqual({ status: "completed", provider: "api-football", value: "facts" });
+    expect(attempts).toEqual(["route", "football-data.org", "api-football"]);
+    const limited = await runProviderRoute({ candidates: [{ provider: "api-football", factory: () => "sole" }], persistRoute: async () => {}, persistAttempt: async () => {}, call: async () => { throw Object.assign(new Error(), { code: "UPSTREAM_5XX" }); }, classifyFailure: classifyProviderFailure, lastValid: { at: "2026-09-12T10:00:00Z", value: "old-facts" } });
+    expect(limited).toEqual({ status: "limited", reason: "NO_FALLBACK", lastValidAt: "2026-09-12T10:00:00Z", lastValidValue: "old-facts" });
   });
 });
 

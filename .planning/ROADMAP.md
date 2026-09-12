@@ -235,7 +235,7 @@ Plans:
   4. A user can compare INITIAL, PRE_MATCH, and available LINEUP_CONFIRMED snapshots and see which evidence changed the forecast.
   5. TheSportsDB may suggest reconciliation names and logos for administrator review but cannot supply match statistics or silently resolve ambiguity.
 
-**Plans**: 3/10 plans executed
+**Plans**: 4/10 plans executed
 
 Plans:
 
@@ -250,7 +250,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 05-06-PLAN.md — Provide server-authoritative exact forecast-pair comparison.
-- [ ] 05-09-PLAN.md — Produce the redacted provider-policy probe and register its authenticated approval boundary in the production Nest graph.
+- [x] 05-09-PLAN.md — Produce the redacted provider-policy probe and register its authenticated approval boundary in the production Nest graph.
 
 **Wave 4** *(routing/enrichment blocked on 05-09; UI comparison blocked on 05-06)*
 
@@ -297,5 +297,5 @@ Plans:
 | 2. Historical Evidence Pipeline | 28/28 | Complete    | 2026-09-05 |
 | 3. Forecast and Manual Value Workbench | 12/12 | Complete    | 2026-09-08 |
 | 4. Settlement and Evidence Scorecard | 9/9 | Complete    | 2026-09-09 |
-| 5. Provider-Aware Coverage and Enrichment | 3/10 | In Progress|  |
+| 5. Provider-Aware Coverage and Enrichment | 4/10 | In Progress|  |
 | 6. Release Experience and Operations | 0/TBD | Not started | - |

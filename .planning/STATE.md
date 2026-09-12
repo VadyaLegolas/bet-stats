@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 05
 current_phase_name: Provider-Aware Coverage and Enrichment
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 05-06-PLAN.md
-last_updated: "2026-09-12T16:42:47.758Z"
+stopped_at: Completed 05-09-PLAN.md
+last_updated: "2026-09-12T16:55:57.267Z"
 last_activity: 2026-09-12
-last_activity_desc: Completed 05-06 exact forecast comparison and availability API
+last_activity_desc: Completed 05-09 authenticated provider-policy approval and redacted probe
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 71
-  completed_plans: 64
+  completed_plans: 65
   percent: 67
 ---
 
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 05 (Provider-Aware Coverage and Enrichment) — IN PROGRESS
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 10
 Status: Ready to execute
-Last Activity: 2026-09-12 — Completed 05-06 forecast comparison
-Last Activity Description: Exact-pair deltas and fixed-kind availability verified
+Last Activity: 2026-09-12 — Completed 05-09 provider-policy approval
+Last Activity Description: Authenticated promotion, redacted probe and rejection audit verified
 
 Progress: [███████░░░] 67%
 
@@ -95,6 +95,7 @@ Progress: [███████░░░] 67%
 | Phase 05 P01 | 25min | 2 tasks | 7 files |
 | Phase 05 P02 | 16min | 2 tasks | 23 files |
 | Phase 05 P06 | 8min | 2 tasks | 8 files |
+| Phase 05 P09 | 12min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05]: Phase 05: Successful attempts require an exact provider-matching immutable SourceObservation; denied attempts carry no response fact.
 - [Phase 05]: Phase 05: Forecast comparison validates both requested IDs, ISSUED state and fixture ownership before calculating any delta.
 - [Phase 05]: Phase 05: Availability always projects INITIAL, PRE_MATCH and LINEUP_CONFIRMED in fixed order, with exact receipts or closed reason codes.
+- [Phase 05]: Phase 05: Probe artifacts remain pending and non-authoritative until promoted through the OperatorGuard-protected Nest route.
+- [Phase 05]: Phase 05: Invalid approval evidence appends a denied route attempt for its exact scope without changing unrelated capability records.
+- [Phase 05]: Phase 05: Approval idempotency keys converge concurrent requests to one durable decision.
 
 ### Pending Todos
 
@@ -168,6 +172,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-12T16:42:47.523Z
-Stopped at: Completed 05-06-PLAN.md
+Last session: 2026-09-12T16:55:56.952Z
+Stopped at: Completed 05-09-PLAN.md
 Resume file: None

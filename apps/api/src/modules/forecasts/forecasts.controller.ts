@@ -3,11 +3,23 @@ import type { ForecastRequestDto, ForecastResponseDto } from "@bet-stats/domain"
 
 import { EligibilityGuard } from "../eligibility/eligibility.guard.js";
 import { ForecastsService } from "./forecasts.service.js";
+import { ForecastComparisonService } from "./forecast-comparison.service.js";
 
 @Controller("fixtures/:fixtureId/forecasts")
 @UseGuards(EligibilityGuard)
 export class ForecastsController {
-  constructor(private readonly forecasts: ForecastsService) {}
+  constructor(private readonly forecasts: ForecastsService, private readonly comparisonService?: ForecastComparisonService) {}
+
+  @Get("compare")
+  @Header("Cache-Control", "private, no-store, max-age=0")
+  compare(@Param("fixtureId") fixtureId: string, @Query() query: Record<string, string | undefined>) {
+    if (Object.keys(query).length !== 2 || !query.leftId || !query.rightId) throw new BadRequestException({ code: "INVALID_FORECAST_COMPARISON_QUERY" });
+    return this.comparisonService!.compare(fixtureId, query);
+  }
+
+  @Get("availability")
+  @Header("Cache-Control", "private, no-store, max-age=0")
+  availability(@Param("fixtureId") fixtureId: string) { return this.comparisonService!.availability(fixtureId); }
 
   @Post()
   @Header("Cache-Control", "private, no-store, max-age=0")

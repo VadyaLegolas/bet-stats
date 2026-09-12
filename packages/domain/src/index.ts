@@ -12,6 +12,7 @@ export * from "./evidence/form.js";
 export * from "./evidence/elo.js";
 export * from "./evidence/features.js";
 export * from "./forecast/contract.js";
+export * from "./forecast/comparison.js";
 export * from "./forecast/model.js";
 export * from "./odds/contract.js";
 export * from "./odds/draft.js";

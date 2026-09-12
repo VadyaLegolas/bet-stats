@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 05
 current_phase_name: Provider-Aware Coverage and Enrichment
-current_plan: 5
+current_plan: 6
 status: executing
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-09-12T17:10:58.358Z"
+stopped_at: Completed 05-04-PLAN.md
+last_updated: "2026-09-12T21:52:41.741Z"
 last_activity: 2026-09-12
 last_activity_desc: Completed 05-09 authenticated provider-policy approval and redacted probe
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 71
-  completed_plans: 66
+  completed_plans: 67
   percent: 67
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 05 (Provider-Aware Coverage and Enrichment) — IN PROGRESS
-Current Plan: 5
+Current Plan: 6
 Total Plans in Phase: 10
 Status: Ready to execute
 Last Activity: 2026-09-12 — Completed 05-09 provider-policy approval
@@ -97,6 +97,7 @@ Progress: [███████░░░] 67%
 | Phase 05 P06 | 8min | 2 tasks | 8 files |
 | Phase 05 P09 | 12min | 3 tasks | 8 files |
 | Phase 05 P03 | 18min | 2 tasks | 12 files |
+| Phase 05 P04 | 12min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05]: Phase 05: Approval idempotency keys converge concurrent requests to one durable decision.
 - [Phase 05]: Phase 05: Fallback fixture identity resolves external refs first, then exactly one canonical participant match inside a versioned 15-minute kickoff window.
 - [Phase 05]: Phase 05: Provider fallback is a closed two-attempt list; UEL and UECL are API-Football sole-source with timestamped NO_FALLBACK state.
+- [Phase 05]: Phase 05: Optional enrichment constructs provider I/O only after exact capability, closed circuit and provider-wide optional reservation.
+- [Phase 05]: Phase 05: LINEUP_CONFIRMED requires an official same-fixture source observed no later than cutoff; empty enrichment remains OBSERVED_EMPTY.
 
 ### Pending Todos
 
@@ -175,6 +178,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-12T17:10:58.069Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-09-12T21:52:41.500Z
+Stopped at: Completed 05-04-PLAN.md
 Resume file: None

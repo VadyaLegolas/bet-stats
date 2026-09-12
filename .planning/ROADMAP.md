@@ -235,13 +235,13 @@ Plans:
   4. A user can compare INITIAL, PRE_MATCH, and available LINEUP_CONFIRMED snapshots and see which evidence changed the forecast.
   5. TheSportsDB may suggest reconciliation names and logos for administrator review but cannot supply match statistics or silently resolve ambiguity.
 
-**Plans**: 10 plans
+**Plans**: 1/10 plans executed
 
 Plans:
 
 **Wave 1**
 
-- [ ] 05-01-PLAN.md — Promote the provider-neutral contract and add the strict API-Football core adapter.
+- [x] 05-01-PLAN.md — Promote the provider-neutral contract and add the strict API-Football core adapter.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -269,6 +269,7 @@ Plans:
 **Wave 7** *(blocked on suggestion/logo service and authenticated provider module registration)*
 
 - [ ] 05-10-PLAN.md — Register the validated provider-logo HTTP boundary and close held-out security/UI acceptance.
+
 **UI hint**: yes
 
 ### Phase 6: Release Experience and Operations
@@ -296,5 +297,5 @@ Plans:
 | 2. Historical Evidence Pipeline | 28/28 | Complete    | 2026-09-05 |
 | 3. Forecast and Manual Value Workbench | 12/12 | Complete    | 2026-09-08 |
 | 4. Settlement and Evidence Scorecard | 9/9 | Complete    | 2026-09-09 |
-| 5. Provider-Aware Coverage and Enrichment | 0/TBD | Not started | - |
+| 5. Provider-Aware Coverage and Enrichment | 1/10 | In Progress|  |
 | 6. Release Experience and Operations | 0/TBD | Not started | - |

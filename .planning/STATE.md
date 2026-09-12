@@ -4,15 +4,15 @@ current_phase: 05
 current_phase_name: Provider-Aware Coverage and Enrichment
 current_plan: Not started
 status: executing
-stopped_at: Phase 5 context gathered
-last_updated: "2026-09-12T11:13:50.627Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-09-12T11:39:50.639Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 05 planning complete — 10 plans ready
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 71
-  completed_plans: 61
+  completed_plans: 62
   percent: 67
 ---
 
@@ -34,7 +34,7 @@ Status: Ready to execute
 Last Activity: 2026-09-12 — Phase 05 planning complete
 Last Activity Description: Phase 05 planning complete — 10 plans ready
 
-Progress: [█████░░░░░] 50%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -92,6 +92,7 @@ Progress: [█████░░░░░] 50%
 | Phase 04 P06 | 18min | 2 tasks | 9 files |
 | Phase 04 P07 | 34min | 2 tasks | 4 files |
 | Phase 04 P09 | 18min | 3 tasks | 22 files |
+| Phase 05 P01 | 25min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -138,6 +139,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 4]: Phase 04 acceptance seeds canonical sources and invokes the production settlement service before comparing PostgreSQL, Nest JSON and browser DOM.
 - [Phase 4]: Phase 04: Forecast evidence uses forecastCutoff while result knowledge independently uses evaluationAsOf.
 - [Phase 4]: Phase 04: BullMQ carries only plan identity and hash; workers reconstruct immutable work from PostgreSQL.
+- [Phase 05]: Phase 05: Provider names use a closed production registry while external IDs remain provenance-only.
+- [Phase 05]: Phase 05: API-Football envelopes must match exact request parameters and league/season entities before normalization.
+- [Phase 05]: Phase 05: Transport, rate-limit, and 5xx failures are fallback-eligible; payload violations quarantine.
 
 ### Pending Todos
 
@@ -157,6 +161,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-09T09:14:32.952Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-provider-aware-coverage-and-enrichment/05-CONTEXT.md
+Last session: 2026-09-12T11:39:49.528Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None

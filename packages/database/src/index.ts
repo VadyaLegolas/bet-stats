@@ -9,3 +9,5 @@ export { createPrismaForecastRepository } from "./forecast-repository.js";
 export type { ForecastPublicationRepository } from "./forecast-repository.js";
 export { createProviderRoutingRepository } from "./provider-routing/repository.js";
 export type { AppendAttemptInput, AppendRouteInput, CapabilityApprovalInput, ProviderAdmissionInput, QuotaObservationInput } from "./provider-routing/repository.js";
+export { DEFAULT_KICKOFF_TOLERANCE_MS, PROVIDER_FIXTURE_RESOLVER_VERSION, resolveProviderFixture } from "./reconciliation/provider-fixture-resolver.js";
+export type { ProviderFixtureResolution } from "./reconciliation/provider-fixture-resolver.js";

@@ -20,7 +20,7 @@ The phase plans own creation of the following missing test artifacts before or a
 |------|------------------|------------|
 | `tests/unit/provider-contract.test.ts` | Provider-neutral round trip, request-bound validation, provider IDs excluded from canonical authority | 05-01 |
 | `tests/integration/api-football-provider.test.ts` | Strict `/leagues`, `/fixtures`, `/standings`, `/teams` envelopes; 429/5xx/malformed redaction | 05-01 |
-| `tests/unit/provider-policy-probe.test.ts` | Opt-in/non-production refusal, redacted pending artifact schema, unknown/disagreement fail-closed behavior | 05-01 |
+| `tests/unit/provider-policy-probe.test.ts` | Opt-in/non-production refusal, redacted pending artifact schema, unknown/disagreement fail-closed behavior | 05-09 |
 | `tests/integration/provider-routing.test.ts` | Versioned route receipts, primary/sole-source policy, admission and append-only attempts | 05-02, 05-03 |
 | `tests/integration/provider-policy-approval.test.ts` | Real-AppModule authenticated approval route, exact-scope versioning, stale/mismatched/unknown rejection | 05-09 |
 | `tests/integration/provider-fallback-identity.test.ts` | Exact-ref-first fallback, held-out kickoff drift, ambiguity quarantine, canonical ID stability | 05-03 |
@@ -168,7 +168,7 @@ Phase 05 validation is complete only when:
 | REQ | PROV-06 | Exact server pair projection and stable accessible UI in 05-06–05-07, held out in 05-10 | COVERED |
 | REQ | PROV-07 | Suggestion-only review, validated logo service and registered HTTP image boundary in 05-08 and 05-10 | COVERED |
 | RESEARCH | Provider-neutral route and strict adapters | 05-01, 05-03 | COVERED |
-| RESEARCH | Seasonal capability, separate quota/throttle/headroom and operator-approved probe facts | 05-01, 05-02, 05-04, 05-09 | COVERED |
+| RESEARCH | Seasonal capability, separate quota/throttle/headroom and operator-approved probe facts | 05-02, 05-04, 05-09 | COVERED |
 | RESEARCH | External-ref-first identity and append-only receipts | 05-02–05-03 | COVERED |
 | RESEARCH | Server-authoritative immutable pair comparison | 05-06–05-07 | COVERED |
 | RESEARCH | Suggestion-only DTO and application-controlled logo fetch | 05-08, 05-10 | COVERED |

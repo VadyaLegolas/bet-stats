@@ -250,7 +250,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [ ] 05-06-PLAN.md — Provide server-authoritative exact forecast-pair comparison.
-- [ ] 05-09-PLAN.md — Register the authenticated operator provider-policy approval boundary in the production Nest graph.
+- [ ] 05-09-PLAN.md — Produce the redacted provider-policy probe and register its authenticated approval boundary in the production Nest graph.
 
 **Wave 4** *(routing/enrichment blocked on 05-09; UI comparison blocked on 05-06)*
 

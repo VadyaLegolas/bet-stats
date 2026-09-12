@@ -95,6 +95,23 @@ describe("provider routing repository", () => {
     expect(await repository.admitAttempt(secondInput)).toMatchObject({ admitted: false, reused: true, reason: "ALLOWANCE_EXHAUSTED" });
     expect(await database.providerRouteAttempt.count({ where: { attemptKey: "job-second" } })).toBe(1);
   });
+
+  it("links successful attempts to the exact immutable source receipt", async () => {
+    const repository = createProviderRoutingRepository({ database });
+    await repository.appendRoute(route("route-success", "corr-success"));
+    await database.sourceObservation.create({ data: { id: "observation-success", provider: "football-data.org", endpointFamily: "FIXTURES", externalIdentity: "fixture:123", observedAt: new Date("2026-09-12T12:00:00.000Z"), payloadHash: "sha256:payload", rawPayload: { response: [] }, payloadBytes: 15 } });
+    const attempt = { id: "attempt-success", routeReceiptId: "route-success", attemptKey: "job-success:result", provider: "football-data.org", state: "SUCCEEDED" as const, reason: null, observationId: "observation-success", admitted: true };
+    expect(await repository.appendAttempt(attempt)).toMatchObject(attempt);
+    expect(await repository.appendAttempt(attempt)).toMatchObject(attempt);
+    await expect(repository.appendAttempt({ ...attempt, id: "attempt-substitution", attemptKey: "job-substitution", provider: "api-football" })).rejects.toThrow("ATTEMPT_OBSERVATION_MISMATCH");
+  });
+
+  it("exposes an exact-scope transactional capability approval seam", async () => {
+    const repository = createProviderRoutingRepository({ database });
+    const approved = await repository.approveCapability({ provider: "api-football", leagueId: "league-pl", seasonId: "season-2026", endpoint: "STANDINGS", supported: true, verifiedAt: new Date("2026-09-12T12:00:00.000Z"), expiresAt: new Date("2026-09-13T12:00:00.000Z") });
+    expect(approved).toMatchObject({ provider: "api-football", leagueId: "league-pl", seasonId: "season-2026", endpoint: "STANDINGS", supported: true });
+    expect(await database.providerCapability.count()).toBe(1);
+  });
 });
 
 function route(id: string, correlationId: string) {

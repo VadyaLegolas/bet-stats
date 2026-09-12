@@ -8,4 +8,4 @@ export { compareBacktestPlans, createPrismaBacktestReceiptRepository, resolveHis
 export { createPrismaForecastRepository } from "./forecast-repository.js";
 export type { ForecastPublicationRepository } from "./forecast-repository.js";
 export { createProviderRoutingRepository } from "./provider-routing/repository.js";
-export type { AppendRouteInput } from "./provider-routing/repository.js";
+export type { AppendAttemptInput, AppendRouteInput, CapabilityApprovalInput, ProviderAdmissionInput, QuotaObservationInput } from "./provider-routing/repository.js";

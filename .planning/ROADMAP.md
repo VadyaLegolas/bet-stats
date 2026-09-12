@@ -235,7 +235,7 @@ Plans:
   4. A user can compare INITIAL, PRE_MATCH, and available LINEUP_CONFIRMED snapshots and see which evidence changed the forecast.
   5. TheSportsDB may suggest reconciliation names and logos for administrator review but cannot supply match statistics or silently resolve ambiguity.
 
-**Plans**: 6/10 plans executed
+**Plans**: 7/10 plans executed
 
 Plans:
 
@@ -256,7 +256,7 @@ Plans:
 
 - [x] 05-03-PLAN.md — Route core ingestion with canonical-identity-safe fallback and no-fallback outcomes.
 - [x] 05-04-PLAN.md — Admit and schedule quota-safe optional pre-match enrichment.
-- [ ] 05-07-PLAN.md — Deliver URL-stable accessible forecast comparison UI.
+- [x] 05-07-PLAN.md — Deliver URL-stable accessible forecast comparison UI.
 
 **Wave 5** *(blocked on core routing)*
 
@@ -297,5 +297,5 @@ Plans:
 | 2. Historical Evidence Pipeline | 28/28 | Complete    | 2026-09-05 |
 | 3. Forecast and Manual Value Workbench | 12/12 | Complete    | 2026-09-08 |
 | 4. Settlement and Evidence Scorecard | 9/9 | Complete    | 2026-09-09 |
-| 5. Provider-Aware Coverage and Enrichment | 6/10 | In Progress|  |
+| 5. Provider-Aware Coverage and Enrichment | 7/10 | In Progress|  |
 | 6. Release Experience and Operations | 0/TBD | Not started | - |

@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 17
+open_count: 19
 waived_count: 0
 fixed_count: 0
-total_count: 17
-last_updated: 2026-09-09T03:34:56.324Z
+total_count: 19
+last_updated: 2026-09-12T16:33:46.954Z
 ---
 
 # Broken Windows Ledger
@@ -32,6 +32,8 @@ last_updated: 2026-09-09T03:34:56.324Z
 | 15 | 03 | unrun-verify | tests/integration/phase-03-security.test.ts |  | PostgreSQL security matrix not run: DATABASE_URL unset and Docker Engine unavailable | open |  | 2026-09-08T11:15:02.661Z |  |
 | 16 | 03 | unrun-verify | tests/e2e/forecast-workbench.spec.ts |  | Production-backed Chromium workbench not run: PostgreSQL environment unavailable | open |  | 2026-09-08T11:15:03.119Z |  |
 | 17 | 04 | unrun-verify | tests/integration |  | Repository-wide integration command requires external shared database state; plan-owned PostgreSQL acceptance passed | open |  | 2026-09-09T03:34:56.324Z |  |
+| 18 | 05 | deviation | packages/database/src/provider-routing/repository.ts |  | Canonical route hash initially included repository identity fields and was corrected during tracer verification | open |  | 2026-09-12T16:32:58.637Z |  |
+| 19 | 05 | deviation | .planning/STATE.md |  | state.advance-plan could not parse the initial Not started position; plan 02 state was recorded directly | open |  | 2026-09-12T16:33:46.954Z |  |
 
 ````json
 [
@@ -237,6 +239,30 @@ last_updated: 2026-09-09T03:34:56.324Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-09T03:34:56.324Z",
+    "resolved_at": null
+  },
+  {
+    "id": 18,
+    "kind": "deviation",
+    "phase": "05",
+    "file": "packages/database/src/provider-routing/repository.ts",
+    "line": null,
+    "description": "Canonical route hash initially included repository identity fields and was corrected during tracer verification",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-12T16:32:58.637Z",
+    "resolved_at": null
+  },
+  {
+    "id": 19,
+    "kind": "deviation",
+    "phase": "05",
+    "file": ".planning/STATE.md",
+    "line": null,
+    "description": "state.advance-plan could not parse the initial Not started position; plan 02 state was recorded directly",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-12T16:33:46.954Z",
     "resolved_at": null
   }
 ]

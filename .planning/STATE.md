@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 05
 current_phase_name: Provider-Aware Coverage and Enrichment
-current_plan: Not started
+current_plan: 02
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-09-12T11:39:50.639Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-09-12T16:33:07.929Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 05 planning complete — 10 plans ready
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 71
-  completed_plans: 62
+  completed_plans: 63
   percent: 67
 ---
 
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-08)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Phase 4 — Settlement and Evidence Scorecard
+**Current focus:** Phase 5 — Provider-Aware Coverage and Enrichment
 
 ## Current Position
 
-Phase: 05 (Provider-Aware Coverage and Enrichment) — READY TO EXECUTE
-Current Plan: Not started
+Phase: 05 (Provider-Aware Coverage and Enrichment) — IN PROGRESS
+Current Plan: 02
 Total Plans in Phase: 10
-Status: Ready to execute
-Last Activity: 2026-09-12 — Phase 05 planning complete
-Last Activity Description: Phase 05 planning complete — 10 plans ready
+Status: Executing
+Last Activity: 2026-09-12 — Completed 05-02 provider routing persistence
+Last Activity Description: Forward migration and atomic provider admission receipts verified
 
 Progress: [███████░░░] 67%
 
@@ -93,6 +93,7 @@ Progress: [███████░░░] 67%
 | Phase 04 P07 | 34min | 2 tasks | 4 files |
 | Phase 04 P09 | 18min | 3 tasks | 22 files |
 | Phase 05 P01 | 25min | 2 tasks | 7 files |
+| Phase 05 P02 | 16min | 2 tasks | 23 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05]: Phase 05: Provider names use a closed production registry while external IDs remain provenance-only.
 - [Phase 05]: Phase 05: API-Football envelopes must match exact request parameters and league/season entities before normalization.
 - [Phase 05]: Phase 05: Transport, rate-limit, and 5xx failures are fallback-eligible; payload violations quarantine.
+- [Phase 05]: Phase 05: Provider admission locks the provider, endpoint and UTC request day before counting reservations.
+- [Phase 05]: Phase 05: Observed quota facts may only narrow configured capacity; later wider observations cannot restore capacity.
+- [Phase 05]: Phase 05: Successful attempts require an exact provider-matching immutable SourceObservation; denied attempts carry no response fact.
 
 ### Pending Todos
 
@@ -161,6 +165,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-12T11:39:49.528Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-09-12T16:33:07.621Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None

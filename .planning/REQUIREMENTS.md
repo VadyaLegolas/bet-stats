@@ -68,8 +68,8 @@
 - [x] **PROV-01**: The system uses football-data.org as primary for configured top-five leagues and Champions League fixtures and standings.
 - [x] **PROV-02**: The system can route eligible top-five/UCL requests to API-Football fallback without changing canonical fixture or team identity.
 - [x] **PROV-03**: The system can use API-Football as the primary source for configured Europa League and Conference League data.
-- [ ] **PROV-04**: A user sees a limited-data state for Europa League or Conference League when API-Football is unavailable because no production fallback exists.
-- [ ] **PROV-05**: The system calls lineup, injury, odds, or detailed-statistics endpoints only when the provider capability record confirms coverage and budget policy permits the call.
+- [x] **PROV-04**: A user sees a limited-data state for Europa League or Conference League when API-Football is unavailable because no production fallback exists.
+- [x] **PROV-05**: The system calls lineup, injury, odds, or detailed-statistics endpoints only when the provider capability record confirms coverage and budget policy permits the call.
 - [ ] **PROV-06**: A user can compare INITIAL, PRE_MATCH, and available LINEUP_CONFIRMED snapshots and see which evidence changed the forecast.
 - [ ] **PROV-07**: TheSportsDB can suggest names and logos for reconciliation review but cannot supply production match statistics or silently approve ambiguous matches.
 
@@ -167,8 +167,8 @@
 | PROV-01 | Phase 5 | Complete |
 | PROV-02 | Phase 5 | Complete |
 | PROV-03 | Phase 5 | Complete |
-| PROV-04 | Phase 5 | Pending |
-| PROV-05 | Phase 5 | Pending |
+| PROV-04 | Phase 5 | Complete |
+| PROV-05 | Phase 5 | Complete |
 | PROV-06 | Phase 5 | Pending |
 | PROV-07 | Phase 5 | Pending |
 | UX-01 | Phase 6 | Pending |

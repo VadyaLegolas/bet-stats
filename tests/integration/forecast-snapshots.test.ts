@@ -62,6 +62,14 @@ describe("append-only forecast snapshots", () => {
     `, id("lineup-valid"), id("lineup-observation"), id("m2"), id("c2"), id("i2"), id("e2"))).resolves.toBe(1);
   });
 
+  it("does not expose an official lineup whose source receipt was captured after cutoff", async () => {
+    const fixtureId = id("p3-fixture");
+    await prisma.$executeRawUnsafe(`INSERT INTO "SourceObservation" (id,provider,"endpointFamily","externalIdentity","observedAt","payloadHash","rawPayload","payloadBytes") VALUES ($1,'api-football','LINEUPS',$2,'2026-09-10T17:05:00Z',$3,'{}',2)`, id("late-source"), fixtureId, id("late-hash"));
+    await prisma.$executeRawUnsafe(`INSERT INTO "LineupObservation" (id,"fixtureId","observationId",status,"confirmedAt") VALUES ($1,$2,$3,'OFFICIAL_CONFIRMED','2026-09-10T16:55:00Z')`, id("late-lineup"), fixtureId, id("late-source"));
+    const repository = createPrismaForecastRepository(prisma);
+    await expect(repository.findOfficialLineup(fixtureId, "2026-09-10T17:00:00.000Z")).resolves.toBeNull();
+  });
+
   it("serializes concurrent distinct contents into consecutive linked revisions", async () => {
     const fixtureId = id("p3-fixture");
     const draft = (suffix: string): ForecastResponseDto => ({

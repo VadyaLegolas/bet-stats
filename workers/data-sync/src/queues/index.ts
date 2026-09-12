@@ -13,6 +13,29 @@ export const optionalQueue = (prefix = "bet-stats") => `${prefix}-sync-optional`
 export const SYNC_MAX_ATTEMPTS = 3;
 export const SETTLEMENT_MAX_ATTEMPTS = 3;
 export const BACKTEST_MAX_ATTEMPTS = 3;
+export const ENRICHMENT_MAX_ATTEMPTS = 2;
+
+export type EnrichmentEndpoint = "LINEUPS" | "INJURIES" | "ODDS" | "STATISTICS";
+export interface EnrichmentJobData { fixtureId: string; endpoint: EnrichmentEndpoint; cutoff: string; policyVersion: string }
+
+export function createEnrichmentJobId(data: EnrichmentJobData): string {
+  return `${data.policyVersion}:${data.fixtureId}:${data.endpoint}:${data.cutoff}`;
+}
+
+export function createEnrichmentSchedule(input: { fixtureId: string; kickoffUtc: string; policyVersion: string }): EnrichmentJobData[] {
+  const kickoff = new Date(input.kickoffUtc);
+  if (Number.isNaN(kickoff.getTime())) throw new Error("INVALID_ENRICHMENT_KICKOFF");
+  const cutoff = new Date(kickoff.getTime() - 60 * 60_000).toISOString();
+  return (["LINEUPS", "INJURIES", "ODDS", "STATISTICS"] as const).map((endpoint) => ({ fixtureId: input.fixtureId, endpoint, cutoff, policyVersion: input.policyVersion }));
+}
+
+export function createEnrichmentQueue(input: { redisUrl: string; prefix?: string }) {
+  const queue = new Queue<EnrichmentJobData>(optionalQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
+  return {
+    enqueue: (data: EnrichmentJobData) => queue.add(data.endpoint.toLowerCase(), data, { attempts: ENRICHMENT_MAX_ATTEMPTS, backoff: { type: "exponential", delay: 1_000, jitter: 0.25 }, removeOnComplete: { age: 86_400, count: 1_000 }, removeOnFail: { age: 604_800, count: 5_000 }, jobId: createEnrichmentJobId(data).replaceAll(":", "-") }),
+    close: () => queue.close(),
+  };
+}
 
 export interface BacktestJobData { planId: string; planHash: string; correlationId: string }
 export function backtestQueue(prefix = "bet-stats"): string {

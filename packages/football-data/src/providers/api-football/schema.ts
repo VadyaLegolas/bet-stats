@@ -82,7 +82,7 @@ export function parametersMatch(actual: Record<string, string>, expected: Record
     && actualKeys.every((key, index) => key === expectedKeys[index] && actual[key] === expected[key]);
 }
 
-export const apiFootballEnrichmentEndpoints = ["lineups", "injuries", "odds", "fixtures"] as const;
+export const apiFootballEnrichmentEndpoints = ["lineups", "injuries", "odds", "fixtures/statistics"] as const;
 export type ApiFootballEnrichmentEndpoint = (typeof apiFootballEnrichmentEndpoints)[number];
 
 const lineupItemSchema = z.object({ fixture: z.number().int().positive(), confirmed: z.boolean(), players: z.array(z.object({ id: z.number().int().positive(), name: z.string().min(1) }).strict()).min(1).max(100) }).strict();

@@ -7,13 +7,17 @@ import { runReplayResultJob } from "./jobs/results.js";
 import { runReplayStandingsJob } from "./jobs/standings.js";
 import { createSettlementJobHandler } from "./jobs/settlement.js";
 import { reconcileBacktestDelivery, runBacktestPlan } from "./jobs/backtests.js";
-import { createBacktestQueue, createBacktestWorker, createReplayWorker, createSettlementQueue, createSettlementWorker, type ReplayJobData } from "./queues/index.js";
+import { createBacktestQueue, createBacktestWorker, createEnrichmentSchedule, createReplayWorker, createSettlementQueue, createSettlementWorker, type EnrichmentJobData, type ReplayJobData } from "./queues/index.js";
 import { createDurableProviderCircuitRegistry } from "./resilience/circuits.js";
 
 export { createSyncWorkers } from "./queues/index.js";
 
 export function createWorkerReadiness(state: { postgres: boolean; redis: boolean }) {
   return dependencyReadiness(state);
+}
+
+export async function scheduleFixtureEnrichment(input: { fixtureId: string; kickoffUtc: string; policyVersion: string; enqueue: (job: EnrichmentJobData) => Promise<unknown> }): Promise<void> {
+  for (const job of createEnrichmentSchedule(input)) await input.enqueue(job);
 }
 
 type ReplayProvider = FixtureProvider & Pick<ResultProvider, "fetchCompetitionResults" | "fetchCompletedResults"> & Pick<StandingsProvider, "fetchCompetitionStandings" | "fetchStandings">;

@@ -49,7 +49,29 @@ describe("provider policy approval", () => {
     expect(await database.providerCapability.count()).toBe(1);
     expect(await database.providerRouteAttempt.count()).toBe(1);
   });
+
+  it("fails closed with append-only exact-scope rejection evidence", async () => {
+    await database.providerCapability.create({ data: { provider: "api-football", leagueId: "league-pl", seasonId: "season-2026", endpoint: "STANDINGS", supported: true, verifiedAt: new Date(), expiresAt: null } });
+    const command = approvalCommand("approval-unknown");
+    command.artifact.quota = { limit: null, remaining: null, resetAt: null, status: "unknown" };
+    const response = await authorized(command);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ code: "UNKNOWN_QUOTA_POLICY" });
+    expect(await database.providerRouteAttempt.findUnique({ where: { attemptKey: "approval-unknown" } })).toMatchObject({ admitted: false, reason: "UNKNOWN_QUOTA_POLICY", observationId: null });
+    expect(await database.providerCapability.findUnique({ where: { provider_leagueId_seasonId_endpoint: { provider: "api-football", leagueId: "league-pl", seasonId: "season-2026", endpoint: "STANDINGS" } } })).toMatchObject({ supported: true });
+  });
+
+  it("returns the prior decision for concurrent duplicate idempotency keys", async () => {
+    const command = approvalCommand("approval-concurrent");
+    const responses = await Promise.all([authorized(command), authorized(command)]);
+    expect(responses.map((response) => response.status)).toEqual([201, 201]);
+    expect(await database.providerRouteAttempt.count({ where: { attemptKey: "approval-concurrent" } })).toBe(1);
+  });
 });
+
+function authorized(command: ReturnType<typeof approvalCommand>) {
+  return fetch(`${origin}/internal/providers/policy/approve`, { method: "POST", headers: { "content-type": "application/json", "x-operator-credential": "policy-test-credential", "x-operator-actor": "policy-operator" }, body: JSON.stringify(command) });
+}
 
 function approvalCommand(idempotencyKey: string) {
   const capturedAt = new Date().toISOString();

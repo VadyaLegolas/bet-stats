@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { parseApiFootballEnrichmentEnvelope } from "@bet-stats/football-data";
 import { runEnrichmentJob } from "../../workers/data-sync/src/jobs/enrichment.js";
+import { createEnrichmentJobId, createEnrichmentSchedule } from "../../workers/data-sync/src/queues/index.js";
 
 describe("optional enrichment admission", () => {
   it("admits exact official lineup only after capability, circuit and optional reservation", async () => {
@@ -26,5 +27,13 @@ describe("optional enrichment admission", () => {
     expect(await runEnrichmentJob({ fixtureId: "f", endpoint: "LINEUPS", cutoff: "2026-09-12T17:00:00.000Z", readCapability: async () => null, readCircuit: async () => "CLOSED", reserve: async () => ({ reserved: true }), providerFactory: factory, persist: async () => ({ observationId: "x", receiptHash: "x" }), now: new Date("2026-09-12T16:00:00.000Z") })).toEqual({ status: "denied", reason: "UNKNOWN_CAPABILITY" });
     expect(factory).not.toHaveBeenCalled();
     expect(parseApiFootballEnrichmentEnvelope("injuries", { get: "injuries", parameters: { fixture: "1" }, errors: [], results: 0, paging: { current: 1, total: 1 }, response: [] }, { fixture: "1" })).toMatchObject({ state: "observed-empty", payload: null });
+  });
+
+  it("schedules bounded deterministic optional jobs without crossing critical headroom", async () => {
+    expect(createEnrichmentSchedule({ fixtureId: "fixture-1", kickoffUtc: "2026-09-12T18:00:00.000Z", policyVersion: "enrichment-v1" }).map((job) => job.endpoint)).toEqual(["LINEUPS", "INJURIES", "ODDS", "STATISTICS"]);
+    expect(createEnrichmentJobId({ fixtureId: "fixture-1", endpoint: "ODDS", cutoff: "2026-09-12T17:00:00.000Z", policyVersion: "enrichment-v1" })).toBe("enrichment-v1:fixture-1:ODDS:2026-09-12T17:00:00.000Z");
+    const factory = vi.fn(() => ({ fetch: async () => ({ state: "observed" as const, capturedAt: "2026-09-12T16:00:00.000Z", payload: { bookmaker: "provider-feed", price: "2.10" } }) }));
+    expect(await runEnrichmentJob({ fixtureId: "fixture-1", endpoint: "ODDS", cutoff: "2026-09-12T17:00:00.000Z", readCapability: async () => ({ supported: true, expiresAt: null }), readCircuit: async () => "CLOSED", reserve: async () => ({ reserved: false, reason: "CRITICAL_HEADROOM" }), providerFactory: factory, persist: async () => ({ observationId: "never", receiptHash: "never" }) })).toEqual({ status: "denied", reason: "BUDGET_PROTECTED" });
+    expect(factory).not.toHaveBeenCalled();
   });
 });

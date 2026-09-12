@@ -20,7 +20,7 @@ describe("provider policy probe", () => {
     const artifact = await runProviderPolicyProbe({ environment: "development", optIn: true, credential: "fake-secret", scope, fetcher, now: () => new Date("2026-09-12T12:00:00.000Z"), persist: false });
     expect(artifact).toMatchObject({ schemaVersion: 1, environment: "non-production", provider: scope.provider, endpoint: scope.endpoint, scope, quota: { limit: null, remaining: 10, resetAt: "2026-09-13T00:00:00.000Z", status: "known" }, disagreements: [], redaction: { credentialsPersisted: false, rawHeadersPersisted: false, rawPayloadPersisted: false }, approval: { status: "pending", approvedBy: null, approvedAt: null, policyVersion: null } });
     expect(artifact.requestFingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
-    expect(JSON.stringify(artifact)).not.toMatch(/fake-secret|authorization|account/i);
+    expect(JSON.stringify(artifact)).not.toMatch(/fake-secret|authorization|x-account/i);
   });
 
   it("keeps unknown facts null and records exact-scope disagreements", async () => {

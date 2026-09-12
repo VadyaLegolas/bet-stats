@@ -6,13 +6,14 @@ type Fetcher = (input: string | URL, init?: RequestInit) => Promise<Response>;
 type FailureCode = "TRANSPORT_FAILURE" | "RATE_LIMITED" | "PROVIDER_UNAVAILABLE" | "REQUEST_REJECTED" | "INVALID_PAYLOAD" | "PAYLOAD_MISMATCH";
 
 export class ApiFootballProviderError extends ProviderPayloadError {
+  override readonly name = "ApiFootballProviderError";
+
   constructor(
     readonly code: FailureCode,
     readonly classification: "fallback" | "quarantine",
     readonly safeHeaders: Readonly<Record<string, string>> = {},
   ) {
     super(`API-Football request failed: ${code}`);
-    this.name = "ApiFootballProviderError";
   }
 }
 

@@ -4,7 +4,7 @@ export const productionProviders = ["football-data.org", "api-football"] as cons
 export type ProductionProvider = (typeof productionProviders)[number];
 
 export class ProviderPayloadError extends Error {
-  override readonly name = "ProviderPayloadError";
+  override readonly name: string = "ProviderPayloadError";
 }
 
 export type CanonicalFixtureStatus = "SCHEDULED" | "IN_PLAY" | "PAUSED" | "FINISHED" | "POSTPONED" | "CANCELLED";

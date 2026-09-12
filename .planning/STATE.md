@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 05
 current_phase_name: Provider-Aware Coverage and Enrichment
-current_plan: 02
+current_plan: 3
 status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-09-12T16:33:07.929Z"
+stopped_at: Completed 05-06-PLAN.md
+last_updated: "2026-09-12T16:42:47.758Z"
 last_activity: 2026-09-12
-last_activity_desc: Phase 05 planning complete — 10 plans ready
+last_activity_desc: Completed 05-06 exact forecast comparison and availability API
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 71
-  completed_plans: 63
+  completed_plans: 64
   percent: 67
 ---
 
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 05 (Provider-Aware Coverage and Enrichment) — IN PROGRESS
-Current Plan: 02
+Current Plan: 3
 Total Plans in Phase: 10
-Status: Executing
-Last Activity: 2026-09-12 — Completed 05-02 provider routing persistence
-Last Activity Description: Forward migration and atomic provider admission receipts verified
+Status: Ready to execute
+Last Activity: 2026-09-12 — Completed 05-06 forecast comparison
+Last Activity Description: Exact-pair deltas and fixed-kind availability verified
 
 Progress: [███████░░░] 67%
 
@@ -94,6 +94,7 @@ Progress: [███████░░░] 67%
 | Phase 04 P09 | 18min | 3 tasks | 22 files |
 | Phase 05 P01 | 25min | 2 tasks | 7 files |
 | Phase 05 P02 | 16min | 2 tasks | 23 files |
+| Phase 05 P06 | 8min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05]: Phase 05: Provider admission locks the provider, endpoint and UTC request day before counting reservations.
 - [Phase 05]: Phase 05: Observed quota facts may only narrow configured capacity; later wider observations cannot restore capacity.
 - [Phase 05]: Phase 05: Successful attempts require an exact provider-matching immutable SourceObservation; denied attempts carry no response fact.
+- [Phase 05]: Phase 05: Forecast comparison validates both requested IDs, ISSUED state and fixture ownership before calculating any delta.
+- [Phase 05]: Phase 05: Availability always projects INITIAL, PRE_MATCH and LINEUP_CONFIRMED in fixed order, with exact receipts or closed reason codes.
 
 ### Pending Todos
 
@@ -165,6 +168,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-12T16:33:07.621Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-09-12T16:42:47.523Z
+Stopped at: Completed 05-06-PLAN.md
 Resume file: None

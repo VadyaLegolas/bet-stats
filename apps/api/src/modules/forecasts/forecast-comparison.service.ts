@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Optional, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, createPrismaForecastRepository, type PrismaClient } from "@bet-stats/database";
-import { FORECAST_KINDS, compareForecastPair, parseForecastComparisonRequest, projectForecastAvailability, type ForecastAbsenceReason, type ForecastKind, type ForecastResponseDto } from "@bet-stats/domain";
+import { FORECAST_KINDS, compareForecastPair, parseForecastAvailability, parseForecastComparisonRequest, projectForecastAvailability, type ForecastAbsenceReason, type ForecastKind, type ForecastResponseDto } from "@bet-stats/domain";
 
 export interface ForecastComparisonRepository {
   findExact(id: string): Promise<(ForecastResponseDto & { state?: string }) | null>;
@@ -30,7 +30,7 @@ export class ForecastComparisonService implements OnModuleDestroy {
     if (!fixtureId) throw safe("INVALID_FIXTURE_ID");
     const snapshots = await this.repository.listIssued(fixtureId);
     const absence = Object.fromEntries(await Promise.all(FORECAST_KINDS.map(async (kind) => [kind, await this.repository.absenceReason(fixtureId, kind)]))) as Record<ForecastKind, ForecastAbsenceReason>;
-    return projectForecastAvailability(snapshots, absence);
+    return parseForecastAvailability(projectForecastAvailability(snapshots, absence));
   }
 
   async onModuleDestroy(): Promise<void> { await this.client?.$disconnect(); }

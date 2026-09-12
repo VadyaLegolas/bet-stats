@@ -46,6 +46,18 @@ export interface ForecastResponseDto {
   readonly issuedAt: string;
 }
 
+export interface ForecastAvailabilityReceiptDto {
+  readonly id: string;
+  readonly revision: number;
+  readonly cutoff: string;
+  readonly sourceCount: number;
+  readonly officialLineupObservationId: string | null;
+}
+
+export type ForecastAvailabilityEntryDto =
+  | { readonly kind: ForecastKind; readonly status: "available"; readonly snapshot: ForecastAvailabilityReceiptDto }
+  | { readonly kind: ForecastKind; readonly status: "absent"; readonly reason: "NO_CONFIRMED_LINEUP" | "CAPABILITY_DENIED" | "BUDGET_PROTECTED" | "PROVIDER_UNAVAILABLE" | "INSUFFICIENT_EVIDENCE" };
+
 const UTC_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 function record(value: unknown, code: string): Record<string, unknown> {

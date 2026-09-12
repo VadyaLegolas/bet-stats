@@ -1,4 +1,4 @@
-import { FORECAST_KINDS, parseForecastResponse, type ForecastResponseDto } from "./contract.js";
+import { FORECAST_KINDS, parseForecastResponse, type ForecastAvailabilityEntryDto, type ForecastResponseDto } from "./contract.js";
 
 export const FORECAST_ABSENCE_REASONS = ["NO_CONFIRMED_LINEUP", "CAPABILITY_DENIED", "BUDGET_PROTECTED", "PROVIDER_UNAVAILABLE", "INSUFFICIENT_EVIDENCE"] as const;
 export type ForecastAbsenceReason = (typeof FORECAST_ABSENCE_REASONS)[number];
@@ -57,6 +57,25 @@ export function projectForecastAvailability(snapshots: readonly ForecastResponse
   return FORECAST_KINDS.map((kind) => {
     const snapshot = snapshots.filter((item) => item.kind === kind).sort((a, b) => b.revision - a.revision || b.cutoff.localeCompare(a.cutoff) || a.id.localeCompare(b.id))[0];
     return snapshot ? { kind, status: "available" as const, snapshot: { id: snapshot.id, revision: snapshot.revision, cutoff: snapshot.cutoff, sourceCount: snapshot.receipt.sourceRefs.length, officialLineupObservationId: snapshot.officialLineupObservationId } } : { kind, status: "absent" as const, reason: absence[kind] };
+  });
+}
+
+export function parseForecastAvailability(value: unknown): readonly ForecastAvailabilityEntryDto[] {
+  if (!Array.isArray(value) || value.length !== FORECAST_KINDS.length) throw new Error("INVALID_FORECAST_AVAILABILITY");
+  return value.map((raw, index) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("INVALID_FORECAST_AVAILABILITY");
+    const entry = raw as Record<string, unknown>;
+    if (entry.kind !== FORECAST_KINDS[index]) throw new Error("INVALID_FORECAST_AVAILABILITY_ORDER");
+    const keys = Object.keys(entry).sort();
+    if (entry.status === "absent") {
+      if (keys.join(",") !== "kind,reason,status") throw new Error("UNKNOWN_FORECAST_AVAILABILITY_KEY");
+      if (!FORECAST_ABSENCE_REASONS.includes(entry.reason as ForecastAbsenceReason)) throw new Error("INVALID_FORECAST_ABSENCE_REASON");
+    } else if (entry.status === "available") {
+      if (keys.join(",") !== "kind,snapshot,status") throw new Error("UNKNOWN_FORECAST_AVAILABILITY_KEY");
+      const snapshot = entry.snapshot as Record<string, unknown> | null;
+      if (!snapshot || Object.keys(snapshot).sort().join(",") !== "cutoff,id,officialLineupObservationId,revision,sourceCount" || typeof snapshot.id !== "string" || !Number.isInteger(snapshot.revision) || !Number.isInteger(snapshot.sourceCount) || typeof snapshot.cutoff !== "string") throw new Error("INVALID_FORECAST_AVAILABILITY_RECEIPT");
+    } else throw new Error("INVALID_FORECAST_AVAILABILITY_STATUS");
+    return entry as unknown as ForecastAvailabilityEntryDto;
   });
 }
 

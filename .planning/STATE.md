@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 05
 current_phase_name: Provider-Aware Coverage and Enrichment
-current_plan: 12
+current_plan: 13
 status: planned
-stopped_at: Completed 05-11-PLAN.md; Phase 05 gap closure ready for re-verification
-last_updated: "2026-09-13T13:52:07.523Z"
+stopped_at: Completed 05-12-PLAN.md
+last_updated: "2026-09-13T14:11:14.085Z"
 last_activity: 2026-09-13
 last_activity_desc: Planned Phase 05 verification gap closure in Plans 05-11 through 05-15
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 76
-  completed_plans: 72
+  completed_plans: 73
   percent: 67
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 05 (Provider-Aware Coverage and Enrichment) — IN PROGRESS
-Current Plan: 12
+Current Plan: 13
 Total Plans in Phase: 15
 Status: Verification gaps planned — ready for gaps-only execution
 Last Activity: 2026-09-13 — Planned Phase 05 verification gap closure
@@ -103,6 +103,7 @@ Progress: [███████░░░] 67%
 | Phase 05 P08 | 34min | 2 tasks | 11 files |
 | Phase 05 P10 | 18min | 2 tasks | 10 files |
 | Phase 05 P11 | 16min | 2 tasks | 6 files |
+| Phase 05-provider-aware-coverage-and-enrichment P12 | 31min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -174,6 +175,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05]: Phase 05: Provider image bytes require public network destinations, allowlisted MIME plus signature, bounded size and restrictive response headers.
 - [Phase 05]: Phase 05: Provider factories are constructed only after durable admission and admitted attempts reach exactly one classified terminal state.
 - [Phase 05]: Phase 05: ADMITTED-to-terminal is the only permitted provider-attempt update; identity fields and historical observations remain immutable.
+- [Phase 05]: Phase 05: Every production endpoint resolves provider request identities from canonical league and season IDs before constructing a client.
+- [Phase 05]: Phase 05: Provider credentials remain isolated in a closed factory map and the selected factory is constructed only after durable admission.
 
 ### Pending Todos
 
@@ -193,6 +196,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-13T13:52:07.292Z
-Stopped at: Completed 05-11-PLAN.md; Phase 05 gap closure ready for re-verification
+Last session: 2026-09-13T14:11:13.852Z
+Stopped at: Completed 05-12-PLAN.md
 Resume file: None

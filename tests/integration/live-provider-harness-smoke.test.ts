@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createLiveProviderFactories, resolveReplayProviderFactories } from "../../workers/data-sync/src/main.js";
+import { startLiveProviderStack, stopLiveProviderStack } from "../e2e/live-provider-stack.js";
 
 describe("live provider harness composition smoke", () => {
   it("uses injected deterministic factories without constructing live credentialed clients", () => {
@@ -10,3 +11,4 @@ describe("live provider harness composition smoke", () => {
   });
   it("keeps live factories lazy and provider-specific", () => { const factories = createLiveProviderFactories({ footballDataApiToken: "a", apiFootballApiKey: "b" }); expect(Object.keys(factories)).toEqual(["football-data.org", "api-football"]); });
 });
+describe.sequential("owned live provider stack", () => { it("migrates seeds and reaches PostgreSQL Redis API web and worker", async () => { const state=await startLiveProviderStack(); try { expect(state.workerReady).toBe(true); expect(state.seeded).toEqual(["PL","39","78","848"]); } finally { await stopLiveProviderStack(); } }, 240_000); });

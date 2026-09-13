@@ -30,4 +30,8 @@ describe("provider logo HTTP boundary", () => {
     expect(response.headers.get("x-content-type-options")).toBe("nosniff"); expect(response.headers.get("referrer-policy")).toBe("no-referrer"); expect(response.headers.get("cache-control")).toBe("private, max-age=300");
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(png);
   });
+  it("rejects a forged opaque reference without exposing fetch details", async () => {
+    const response = await fetch(`${origin}/internal/media/provider-logo/forged.reference`, { headers: { "x-operator-credential": "logo-secret" } });
+    expect(response.status).toBe(404); expect(await response.json()).toEqual({ message: "Not found", error: "Not Found", statusCode: 404 });
+  });
 });

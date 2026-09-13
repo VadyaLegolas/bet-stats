@@ -747,6 +747,7 @@ export type LeagueExternalRefScalarFieldEnum = (typeof LeagueExternalRefScalarFi
 export const SeasonExternalRefScalarFieldEnum = {
   id: 'id',
   seasonId: 'seasonId',
+  leagueId: 'leagueId',
   provider: 'provider',
   externalId: 'externalId',
   createdAt: 'createdAt'

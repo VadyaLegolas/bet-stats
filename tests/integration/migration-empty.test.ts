@@ -249,11 +249,11 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
     );
     expect(columns).toContain("leagueId");
 
-    sql(`INSERT INTO "League" (id, name, country, "createdAt", "updatedAt") VALUES
+    sql(`INSERT INTO "League" (id, name, "countryCode", "createdAt", "updatedAt") VALUES
       ('d15-pl', 'Premier League', 'England', now(), now()),
       ('d15-uel', 'Europa League', 'Europe', now(), now()),
       ('d15-uecl', 'Conference League', 'Europe', now(), now());`);
-    sql(`INSERT INTO "Season" (id, "leagueId", label, "startDate", "endDate", "createdAt", "updatedAt") VALUES
+    sql(`INSERT INTO "Season" (id, "leagueId", label, "startsOn", "endsOn", "createdAt", "updatedAt") VALUES
       ('d15-pl-2026', 'd15-pl', '2026', '2026-01-01', '2026-12-31', now(), now()),
       ('d15-uel-2026', 'd15-uel', '2026', '2026-01-01', '2026-12-31', now(), now()),
       ('d15-uecl-2026', 'd15-uecl', '2026', '2026-01-01', '2026-12-31', now(), now());`);
@@ -274,18 +274,25 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
       VALUES ('d15-poison', 'd15-pl-2026', 'd15-uel', 'other-provider', '2027', now());`)).toThrow();
   });
 
-  it("upgrades the exact Phase 4 schema with only the forward Phase 5 migration", () => {
+  it("upgrades a populated pre-D-15 schema without losing provider season references", () => {
     docker("exec", containerName, "createdb", "-U", "postgres", "phase4_upgrade");
     const migrationsRoot = resolve(databaseRoot, "prisma/migrations");
-    const phase5Migration = "20260909_phase05_provider_routing";
+    const scopedSeasonMigration = "20260913_phase05_season_external_ref_scope";
     for (const directory of readdirSync(migrationsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort()) {
-      if (directory === phase5Migration) continue;
+      if (directory === scopedSeasonMigration) continue;
       const migration = readFileSync(join(migrationsRoot, directory, "migration.sql"), "utf8");
       dockerInput(["exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "phase4_upgrade"], `BEGIN;\n${migration}\nCOMMIT;`);
     }
-    const forward = readFileSync(join(migrationsRoot, phase5Migration, "migration.sql"), "utf8");
+    docker("exec", containerName, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "phase4_upgrade", "-c",
+      `INSERT INTO "League" (id, name, "countryCode", "createdAt", "updatedAt") VALUES ('upgrade-pl', 'Premier League', 'GB-ENG', now(), now());
+       INSERT INTO "Season" (id, "leagueId", label, "startsOn", "endsOn", "createdAt", "updatedAt") VALUES ('upgrade-2026', 'upgrade-pl', '2026', '2026-01-01', '2026-12-31', now(), now());
+       INSERT INTO "SeasonExternalRef" (id, "seasonId", provider, "externalId", "createdAt") VALUES ('upgrade-ref', 'upgrade-2026', 'api-football', '2026', now());`,
+    );
+    const forward = readFileSync(join(migrationsRoot, scopedSeasonMigration, "migration.sql"), "utf8");
     dockerInput(["exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "phase4_upgrade"], `BEGIN;\n${forward}\nCOMMIT;`);
-    const tables = docker("exec", containerName, "psql", "-U", "postgres", "-d", "phase4_upgrade", "-At", "-c", `SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename LIKE 'ProviderRoute%';`);
-    expect(tables.split(/\r?\n/).sort()).toEqual(["ProviderRouteAttempt", "ProviderRouteReceipt"]);
+    const preserved = docker("exec", containerName, "psql", "-U", "postgres", "-d", "phase4_upgrade", "-At", "-c",
+      `SELECT "seasonId" || ':' || "leagueId" || ':' || "externalId" FROM "SeasonExternalRef" WHERE id='upgrade-ref';`,
+    );
+    expect(preserved).toBe("upgrade-2026:upgrade-pl:2026");
   }, 120_000);
 });

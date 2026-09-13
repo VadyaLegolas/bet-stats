@@ -223,6 +223,7 @@ export type SeasonOrderByWithRelationInput = {
 export type SeasonWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   leagueId_label?: Prisma.SeasonLeagueIdLabelCompoundUniqueInput
+  id_leagueId?: Prisma.SeasonIdLeagueIdCompoundUniqueInput
   AND?: Prisma.SeasonWhereInput | Prisma.SeasonWhereInput[]
   OR?: Prisma.SeasonWhereInput[]
   NOT?: Prisma.SeasonWhereInput | Prisma.SeasonWhereInput[]
@@ -237,7 +238,7 @@ export type SeasonWhereUniqueInput = Prisma.AtLeast<{
   externalRefs?: Prisma.SeasonExternalRefListRelationFilter
   providerCapabilities?: Prisma.ProviderCapabilityListRelationFilter
   providerRouteReceipts?: Prisma.ProviderRouteReceiptListRelationFilter
-}, "id" | "leagueId_label">
+}, "id" | "leagueId_label" | "id_leagueId">
 
 export type SeasonOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -363,6 +364,11 @@ export type SeasonOrderByRelationAggregateInput = {
 export type SeasonLeagueIdLabelCompoundUniqueInput = {
   leagueId: string
   label: string
+}
+
+export type SeasonIdLeagueIdCompoundUniqueInput = {
+  id: string
+  leagueId: string
 }
 
 export type SeasonCountOrderByAggregateInput = {

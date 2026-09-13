@@ -111,6 +111,7 @@ model Season {
   providerRouteReceipts ProviderRouteReceipt[]
 
   @@unique([leagueId, label])
+  @@unique([id, leagueId])
 }
 
 model ProviderCapability {
@@ -854,13 +855,15 @@ model LeagueExternalRef {
 model SeasonExternalRef {
   id         String   @id @default(cuid())
   seasonId   String
+  leagueId   String
   provider   String
   externalId String
   createdAt  DateTime @default(now())
-  season     Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  season     Season   @relation(fields: [seasonId, leagueId], references: [id, leagueId], onDelete: Cascade)
 
-  @@unique([provider, externalId])
-  @@index([seasonId])
+  @@unique([provider, leagueId, externalId])
+  @@unique([provider, seasonId])
+  @@index([seasonId, leagueId])
 }
 
 model TeamExternalRef {

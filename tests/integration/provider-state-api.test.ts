@@ -10,6 +10,6 @@ describe("safe fixture provider state API projection", () => {
   });
 
   it("projects sole-source failure as explicit no-fallback without numeric substitution", () => {
-    expect(projectProviderState({ id: "route-2", policyVersion: "provider-route-v1", selectedProvider: null, candidates: ["api-football"], trigger: "PROVIDER_UNAVAILABLE", outcome: "NO_FALLBACK", createdAt: new Date("2026-09-12T12:00:00Z"), attempts: [] })).toMatchObject({ state: "LIMITED", provider: "api-football", reason: "NO_PRODUCTION_FALLBACK", capturedAt: null, lastValidAt: null, retryAllowed: true });
+    expect(projectProviderState({ id: "route-2", policyVersion: "provider-route-v1", selectedProvider: null, candidates: ["api-football"], trigger: "PROVIDER_UNAVAILABLE", outcome: "NO_FALLBACK", createdAt: new Date("2026-09-12T12:00:00Z"), attempts: [] }, "2026-09-12T10:00:00.000Z")).toMatchObject({ state: "LIMITED", provider: "api-football", reason: "NO_PRODUCTION_FALLBACK", capturedAt: null, lastValidAt: "2026-09-12T10:00:00.000Z", retryAllowed: true });
   });
 });

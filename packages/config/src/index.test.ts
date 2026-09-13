@@ -38,6 +38,14 @@ describe("server configuration", () => {
     expect(JSON.stringify(redacted)).toBe('{"token":"[REDACTED]","nested":{"password":"[REDACTED]","safe":"visible"},"values":[{"apiKey":"[REDACTED]"}]}');
   });
 
+  it("requires and redacts an independent API-Football key in production live mode", () => {
+    const common = { NODE_ENV: "production", DATA_PROVIDER_MODE: "live", DATABASE_URL: "postgresql://localhost/db", REDIS_URL: "redis://localhost:6379", FOOTBALL_DATA_API_TOKEN: "football-secret" };
+    expect(() => readServerConfig(common)).toThrowError(/API_FOOTBALL_API_KEY/);
+    const config = readServerConfig({ ...common, API_FOOTBALL_API_KEY: "api-football-secret" });
+    expect(config.API_FOOTBALL_API_KEY).toBe("api-football-secret");
+    expect(JSON.stringify(redactSecrets(config))).not.toMatch(/football-secret|api-football-secret/);
+  });
+
   it("reports PostgreSQL and Redis readiness independently", () => {
     expect(dependencyReadiness({ postgres: true, redis: false })).toEqual({
       ready: false,

@@ -97,7 +97,9 @@ async function seedReplayReferences() {
   const home = await prisma.team.create({ data: { name: "Replay Home", normalizedName: "replay home", countryCode: "GB" } });
   const away = await prisma.team.create({ data: { name: "Replay Away", normalizedName: "replay away", countryCode: "GB" } });
   await prisma.leagueExternalRef.create({ data: { leagueId: league.id, provider: "football-data.org", externalId: "PL" } });
-  await prisma.seasonExternalRef.create({ data: { seasonId: season.id, provider: "football-data.org", externalId: "2026" } });
+  await prisma.seasonExternalRef.create({ data: { seasonId: season.id, leagueId: league.id, provider: "football-data.org", externalId: "2026" } });
+  await prisma.leagueExternalRef.create({ data: { leagueId: league.id, provider: "api-football", externalId: "39" } });
+  await prisma.seasonExternalRef.create({ data: { seasonId: season.id, leagueId: league.id, provider: "api-football", externalId: "2026" } });
   await prisma.teamExternalRef.createMany({ data: [
     { teamId: home.id, provider: "football-data.org", externalId: "home-1" },
     { teamId: away.id, provider: "football-data.org", externalId: "away-1" },
@@ -134,7 +136,9 @@ async function seedReplayReferences() {
     endsOn: new Date("2027-05-31T00:00:00.000Z"),
   } });
   await prisma.leagueExternalRef.create({ data: { leagueId: pdLeague.id, provider: "football-data.org", externalId: "PD" } });
-  await prisma.seasonExternalRef.create({ data: { seasonId: pdSeason.id, provider: "football-data.org", externalId: "2026-pd" } });
+  await prisma.seasonExternalRef.create({ data: { seasonId: pdSeason.id, leagueId: pdLeague.id, provider: "football-data.org", externalId: "2026-pd" } });
+  await prisma.leagueExternalRef.create({ data: { leagueId: pdLeague.id, provider: "api-football", externalId: "140" } });
+  await prisma.seasonExternalRef.create({ data: { seasonId: pdSeason.id, leagueId: pdLeague.id, provider: "api-football", externalId: "2026" } });
   await prisma.providerCapability.create({ data: {
     provider: "football-data.org",
     leagueId: pdLeague.id,

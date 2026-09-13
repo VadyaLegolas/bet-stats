@@ -29,7 +29,11 @@ describe("provider fallback canonical identity", () => {
   beforeEach(async () => {
     await database.$executeRawUnsafe(`TRUNCATE TABLE "ReconciliationCandidate", "ReconciliationCase", "FixtureProvenance", "FixtureExternalRef", "TeamExternalRef", "SeasonExternalRef", "LeagueExternalRef", "Fixture", "Team", "Season", "League" CASCADE`);
     await database.league.create({ data: { id: "league-pl", name: "Premier League", countryCode: "GB", externalRefs: { create: [{ provider: "football-data.org", externalId: "PL" }, { provider: "api-football", externalId: "39" }] } } });
-    await database.season.create({ data: { id: "season-2026", leagueId: "league-pl", label: "2026/27", startsOn: new Date("2026-08-01"), endsOn: new Date("2027-06-01"), externalRefs: { create: [{ provider: "football-data.org", externalId: "2026" }, { provider: "api-football", externalId: "2026" }] } } });
+    await database.season.create({ data: { id: "season-2026", leagueId: "league-pl", label: "2026/27", startsOn: new Date("2026-08-01"), endsOn: new Date("2027-06-01") } });
+    await database.seasonExternalRef.createMany({ data: [
+      { seasonId: "season-2026", leagueId: "league-pl", provider: "football-data.org", externalId: "2026" },
+      { seasonId: "season-2026", leagueId: "league-pl", provider: "api-football", externalId: "2026" },
+    ] });
     for (const [id, name, fd, api] of [["team-home", "Arsenal", "57", "42"], ["team-away", "Chelsea", "61", "49"]]) {
       await database.team.create({ data: { id, name, normalizedName: name.toLowerCase(), countryCode: "GB", externalRefs: { create: [{ provider: "football-data.org", externalId: fd }, { provider: "api-football", externalId: api }] } } });
     }
@@ -54,6 +58,32 @@ describe("provider fallback canonical identity", () => {
     expect(await resolveProviderFixture(database, fixture("api-ambiguous", "2026-09-20T14:02:00Z"))).toMatchObject({ status: "quarantined", candidateCount: 2 });
     expect(await database.reconciliationCase.count({ where: { provider: "api-football", externalId: "api-ambiguous" } })).toBe(1);
     expect(await database.fixture.count()).toBe(2);
+  });
+
+  it("keeps API-Football year 2026 independent for PL, UEL and UECL", async () => {
+    for (const [leagueId, seasonId, name, externalId] of [
+      ["league-uel", "season-uel-2026", "Europa League", "78"],
+      ["league-uecl", "season-uecl-2026", "Conference League", "848"],
+    ] as const) {
+      await database.league.create({ data: { id: leagueId, name, countryCode: "EU" } });
+      await database.season.create({ data: { id: seasonId, leagueId, label: "2026/27", startsOn: new Date("2026-08-01"), endsOn: new Date("2027-06-01") } });
+      await database.leagueExternalRef.create({ data: { leagueId, provider: "api-football", externalId } });
+      await database.seasonExternalRef.create({ data: { seasonId, leagueId, provider: "api-football", externalId: "2026" } });
+    }
+
+    const sharedYear = await database.seasonExternalRef.findMany({
+      where: { provider: "api-football", externalId: "2026" },
+      orderBy: { leagueId: "asc" },
+      select: { leagueId: true, seasonId: true },
+    });
+    expect(sharedYear).toEqual([
+      { leagueId: "league-pl", seasonId: "season-2026" },
+      { leagueId: "league-uecl", seasonId: "season-uecl-2026" },
+      { leagueId: "league-uel", seasonId: "season-uel-2026" },
+    ]);
+    await expect(database.seasonExternalRef.create({ data: {
+      seasonId: "season-uel-2026", leagueId: "league-pl", provider: "poison-provider", externalId: "2026",
+    } })).rejects.toThrow();
   });
 });
 

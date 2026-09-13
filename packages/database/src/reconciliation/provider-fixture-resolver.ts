@@ -28,12 +28,21 @@ export async function resolveProviderFixture(
       return { status: "resolved", fixtureId: exact.fixtureId, method: "EXACT_EXTERNAL_REF" };
     }
 
-    const [leagueRef, seasonRef, homeRef, awayRef] = await Promise.all([
+    const [leagueRef, homeRef, awayRef] = await Promise.all([
       db.leagueExternalRef.findUnique({ where: { provider_externalId: { provider: fixture.provider, externalId: fixture.competitionExternalId } } }),
-      db.seasonExternalRef.findUnique({ where: { provider_externalId: { provider: fixture.provider, externalId: fixture.seasonExternalId } } }),
       db.teamExternalRef.findUnique({ where: { provider_externalId: { provider: fixture.provider, externalId: fixture.homeTeamExternalId } } }),
       db.teamExternalRef.findUnique({ where: { provider_externalId: { provider: fixture.provider, externalId: fixture.awayTeamExternalId } } }),
     ]);
+    if (!leagueRef || !homeRef || !awayRef) return quarantine(db, fixture, []);
+    const seasonRef = await db.seasonExternalRef.findUnique({
+      where: {
+        provider_leagueId_externalId: {
+          provider: fixture.provider,
+          leagueId: leagueRef.leagueId,
+          externalId: fixture.seasonExternalId,
+        },
+      },
+    });
     if (!leagueRef || !seasonRef || !homeRef || !awayRef) return quarantine(db, fixture, []);
     const candidates = await db.fixture.findMany({
       where: { leagueId: leagueRef.leagueId, seasonId: seasonRef.seasonId, homeTeamId: homeRef.teamId, awayTeamId: awayRef.teamId, kickoffUtc: { gte: new Date(kickoff.getTime() - tolerance), lte: new Date(kickoff.getTime() + tolerance) } },

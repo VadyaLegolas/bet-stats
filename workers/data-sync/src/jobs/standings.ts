@@ -96,7 +96,7 @@ export async function runReplayStandingsJob(input: ReplayJobData, dependencies: 
     endpointFamily: "STANDINGS",
   });
   const snapshot = policy.snapshot;
-  const refs = await dependencies.database.$queryRawUnsafe<Array<{ leagueId: string; seasonId: string }>>(`SELECT l."leagueId",s."seasonId" FROM "LeagueExternalRef" l JOIN "SeasonExternalRef" s ON s.provider=l.provider JOIN "Season" season ON season.id=s."seasonId" AND season."leagueId"=l."leagueId" WHERE l.provider=$1 AND l."externalId"=$2 AND s."externalId"=$3`, input.input.provider, input.input.competitionId, input.input.seasonId);
+  const refs = await dependencies.database.$queryRawUnsafe<Array<{ leagueId: string; seasonId: string }>>(`SELECT l."leagueId",s."seasonId" FROM "LeagueExternalRef" l JOIN "SeasonExternalRef" s ON s.provider=l.provider AND s."leagueId"=l."leagueId" JOIN "Season" season ON season.id=s."seasonId" AND season."leagueId"=s."leagueId" WHERE l.provider=$1 AND l."externalId"=$2 AND s."externalId"=$3 LIMIT 2`, input.input.provider, input.input.competitionId, input.input.seasonId);
   const ref = refs[0]; if (refs.length !== 1 || !ref) throw Object.assign(new Error(refs.length ? "IDENTITY_AMBIGUOUS" : "IDENTITY_UNRESOLVED"), { code: refs.length ? "IDENTITY_AMBIGUOUS" : "IDENTITY_UNRESOLVED" });
   const mapped = await resolveEndpointCandidateMappings({ competition: input.input.competitionId, season: input.input.seasonId, endpoint: "STANDINGS", leagueId: ref.leagueId, seasonId: ref.seasonId, resolveMapping: (leagueId, seasonId, provider) => resolveCandidateExternalMapping(dependencies.database, leagueId, seasonId, provider) });
   if (dependencies.providerFactories && dependencies.providerRoutingRepository) {

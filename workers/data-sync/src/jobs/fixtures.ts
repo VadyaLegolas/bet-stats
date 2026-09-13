@@ -30,8 +30,8 @@ export async function resolveCandidateExternalMapping(
   const rows = await database.$queryRawUnsafe<Array<{ leagueExternalId: string; seasonExternalId: string }>>(
     `SELECT l."externalId" AS "leagueExternalId", s."externalId" AS "seasonExternalId"
      FROM "LeagueExternalRef" l
-     JOIN "SeasonExternalRef" s ON s.provider = l.provider
-     JOIN "Season" season ON season.id = s."seasonId" AND season."leagueId" = l."leagueId"
+     JOIN "SeasonExternalRef" s ON s.provider = l.provider AND s."leagueId" = l."leagueId"
+     JOIN "Season" season ON season.id = s."seasonId" AND season."leagueId" = s."leagueId"
      WHERE l."leagueId" = $1 AND s."seasonId" = $2 AND l.provider = $3 AND s.provider = $3`,
     leagueId,
     seasonId,
@@ -200,10 +200,10 @@ export async function runReplayFixtureJob(
   const refs = await dependencies.database.$queryRawUnsafe<Array<{ leagueId: string; seasonId: string }>>(
     `SELECT l."leagueId", s."seasonId"
      FROM "LeagueExternalRef" l
-     JOIN "SeasonExternalRef" s ON s.provider=l.provider
-     JOIN "Season" season ON season.id=s."seasonId" AND season."leagueId"=l."leagueId"
+     JOIN "SeasonExternalRef" s ON s.provider=l.provider AND s."leagueId"=l."leagueId"
+     JOIN "Season" season ON season.id=s."seasonId" AND season."leagueId"=s."leagueId"
      WHERE l.provider=$1 AND l."externalId"=$2 AND s."externalId"=$3
-     LIMIT 1`,
+     LIMIT 2`,
     input.input.provider,
     input.input.competitionId,
     input.input.seasonId,

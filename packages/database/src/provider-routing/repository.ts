@@ -127,6 +127,24 @@ export function createProviderRoutingRepository(options: { database: PrismaClien
         return { admitted: reason === null, reused: false, reason };
       }, { isolationLevel: "Serializable", timeout: 15_000 }), 4);
     },
+    async completeAttempt(input: { attemptKey: string; state: "FAILED" | "SUCCEEDED" | "NO_FALLBACK"; reason: string | null; observationId: string | null }) {
+      if (!input.attemptKey || (input.state === "SUCCEEDED") !== (input.observationId !== null)) throw new Error("INVALID_TERMINAL_ATTEMPT");
+      return retrySerializable(() => options.database.$transaction(async (transaction) => {
+        const rows = await transaction.$queryRaw<Array<{ id: string; provider: string | null; state: string; reason: string | null; observationId: string | null }>>`
+          SELECT "id", "provider", "state", "reason", "observationId" FROM "ProviderRouteAttempt" WHERE "attemptKey" = ${input.attemptKey} FOR UPDATE
+        `;
+        const current = rows[0]; if (!current) throw new Error("ATTEMPT_NOT_FOUND");
+        if (current.state !== "ADMITTED") {
+          if (current.state === input.state && current.reason === input.reason && current.observationId === input.observationId) return transaction.providerRouteAttempt.findUniqueOrThrow({ where: { id: current.id } });
+          throw new Error("ATTEMPT_TERMINAL_CONFLICT");
+        }
+        if (input.observationId) {
+          const observation = await transaction.sourceObservation.findUnique({ where: { id: input.observationId }, select: { provider: true } });
+          if (!observation || observation.provider !== current.provider) throw new Error("ATTEMPT_OBSERVATION_MISMATCH");
+        }
+        return transaction.providerRouteAttempt.update({ where: { id: current.id }, data: { state: input.state, reason: input.reason, observationId: input.observationId } });
+      }, { isolationLevel: "Serializable", timeout: 15_000 }), 4);
+    },
     appendQuotaObservation(input: QuotaObservationInput) {
       validateQuotaObservation(input);
       return options.database.providerQuotaObservation.create({ data: input });

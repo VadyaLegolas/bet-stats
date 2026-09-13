@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 05
 current_phase_name: Provider-Aware Coverage and Enrichment
-current_plan: 9
-status: executing
-stopped_at: Completed 05-08-PLAN.md
-last_updated: "2026-09-13T08:45:37.868Z"
+current_plan: 10
+status: verifying
+stopped_at: Completed 05-10-PLAN.md; Phase 05 implementation complete
+last_updated: "2026-09-13T08:59:06.505Z"
 last_activity: 2026-09-12
 last_activity_desc: Completed 05-09 authenticated provider-policy approval and redacted probe
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 71
-  completed_plans: 70
+  completed_plans: 71
   percent: 67
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 05 (Provider-Aware Coverage and Enrichment) — IN PROGRESS
-Current Plan: 9
+Current Plan: 10
 Total Plans in Phase: 10
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last Activity: 2026-09-12 — Completed 05-09 provider-policy approval
 Last Activity Description: Authenticated promotion, redacted probe and rejection audit verified
 
@@ -101,6 +101,7 @@ Progress: [███████░░░] 67%
 | Phase 05 P07 | 18min | 2 tasks | 5 files |
 | Phase 05 P05 | 16min | 2 tasks | 7 files |
 | Phase 05 P08 | 34min | 2 tasks | 11 files |
+| Phase 05 P10 | 18min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -168,6 +169,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05]: Phase 05: Fixture surfaces disclose only receipt ID, policy version, outcome and trigger from durable provider routes.
 - [Phase 05]: Phase 05: TheSportsDB enrichment remains a structurally review-only, provenance-bearing input and never production match evidence.
 - [Phase 05]: Phase 05: Provider logos are exposed only as opaque references after HTTPS, host, DNS/IP, redirect, MIME, size and signature validation.
+- [Phase 05]: Phase 05: Browser logo requests use only server-signed opaque references through guarded application routes.
+- [Phase 05]: Phase 05: Provider image bytes require public network destinations, allowlisted MIME plus signature, bounded size and restrictive response headers.
 
 ### Pending Todos
 
@@ -187,6 +190,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-13T08:45:37.644Z
-Stopped at: Completed 05-08-PLAN.md
+Last session: 2026-09-13T08:59:06.324Z
+Stopped at: Completed 05-10-PLAN.md; Phase 05 implementation complete
 Resume file: None

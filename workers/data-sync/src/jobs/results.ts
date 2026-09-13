@@ -8,6 +8,8 @@ import { runGatedIngestion, type CircuitProbeRegistry, type GatedIngestionResult
 import type { ReplayJobData, SettlementJobData } from "../queues/index.js";
 import type { ReplayExecutionContext } from "../queues/replay-execution.js";
 import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js";
+import { resolveEndpointCandidateMappings } from "../ingestion/provider-route-runtime.js";
+import { resolveCandidateExternalMapping } from "./fixtures.js";
 
 interface ResultProviderCompatibility extends Partial<ResultProvider> {
   fetchResults?: () => Promise<readonly NormalizedResult[] | { data: readonly NormalizedResult[]; quota?: unknown }>;
@@ -102,6 +104,9 @@ export async function runReplayResultJob(input: ReplayJobData, dependencies: {
     endpointFamily: "RESULTS",
   });
   const snapshot = policy.snapshot;
+  const refs = await dependencies.database.$queryRawUnsafe<Array<{ leagueId: string; seasonId: string }>>(`SELECT l."leagueId",s."seasonId" FROM "LeagueExternalRef" l JOIN "SeasonExternalRef" s ON s.provider=l.provider JOIN "Season" season ON season.id=s."seasonId" AND season."leagueId"=l."leagueId" WHERE l.provider=$1 AND l."externalId"=$2 AND s."externalId"=$3`, input.input.provider, input.input.competitionId, input.input.seasonId);
+  if (refs.length !== 1) throw Object.assign(new Error(refs.length ? "IDENTITY_AMBIGUOUS" : "IDENTITY_UNRESOLVED"), { code: refs.length ? "IDENTITY_AMBIGUOUS" : "IDENTITY_UNRESOLVED" });
+  await resolveEndpointCandidateMappings({ competition: input.input.competitionId, season: input.input.seasonId, endpoint: "RESULTS", leagueId: refs[0]!.leagueId, seasonId: refs[0]!.seasonId, resolveMapping: (leagueId, seasonId, provider) => resolveCandidateExternalMapping(dependencies.database, leagueId, seasonId, provider) });
   const published: Array<{ fixtureId: string; resultVersionId: string }> = [];
   const result = await runResultSyncJob({
     provider: input.input.provider,

@@ -1,4 +1,5 @@
 import type { RouteExecutionCandidate } from "./runner.js";
+import { createProviderRoute, type ProviderRoute, type RoutedEndpoint } from "@bet-stats/football-data";
 
 type Terminal = { state: "FAILED" | "SUCCEEDED" | "NO_FALLBACK"; observationId: string | null; provider: string };
 type Admission = { admitted: boolean; reused: boolean; reason?: string | null; terminal: Terminal | null };
@@ -7,6 +8,20 @@ export type DurableRouteExecutionResult<T> =
   | { status: "completed"; provider: string; value: T; observationId: string }
   | { status: "replayed"; provider: string; observationId: string | null }
   | { status: "limited"; reason: "NO_FALLBACK"; lastValidAt: string | null; lastValidValue: T | null };
+
+export async function resolveEndpointCandidateMappings<T>(input: {
+  competition: string;
+  season: string;
+  endpoint: RoutedEndpoint;
+  leagueId: string;
+  seasonId: string;
+  resolveMapping: (leagueId: string, seasonId: string, provider: string) => Promise<T>;
+}): Promise<{ route: ProviderRoute; mappings: readonly T[] }> {
+  const route = createProviderRoute({ competition: input.competition, season: input.season, endpoint: input.endpoint });
+  const mappings: T[] = [];
+  for (const provider of route.candidates) mappings.push(await input.resolveMapping(input.leagueId, input.seasonId, provider));
+  return { route, mappings };
+}
 
 export async function executeProviderRoute<TProvider, TValue>(input: {
   routeId: string;

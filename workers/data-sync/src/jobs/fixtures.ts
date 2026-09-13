@@ -8,6 +8,7 @@ import { runGatedIngestion, type CircuitProbeRegistry, type IngestionLane } from
 import type { ReplayJobData } from "../queues/index.js";
 import type { ReplayExecutionContext } from "../queues/replay-execution.js";
 import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js";
+import { resolveEndpointCandidateMappings } from "../ingestion/provider-route-runtime.js";
 
 const PROVIDER = "football-data.org";
 const ENDPOINT = "FIXTURES";
@@ -204,6 +205,7 @@ export async function runReplayFixtureJob(
   );
   const ref = refs[0];
   if (!ref) throw Object.assign(new Error("IDENTITY_UNRESOLVED"), { code: "IDENTITY_UNRESOLVED" });
+  await resolveEndpointCandidateMappings({ competition: input.input.competitionId, season: input.input.seasonId, endpoint: "FIXTURES", leagueId: ref.leagueId, seasonId: ref.seasonId, resolveMapping: (leagueId, seasonId, provider) => resolveCandidateExternalMapping(dependencies.database, leagueId, seasonId, provider) });
 
   const result = await runFixtureSyncJob({
     database: dependencies.database,

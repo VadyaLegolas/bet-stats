@@ -2,18 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 05
 current_phase_name: Provider-Aware Coverage and Enrichment
-current_plan: 15
+current_plan: 16
 status: planned
-stopped_at: Completed 05-14-PLAN.md
-last_updated: "2026-09-13T14:22:02.289Z"
+stopped_at: Completed 05-15-PLAN.md
+last_updated: "2026-09-13T19:58:57.074Z"
 last_activity: 2026-09-13
 last_activity_desc: Split Phase 05 migration and live acceptance closure into Plans 05-15 and 05-16
-state_head: 03018734da4c5ff0c6eaabac12baa1697ef5ca4b
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 77
-  completed_plans: 75
+  completed_plans: 76
   percent: 67
 ---
 
@@ -29,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 05 (Provider-Aware Coverage and Enrichment) — IN PROGRESS
-Current Plan: 15
+Current Plan: 16
 Total Plans in Phase: 16
 Status: Verification gaps planned — ready for gaps-only execution
 Last Activity: 2026-09-13 — Planned Phase 05 verification gap closure
@@ -107,6 +106,7 @@ Progress: [███████░░░] 67%
 | Phase 05-provider-aware-coverage-and-enrichment P12 | 31min | 2 tasks | 10 files |
 | Phase 05-provider-aware-coverage-and-enrichment P13 | 12min | 2 tasks | 5 files |
 | Phase 05-provider-aware-coverage-and-enrichment P14 | 9min | 2 tasks | 5 files |
+| Phase 05 P15 | 1h 5m | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -181,6 +181,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05]: Phase 05: ADMITTED-to-terminal is the only permitted provider-attempt update; identity fields and historical observations remain immutable.
 - [Phase 05]: Phase 05: Every production endpoint resolves provider request identities from canonical league and season IDs before constructing a client.
 - [Phase 05]: Phase 05: Provider credentials remain isolated in a closed factory map and the selected factory is constructed only after durable admission.
+- [Phase 05]: Provider season identity is provider + canonical leagueId + exact externalId.
+- [Phase 05]: SeasonExternalRef league consistency is enforced by a composite foreign key.
 
 ### Pending Todos
 
@@ -200,6 +202,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-13T14:21:59.888Z
-Stopped at: Completed 05-14-PLAN.md
+Last session: 2026-09-13T19:58:56.455Z
+Stopped at: Completed 05-15-PLAN.md
 Resume file: None

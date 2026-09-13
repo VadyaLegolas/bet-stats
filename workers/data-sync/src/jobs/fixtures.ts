@@ -5,7 +5,7 @@ import { evaluateCapability, reservePriorityRequest, type CapabilityDecision } f
 import { classifyProviderFailure, createProviderRoute, isConfiguredCompetitionCode, providerRouteJobId, type FixtureProvider, type NormalizedFixture, type RequestedDateWindow } from "@bet-stats/football-data";
 
 import { runGatedIngestion, type CircuitProbeRegistry, type IngestionLane } from "../ingestion/runner.js";
-import type { ReplayJobData } from "../queues/index.js";
+import { createEnrichmentSchedule, type EnrichmentJobData, type ReplayJobData } from "../queues/index.js";
 import type { ReplayExecutionContext } from "../queues/replay-execution.js";
 import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js";
 import { callMappedFixtureProvider, createMappedProviderCandidates, executeDurableMappedRoute, resolveEndpointCandidateMappings, type LiveProviderFactories } from "../ingestion/provider-route-runtime.js";
@@ -176,6 +176,7 @@ export async function runReplayFixtureJob(
     providerFactory: () => FixtureProvider;
     providerFactories?: LiveProviderFactories;
     providerRoutingRepository?: any;
+    enrichmentQueue?: { enqueue(data: EnrichmentJobData): Promise<unknown> };
     providerPolicyRepository: ReplayProviderPolicyRepository;
     circuitRegistry: CircuitProbeRegistry;
   },
@@ -214,7 +215,9 @@ export async function runReplayFixtureJob(
     const window = fixtureRequestWindow({ competitionExternalId: input.input.competitionId, seasonExternalId: input.input.seasonId, from: input.unit.from, to: input.unit.to });
     const routed = await executeDurableMappedRoute<readonly NormalizedFixture[]>({ database: dependencies.database, repository: dependencies.providerRoutingRepository, context, route: mapped.route, candidates: createMappedProviderCandidates(mapped.route, mapped.mappings, dependencies.providerFactories), leagueId: ref.leagueId, seasonId: ref.seasonId, correlationId: `${input.logicalId}:${input.revision}:${context.attemptNumber}`, attemptKey: `${input.logicalId}:${input.revision}:${context.attemptNumber}:FIXTURES`, allowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, lane: snapshot.lane!, call: (dispatch) => callMappedFixtureProvider(dispatch, window) as Promise<readonly NormalizedFixture[]> });
     if (routed.status !== "completed") throw Object.assign(new Error(routed.status === "limited" ? routed.reason : "ROUTE_REPLAYED"), { code: routed.status === "limited" ? routed.reason : "ROUTE_REPLAYED" });
-    await context.publish(async (transaction) => { for (const fixture of routed.value) await persistCanonicalFixture(transaction as unknown as PrismaClient, ref.leagueId, ref.seasonId, fixture, true); }, completionManifest(input));
+    const published: Array<{ fixtureId: string; kickoffUtc: string }> = [];
+    await context.publish(async (transaction) => { for (const fixture of routed.value) published.push({ fixtureId: await persistCanonicalFixture(transaction as unknown as PrismaClient, ref.leagueId, ref.seasonId, fixture, true), kickoffUtc: fixture.kickoffUtc }); }, completionManifest(input));
+    if (dependencies.enrichmentQueue) await schedulePublishedFixtures(published, dependencies.enrichmentQueue.enqueue);
     return;
   }
 
@@ -249,11 +252,16 @@ export async function runReplayFixtureJob(
   }
 }
 
-async function persistCanonicalFixture(database: PrismaClient, leagueId: string, seasonId: string, fixture: NormalizedFixture, transactionOwned = false): Promise<void> {
+export async function schedulePublishedFixtures(fixtures: readonly { fixtureId: string; kickoffUtc: string }[], enqueue: (data: EnrichmentJobData) => Promise<unknown>): Promise<void> {
+  const unique = new Map(fixtures.map((fixture) => [fixture.fixtureId, fixture]));
+  for (const fixture of unique.values()) for (const job of createEnrichmentSchedule({ ...fixture, policyVersion: "enrichment-v1" })) await enqueue(job);
+}
+
+async function persistCanonicalFixture(database: PrismaClient, leagueId: string, seasonId: string, fixture: NormalizedFixture, transactionOwned = false): Promise<string> {
   if (transactionOwned) {
     const resolution = await resolveProviderFixture(database, fixture, { transactionOwned: true });
     if (resolution.status === "quarantined") throw Object.assign(new Error("FIXTURE_IDENTITY_QUARANTINED"), { code: "FIXTURE_IDENTITY_QUARANTINED", caseId: resolution.caseId });
-    return;
+    return resolution.fixtureId;
   }
   const write = async (transaction: PrismaClient) => {
     await transaction.$executeRawUnsafe(
@@ -296,8 +304,9 @@ async function persistCanonicalFixture(database: PrismaClient, leagueId: string,
       randomUUID(), fixtureId, fixture.provider, fixture.capturedAt, fixture.sourceUpdatedAt, payloadHash, rawPayload,
     );
   };
-  if (transactionOwned) await write(database);
-  else await database.$transaction((transaction) => write(transaction as unknown as PrismaClient));
+  if (transactionOwned) return write(database).then(async () => (await database.fixtureExternalRef.findUniqueOrThrow({ where: { provider_externalId: { provider: fixture.provider, externalId: fixture.externalId } } })).fixtureId);
+  await database.$transaction((transaction) => write(transaction as unknown as PrismaClient));
+  return (await database.fixtureExternalRef.findUniqueOrThrow({ where: { provider_externalId: { provider: fixture.provider, externalId: fixture.externalId } } })).fixtureId;
 }
 
 function completionManifest(input: ReplayJobData) { return { expectedUnits: [input.logicalId], completedUnits: [input.logicalId], expectedCaptures: [input.logicalId], completedCaptures: [input.logicalId], delivery: "DELIVERED" }; }

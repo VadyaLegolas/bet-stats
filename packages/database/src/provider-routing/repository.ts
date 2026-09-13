@@ -108,7 +108,7 @@ export function createProviderRoutingRepository(options: { database: PrismaClien
         let reservationId: string | null = null;
         if (!reason) {
           const [reserved, throttleReserved, quota] = await Promise.all([
-            transaction.providerThrottleReservation.count({ where: { provider: input.provider, endpointFamily: input.route.endpointFamily, routeAttempt: { createdAt: { gte: startOfUtcDay(input.requestDate), lt: endOfUtcDay(input.requestDate) } } } }),
+            transaction.providerThrottleReservation.count({ where: { provider: input.provider, endpointFamily: input.route.endpointFamily, windowStart: { gte: startOfUtcDay(input.requestDate), lt: endOfUtcDay(input.requestDate) } } }),
             transaction.providerThrottleReservation.count({ where: { provider: input.provider, endpointFamily: input.route.endpointFamily, windowStart: input.throttle.windowStart, windowEnd: input.throttle.windowEnd } }),
             transaction.providerQuotaObservation.aggregate({ where: { provider: input.provider, endpointFamily: input.route.endpointFamily }, _min: { observedLimit: true, observedRemaining: true } }),
           ]);

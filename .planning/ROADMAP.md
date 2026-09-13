@@ -223,7 +223,7 @@ Plans:
 
 ### Phase 5: Provider-Aware Coverage and Enrichment
 
-**Goal**: Users can access configured competition breadth and pre-match evidence updates while provider failures remain visible and canonical identities remain stable.
+**Goal**: As a football analytics user, I want to access configured competition coverage and pre-match evidence updates, so that provider failures remain visible and canonical identities remain stable.
 **Mode:** mvp
 **Depends on**: Phase 4
 **Requirements**: PROV-01, PROV-02, PROV-03, PROV-04, PROV-05, PROV-06, PROV-07

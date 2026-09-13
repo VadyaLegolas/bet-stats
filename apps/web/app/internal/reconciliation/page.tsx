@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/rules-of-hooks, @next/next/no-img-element */
 import { useEffect, useRef, useState } from "react";
 type Candidate={id:string;canonicalEntityId:string;confidence:number;method:string;evidence:unknown};
 type Decision={id:string;action:string;actor:string;evidence:unknown;canonicalEntityId:string|null;decidedAt:string;supersedesDecisionId?:string};

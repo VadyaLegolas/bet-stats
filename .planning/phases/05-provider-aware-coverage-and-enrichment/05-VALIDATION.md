@@ -35,6 +35,9 @@ The phase plans own creation of the following missing test artifacts before or a
 | `tests/integration/thesportsdb-boundary.test.ts` | Suggestion-only DTO, no auto-approval/evidence authority, server-side logo validation service | 05-08 |
 | `tests/integration/provider-logo-http.test.ts` | Registered AppModule media route, operator authorization, no direct external browser fetch, URL/host/type/size/header security | 05-10 |
 | `tests/integration/phase-05-security.test.ts` | Secret redaction, hostile payloads, SSRF, quota exhaustion and identity poisoning | 05-10 |
+| `tests/integration/migration-empty.test.ts` | D-15 forward migration from empty and populated pre-change PostgreSQL | 05-15 |
+| `tests/integration/provider-worker-routing.test.ts` | Competition-scoped provider season lookups and fail-closed ambiguity | 05-15 |
+| `tests/integration/live-provider-harness-smoke.test.ts` | Fast migrated PostgreSQL/Redis/worker/Nest/Next readiness diagnostic | 05-16 |
 
 ## Requirements to Evidence Map
 
@@ -83,6 +86,11 @@ corepack pnpm exec vitest run tests/unit/forecast-comparison-ui.test.tsx --proje
 corepack pnpm exec vitest run tests/integration/provider-state-api.test.ts tests/integration/forecast-comparison-api.test.ts --project integration
 corepack pnpm exec vitest run tests/integration/thesportsdb-boundary.test.ts --project integration
 corepack pnpm exec vitest run tests/integration/provider-logo-http.test.ts tests/integration/phase-05-security.test.ts --project integration
+corepack pnpm --filter @bet-stats/database exec prisma validate
+corepack pnpm --filter @bet-stats/database exec prisma generate
+corepack pnpm exec vitest run tests/integration/migration-empty.test.ts tests/integration/provider-worker-routing.test.ts tests/integration/replay-boundary.test.ts tests/integration/provider-fallback-identity.test.ts --project integration
+corepack pnpm exec vitest run tests/integration/live-provider-harness-smoke.test.ts --project integration
+corepack pnpm exec playwright test tests/e2e/provider-degradation.spec.ts tests/e2e/forecast-comparison.spec.ts --config=playwright.phase05.config.ts --project=chromium
 ```
 
 ### Wave and phase gates

@@ -7,12 +7,12 @@ status: planned
 stopped_at: Completed 05-14-PLAN.md
 last_updated: "2026-09-13T14:22:02.289Z"
 last_activity: 2026-09-13
-last_activity_desc: Planned Phase 05 verification gap closure in Plans 05-11 through 05-15
+last_activity_desc: Split Phase 05 migration and live acceptance closure into Plans 05-15 and 05-16
 state_head: 03018734da4c5ff0c6eaabac12baa1697ef5ca4b
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 76
+  total_plans: 77
   completed_plans: 75
   percent: 67
 ---
@@ -30,10 +30,10 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 
 Phase: 05 (Provider-Aware Coverage and Enrichment) — IN PROGRESS
 Current Plan: 15
-Total Plans in Phase: 15
+Total Plans in Phase: 16
 Status: Verification gaps planned — ready for gaps-only execution
 Last Activity: 2026-09-13 — Planned Phase 05 verification gap closure
-Last Activity Description: Added Plans 05-11 through 05-15; Phase 6 remains not started
+Last Activity Description: Revised Plans 05-15 and 05-16; Phase 6 remains not started
 
 Progress: [███████░░░] 67%
 

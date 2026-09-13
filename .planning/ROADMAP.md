@@ -235,7 +235,7 @@ Plans:
   4. A user can compare INITIAL, PRE_MATCH, and available LINEUP_CONFIRMED snapshots and see which evidence changed the forecast.
   5. TheSportsDB may suggest reconciliation names and logos for administrator review but cannot supply match statistics or silently resolve ambiguity.
 
-**Plans**: 14/15 plans executed — 5 verification gap-closure plans ready
+**Plans**: 14/16 plans executed — 6 verification gap-closure plans ready
 
 Plans:
 
@@ -285,7 +285,11 @@ Plans:
 
 **Wave 8 gap closure** *(blocked on 05-13 and 05-14)*
 
-- [ ] 05-15-PLAN.md — Migrate provider seasons to canonical competition scope, smoke-check the live stack, then run full provider/comparison Playwright acceptance.
+- [ ] 05-15-PLAN.md — Migrate provider seasons to canonical competition scope and update generated Prisma types, all production lookups and affected creators.
+
+**Wave 9 gap closure** *(blocked on 05-15)*
+
+- [ ] 05-16-PLAN.md — Finish the owned live-stack smoke, then run full provider-degradation and forecast-comparison Playwright acceptance.
 
 **UI hint**: yes
 

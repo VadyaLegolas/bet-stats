@@ -42,8 +42,8 @@ export function startReplayWorker(input: { databaseUrl: string; redisUrl: string
   const backtestQueueHandle = createBacktestQueue({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}) });
   const worker = createReplayWorker({ redisUrl: input.redisUrl, database, ...(input.prefix ? { prefix: input.prefix } : {}), execute: async (job: ReplayJobData, context) => {
     if (job.input.endpointFamily === "FIXTURES") return runReplayFixtureJob(job, { database, providerFactory, providerFactories, providerRoutingRepository, providerPolicyRepository, circuitRegistry }, context);
-    if (job.input.endpointFamily === "RESULTS") return runReplayResultJob(job, { database, providerFactory, providerPolicyRepository, circuitRegistry, settlementQueue: settlementQueueHandle }, context);
-    if (job.input.endpointFamily === "STANDINGS") return runReplayStandingsJob(job, { database, providerFactory, providerPolicyRepository, circuitRegistry }, context);
+    if (job.input.endpointFamily === "RESULTS") return runReplayResultJob(job, { database, providerFactory, providerFactories, providerRoutingRepository, providerPolicyRepository, circuitRegistry, settlementQueue: settlementQueueHandle }, context);
+    if (job.input.endpointFamily === "STANDINGS") return runReplayStandingsJob(job, { database, providerFactory, providerFactories, providerRoutingRepository, providerPolicyRepository, circuitRegistry }, context);
     throw Object.assign(new Error("UNSUPPORTED_REPLAY_ENDPOINT"), { code: "UNSUPPORTED_REPLAY_ENDPOINT" });
   } });
   const settlementWorker = createSettlementWorker({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}), execute: createSettlementJobHandler({ service: settlementService }) });

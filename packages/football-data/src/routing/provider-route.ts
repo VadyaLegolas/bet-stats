@@ -35,7 +35,7 @@ export type ProviderFailureTrigger = "UPSTREAM_UNAVAILABLE" | "RATE_LIMITED" | "
 
 export function classifyProviderFailure(error: unknown): { eligible: true; trigger: ProviderFailureTrigger } | { eligible: false; reason: string } {
   const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "UNKNOWN";
-  if (["UPSTREAM_5XX", "TIMEOUT", "NETWORK_ERROR", "CIRCUIT_OPEN"].includes(code)) return { eligible: true, trigger: "UPSTREAM_UNAVAILABLE" };
+  if (["UPSTREAM_5XX", "TIMEOUT", "NETWORK_ERROR", "TRANSPORT_FAILURE", "PROVIDER_UNAVAILABLE", "CIRCUIT_OPEN"].includes(code)) return { eligible: true, trigger: "UPSTREAM_UNAVAILABLE" };
   if (["RATE_LIMITED", "ALLOWANCE_EXHAUSTED"].includes(code)) return { eligible: true, trigger: "RATE_LIMITED" };
   if (code === "PRIMARY_DATA_ABSENT") return { eligible: true, trigger: "PRIMARY_DATA_ABSENT" };
   return { eligible: false, reason: code };

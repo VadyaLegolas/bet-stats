@@ -1,4 +1,4 @@
-import { ProviderPayloadError, type ConfiguredCompetitionCode, type NormalizedFixture, type NormalizedStandingSnapshot, type NormalizedTeamObservation } from "../../provider.interface.js";
+import { ProviderPayloadError, type ConfiguredCompetitionCode, type NormalizedFixture, type NormalizedResult, type NormalizedStandingSnapshot, type NormalizedTeamObservation } from "../../provider.interface.js";
 import { normalizeApiFootballFixtures, normalizeApiFootballStandings, normalizeApiFootballTeams } from "./normalize.js";
 import { apiFootballFixturesEnvelopeSchema, apiFootballLeaguesEnvelopeSchema, apiFootballStandingsEnvelopeSchema, apiFootballTeamsEnvelopeSchema, parametersMatch, parseApiFootballEnrichmentEnvelope, type ApiFootballEnrichmentEndpoint } from "./schema.js";
 
@@ -45,6 +45,22 @@ export class ApiFootballClient {
     if (parsed.data.response.some((entry) => entry.league.id !== request.leagueId || entry.league.season !== request.season)) throw failure("PAYLOAD_MISMATCH", "quarantine");
     try { return normalizeApiFootballFixtures(parsed.data, this.#now()); }
     catch { throw failure("INVALID_PAYLOAD", "quarantine"); }
+  }
+
+  async fetchResults(request: ApiFootballFixtureRequest): Promise<readonly NormalizedResult[]> {
+    const fixtures = await this.fetchFixtures(request);
+    const finished = fixtures.filter((fixture) => fixture.status === "FINISHED");
+    return finished.map((fixture) => {
+      const raw = fixture.raw as { goals?: { home?: number | null; away?: number | null } };
+      if (!Number.isInteger(raw.goals?.home) || !Number.isInteger(raw.goals?.away)) throw failure("INVALID_PAYLOAD", "quarantine");
+      return {
+        provider: "api-football", externalId: fixture.externalId, competitionExternalId: fixture.competitionExternalId,
+        seasonExternalId: fixture.seasonExternalId, homeTeamExternalId: fixture.homeTeamExternalId, awayTeamExternalId: fixture.awayTeamExternalId,
+        kickoffUtc: fixture.kickoffUtc, homeScore: raw.goals!.home!, awayScore: raw.goals!.away!, capturedAt: fixture.capturedAt,
+        sourceUpdatedAt: fixture.sourceUpdatedAt, requestedWindow: { competitionCode: request.competitionCode, dateFrom: request.dateFrom, dateTo: request.dateTo },
+        returnedCoverage: { matchCount: finished.length, earliestKickoffUtc: finished[0]?.kickoffUtc ?? null, latestKickoffUtc: finished.at(-1)?.kickoffUtc ?? null }, raw: fixture.raw,
+      };
+    });
   }
 
   async fetchLeague(request: ApiFootballLeagueRequest): Promise<{ leagueId: number; season: number; name: string; country: string }> {

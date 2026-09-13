@@ -2,13 +2,13 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { SETTLEMENT_PIPELINE_POLICY_HASH, type PrismaClient, type ReplayProviderPolicyRepository } from "@bet-stats/database";
 import { reservePriorityRequest } from "@bet-stats/domain";
-import { createProviderRoute, providerRouteJobId, type NormalizedResult, type RequestedDateWindow, type ResultProvider } from "@bet-stats/football-data";
+import { classifyProviderFailure, createProviderRoute, providerRouteJobId, type NormalizedResult, type RequestedDateWindow, type ResultProvider } from "@bet-stats/football-data";
 
 import { runGatedIngestion, type CircuitProbeRegistry, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
 import type { ReplayJobData, SettlementJobData } from "../queues/index.js";
 import type { ReplayExecutionContext } from "../queues/replay-execution.js";
 import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js";
-import { resolveEndpointCandidateMappings } from "../ingestion/provider-route-runtime.js";
+import { callMappedResultProvider, createMappedProviderCandidates, executeDurableMappedRoute, resolveEndpointCandidateMappings, type LiveProviderFactories } from "../ingestion/provider-route-runtime.js";
 import { resolveCandidateExternalMapping } from "./fixtures.js";
 
 interface ResultProviderCompatibility extends Partial<ResultProvider> {
@@ -92,6 +92,8 @@ export function runResultSyncJob(input: ResultSyncJobInput): Promise<GatedIngest
 export async function runReplayResultJob(input: ReplayJobData, dependencies: {
   database: PrismaClient;
   providerFactory: ResultSyncJobInput["providerFactory"];
+  providerFactories?: LiveProviderFactories;
+  providerRoutingRepository?: any;
   providerPolicyRepository: ReplayProviderPolicyRepository;
   circuitRegistry: CircuitProbeRegistry;
   settlementQueue?: { enqueue(data: SettlementJobData): Promise<unknown> };
@@ -106,8 +108,15 @@ export async function runReplayResultJob(input: ReplayJobData, dependencies: {
   const snapshot = policy.snapshot;
   const refs = await dependencies.database.$queryRawUnsafe<Array<{ leagueId: string; seasonId: string }>>(`SELECT l."leagueId",s."seasonId" FROM "LeagueExternalRef" l JOIN "SeasonExternalRef" s ON s.provider=l.provider JOIN "Season" season ON season.id=s."seasonId" AND season."leagueId"=l."leagueId" WHERE l.provider=$1 AND l."externalId"=$2 AND s."externalId"=$3`, input.input.provider, input.input.competitionId, input.input.seasonId);
   if (refs.length !== 1) throw Object.assign(new Error(refs.length ? "IDENTITY_AMBIGUOUS" : "IDENTITY_UNRESOLVED"), { code: refs.length ? "IDENTITY_AMBIGUOUS" : "IDENTITY_UNRESOLVED" });
-  await resolveEndpointCandidateMappings({ competition: input.input.competitionId, season: input.input.seasonId, endpoint: "RESULTS", leagueId: refs[0]!.leagueId, seasonId: refs[0]!.seasonId, resolveMapping: (leagueId, seasonId, provider) => resolveCandidateExternalMapping(dependencies.database, leagueId, seasonId, provider) });
+  const mapped = await resolveEndpointCandidateMappings({ competition: input.input.competitionId, season: input.input.seasonId, endpoint: "RESULTS", leagueId: refs[0]!.leagueId, seasonId: refs[0]!.seasonId, resolveMapping: (leagueId, seasonId, provider) => resolveCandidateExternalMapping(dependencies.database, leagueId, seasonId, provider) });
   const published: Array<{ fixtureId: string; resultVersionId: string }> = [];
+  if (dependencies.providerFactories && dependencies.providerRoutingRepository) {
+    const window = { competitionCode: input.input.competitionId as RequestedDateWindow["competitionCode"], dateFrom: input.unit.from.slice(0, 10), dateTo: input.unit.to.slice(0, 10) };
+    const routed = await executeDurableMappedRoute<readonly NormalizedResult[]>({ database: dependencies.database, repository: dependencies.providerRoutingRepository, context, route: mapped.route, candidates: createMappedProviderCandidates(mapped.route, mapped.mappings, dependencies.providerFactories), leagueId: refs[0]!.leagueId, seasonId: refs[0]!.seasonId, correlationId: `${input.logicalId}:${input.revision}:${context.attemptNumber}`, attemptKey: `${input.logicalId}:${input.revision}:${context.attemptNumber}:RESULTS`, allowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, lane: snapshot.lane!, call: (dispatch) => callMappedResultProvider(dispatch, window) as Promise<readonly NormalizedResult[]> });
+    if (routed.status !== "completed") throw Object.assign(new Error(routed.status === "limited" ? routed.reason : "ROUTE_REPLAYED"), { code: routed.status === "limited" ? routed.reason : "ROUTE_REPLAYED" });
+    await context.publish(async (transaction) => { published.push(...await persistResultsInTransaction(transaction as unknown as PrismaClient, routed.value)); }, completionManifest(input));
+    await enqueueSettlements(dependencies, input, published); return;
+  }
   const result = await runResultSyncJob({
     provider: input.input.provider,
     endpoint: "RESULTS",
@@ -131,6 +140,10 @@ export async function runReplayResultJob(input: ReplayJobData, dependencies: {
     const code = result.status === "denied" ? result.reason : result.status.toUpperCase();
     throw Object.assign(new Error(code), { code });
   }
+  await enqueueSettlements(dependencies, input, published);
+}
+
+async function enqueueSettlements(dependencies: Parameters<typeof runReplayResultJob>[1], input: ReplayJobData, published: Array<{ fixtureId: string; resultVersionId: string }>): Promise<void> {
   if (dependencies.settlementQueue) {
     for (const item of published) {
       const forecasts = await dependencies.database.$queryRawUnsafe<Array<{ id: string }>>(`SELECT id FROM "ForecastSnapshot" WHERE "fixtureId"=$1 AND state='ISSUED' AND kind IN ('PRE_MATCH','LINEUP_CONFIRMED') ORDER BY id`, item.fixtureId);

@@ -29,10 +29,12 @@ export function createLiveProviderFactories(input: { footballDataApiToken: strin
     "api-football": () => new ApiFootballClient({ apiKey: input.apiFootballApiKey }),
   } as const;
 }
+type ProviderFactories = ReturnType<typeof createLiveProviderFactories>;
+export function resolveReplayProviderFactories(input: { footballDataApiToken: string; apiFootballApiKey: string; providerFactories?: ProviderFactories }): ProviderFactories { return input.providerFactories ?? createLiveProviderFactories(input); }
 
-export function startReplayWorker(input: { databaseUrl: string; redisUrl: string; footballDataApiToken: string; apiFootballApiKey: string; prefix?: string; providerFactory?: () => ReplayProvider }) {
+export function startReplayWorker(input: { databaseUrl: string; redisUrl: string; footballDataApiToken: string; apiFootballApiKey: string; prefix?: string; providerFactory?: () => ReplayProvider; providerFactories?: ProviderFactories }) {
   const database = createPrismaClient(input.databaseUrl);
-  const providerFactories = createLiveProviderFactories(input);
+  const providerFactories = resolveReplayProviderFactories(input);
   const providerFactory = input.providerFactory ?? providerFactories["football-data.org"];
   const providerRoutingRepository = createProviderRoutingRepository({ database });
   const providerPolicyRepository = createReplayProviderPolicyRepository({ database, policies: DEFAULT_REPLAY_PROVIDER_POLICIES });
@@ -55,7 +57,7 @@ export function startReplayWorker(input: { databaseUrl: string; redisUrl: string
   const reconcile = () => reconcileBacktestDelivery({ receipts: backtestReceipts, queue: backtestQueueHandle }).catch(() => undefined);
   void reconcile();
   const backtestReconcileTimer = setInterval(() => { void reconcile(); }, 5_000);
-  return { worker, settlementWorker, backtestWorker, enrichmentWorker, enrichmentQueue: enrichmentQueueHandle, async close() { clearInterval(backtestReconcileTimer); await worker.close(); await enrichmentWorker.close(); await settlementWorker.close(); await backtestWorker.close(); await enrichmentQueueHandle.close(); await backtestQueueHandle.close(); await settlementQueueHandle.close(); await database.$disconnect(); } };
+  return { worker, settlementWorker, backtestWorker, enrichmentWorker, enrichmentQueue: enrichmentQueueHandle, async waitUntilReady() { await Promise.all([worker.waitUntilReady(), enrichmentWorker.waitUntilReady(), settlementWorker.waitUntilReady(), backtestWorker.waitUntilReady()]); return { ready: true, workers: ["replay", "enrichment", "settlement", "backtest"] as const }; }, async close() { clearInterval(backtestReconcileTimer); await worker.close(); await enrichmentWorker.close(); await settlementWorker.close(); await backtestWorker.close(); await enrichmentQueueHandle.close(); await backtestQueueHandle.close(); await settlementQueueHandle.close(); await database.$disconnect(); } };
 }
 
 function start(): void {

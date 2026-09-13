@@ -37,6 +37,11 @@ export function createEnrichmentQueue(input: { redisUrl: string; prefix?: string
   };
 }
 
+export function createEnrichmentWorker(input: { redisUrl: string; prefix?: string; execute: (data: EnrichmentJobData) => Promise<unknown>; workerFactory?: typeof Worker }) {
+  const WorkerFactory = input.workerFactory ?? Worker;
+  return new WorkerFactory<EnrichmentJobData>(optionalQueue(input.prefix), (job: Job<EnrichmentJobData>) => input.execute(job.data), { connection: redisConnection(input.redisUrl), concurrency: 1, maxStalledCount: 2, lockDuration: 30_000 });
+}
+
 export interface BacktestJobData { planId: string; planHash: string; correlationId: string }
 export function backtestQueue(prefix = "bet-stats"): string {
   if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) throw new Error("Queue prefix contains unsupported characters");

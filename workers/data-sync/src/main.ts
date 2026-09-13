@@ -1,13 +1,14 @@
 import { dependencyReadiness, readServerConfig } from "@bet-stats/config";
 import { createPrismaBacktestReceiptRepository, createPrismaClient, createPrismaForecastRepository, createProviderRoutingRepository, createReplayProviderPolicyRepository, createSettlementPipelineService, DEFAULT_REPLAY_PROVIDER_POLICIES } from "@bet-stats/database";
-import { ForecastOrchestrator } from "@bet-stats/domain";
+import { currentForecastConfigHash, ForecastOrchestrator } from "@bet-stats/domain";
 import { ApiFootballClient, FootballDataOrgClient, type FixtureProvider, type ResultProvider, type StandingsProvider } from "@bet-stats/football-data";
 import { runReplayFixtureJob } from "./jobs/fixtures.js";
 import { runReplayResultJob } from "./jobs/results.js";
 import { runReplayStandingsJob } from "./jobs/standings.js";
+import { createProductionEnrichmentExecutor } from "./jobs/enrichment.js";
 import { createSettlementJobHandler } from "./jobs/settlement.js";
 import { reconcileBacktestDelivery, runBacktestPlan } from "./jobs/backtests.js";
-import { createBacktestQueue, createBacktestWorker, createEnrichmentSchedule, createReplayWorker, createSettlementQueue, createSettlementWorker, type EnrichmentJobData, type ReplayJobData } from "./queues/index.js";
+import { createBacktestQueue, createBacktestWorker, createEnrichmentQueue, createEnrichmentSchedule, createEnrichmentWorker, createReplayWorker, createSettlementQueue, createSettlementWorker, type EnrichmentJobData, type ReplayJobData } from "./queues/index.js";
 import { createDurableProviderCircuitRegistry } from "./resilience/circuits.js";
 
 export { createSyncWorkers } from "./queues/index.js";
@@ -41,18 +42,20 @@ export function startReplayWorker(input: { databaseUrl: string; redisUrl: string
   const backtestReceipts = createPrismaBacktestReceiptRepository({ database, settlementService });
   const backtestQueueHandle = createBacktestQueue({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}) });
   const worker = createReplayWorker({ redisUrl: input.redisUrl, database, ...(input.prefix ? { prefix: input.prefix } : {}), execute: async (job: ReplayJobData, context) => {
-    if (job.input.endpointFamily === "FIXTURES") return runReplayFixtureJob(job, { database, providerFactory, providerFactories, providerRoutingRepository, providerPolicyRepository, circuitRegistry }, context);
+    if (job.input.endpointFamily === "FIXTURES") return runReplayFixtureJob(job, { database, providerFactory, providerFactories, providerRoutingRepository, providerPolicyRepository, circuitRegistry, enrichmentQueue: enrichmentQueueHandle }, context);
     if (job.input.endpointFamily === "RESULTS") return runReplayResultJob(job, { database, providerFactory, providerFactories, providerRoutingRepository, providerPolicyRepository, circuitRegistry, settlementQueue: settlementQueueHandle }, context);
     if (job.input.endpointFamily === "STANDINGS") return runReplayStandingsJob(job, { database, providerFactory, providerFactories, providerRoutingRepository, providerPolicyRepository, circuitRegistry }, context);
     throw Object.assign(new Error("UNSUPPORTED_REPLAY_ENDPOINT"), { code: "UNSUPPORTED_REPLAY_ENDPOINT" });
   } });
   const settlementWorker = createSettlementWorker({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}), execute: createSettlementJobHandler({ service: settlementService }) });
   const forecastRepository = createPrismaForecastRepository(database);
+  const enrichmentQueueHandle = createEnrichmentQueue({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}) });
+  const enrichmentWorker = createEnrichmentWorker({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}), execute: createProductionEnrichmentExecutor({ database, apiFootballFactory: providerFactories["api-football"], issueLineupForecast: async ({ fixtureId, cutoff }) => (await new ForecastOrchestrator().run({ fixtureId, asOf: cutoff, kind: "LINEUP_CONFIRMED", modelVersion: "poisson-ensemble-v1", configHash: currentForecastConfigHash(), initiator: { type: "production", correlationId: `enrichment:${fixtureId}:${cutoff}` } }, forecastRepository)).id }) });
   const backtestWorker = createBacktestWorker({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}), loadPlan: backtestReceipts.findPlan as never, execute: (plan, data) => runBacktestPlan({ plan, receipts: backtestReceipts as never, orchestrator: new ForecastOrchestrator(), repository: forecastRepository, correlationId: data.correlationId }) });
   const reconcile = () => reconcileBacktestDelivery({ receipts: backtestReceipts, queue: backtestQueueHandle }).catch(() => undefined);
   void reconcile();
   const backtestReconcileTimer = setInterval(() => { void reconcile(); }, 5_000);
-  return { worker, settlementWorker, backtestWorker, async close() { clearInterval(backtestReconcileTimer); await worker.close(); await settlementWorker.close(); await backtestWorker.close(); await backtestQueueHandle.close(); await settlementQueueHandle.close(); await database.$disconnect(); } };
+  return { worker, settlementWorker, backtestWorker, enrichmentWorker, enrichmentQueue: enrichmentQueueHandle, async close() { clearInterval(backtestReconcileTimer); await worker.close(); await enrichmentWorker.close(); await settlementWorker.close(); await backtestWorker.close(); await enrichmentQueueHandle.close(); await backtestQueueHandle.close(); await settlementQueueHandle.close(); await database.$disconnect(); } };
 }
 
 function start(): void {

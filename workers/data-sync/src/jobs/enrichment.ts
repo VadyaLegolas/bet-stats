@@ -43,3 +43,22 @@ function officialSameFixtureBeforeCutoff(observation: EnrichmentObservation, fix
   const payload = observation.payload as { fixtureId?: unknown; status?: unknown; players?: unknown };
   return payload.fixtureId === fixtureId && payload.status === "OFFICIAL_CONFIRMED" && Array.isArray(payload.players) && payload.players.length > 0;
 }
+
+export function createProductionEnrichmentExecutor(input: { database: PrismaClient; apiFootballFactory: () => ApiFootballClient; issueLineupForecast?: (value: { fixtureId: string; cutoff: string; officialLineupObservationId: string; receiptHash: string }) => Promise<string> }) {
+  return async (job: { fixtureId: string; endpoint: EnrichmentEndpoint; cutoff: string; policyVersion: string }) => {
+    const fixtureRows = await input.database.$queryRawUnsafe<Array<{ leagueId: string; seasonId: string; externalId: string }>>(`SELECT f."leagueId",f."seasonId",r."externalId" FROM "Fixture" f JOIN "FixtureExternalRef" r ON r."fixtureId"=f.id AND r.provider='api-football' WHERE f.id=$1`, job.fixtureId);
+    const fixture = fixtureRows[0]; if (!fixture || !/^[1-9]\d*$/.test(fixture.externalId)) return { status: "denied", reason: "UNKNOWN_CAPABILITY" } as const;
+    return runEnrichmentJob({ fixtureId: job.fixtureId, endpoint: job.endpoint, cutoff: job.cutoff,
+      readCapability: async () => { const row = await input.database.providerCapability.findUnique({ where: { provider_leagueId_seasonId_endpoint: { provider: "api-football", leagueId: fixture.leagueId, seasonId: fixture.seasonId, endpoint: job.endpoint } } }); return row ? { supported: row.supported, expiresAt: row.expiresAt?.toISOString() ?? null } : null; },
+      readCircuit: async () => (await input.database.providerCircuitState.findUnique({ where: { provider_endpointFamily: { provider: "api-football", endpointFamily: job.endpoint } } }))?.state ?? "OPEN",
+      reserve: async () => { const value = await reservePriorityRequest({ database: input.database, provider: "api-football", resetDate: new Date().toISOString().slice(0,10), resetTimezone: "UTC", endpointFamily: job.endpoint, lane: "optional", configuredAllowance: 100, criticalHeadroom: 20, jobKey: `${job.policyVersion}:${job.fixtureId}:${job.endpoint}:${job.cutoff}` }); return value.reserved ? { reserved: true, reused: value.reused } : { reserved: false, reason: value.reason }; },
+      providerFactory: () => ({ fetch: async () => input.apiFootballFactory().fetchEnrichment(job.endpoint.toLowerCase() as any, Number(fixture.externalId)) as Promise<EnrichmentObservation> }),
+      persist: async (observation) => input.database.$transaction(async (tx) => { const raw = JSON.stringify(observation.payload), payloadHash = createHash("sha256").update(raw).digest("hex"), observationId = randomUUID(); await tx.sourceObservation.upsert({ where: { provider_endpointFamily_payloadHash: { provider: "api-football", endpointFamily: job.endpoint, payloadHash } }, create: { id: observationId, provider: "api-football", endpointFamily: job.endpoint, externalIdentity: job.fixtureId, observedAt: new Date(observation.capturedAt!), payloadHash, rawPayload: JSON.parse(raw), payloadBytes: Buffer.byteLength(raw) }, update: {} }); const stored = await tx.sourceObservation.findUniqueOrThrow({ where: { provider_endpointFamily_payloadHash: { provider: "api-football", endpointFamily: job.endpoint, payloadHash } } }); if (job.endpoint === "LINEUPS" && !(await tx.lineupObservation.findFirst({ where: { fixtureId: job.fixtureId, observationId: stored.id } }))) await tx.lineupObservation.create({ data: { fixtureId: job.fixtureId, observationId: stored.id, status: "OFFICIAL_CONFIRMED", confirmedAt: new Date(observation.capturedAt!) } }); return { observationId: stored.id, receiptHash: `sha256:${payloadHash}` }; }),
+      ...(input.issueLineupForecast ? { issueLineupForecast: input.issueLineupForecast } : {}),
+    });
+  };
+}
+import { createHash, randomUUID } from "node:crypto";
+import type { PrismaClient } from "@bet-stats/database";
+import { reservePriorityRequest } from "@bet-stats/domain";
+import type { ApiFootballClient } from "@bet-stats/football-data";

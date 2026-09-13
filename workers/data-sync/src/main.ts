@@ -1,7 +1,7 @@
 import { dependencyReadiness, readServerConfig } from "@bet-stats/config";
-import { createPrismaBacktestReceiptRepository, createPrismaClient, createPrismaForecastRepository, createReplayProviderPolicyRepository, createSettlementPipelineService, DEFAULT_REPLAY_PROVIDER_POLICIES } from "@bet-stats/database";
+import { createPrismaBacktestReceiptRepository, createPrismaClient, createPrismaForecastRepository, createProviderRoutingRepository, createReplayProviderPolicyRepository, createSettlementPipelineService, DEFAULT_REPLAY_PROVIDER_POLICIES } from "@bet-stats/database";
 import { ForecastOrchestrator } from "@bet-stats/domain";
-import { FootballDataOrgClient, type FixtureProvider, type ResultProvider, type StandingsProvider } from "@bet-stats/football-data";
+import { ApiFootballClient, FootballDataOrgClient, type FixtureProvider, type ResultProvider, type StandingsProvider } from "@bet-stats/football-data";
 import { runReplayFixtureJob } from "./jobs/fixtures.js";
 import { runReplayResultJob } from "./jobs/results.js";
 import { runReplayStandingsJob } from "./jobs/standings.js";
@@ -22,9 +22,18 @@ export async function scheduleFixtureEnrichment(input: { fixtureId: string; kick
 
 type ReplayProvider = FixtureProvider & Pick<ResultProvider, "fetchCompetitionResults" | "fetchCompletedResults"> & Pick<StandingsProvider, "fetchCompetitionStandings" | "fetchStandings">;
 
-export function startReplayWorker(input: { databaseUrl: string; redisUrl: string; apiToken: string; prefix?: string; providerFactory?: () => ReplayProvider }) {
+export function createLiveProviderFactories(input: { footballDataApiToken: string; apiFootballApiKey: string }) {
+  return {
+    "football-data.org": () => new FootballDataOrgClient({ apiToken: input.footballDataApiToken }),
+    "api-football": () => new ApiFootballClient({ apiKey: input.apiFootballApiKey }),
+  } as const;
+}
+
+export function startReplayWorker(input: { databaseUrl: string; redisUrl: string; footballDataApiToken: string; apiFootballApiKey: string; prefix?: string; providerFactory?: () => ReplayProvider }) {
   const database = createPrismaClient(input.databaseUrl);
-  const providerFactory = input.providerFactory ?? (() => new FootballDataOrgClient({ apiToken: input.apiToken }));
+  const providerFactories = createLiveProviderFactories(input);
+  const providerFactory = input.providerFactory ?? providerFactories["football-data.org"];
+  const providerRoutingRepository = createProviderRoutingRepository({ database });
   const providerPolicyRepository = createReplayProviderPolicyRepository({ database, policies: DEFAULT_REPLAY_PROVIDER_POLICIES });
   const circuitRegistry = createDurableProviderCircuitRegistry({ database });
   const settlementQueueHandle = createSettlementQueue({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}) });
@@ -32,7 +41,7 @@ export function startReplayWorker(input: { databaseUrl: string; redisUrl: string
   const backtestReceipts = createPrismaBacktestReceiptRepository({ database, settlementService });
   const backtestQueueHandle = createBacktestQueue({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}) });
   const worker = createReplayWorker({ redisUrl: input.redisUrl, database, ...(input.prefix ? { prefix: input.prefix } : {}), execute: async (job: ReplayJobData, context) => {
-    if (job.input.endpointFamily === "FIXTURES") return runReplayFixtureJob(job, { database, providerFactory, providerPolicyRepository, circuitRegistry }, context);
+    if (job.input.endpointFamily === "FIXTURES") return runReplayFixtureJob(job, { database, providerFactory, providerFactories, providerRoutingRepository, providerPolicyRepository, circuitRegistry }, context);
     if (job.input.endpointFamily === "RESULTS") return runReplayResultJob(job, { database, providerFactory, providerPolicyRepository, circuitRegistry, settlementQueue: settlementQueueHandle }, context);
     if (job.input.endpointFamily === "STANDINGS") return runReplayStandingsJob(job, { database, providerFactory, providerPolicyRepository, circuitRegistry }, context);
     throw Object.assign(new Error("UNSUPPORTED_REPLAY_ENDPOINT"), { code: "UNSUPPORTED_REPLAY_ENDPOINT" });
@@ -53,8 +62,8 @@ function start(): void {
     redis: process.env.REDIS_READY === "true",
   });
   console.info(JSON.stringify({ event: "worker.initialized", readiness }));
-  if (config.DATABASE_URL && config.REDIS_URL && config.FOOTBALL_DATA_API_TOKEN) {
-    const runtime = startReplayWorker({ databaseUrl: config.DATABASE_URL, redisUrl: config.REDIS_URL, apiToken: config.FOOTBALL_DATA_API_TOKEN });
+  if (config.DATABASE_URL && config.REDIS_URL && config.FOOTBALL_DATA_API_TOKEN && config.API_FOOTBALL_API_KEY) {
+    const runtime = startReplayWorker({ databaseUrl: config.DATABASE_URL, redisUrl: config.REDIS_URL, footballDataApiToken: config.FOOTBALL_DATA_API_TOKEN, apiFootballApiKey: config.API_FOOTBALL_API_KEY });
     const close = () => { void runtime.close(); };
     process.once("SIGTERM", close); process.once("SIGINT", close);
   }

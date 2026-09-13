@@ -13,13 +13,14 @@ const environmentSchema = z.object({
   DATABASE_URL: z.string().startsWith("postgresql://").optional(),
   REDIS_URL: z.string().startsWith("redis://").optional(),
   FOOTBALL_DATA_API_TOKEN: z.string().min(1).optional(),
+  API_FOOTBALL_API_KEY: z.string().min(1).optional(),
 }).superRefine((value, context) => {
   if (value.NODE_ENV !== "production") return;
 
   if (value.DATA_PROVIDER_MODE !== "live") {
     context.addIssue({ code: "custom", path: ["DATA_PROVIDER_MODE"], message: "must be live in production" });
   }
-  for (const key of ["DATABASE_URL", "REDIS_URL", "FOOTBALL_DATA_API_TOKEN"] as const) {
+  for (const key of ["DATABASE_URL", "REDIS_URL", "FOOTBALL_DATA_API_TOKEN", "API_FOOTBALL_API_KEY"] as const) {
     if (!value[key]) {
       context.addIssue({ code: "custom", path: [key], message: "is required in production" });
     }

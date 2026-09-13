@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import type { PrismaClient, ReplayProviderPolicyRepository } from "@bet-stats/database";
+import { resolveProviderFixture, type PrismaClient, type ReplayProviderPolicyRepository } from "@bet-stats/database";
 import { evaluateCapability, reservePriorityRequest, type CapabilityDecision } from "@bet-stats/domain";
 import { createProviderRoute, isConfiguredCompetitionCode, providerRouteJobId, type FixtureProvider, type NormalizedFixture, type RequestedDateWindow } from "@bet-stats/football-data";
 
@@ -11,6 +11,43 @@ import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js
 
 const PROVIDER = "football-data.org";
 const ENDPOINT = "FIXTURES";
+
+export type CandidateExternalMapping = {
+  provider: string;
+  leagueExternalId: string;
+  seasonExternalId: string;
+  apiFootballLeagueId: number | null;
+  apiFootballSeason: number | null;
+};
+
+export async function resolveCandidateExternalMapping(
+  database: Pick<PrismaClient, "$queryRawUnsafe">,
+  leagueId: string,
+  seasonId: string,
+  provider: string,
+): Promise<CandidateExternalMapping> {
+  const rows = await database.$queryRawUnsafe<Array<{ leagueExternalId: string; seasonExternalId: string }>>(
+    `SELECT l."externalId" AS "leagueExternalId", s."externalId" AS "seasonExternalId"
+     FROM "LeagueExternalRef" l
+     JOIN "SeasonExternalRef" s ON s.provider = l.provider
+     JOIN "Season" season ON season.id = s."seasonId" AND season."leagueId" = l."leagueId"
+     WHERE l."leagueId" = $1 AND s."seasonId" = $2 AND l.provider = $3 AND s.provider = $3`,
+    leagueId,
+    seasonId,
+    provider,
+  );
+  if (rows.length !== 1) throw mappingError(rows.length === 0 ? "PROVIDER_MAPPING_MISSING" : "PROVIDER_MAPPING_AMBIGUOUS");
+  const row = rows[0]!;
+  if (provider !== "api-football") return { provider, ...row, apiFootballLeagueId: null, apiFootballSeason: null };
+  if (!positiveIntegerString(row.leagueExternalId) || !positiveIntegerString(row.seasonExternalId)) throw mappingError("PROVIDER_MAPPING_INVALID_NUMERIC_ID");
+  return { provider, ...row, apiFootballLeagueId: Number(row.leagueExternalId), apiFootballSeason: Number(row.seasonExternalId) };
+}
+
+function positiveIntegerString(value: string): boolean {
+  return /^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value));
+}
+
+function mappingError(code: string): Error { return Object.assign(new Error(code), { code }); }
 
 export function createFixtureJobRoute(scope: { competition: string; season: string }) {
   const route = createProviderRoute({ ...scope, endpoint: "FIXTURES" });
@@ -132,6 +169,8 @@ export async function runReplayFixtureJob(
   dependencies: {
     database: PrismaClient;
     providerFactory: () => FixtureProvider;
+    providerFactories?: Readonly<Record<string, () => unknown>>;
+    providerRoutingRepository?: unknown;
     providerPolicyRepository: ReplayProviderPolicyRepository;
     circuitRegistry: CircuitProbeRegistry;
   },
@@ -198,6 +237,11 @@ export async function runReplayFixtureJob(
 }
 
 async function persistCanonicalFixture(database: PrismaClient, leagueId: string, seasonId: string, fixture: NormalizedFixture, transactionOwned = false): Promise<void> {
+  if (transactionOwned) {
+    const resolution = await resolveProviderFixture(database, fixture, { transactionOwned: true });
+    if (resolution.status === "quarantined") throw Object.assign(new Error("FIXTURE_IDENTITY_QUARANTINED"), { code: "FIXTURE_IDENTITY_QUARANTINED", caseId: resolution.caseId });
+    return;
+  }
   const write = async (transaction: PrismaClient) => {
     await transaction.$executeRawUnsafe(
       "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",

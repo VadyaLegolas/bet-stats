@@ -14,14 +14,13 @@ export type ProviderFixtureResolution =
 export async function resolveProviderFixture(
   database: PrismaClient,
   fixture: NormalizedFixture,
-  options: { kickoffToleranceMs?: number } = {},
+  options: { kickoffToleranceMs?: number; transactionOwned?: boolean } = {},
 ): Promise<ProviderFixtureResolution> {
   const tolerance = options.kickoffToleranceMs ?? DEFAULT_KICKOFF_TOLERANCE_MS;
   const kickoff = new Date(fixture.kickoffUtc);
   if (!Number.isSafeInteger(tolerance) || tolerance < 0 || Number.isNaN(kickoff.getTime())) return quarantine(database, fixture, []);
 
-  return database.$transaction(async (transaction) => {
-    const db = transaction as unknown as PrismaClient;
+  const resolve = async (db: PrismaClient): Promise<ProviderFixtureResolution> => {
     await db.$executeRawUnsafe("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", `${fixture.provider}:fixture:${fixture.externalId}`);
     const exact = await db.fixtureExternalRef.findUnique({ where: { provider_externalId: { provider: fixture.provider, externalId: fixture.externalId } } });
     if (exact) {
@@ -45,7 +44,8 @@ export async function resolveProviderFixture(
     await db.fixtureExternalRef.create({ data: { fixtureId, provider: fixture.provider, externalId: fixture.externalId } });
     await appendProvenance(db, fixtureId, fixture);
     return { status: "resolved", fixtureId, method: "UNIQUE_CONSERVATIVE_MATCH" };
-  });
+  };
+  return options.transactionOwned ? resolve(database) : database.$transaction((transaction) => resolve(transaction as unknown as PrismaClient));
 }
 
 async function quarantine(database: PrismaClient, fixture: NormalizedFixture, candidateIds: readonly string[]): Promise<ProviderFixtureResolution> {

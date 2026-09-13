@@ -81,3 +81,16 @@
 
 - Phase 6 owns release-wide operations, mobile polish, methodology, and full release certification.
 - Paid/live/automatic wagering capabilities remain outside the MVP.
+
+---
+
+## Gap-closure architecture amendment — 2026-09-13
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Competition-scoped provider season identity | Scope each `SeasonExternalRef.externalId` by provider plus canonical league/competition, backfill existing rows, and update all lookups to use the compound identity. | ✓ |
+| Provider-global season identity | Keep `provider + externalId` unique globally, preventing the same API-Football season value from representing multiple competitions. | |
+| Encode competition into externalId text | Rewrite provider values into synthetic strings, losing exact provider provenance. | |
+
+**User's choice:** Explicitly approved competition-scoped provider season identity.
+**Notes:** API-Football season `2026` must coexist for PL, UEL, and UECL. Missing, cross-competition, or ambiguous mappings fail closed; the forward migration preserves exact provider values.

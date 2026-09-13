@@ -176,6 +176,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05]: Phase 05: Provider logos are exposed only as opaque references after HTTPS, host, DNS/IP, redirect, MIME, size and signature validation.
 - [Phase 05]: Phase 05: Browser logo requests use only server-signed opaque references through guarded application routes.
 - [Phase 05]: Phase 05: Provider image bytes require public network destinations, allowlisted MIME plus signature, bounded size and restrictive response headers.
+- [Phase 05]: Phase 05: Provider season external IDs are scoped by provider plus canonical league so identical API-Football season values can coexist across PL, UEL and UECL without ambiguous lookup.
 - [Phase 05]: Phase 05: Provider factories are constructed only after durable admission and admitted attempts reach exactly one classified terminal state.
 - [Phase 05]: Phase 05: ADMITTED-to-terminal is the only permitted provider-attempt update; identity fields and historical observations remain immutable.
 - [Phase 05]: Phase 05: Every production endpoint resolves provider request identities from canonical league and season IDs before constructing a client.

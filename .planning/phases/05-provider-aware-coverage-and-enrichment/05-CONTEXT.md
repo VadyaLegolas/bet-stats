@@ -36,6 +36,7 @@ Expand the production fixture and evidence path to the configured top-five leagu
 ### TheSportsDB reconciliation aid
 - **D-13:** TheSportsDB may contribute only names, aliases, and logo candidates to an administrator-visible reconciliation case. Suggestions include provider provenance and never auto-approve, mutate canonical identity, or enter match-statistics/evidence calculations.
 - **D-14:** Administrator approve, reject, and correction actions continue to use append-only reconciliation decisions with optimistic concurrency; external image URLs remain untrusted presentation data until validated by the application boundary.
+- **D-15:** `SeasonExternalRef.externalId` is unique only within its provider and canonical league/competition scope. The schema stores that scope explicitly and enforces an unambiguous compound identity so the same provider season value (for example API-Football `2026`) can coexist for Premier League, Europa League, and Conference League without cross-competition lookup or reconciliation ambiguity. — **Reversibility:** one-way — existing external-reference rows require a forward migration and all provider mapping queries depend on the resulting durable identity.
 
 ### the agent's Discretion
 - Exact retry thresholds, circuit timing, capability TTLs, fallback cooldowns, and optional-call scheduling may be selected during research, provided they are versioned, configurable, quota-safe, and tested against provider degradation.

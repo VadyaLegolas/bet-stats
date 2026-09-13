@@ -285,7 +285,7 @@ Plans:
 
 **Wave 8 gap closure** *(blocked on 05-13 and 05-14)*
 
-- [ ] 05-15-PLAN.md — Smoke-check the owned live stack, then prove provider recovery, enrichment and URL-stable comparison in full Playwright acceptance.
+- [ ] 05-15-PLAN.md — Migrate provider seasons to canonical competition scope, smoke-check the live stack, then run full provider/comparison Playwright acceptance.
 
 **UI hint**: yes
 

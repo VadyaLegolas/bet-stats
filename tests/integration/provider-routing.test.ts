@@ -111,6 +111,30 @@ describe("provider routing repository", () => {
     await expect(repository.appendAttempt({ ...attempt, id: "attempt-substitution", attemptKey: "job-substitution", provider: "api-football" })).rejects.toThrow("ATTEMPT_OBSERVATION_MISMATCH");
   });
 
+  it("terminal transition is idempotent and rejects conflicting replay", async () => {
+    const repository = createProviderRoutingRepository({ database });
+    await repository.appendRoute(route("route-terminal", "corr-terminal"));
+    await repository.appendAttempt({ id: "attempt-terminal", routeReceiptId: "route-terminal", attemptKey: "terminal-key", provider: "football-data.org", state: "ADMITTED", reason: null, observationId: null, admitted: true });
+    await database.sourceObservation.create({ data: { id: "observation-terminal", provider: "football-data.org", endpointFamily: "FIXTURES", externalIdentity: "league-pl:2026", observedAt: new Date("2026-09-13T10:00:00Z"), payloadHash: "sha256:terminal", rawPayload: { fixtures: [1] }, payloadBytes: 16 } });
+    const terminal = { attemptKey: "terminal-key", state: "SUCCEEDED" as const, reason: null, observationId: "observation-terminal" };
+    expect(await repository.completeAttempt(terminal)).toMatchObject({ state: "SUCCEEDED", observationId: "observation-terminal" });
+    expect(await repository.completeAttempt(terminal)).toMatchObject({ state: "SUCCEEDED", observationId: "observation-terminal" });
+    await expect(repository.completeAttempt({ ...terminal, state: "FAILED", reason: "UPSTREAM_5XX", observationId: null })).rejects.toThrow("ATTEMPT_TERMINAL_CONFLICT");
+  });
+
+  it("recovery appends primary facts without rewriting fallback history", async () => {
+    const repository = createProviderRoutingRepository({ database });
+    for (const [suffix, provider, observedAt] of [["fallback", "api-football", "2026-09-13T09:00:00Z"], ["primary", "football-data.org", "2026-09-13T10:00:00Z"]] as const) {
+      await repository.appendRoute(route(`route-${suffix}`, `corr-${suffix}`));
+      await repository.appendAttempt({ id: `attempt-${suffix}`, routeReceiptId: `route-${suffix}`, attemptKey: `key-${suffix}`, provider, state: "ADMITTED", reason: null, observationId: null, admitted: true });
+      await database.sourceObservation.create({ data: { id: `observation-${suffix}`, provider, endpointFamily: "FIXTURES", externalIdentity: "league-pl:2026", observedAt: new Date(observedAt), payloadHash: `sha256:${suffix}`, rawPayload: { source: suffix }, payloadBytes: 20 } });
+      await repository.completeAttempt({ attemptKey: `key-${suffix}`, state: "SUCCEEDED", reason: null, observationId: `observation-${suffix}` });
+    }
+    expect(await database.providerRouteReceipt.count()).toBe(2); expect(await database.providerRouteAttempt.count()).toBe(2); expect(await database.sourceObservation.count()).toBe(2);
+    expect(await database.sourceObservation.findUnique({ where: { id: "observation-fallback" } })).toMatchObject({ provider: "api-football", payloadHash: "sha256:fallback" });
+    expect(await database.sourceObservation.findFirst({ where: { externalIdentity: "league-pl:2026" }, orderBy: [{ observedAt: "desc" }, { id: "desc" }] })).toMatchObject({ id: "observation-primary" });
+  });
+
   it("exposes an exact-scope transactional capability approval seam", async () => {
     const repository = createProviderRoutingRepository({ database });
     const approved = await repository.approveCapability({ provider: "api-football", leagueId: "league-pl", seasonId: "season-2026", endpoint: "STANDINGS", supported: true, verifiedAt: new Date("2026-09-12T12:00:00.000Z"), expiresAt: new Date("2026-09-13T12:00:00.000Z") });

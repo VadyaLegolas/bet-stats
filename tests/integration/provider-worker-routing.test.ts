@@ -44,4 +44,12 @@ describe("production provider worker routing", () => {
     const database = { $queryRawUnsafe: async () => rows } as any;
     await expect(resolveCandidateExternalMapping(database, "league", "season", "api-football")).rejects.toThrow(/PROVIDER_MAPPING/);
   });
+
+  it("binds provider season lookup to the selected canonical league", async () => {
+    const query = vi.fn(async () => [{ leagueExternalId: "78", seasonExternalId: "2026" }]);
+    await resolveCandidateExternalMapping({ $queryRawUnsafe: query } as any, "league-uel", "season-uel-2026", "api-football");
+    const statement = query.mock.calls[0]![0] as string;
+    expect(statement).toContain('s."leagueId" = l."leagueId"');
+    expect(statement).toContain('season."leagueId" = s."leagueId"');
+  });
 });

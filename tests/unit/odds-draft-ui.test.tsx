@@ -62,7 +62,8 @@ describe("manual odds workbench draft behavior", () => {
 
   it("renders an honest empty state when discovery returns no issued snapshots", () => {
     const markup = renderToStaticMarkup(createElement(ForecastWorkbench, { fixtureId: "fixture-1", forecasts: [] }));
-    expect(markup).toContain("No issued forecast snapshot is available for this fixture.");
+    expect(markup).toContain("No comparable forecast pair yet");
+    expect(markup).toContain("This fixture does not have two issued forecast snapshots.");
     expect(markup).not.toContain("fixture and cutoff");
   });
 });

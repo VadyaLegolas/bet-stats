@@ -276,7 +276,7 @@ Plans:
 
 **Wave 6 gap closure** *(blocked on 05-11)*
 
-- [ ] 05-12-PLAN.md — Wire versioned provider factories and canonical fallback resolution into production fixture/result/standings replay.
+- [ ] 05-12-PLAN.md — Validate separate live provider credentials, resolve per-provider external IDs, and wire canonical fallback into production replay.
 
 **Wave 7 gap closure** *(blocked on 05-12; plans have no file overlap)*
 
@@ -285,7 +285,7 @@ Plans:
 
 **Wave 8 gap closure** *(blocked on 05-13 and 05-14)*
 
-- [ ] 05-15-PLAN.md — Prove provider recovery, enrichment and URL-stable forecast comparison through an owned PostgreSQL/Redis/Nest/Next/worker browser harness.
+- [ ] 05-15-PLAN.md — Smoke-check the owned live stack, then prove provider recovery, enrichment and URL-stable comparison in full Playwright acceptance.
 
 **UI hint**: yes
 

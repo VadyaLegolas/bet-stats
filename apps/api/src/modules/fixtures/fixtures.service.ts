@@ -24,7 +24,7 @@ function parseRange(fromValue?: string, toValue?: string): { from: Date; to: Dat
   return { from, to };
 }
 type RouteRow = { id: string; policyVersion: string; selectedProvider: string | null; candidates: unknown; trigger: string; outcome: string; createdAt: Date; attempts: Array<{ provider: string | null; reason: string | null; createdAt: Date; observation: { observedAt: Date } | null }> };
-export function projectProviderState(route: RouteRow | null): ProviderStateProjection {
+export function projectProviderState(route: RouteRow | null, lastValidAt: string | null = null): ProviderStateProjection {
   if (!route) return { state: "PENDING", provider: "unknown", reason: "ROUTE_PENDING", capturedAt: null, lastValidAt: null, retryAllowed: true, receipt: null };
   const candidates = Array.isArray(route.candidates) ? route.candidates.filter((item): item is string => typeof item === "string") : [];
   const latest = route.attempts.at(-1); const capturedAt = latest?.observation?.observedAt.toISOString() ?? null;
@@ -36,7 +36,7 @@ export function projectProviderState(route: RouteRow | null): ProviderStateProje
   else if (route.trigger === "STALE_CAPABILITY") state = "STALE_CAPABILITY";
   else if (route.trigger === "CRITICAL_HEADROOM" || route.trigger === "ALLOWANCE_EXHAUSTED") state = "BUDGET_PROTECTED";
   else if (route.trigger === "CIRCUIT_OPEN") state = "CIRCUIT_DENIED";
-  return { state, provider: route.selectedProvider ?? latest?.provider ?? candidates[0] ?? "unknown", reason, capturedAt, lastValidAt: null, retryAllowed: state !== "PRIMARY" && state !== "FALLBACK", receipt: { id: route.id, policyVersion: route.policyVersion, outcome: route.outcome, trigger: route.trigger } };
+  return { state, provider: route.selectedProvider ?? latest?.provider ?? candidates[0] ?? "unknown", reason, capturedAt, lastValidAt: state === "LIMITED" ? lastValidAt : null, retryAllowed: state !== "PRIMARY" && state !== "FALLBACK", receipt: { id: route.id, policyVersion: route.policyVersion, outcome: route.outcome, trigger: route.trigger } };
 }
 function project(row: FixtureRow, providerState: ProviderStateProjection): FixtureProjection {
   const source = row.provenance[0];
@@ -65,6 +65,9 @@ export class FixturesService implements OnModuleDestroy {
   private async providerState(row: FixtureRow): Promise<ProviderStateProjection> {
     if (!this.database) return projectProviderState(null);
     const route = await this.database.providerRouteReceipt.findFirst({ where: { competitionId: row.league.id, seasonId: row.season.id, endpointFamily: "FIXTURES" }, include: { attempts: { orderBy: { createdAt: "asc" }, include: { observation: { select: { observedAt: true } } } } }, orderBy: { createdAt: "desc" } });
-    return projectProviderState(route as unknown as RouteRow | null);
+    if (!route) return projectProviderState(null);
+    const provider = route.selectedProvider ?? (Array.isArray(route.candidates) && typeof route.candidates[0] === "string" ? route.candidates[0] : null);
+    const prior = route.outcome === "NO_FALLBACK" && provider ? await this.database.providerRouteAttempt.findFirst({ where: { provider, state: "SUCCEEDED", observationId: { not: null }, routeReceipt: { competitionId: row.league.id, seasonId: row.season.id, endpointFamily: "FIXTURES" } }, include: { observation: { select: { observedAt: true } } }, orderBy: { createdAt: "desc" } }) : null;
+    return projectProviderState(route as unknown as RouteRow, prior?.observation?.observedAt.toISOString() ?? null);
   }
 }

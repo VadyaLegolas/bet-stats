@@ -71,7 +71,7 @@
 - [x] **PROV-04**: A user sees a limited-data state for Europa League or Conference League when API-Football is unavailable because no production fallback exists.
 - [x] **PROV-05**: The system calls lineup, injury, odds, or detailed-statistics endpoints only when the provider capability record confirms coverage and budget policy permits the call.
 - [x] **PROV-06**: A user can compare INITIAL, PRE_MATCH, and available LINEUP_CONFIRMED snapshots and see which evidence changed the forecast.
-- [ ] **PROV-07**: TheSportsDB can suggest names and logos for reconciliation review but cannot supply production match statistics or silently approve ambiguous matches.
+- [x] **PROV-07**: TheSportsDB can suggest names and logos for reconciliation review but cannot supply production match statistics or silently approve ambiguous matches.
 
 ### Release Experience and Operations
 
@@ -170,7 +170,7 @@
 | PROV-04 | Phase 5 | Complete |
 | PROV-05 | Phase 5 | Complete |
 | PROV-06 | Phase 5 | Complete |
-| PROV-07 | Phase 5 | Pending |
+| PROV-07 | Phase 5 | Complete |
 | UX-01 | Phase 6 | Pending |
 | UX-02 | Phase 6 | Pending |
 | OPS-01 | Phase 6 | Pending |

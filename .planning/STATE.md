@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 05
 current_phase_name: Provider-Aware Coverage and Enrichment
-current_plan: 8
+current_plan: 9
 status: executing
-stopped_at: Completed 05-05-PLAN.md
-last_updated: "2026-09-12T22:13:37.511Z"
+stopped_at: Completed 05-08-PLAN.md
+last_updated: "2026-09-13T08:45:37.868Z"
 last_activity: 2026-09-12
 last_activity_desc: Completed 05-09 authenticated provider-policy approval and redacted probe
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 71
-  completed_plans: 69
+  completed_plans: 70
   percent: 67
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 05 (Provider-Aware Coverage and Enrichment) — IN PROGRESS
-Current Plan: 8
+Current Plan: 9
 Total Plans in Phase: 10
 Status: Ready to execute
 Last Activity: 2026-09-12 — Completed 05-09 provider-policy approval
@@ -100,6 +100,7 @@ Progress: [███████░░░] 67%
 | Phase 05 P04 | 12min | 2 tasks | 8 files |
 | Phase 05 P07 | 18min | 2 tasks | 5 files |
 | Phase 05 P05 | 16min | 2 tasks | 7 files |
+| Phase 05 P08 | 34min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -165,6 +166,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05]: Phase 05: Web renders only server-authoritative comparison deltas after verifying echoed exact snapshot IDs.
 - [Phase 05]: Phase 05: Provider degradation is an orthogonal safe DTO and never replaces or duplicates canonical fixture identity.
 - [Phase 05]: Phase 05: Fixture surfaces disclose only receipt ID, policy version, outcome and trigger from durable provider routes.
+- [Phase 05]: Phase 05: TheSportsDB enrichment remains a structurally review-only, provenance-bearing input and never production match evidence.
+- [Phase 05]: Phase 05: Provider logos are exposed only as opaque references after HTTPS, host, DNS/IP, redirect, MIME, size and signature validation.
 
 ### Pending Todos
 
@@ -184,6 +187,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-12T22:13:37.223Z
-Stopped at: Completed 05-05-PLAN.md
+Last session: 2026-09-13T08:45:37.644Z
+Stopped at: Completed 05-08-PLAN.md
 Resume file: None

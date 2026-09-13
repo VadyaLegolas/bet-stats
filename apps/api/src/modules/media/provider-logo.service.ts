@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
 import { promises as dns } from "node:dns";
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 
 type Fetcher = (input: string | URL, init?: RequestInit) => Promise<Response>;
 type Resolver = (hostname: string) => Promise<readonly string[]>;
@@ -12,7 +12,7 @@ const REFERENCE_SECRET = randomBytes(32);
 @Injectable()
 export class ProviderLogoService {
   readonly #fetcher: Fetcher; readonly #resolve: Resolver; readonly #timeoutMs: number;
-  constructor(options: { fetcher?: Fetcher; resolve?: Resolver; timeoutMs?: number } = {}) {
+  constructor(@Optional() @Inject("PROVIDER_LOGO_OPTIONS") options: { fetcher?: Fetcher; resolve?: Resolver; timeoutMs?: number } = {}) {
     this.#fetcher = options.fetcher ?? fetch;
     this.#resolve = options.resolve ?? (async (host) => (await dns.lookup(host, { all: true })).map((entry) => entry.address));
     this.#timeoutMs = options.timeoutMs ?? 5_000;
@@ -67,7 +67,7 @@ function isPrivate(address: string): boolean {
   const lower = address.toLowerCase();
   if (lower === "::1" || lower === "::" || lower.startsWith("fe80:") || lower.startsWith("fc") || lower.startsWith("fd")) return true;
   const parts = address.split(".").map(Number); if (parts.length !== 4) return false;
-  const [a = 0, b = 0] = parts; return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  const [a = 0, b = 0] = parts; return a === 10 || a === 127 || a === 0 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
 }
 function signatureMatches(mime: string, bytes: Uint8Array): boolean {
   if (mime === "image/png") return bytes.length >= 8 && [0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a].every((value, index) => bytes[index] === value);

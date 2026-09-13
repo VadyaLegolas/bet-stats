@@ -28,6 +28,24 @@ let prisma: PrismaClient;
 let app: INestApplication;
 const workers: Array<{ close(): Promise<void> }> = [];
 
+function startTestReplayWorker(input: {
+  databaseUrl: string;
+  redisUrl: string;
+  prefix?: string;
+  apiToken: string;
+  providerFactory: () => ReturnType<typeof replayProvider>;
+}) {
+  return startReplayWorker({
+    databaseUrl: input.databaseUrl,
+    redisUrl: input.redisUrl,
+    footballDataApiToken: input.apiToken,
+    apiFootballApiKey: input.apiToken,
+    ...(input.prefix ? { prefix: input.prefix } : {}),
+    providerFactory: input.providerFactory,
+    providerFactories: { "football-data.org": input.providerFactory, "api-football": input.providerFactory },
+  });
+}
+
 function docker(...args: string[]) {
   return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
@@ -78,12 +96,15 @@ async function proxy(path: string[], method: "GET" | "POST", body?: Record<strin
 }
 
 async function waitForPlan(planId: string, state: "SUCCEEDED" | "FAILED") {
+  let last: Record<string, unknown> | undefined;
   for (let attempt = 0; attempt < 160; attempt += 1) {
     const result = await proxy([planId], "GET");
+    last = result.json;
     if (result.json.state === state) return result;
+    if (result.json.state === "SUCCEEDED" || result.json.state === "FAILED") throw new Error(`Replay plan reached ${String(result.json.state)} instead of ${state}: ${JSON.stringify(result.json)}`);
     await new Promise((resolveWait) => setTimeout(resolveWait, 100));
   }
-  throw new Error(`Replay plan did not reach ${state} within 16 seconds`);
+  throw new Error(`Replay plan did not reach ${state} within 16 seconds: ${JSON.stringify(last)}`);
 }
 
 async function seedReplayReferences() {
@@ -104,20 +125,15 @@ async function seedReplayReferences() {
     { teamId: home.id, provider: "football-data.org", externalId: "home-1" },
     { teamId: away.id, provider: "football-data.org", externalId: "away-1" },
   ] });
-  await prisma.providerCapability.create({ data: {
-    provider: "football-data.org",
-    leagueId: league.id,
-    seasonId: season.id,
-    endpoint: "FIXTURES",
-    supported: true,
-    verifiedAt: new Date(),
-    expiresAt: new Date("2027-01-01T00:00:00.000Z"),
-  } });
-  await prisma.providerCircuitState.createMany({ data: ["FIXTURES", "RESULTS", "STANDINGS"].map((endpointFamily) => ({
-    provider: "football-data.org",
-    endpointFamily,
-    state: "CLOSED" as const,
-  })) });
+  await prisma.providerCapability.createMany({ data: ["football-data.org", "api-football"].flatMap((provider) =>
+    ["FIXTURES", "RESULTS", "STANDINGS"].map((endpoint) => ({
+      provider, leagueId: league.id, seasonId: season.id, endpoint, supported: true,
+      verifiedAt: new Date(), expiresAt: new Date("2027-01-01T00:00:00.000Z"),
+    })),
+  ) });
+  await prisma.providerCircuitState.createMany({ data: ["football-data.org", "api-football"].flatMap((provider) =>
+    ["FIXTURES", "RESULTS", "STANDINGS"].map((endpointFamily) => ({ provider, endpointFamily, state: "CLOSED" as const })),
+  ) });
   const fixture = await prisma.fixture.create({ data: {
     leagueId: league.id,
     seasonId: season.id,
@@ -139,15 +155,10 @@ async function seedReplayReferences() {
   await prisma.seasonExternalRef.create({ data: { seasonId: pdSeason.id, leagueId: pdLeague.id, provider: "football-data.org", externalId: "2026-pd" } });
   await prisma.leagueExternalRef.create({ data: { leagueId: pdLeague.id, provider: "api-football", externalId: "140" } });
   await prisma.seasonExternalRef.create({ data: { seasonId: pdSeason.id, leagueId: pdLeague.id, provider: "api-football", externalId: "2026" } });
-  await prisma.providerCapability.create({ data: {
-    provider: "football-data.org",
-    leagueId: pdLeague.id,
-    seasonId: pdSeason.id,
-    endpoint: "FIXTURES",
-    supported: true,
-    verifiedAt: new Date(),
-    expiresAt: new Date("2027-01-01T00:00:00.000Z"),
-  } });
+  await prisma.providerCapability.createMany({ data: ["football-data.org", "api-football"].map((provider) => ({
+    provider, leagueId: pdLeague.id, seasonId: pdSeason.id, endpoint: "FIXTURES", supported: true,
+    verifiedAt: new Date(), expiresAt: new Date("2027-01-01T00:00:00.000Z"),
+  })) });
 }
 
 function replayProvider(calls: string[]) {
@@ -247,13 +258,13 @@ describe("production replay proxy boundary", () => {
   });
 
   it.each(["identity-v2", "legacy"])("runs three sequential multi-unit days under one %s policy identity", async (format) => {
-    const before = await prisma.providerRequestReservation.count();
+    const before = await prisma.providerThrottleReservation.count();
     const reservations: number[] = [];
     const calls: string[] = [];
     const provider = replayProvider(calls);
-    const runtime = startReplayWorker({ databaseUrl, redisUrl, apiToken: "test-token", prefix: queuePrefix,
+    const runtime = startTestReplayWorker({ databaseUrl, redisUrl, apiToken: "test-token", prefix: queuePrefix,
       providerFactory: () => ({ ...provider, async fetchCompetitionResults(window) {
-        reservations.push(await prisma.providerRequestReservation.count());
+        reservations.push(await prisma.providerThrottleReservation.count());
         calls.push(window.dateFrom);
         return [];
       } }),
@@ -288,7 +299,7 @@ describe("production replay proxy boundary", () => {
     let constructions = 0;
     let calls = 0;
     const provider = replayProvider([]);
-    const runtime = startReplayWorker({ databaseUrl, redisUrl, apiToken: "test-token", prefix: queuePrefix,
+    const runtime = startTestReplayWorker({ databaseUrl, redisUrl, apiToken: "test-token", prefix: queuePrefix,
       providerFactory: () => { constructions += 1; return { ...provider, async fetchCompetitionResults() {
         calls += 1;
         await prisma.providerCircuitState.update({ where: { provider_endpointFamily: { provider: "football-data.org", endpointFamily: "RESULTS" } }, data: { state: "OPEN", updatedAt: new Date() } });
@@ -391,7 +402,7 @@ describe("production replay proxy boundary", () => {
 
   it.each(["FIXTURES", "RESULTS", "STANDINGS"] as const)("routes accepted %s work through the production replay worker", async (endpointFamily) => {
     const calls: string[] = [];
-    const runtime = startReplayWorker({
+    const runtime = startTestReplayWorker({
       databaseUrl,
       redisUrl,
       apiToken: "test-token",
@@ -428,7 +439,7 @@ describe("production replay proxy boundary", () => {
 
   it("routes a PD FIXTURES unit through the generalized provider and persists it once", async () => {
     const calls: string[] = [];
-    const runtime = startReplayWorker({
+    const runtime = startTestReplayWorker({
       databaseUrl,
       redisUrl,
       apiToken: "test-token",
@@ -462,7 +473,7 @@ describe("production replay proxy boundary", () => {
     const calls: string[] = [];
     const externalId = `rejected-${returned.competitionExternalId}-${returned.kickoffUtc}`;
     const base = replayProvider(calls);
-    const runtime = startReplayWorker({
+    const runtime = startTestReplayWorker({
       databaseUrl,
       redisUrl,
       apiToken: "test-token",
@@ -542,7 +553,7 @@ describe("production replay proxy boundary", () => {
           data: { state: scenario, updatedAt: new Date() },
         });
       }
-      const runtime = startReplayWorker({ databaseUrl, redisUrl, apiToken: "test-token", prefix: queuePrefix, providerFactory: () => replayProvider(calls) });
+      const runtime = startTestReplayWorker({ databaseUrl, redisUrl, apiToken: "test-token", prefix: queuePrefix, providerFactory: () => replayProvider(calls) });
       workers.push(runtime);
       const terminal = await waitForPlan(String(queued.json.replayPlanId), "FAILED");
       expect(calls).toEqual([]);

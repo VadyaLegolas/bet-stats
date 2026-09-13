@@ -127,15 +127,7 @@ export async function runFixtureSyncJob(input: FixtureSyncJobInput): Promise<Fix
     providerFactory: input.providerFactory,
     callProvider: async (provider) => {
       const fetched = await provider.fetchCompetitionFixtures(window);
-      const mismatch = fetched.find((fixture) => {
-        const kickoff = Date.parse(fixture.kickoffUtc);
-        return fixture.competitionExternalId !== input.scope!.competitionExternalId
-          || fixture.seasonExternalId !== input.scope!.seasonExternalId
-          || !Number.isFinite(kickoff)
-          || kickoff < Date.parse(input.scope!.from)
-          || kickoff > Date.parse(input.scope!.to);
-      });
-      if (mismatch) throw classifiedFixtureError("FIXTURE_SCOPE_MISMATCH");
+      assertFixtureScope(fetched, input.scope!);
       return fetched;
     },
     persist: async (fixtures) => {
@@ -213,7 +205,11 @@ export async function runReplayFixtureJob(
   const mapped = await resolveEndpointCandidateMappings({ competition: input.input.competitionId, season: input.input.seasonId, endpoint: "FIXTURES", leagueId: ref.leagueId, seasonId: ref.seasonId, resolveMapping: (leagueId, seasonId, provider) => resolveCandidateExternalMapping(dependencies.database, leagueId, seasonId, provider) });
   if (dependencies.providerFactories && dependencies.providerRoutingRepository) {
     const window = fixtureRequestWindow({ competitionExternalId: input.input.competitionId, seasonExternalId: input.input.seasonId, from: input.unit.from, to: input.unit.to });
-    const routed = await executeDurableMappedRoute<readonly NormalizedFixture[]>({ database: dependencies.database, repository: dependencies.providerRoutingRepository, context, route: mapped.route, candidates: createMappedProviderCandidates(mapped.route, mapped.mappings, dependencies.providerFactories), leagueId: ref.leagueId, seasonId: ref.seasonId, correlationId: `${input.logicalId}:${input.revision}:${context.attemptNumber}`, attemptKey: `${input.logicalId}:${input.revision}:${context.attemptNumber}:FIXTURES`, allowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, lane: snapshot.lane!, call: (dispatch) => callMappedFixtureProvider(dispatch, window) as Promise<readonly NormalizedFixture[]> });
+    const routed = await executeDurableMappedRoute<readonly NormalizedFixture[]>({ database: dependencies.database, repository: dependencies.providerRoutingRepository, context, route: mapped.route, candidates: createMappedProviderCandidates(mapped.route, mapped.mappings, dependencies.providerFactories), leagueId: ref.leagueId, seasonId: ref.seasonId, correlationId: `${input.logicalId}:${input.revision}:${context.attemptNumber}`, attemptKey: `${input.logicalId}:${input.revision}:${context.attemptNumber}:FIXTURES`, allowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, lane: snapshot.lane!, call: async (dispatch) => {
+      const fixtures = await callMappedFixtureProvider(dispatch, window) as readonly NormalizedFixture[];
+      assertFixtureScope(fixtures, { competitionExternalId: input.input.competitionId, seasonExternalId: input.input.seasonId, from: input.unit.from, to: input.unit.to });
+      return fixtures;
+    } });
     if (routed.status !== "completed") throw Object.assign(new Error(routed.status === "limited" ? routed.reason : "ROUTE_REPLAYED"), { code: routed.status === "limited" ? routed.reason : "ROUTE_REPLAYED" });
     const published: Array<{ fixtureId: string; kickoffUtc: string }> = [];
     await context.publish(async (transaction) => { for (const fixture of routed.value) published.push({ fixtureId: await persistCanonicalFixture(transaction as unknown as PrismaClient, ref.leagueId, ref.seasonId, fixture, true), kickoffUtc: fixture.kickoffUtc }); }, completionManifest(input));
@@ -258,7 +254,7 @@ export async function schedulePublishedFixtures(fixtures: readonly { fixtureId: 
 }
 
 async function persistCanonicalFixture(database: PrismaClient, leagueId: string, seasonId: string, fixture: NormalizedFixture, transactionOwned = false): Promise<string> {
-  if (transactionOwned) {
+  if (transactionOwned && fixture.provider !== PROVIDER) {
     const resolution = await resolveProviderFixture(database, fixture, { transactionOwned: true });
     if (resolution.status === "quarantined") throw Object.assign(new Error("FIXTURE_IDENTITY_QUARANTINED"), { code: "FIXTURE_IDENTITY_QUARANTINED", caseId: resolution.caseId });
     return resolution.fixtureId;
@@ -307,6 +303,20 @@ async function persistCanonicalFixture(database: PrismaClient, leagueId: string,
   if (transactionOwned) return write(database).then(async () => (await database.fixtureExternalRef.findUniqueOrThrow({ where: { provider_externalId: { provider: fixture.provider, externalId: fixture.externalId } } })).fixtureId);
   await database.$transaction((transaction) => write(transaction as unknown as PrismaClient));
   return (await database.fixtureExternalRef.findUniqueOrThrow({ where: { provider_externalId: { provider: fixture.provider, externalId: fixture.externalId } } })).fixtureId;
+}
+
+function assertFixtureScope(fixtures: readonly NormalizedFixture[], scope: NonNullable<FixtureSyncJobInput["scope"]>): void {
+  const from = Date.parse(scope.from);
+  const to = Date.parse(scope.to);
+  const mismatch = fixtures.find((fixture) => {
+    const kickoff = Date.parse(fixture.kickoffUtc);
+    return fixture.competitionExternalId !== scope.competitionExternalId
+      || fixture.seasonExternalId !== scope.seasonExternalId
+      || !Number.isFinite(kickoff)
+      || kickoff < from
+      || kickoff > to;
+  });
+  if (mismatch) throw classifiedFixtureError("FIXTURE_SCOPE_MISMATCH");
 }
 
 function completionManifest(input: ReplayJobData) { return { expectedUnits: [input.logicalId], completedUnits: [input.logicalId], expectedCaptures: [input.logicalId], completedCaptures: [input.logicalId], delivery: "DELIVERED" }; }

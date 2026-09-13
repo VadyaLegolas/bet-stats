@@ -127,6 +127,7 @@ export async function executeProviderRoute<TProvider, TValue>(input: {
       const failure = input.classifyFailure(error);
       const mayFallback = failure.eligible && ordinal + 1 < input.candidates.length;
       await input.completeAttempt({ attemptKey, provider: candidate.provider, state: mayFallback ? "FAILED" : "NO_FALLBACK", reason: failure.trigger ?? "PROVIDER_FAILURE", observationId: null });
+      if (!failure.eligible) throw error;
       if (!mayFallback) break;
     }
   }

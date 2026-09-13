@@ -62,6 +62,8 @@ export type RouteExecutionResult<TValue> =
   | { status: "completed"; provider: string; value: TValue }
   | { status: "limited"; reason: "NO_FALLBACK"; lastValidAt: string | null; lastValidValue: TValue | null };
 
+export { executeProviderRoute } from "./provider-route-runtime.js";
+
 /** Persists selection and each classified attempt before provider I/O; fallback is bounded by the closed candidate list. */
 export async function runProviderRoute<TProvider, TValue>(input: {
   candidates: readonly RouteExecutionCandidate<TProvider>[];

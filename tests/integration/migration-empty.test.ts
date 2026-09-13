@@ -241,6 +241,39 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
     ]));
   });
 
+  it("scopes provider season identity to the canonical league", () => {
+    const columns = sql(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='SeasonExternalRef'
+       ORDER BY column_name;`,
+    );
+    expect(columns).toContain("leagueId");
+
+    sql(`INSERT INTO "League" (id, name, country, "createdAt", "updatedAt") VALUES
+      ('d15-pl', 'Premier League', 'England', now(), now()),
+      ('d15-uel', 'Europa League', 'Europe', now(), now()),
+      ('d15-uecl', 'Conference League', 'Europe', now(), now());`);
+    sql(`INSERT INTO "Season" (id, "leagueId", label, "startDate", "endDate", "createdAt", "updatedAt") VALUES
+      ('d15-pl-2026', 'd15-pl', '2026', '2026-01-01', '2026-12-31', now(), now()),
+      ('d15-uel-2026', 'd15-uel', '2026', '2026-01-01', '2026-12-31', now(), now()),
+      ('d15-uecl-2026', 'd15-uecl', '2026', '2026-01-01', '2026-12-31', now(), now());`);
+    sql(`INSERT INTO "SeasonExternalRef" (id, "seasonId", "leagueId", provider, "externalId", "createdAt") VALUES
+      ('d15-ref-pl', 'd15-pl-2026', 'd15-pl', 'api-football', '2026', now()),
+      ('d15-ref-uel', 'd15-uel-2026', 'd15-uel', 'api-football', '2026', now()),
+      ('d15-ref-uecl', 'd15-uecl-2026', 'd15-uecl', 'api-football', '2026', now());`);
+
+    const sharedYears = sql(
+      `SELECT "leagueId" || ':' || "externalId" FROM "SeasonExternalRef"
+       WHERE provider='api-football' AND "externalId"='2026' ORDER BY "leagueId";`,
+    );
+    expect(sharedYears).toEqual(["d15-pl:2026", "d15-uecl:2026", "d15-uel:2026"]);
+
+    expect(() => sql(`INSERT INTO "SeasonExternalRef" (id, "seasonId", "leagueId", provider, "externalId", "createdAt")
+      VALUES ('d15-duplicate', 'd15-pl-2026', 'd15-pl', 'api-football', '2026', now());`)).toThrow();
+    expect(() => sql(`INSERT INTO "SeasonExternalRef" (id, "seasonId", "leagueId", provider, "externalId", "createdAt")
+      VALUES ('d15-poison', 'd15-pl-2026', 'd15-uel', 'other-provider', '2027', now());`)).toThrow();
+  });
+
   it("upgrades the exact Phase 4 schema with only the forward Phase 5 migration", () => {
     docker("exec", containerName, "createdb", "-U", "postgres", "phase4_upgrade");
     const migrationsRoot = resolve(databaseRoot, "prisma/migrations");

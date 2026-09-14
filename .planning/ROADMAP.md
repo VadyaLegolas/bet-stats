@@ -235,7 +235,7 @@ Plans:
   4. A user can compare INITIAL, PRE_MATCH, and available LINEUP_CONFIRMED snapshots and see which evidence changed the forecast.
   5. TheSportsDB may suggest reconciliation names and logos for administrator review but cannot supply match statistics or silently resolve ambiguity.
 
-**Plans**: 15/16 plans executed — 6 verification gap-closure plans ready
+**Plans**: 16/16 plans executed — 6 verification gap-closure plans ready
 
 Plans:
 
@@ -289,7 +289,7 @@ Plans:
 
 **Wave 9 gap closure** *(blocked on 05-15)*
 
-- [ ] 05-16-PLAN.md — Finish the owned live-stack smoke, then run full provider-degradation and forecast-comparison Playwright acceptance.
+- [x] 05-16-PLAN.md — Finish the owned live-stack smoke, then run full provider-degradation and forecast-comparison Playwright acceptance.
 
 **UI hint**: yes
 
@@ -318,5 +318,5 @@ Plans:
 | 2. Historical Evidence Pipeline | 28/28 | Complete    | 2026-09-05 |
 | 3. Forecast and Manual Value Workbench | 12/12 | Complete    | 2026-09-08 |
 | 4. Settlement and Evidence Scorecard | 9/9 | Complete    | 2026-09-09 |
-| 5. Provider-Aware Coverage and Enrichment | 15/16 | In Progress|  |
+| 5. Provider-Aware Coverage and Enrichment | 16/16 | In Progress|  |
 | 6. Release Experience and Operations | 0/TBD | Not started | - |

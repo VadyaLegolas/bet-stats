@@ -1,19 +1,32 @@
 import { expect, test } from "@playwright/test";
+const LIVE_FIXTURES = { comparison: "live-comparison-fixture" } as const;
 
-test("comparison controls retain exact URL pair and support keyboard swap", async ({ page }) => {
-  await page.goto("/");
-  await page.setContent(`<main><label for="left">Left snapshot</label><select id="left"><option value="left" selected>left</option><option value="right">right</option></select><label for="right">Right snapshot</label><select id="right"><option value="left">left</option><option value="right" selected>right</option></select><button id="swap">Swap snapshots</button><h2 tabindex="-1">Comparison result</h2></main><script>swap.onclick=()=>{const x=left.value;left.value=right.value;right.value=x;history.replaceState({},'', '?left='+left.value+'&right='+right.value)}</script>`);
+test("exact URL pair survives reload and newer revision until explicit keyboard swap", async ({ page }) => {
+  await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}?left=live-left&right=live-right`);
+  await expect(page.getByLabel("Left snapshot")).toHaveValue("live-left");
+  await expect(page.getByLabel("Right snapshot")).toHaveValue("live-right");
+  await expect(page.getByLabel("Left snapshot").locator('option[value="live-newer"]')).toHaveCount(1);
+
+  await page.reload();
+  await expect(page.getByLabel("Left snapshot")).toHaveValue("live-left");
+  await expect(page.getByLabel("Right snapshot")).toHaveValue("live-right");
+  const comparisonResponse = page.waitForResponse((response) => response.url().includes("/forecasts/compare?") && response.ok());
+  await page.getByRole("button", { name: "Compare revisions" }).click();
+  await expect(page.getByRole("heading", { name: "Comparison result" })).toBeVisible();
+  const receipt = await (await comparisonResponse).json() as { left: { id: string }; right: { id: string } };
+  expect(receipt).toMatchObject({ left: { id: "live-left" }, right: { id: "live-right" } });
+
   await page.getByRole("button", { name: "Swap snapshots" }).focus();
   await page.keyboard.press("Enter");
-  await expect(page.locator("#left")).toHaveValue("right");
-  await expect(page).toHaveURL(/left=right&right=left/);
+  await expect(page.getByLabel("Left snapshot")).toHaveValue("live-right");
+  await expect(page.getByLabel("Right snapshot")).toHaveValue("live-left");
+  await expect(page).toHaveURL(/left=live-right&right=live-left/);
 });
 
-test("comparison controls remain operable at narrow width, zoom and forced colors", async ({ page }) => {
+test("comparison remains operable at narrow width and forced colors", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 720 });
   await page.emulateMedia({ forcedColors: "active", reducedMotion: "reduce" });
-  await page.goto("/");
-  await page.setContent(`<main style="overflow-wrap:anywhere;max-width:100%;min-width:0"><label for="left">Left snapshot</label><select id="left" style="max-width:100%;width:100%"><option>very-long-left-snapshot-identifier-without-truncation</option></select><label for="right">Right snapshot</label><select id="right" style="max-width:100%;width:100%"><option>right</option></select><button>Swap snapshots</button><div role="region" aria-label="Probability delta table" style="overflow-x:auto;max-width:100%"><table><caption>Stable probability changes</caption><tr><th scope="row">HOME</th><td><span aria-hidden="true">↑ +5.0%</span><span> increased by +5.0%</span></td></tr></table></div><p>Probabilities are estimates, not guarantees. You can lose money when betting.</p></main>`);
+  await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}?left=live-left&right=live-right`);
   await expect(page.getByRole("button", { name: "Swap snapshots" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });

@@ -23,7 +23,9 @@ export class ForecastComparisonService implements OnModuleDestroy {
     const [left, right] = await Promise.all([this.repository.findExact(request.leftId), this.repository.findExact(request.rightId)]);
     validateExact(left, "LEFT", fixtureId);
     validateExact(right, "RIGHT", fixtureId);
-    return compareForecastPair(left, right);
+    const { state: _leftState, ...leftForecast } = left;
+    const { state: _rightState, ...rightForecast } = right;
+    return compareForecastPair(leftForecast, rightForecast);
   }
 
   async availability(fixtureId: string) {

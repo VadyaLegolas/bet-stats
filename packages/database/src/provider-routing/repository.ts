@@ -107,13 +107,26 @@ export function createProviderRoutingRepository(options: { database: PrismaClien
 
         let reservationId: string | null = null;
         if (!reason) {
+          const requestInstant = now();
           const [reserved, throttleReserved, quota] = await Promise.all([
             transaction.providerThrottleReservation.count({ where: { provider: input.provider, endpointFamily: input.route.endpointFamily, windowStart: { gte: startOfUtcDay(input.requestDate), lt: endOfUtcDay(input.requestDate) } } }),
             transaction.providerThrottleReservation.count({ where: { provider: input.provider, endpointFamily: input.route.endpointFamily, windowStart: input.throttle.windowStart, windowEnd: input.throttle.windowEnd } }),
-            transaction.providerQuotaObservation.aggregate({ where: { provider: input.provider, endpointFamily: input.route.endpointFamily }, _min: { observedLimit: true, observedRemaining: true } }),
+            transaction.providerQuotaObservation.findFirst({
+              where: {
+                provider: input.provider,
+                endpointFamily: input.route.endpointFamily,
+                observedAt: { lte: requestInstant },
+                OR: [
+                  { resetAt: { gt: requestInstant } },
+                  { resetAt: null, observedAt: { gte: startOfUtcDay(requestInstant), lt: endOfUtcDay(requestInstant) } },
+                ],
+              },
+              select: { observedLimit: true, observedRemaining: true },
+              orderBy: [{ observedAt: "desc" }, { id: "desc" }],
+            }),
           ]);
-          const observedLimit = quota._min.observedLimit ?? input.configuredAllowance;
-          const remainingCeiling = quota._min.observedRemaining === null ? input.configuredAllowance : reserved + quota._min.observedRemaining;
+          const observedLimit = quota?.observedLimit ?? input.configuredAllowance;
+          const remainingCeiling = quota?.observedRemaining == null ? input.configuredAllowance : reserved + quota.observedRemaining;
           const allowance = Math.min(input.configuredAllowance, observedLimit, remainingCeiling);
           const laneAllowance = input.lane === "critical" ? allowance : Math.max(0, allowance - input.criticalHeadroom);
           if (reserved >= laneAllowance) reason = input.lane === "critical" ? "ALLOWANCE_EXHAUSTED" : "CRITICAL_HEADROOM";

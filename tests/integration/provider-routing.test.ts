@@ -86,19 +86,34 @@ describe("provider routing repository", () => {
     expect(await database.providerRouteAttempt.findUnique({ where: { id: "attempt-denied" } })).toMatchObject({ admitted: false, observationId: null, reason: "UNKNOWN_CAPABILITY" });
   });
 
-  it("uses allowlisted quota facts only to reduce capacity and keeps attempts idempotent", async () => {
+  it("uses the newest coherent active-window quota sample and keeps attempts idempotent", async () => {
     const now = new Date("2026-09-12T12:00:00.000Z");
     await database.providerCapability.create({ data: { provider: "football-data.org", leagueId: "league-pl", seasonId: "season-2026", endpoint: "FIXTURES", supported: true, verifiedAt: now, expiresAt: null } });
     await database.providerCircuitState.create({ data: { provider: "football-data.org", endpointFamily: "FIXTURES", state: "CLOSED" } });
     const repository = createProviderRoutingRepository({ database, now: () => now });
     const first = await repository.admitAttempt({ route: route("route-first", "corr-first"), attempt: { id: "attempt-first", attemptKey: "job-first" }, provider: "football-data.org", lane: "critical", configuredAllowance: 5, criticalHeadroom: 1, requestDate: new Date("2026-09-12"), throttle: { windowStart: now, windowEnd: new Date(now.getTime() + 60_000), limit: 10 } });
     expect(first.admitted).toBe(true);
-    await repository.appendQuotaObservation({ id: "quota-low", routeAttemptId: "attempt-first", provider: "football-data.org", endpointFamily: "FIXTURES", observedLimit: 1, observedRemaining: 0, resetAt: null, observedAt: now });
-    await repository.appendQuotaObservation({ id: "quota-wide", routeAttemptId: "attempt-first", provider: "football-data.org", endpointFamily: "FIXTURES", observedLimit: 100, observedRemaining: 100, resetAt: null, observedAt: new Date(now.getTime() + 1_000) });
+    await repository.appendQuotaObservation({ id: "quota-low", routeAttemptId: "attempt-first", provider: "football-data.org", endpointFamily: "FIXTURES", observedLimit: 1, observedRemaining: 0, resetAt: null, observedAt: new Date(now.getTime() - 1_000) });
+    await repository.appendQuotaObservation({ id: "quota-wide", routeAttemptId: "attempt-first", provider: "football-data.org", endpointFamily: "FIXTURES", observedLimit: 100, observedRemaining: 100, resetAt: null, observedAt: now });
     const secondInput = { route: route("route-second", "corr-second"), attempt: { id: "attempt-second", attemptKey: "job-second" }, provider: "football-data.org", lane: "critical" as const, configuredAllowance: 5, criticalHeadroom: 1, requestDate: new Date("2026-09-12"), throttle: { windowStart: now, windowEnd: new Date(now.getTime() + 60_000), limit: 10 } };
-    expect(await repository.admitAttempt(secondInput)).toMatchObject({ admitted: false, reason: "ALLOWANCE_EXHAUSTED" });
-    expect(await repository.admitAttempt(secondInput)).toMatchObject({ admitted: false, reused: true, reason: "ALLOWANCE_EXHAUSTED" });
+    expect(await repository.admitAttempt(secondInput)).toMatchObject({ admitted: true, reason: null });
+    expect(await repository.admitAttempt(secondInput)).toMatchObject({ admitted: true, reused: true, reason: null });
     expect(await database.providerRouteAttempt.count({ where: { attemptKey: "job-second" } })).toBe(1);
+  });
+
+  it("ignores an exhausted quota sample after its reset window", async () => {
+    const yesterday = new Date("2026-09-12T23:00:00.000Z");
+    const today = new Date("2026-09-13T00:05:00.000Z");
+    await database.providerCapability.create({ data: { provider: "football-data.org", leagueId: "league-pl", seasonId: "season-2026", endpoint: "FIXTURES", supported: true, verifiedAt: yesterday, expiresAt: null } });
+    await database.providerCircuitState.create({ data: { provider: "football-data.org", endpointFamily: "FIXTURES", state: "CLOSED" } });
+    const repository = createProviderRoutingRepository({ database, now: () => today });
+    await repository.appendRoute(route("quota-route", "quota-corr"));
+    await repository.appendAttempt({ id: "quota-attempt", routeReceiptId: "quota-route", attemptKey: "quota-attempt-key", provider: "football-data.org", state: "ADMITTED", reason: null, observationId: null, admitted: true });
+    await repository.appendQuotaObservation({ id: "quota-expired", routeAttemptId: "quota-attempt", provider: "football-data.org", endpointFamily: "FIXTURES", observedLimit: 5, observedRemaining: 0, resetAt: new Date("2026-09-13T00:00:00.000Z"), observedAt: yesterday });
+
+    const admitted = await repository.admitAttempt({ route: route("route-after-reset", "corr-after-reset"), attempt: { id: "attempt-after-reset", attemptKey: "job-after-reset" }, provider: "football-data.org", lane: "critical", configuredAllowance: 5, criticalHeadroom: 1, requestDate: today, throttle: { windowStart: today, windowEnd: new Date(today.getTime() + 60_000), limit: 10 } });
+
+    expect(admitted).toMatchObject({ admitted: true, reason: null });
   });
 
   it("links successful attempts to the exact immutable source receipt", async () => {

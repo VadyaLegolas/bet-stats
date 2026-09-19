@@ -11,4 +11,4 @@ describe("live provider harness composition smoke", () => {
   });
   it("keeps live factories lazy and provider-specific", () => { const factories = createLiveProviderFactories({ footballDataApiToken: "a", apiFootballApiKey: "b" }); expect(Object.keys(factories)).toEqual(["football-data.org", "api-football"]); });
 });
-describe.sequential("owned live provider stack", () => { it("migrates seeds and reaches PostgreSQL Redis API web and worker", async () => { const state=await startLiveProviderStack(); try { expect(state.workerReady).toBe(true); expect(state.seeded).toEqual(["PL","39","78","848"]); } finally { await stopLiveProviderStack(); } }, 240_000); });
+describe.sequential("owned live provider stack", () => { it("migrates, executes production enrichment, and reaches PostgreSQL Redis API web and worker", async () => { const state=await startLiveProviderStack(); try { expect(state.workerReady).toBe(true); expect(state.seeded).toEqual(["PL","39","78","848"]); expect(state.productionCounts).toEqual({ enrichmentDecisions: 1, lineupObservations: 1, sourceObservations: 1 }); } finally { await stopLiveProviderStack(); } }, 240_000); });

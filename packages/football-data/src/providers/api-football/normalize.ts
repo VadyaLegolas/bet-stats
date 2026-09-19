@@ -71,16 +71,19 @@ export function normalizeApiFootballEnrichment(
   if (payload.state === "observed-empty") return { ...payload, capturedAt: capturedAtIso };
   if (endpoint !== "lineups") return { state: "observed", capturedAt: capturedAtIso, payload: payload.payload };
 
-  const lineups = payload.payload as ReadonlyArray<{ fixture: number; confirmed: boolean; players: ReadonlyArray<{ id: number; name: string }> }>;
-  if (lineups.some((lineup) => lineup.fixture !== externalFixtureId)) throw new Error("ENRICHMENT_FIXTURE_MISMATCH");
+  const lineups = payload.payload as ReadonlyArray<{ team: { id: number }; startXI: ReadonlyArray<{ player: { id: number; name: string } }> }>;
+  const teamIds = new Set(lineups.map((lineup) => lineup.team.id));
+  const starters = lineups.flatMap((lineup) => lineup.startXI.map(({ player }) => player));
+  const official = lineups.length === 2 && teamIds.size === 2
+    && lineups.every((lineup) => lineup.startXI.length === 11 && new Set(lineup.startXI.map(({ player }) => player.id)).size === 11);
   return {
     state: "observed",
     capturedAt: capturedAtIso,
     payload: {
       fixtureId: canonicalFixtureId,
       externalFixtureId: String(externalFixtureId),
-      status: lineups.every((lineup) => lineup.confirmed) ? "OFFICIAL_CONFIRMED" : "PROVISIONAL",
-      players: lineups.flatMap((lineup) => lineup.players.map((player) => ({ externalId: String(player.id), name: player.name }))),
+      status: official ? "OFFICIAL_CONFIRMED" : "PROVISIONAL",
+      players: starters.map((player) => ({ externalId: String(player.id), name: player.name })),
     },
   };
 }

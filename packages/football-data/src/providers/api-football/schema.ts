@@ -85,10 +85,32 @@ export function parametersMatch(actual: Record<string, string>, expected: Record
 export const apiFootballEnrichmentEndpoints = ["lineups", "injuries", "odds", "fixtures/statistics"] as const;
 export type ApiFootballEnrichmentEndpoint = (typeof apiFootballEnrichmentEndpoints)[number];
 
-const lineupItemSchema = z.object({ fixture: z.number().int().positive(), confirmed: z.boolean(), players: z.array(z.object({ id: z.number().int().positive(), name: z.string().min(1) }).strict()).min(1).max(100) }).strict();
-const injuryItemSchema = z.object({ fixture: z.number().int().positive(), player: teamSchema, type: z.string().min(1), reason: z.string().min(1) }).strict();
-const oddsItemSchema = z.object({ fixture: z.number().int().positive(), bookmaker: z.string().min(1), market: z.string().min(1), value: z.string().min(1) }).strict();
-const statisticsItemSchema = z.object({ fixture: z.number().int().positive(), team: teamSchema, statistics: z.record(z.string(), z.number().finite().nullable()) }).strict();
+const nullableUrl = z.string().url().nullable();
+const lineupPlayerSchema = z.object({ id: z.number().int().positive(), name: z.string().min(1), number: z.number().int().nullable(), pos: z.string().min(1).nullable(), grid: z.string().nullable() }).strict();
+const lineupItemSchema = z.object({
+  team: teamSchema.extend({ logo: nullableUrl, colors: z.unknown().nullable() }).strict(),
+  formation: z.string().min(1),
+  coach: z.object({ id: z.number().int().positive().nullable(), name: z.string().min(1), photo: nullableUrl }).strict(),
+  startXI: z.array(z.object({ player: lineupPlayerSchema }).strict()).max(20),
+  substitutes: z.array(z.object({ player: lineupPlayerSchema }).strict()).max(30),
+}).strict();
+const fixtureIdentitySchema = z.object({ id: z.number().int().positive(), timezone: z.string().min(1), date: z.string().datetime({ offset: true }), timestamp: z.number().int().nonnegative() }).strict();
+const injuryItemSchema = z.object({
+  player: z.object({ id: z.number().int().positive(), name: z.string().min(1), photo: nullableUrl, type: z.string().min(1), reason: z.string().min(1) }).strict(),
+  team: teamSchema.extend({ logo: nullableUrl }).strict(),
+  fixture: fixtureIdentitySchema,
+  league: z.object({ id: z.number().int().positive(), season: z.number().int(), name: z.string().min(1), country: z.string().min(1), logo: nullableUrl, flag: nullableUrl }).strict(),
+}).strict();
+const oddsItemSchema = z.object({
+  league: z.object({ id: z.number().int().positive(), name: z.string().min(1), country: z.string().min(1), logo: nullableUrl, flag: nullableUrl, season: z.number().int() }).strict(),
+  fixture: fixtureIdentitySchema,
+  update: z.string().datetime({ offset: true }),
+  bookmakers: z.array(z.object({ id: z.number().int().positive(), name: z.string().min(1), bets: z.array(z.object({ id: z.number().int().positive(), name: z.string().min(1), values: z.array(z.object({ value: z.string().min(1), odd: z.string().regex(/^\d+(?:\.\d+)?$/) }).strict()).max(500) }).strict()).max(500) }).strict()).max(250),
+}).strict();
+const statisticsItemSchema = z.object({
+  team: teamSchema.extend({ logo: nullableUrl }).strict(),
+  statistics: z.array(z.object({ type: z.string().min(1), value: z.union([z.number().finite(), z.string(), z.null()]) }).strict()).max(250),
+}).strict();
 
 export function parseApiFootballEnrichmentEnvelope(endpoint: ApiFootballEnrichmentEndpoint, value: unknown, expectedParameters: Record<string, string>) {
   const item = endpoint === "lineups" ? lineupItemSchema : endpoint === "injuries" ? injuryItemSchema : endpoint === "odds" ? oddsItemSchema : statisticsItemSchema;

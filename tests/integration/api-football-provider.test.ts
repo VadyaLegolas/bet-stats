@@ -61,9 +61,15 @@ describe("API-Football strict provider adapter", () => {
 
   it("normalizes official lineup enrichment with the client clock and canonical fixture identity", async () => {
     const payload = {
-      get: "lineups", parameters: { fixture: "1379123" }, errors: [], results: 1,
+      get: "lineups", parameters: { fixture: "1379123" }, errors: [], results: 2,
       paging: { current: 1, total: 1 },
-      response: [{ fixture: 1379123, confirmed: true, players: [{ id: 42, name: "Player One" }] }],
+      response: [42, 49].map((teamId) => ({
+        team: { id: teamId, name: `Team ${teamId}`, logo: `https://example.test/${teamId}.png`, colors: null },
+        formation: "4-3-3",
+        coach: { id: teamId + 100, name: `Coach ${teamId}`, photo: null },
+        startXI: Array.from({ length: 11 }, (_, index) => ({ player: { id: teamId * 100 + index, name: `Player ${teamId}-${index}`, number: index + 1, pos: "G", grid: "1:1" } })),
+        substitutes: [{ player: { id: teamId * 100 + 20, name: `Sub ${teamId}`, number: 20, pos: "M", grid: null } }],
+      })),
     };
     const client = new ApiFootballClient({
       apiKey: "secret",
@@ -78,9 +84,19 @@ describe("API-Football strict provider adapter", () => {
         fixtureId: "fixture-1",
         externalFixtureId: "1379123",
         status: "OFFICIAL_CONFIRMED",
-        players: [{ externalId: "42", name: "Player One" }],
+        players: expect.arrayContaining([{ externalId: "4200", name: "Player 42-0" }, { externalId: "4900", name: "Player 49-0" }]),
       },
     });
+  });
+
+  it.each([
+    ["injuries", [{ player: { id: 7, name: "Player", photo: null, type: "Missing Fixture", reason: "Hamstring" }, team: { id: 42, name: "Arsenal", logo: null }, fixture: { id: 1379123, timezone: "UTC", date: "2026-09-12T17:00:00+00:00", timestamp: 1789232400 }, league: { id: 39, season: 2026, name: "Premier League", country: "England", logo: null, flag: null } }]],
+    ["odds", [{ league: { id: 39, name: "Premier League", country: "England", logo: null, flag: null, season: 2026 }, fixture: { id: 1379123, timezone: "UTC", date: "2026-09-12T17:00:00+00:00", timestamp: 1789232400 }, update: "2026-09-12T16:00:00+00:00", bookmakers: [{ id: 1, name: "Book", bets: [{ id: 1, name: "Match Winner", values: [{ value: "Home", odd: "2.10" }] }] }] }]],
+    ["fixtures/statistics", [{ team: { id: 42, name: "Arsenal", logo: null }, statistics: [{ type: "Shots on Goal", value: 5 }, { type: "Ball Possession", value: "53%" }, { type: "expected_goals", value: null }] }]],
+  ] as const)("accepts a captured provider-shaped %s response", async (endpoint, response) => {
+    const payload = { get: endpoint, parameters: { fixture: "1379123" }, errors: [], results: response.length, paging: { current: 1, total: 1 }, response };
+    const client = new ApiFootballClient({ apiKey: "secret", fetcher: async () => new Response(JSON.stringify(payload)), now: () => new Date("2026-09-12T16:50:00.000Z") });
+    await expect(client.fetchEnrichment(endpoint, 1379123, "fixture-1")).resolves.toMatchObject({ state: "observed", capturedAt: "2026-09-12T16:50:00.000Z" });
   });
 
   it("uses the fixtures/statistics endpoint for statistics enrichment", async () => {

@@ -56,23 +56,23 @@ export function createProductionRepository(client: PrismaClient): ForecastCompar
           fixture: { select: { leagueId: true, seasonId: true, kickoffUtc: true } },
         },
       });
-      if (!lineup) return "NO_CONFIRMED_LINEUP";
-      const route = await client.providerRouteReceipt.findFirst({
+      if (lineup) return "INSUFFICIENT_EVIDENCE";
+      const fixture = await client.fixture.findUnique({ where: { id: fixtureId }, select: { kickoffUtc: true } });
+      if (!fixture) return "INSUFFICIENT_EVIDENCE";
+      const decision = await client.enrichmentDecisionReceipt.findFirst({
         where: {
-          competitionId: lineup.fixture.leagueId,
-          seasonId: lineup.fixture.seasonId,
-          endpointFamily: "LINEUPS",
-          createdAt: { lte: lineup.fixture.kickoffUtc },
-          attempts: { some: { provider: lineup.observation.provider } },
+          fixtureId,
+          provider: "api-football",
+          endpoint: "LINEUPS",
+          cutoff: { lte: fixture.kickoffUtc },
         },
-        include: { attempts: { where: { provider: lineup.observation.provider }, orderBy: { createdAt: "desc" }, take: 1 } },
-        orderBy: { createdAt: "desc" },
+        orderBy: { cutoff: "desc" },
       });
-      const reason = route?.attempts[0]?.reason;
+      const reason = decision?.reason;
       if (reason?.includes("CAPABILITY")) return "CAPABILITY_DENIED";
       if (reason === "CRITICAL_HEADROOM" || reason === "ALLOWANCE_EXHAUSTED") return "BUDGET_PROTECTED";
       if (reason === "CIRCUIT_OPEN" || reason === "PROVIDER_UNAVAILABLE") return "PROVIDER_UNAVAILABLE";
-      return "INSUFFICIENT_EVIDENCE";
+      return decision?.outcome === "ADMITTED" ? "NO_CONFIRMED_LINEUP" : "INSUFFICIENT_EVIDENCE";
     },
   };
 }

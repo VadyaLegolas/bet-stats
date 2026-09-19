@@ -126,6 +126,11 @@ export type ProviderRouteReceipt = Prisma.ProviderRouteReceiptModel
  */
 export type ProviderRouteAttempt = Prisma.ProviderRouteAttemptModel
 /**
+ * Model EnrichmentDecisionReceipt
+ * Immutable admission outcome for one optional enrichment attempt and cutoff.
+ */
+export type EnrichmentDecisionReceipt = Prisma.EnrichmentDecisionReceiptModel
+/**
  * Model ProviderQuotaObservation
  * 
  */

@@ -418,6 +418,7 @@ export const ModelName = {
   ProviderCircuitState: 'ProviderCircuitState',
   ProviderRouteReceipt: 'ProviderRouteReceipt',
   ProviderRouteAttempt: 'ProviderRouteAttempt',
+  EnrichmentDecisionReceipt: 'EnrichmentDecisionReceipt',
   ProviderQuotaObservation: 'ProviderQuotaObservation',
   ProviderThrottleReservation: 'ProviderThrottleReservation',
   EvidenceBuild: 'EvidenceBuild',
@@ -457,7 +458,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "enrichmentDecisionReceipt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2012,6 +2013,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ProviderRouteAttemptCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ProviderRouteAttemptCountAggregateOutputType> | number
+        }
+      }
+    }
+    EnrichmentDecisionReceipt: {
+      payload: Prisma.$EnrichmentDecisionReceiptPayload<ExtArgs>
+      fields: Prisma.EnrichmentDecisionReceiptFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.EnrichmentDecisionReceiptFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentDecisionReceiptPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.EnrichmentDecisionReceiptFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentDecisionReceiptPayload>
+        }
+        findFirst: {
+          args: Prisma.EnrichmentDecisionReceiptFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentDecisionReceiptPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.EnrichmentDecisionReceiptFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentDecisionReceiptPayload>
+        }
+        findMany: {
+          args: Prisma.EnrichmentDecisionReceiptFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentDecisionReceiptPayload>[]
+        }
+        create: {
+          args: Prisma.EnrichmentDecisionReceiptCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentDecisionReceiptPayload>
+        }
+        createMany: {
+          args: Prisma.EnrichmentDecisionReceiptCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.EnrichmentDecisionReceiptCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentDecisionReceiptPayload>[]
+        }
+        delete: {
+          args: Prisma.EnrichmentDecisionReceiptDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentDecisionReceiptPayload>
+        }
+        update: {
+          args: Prisma.EnrichmentDecisionReceiptUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentDecisionReceiptPayload>
+        }
+        deleteMany: {
+          args: Prisma.EnrichmentDecisionReceiptDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.EnrichmentDecisionReceiptUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.EnrichmentDecisionReceiptUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentDecisionReceiptPayload>[]
+        }
+        upsert: {
+          args: Prisma.EnrichmentDecisionReceiptUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EnrichmentDecisionReceiptPayload>
+        }
+        aggregate: {
+          args: Prisma.EnrichmentDecisionReceiptAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEnrichmentDecisionReceipt>
+        }
+        groupBy: {
+          args: Prisma.EnrichmentDecisionReceiptGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EnrichmentDecisionReceiptGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.EnrichmentDecisionReceiptCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EnrichmentDecisionReceiptCountAggregateOutputType> | number
         }
       }
     }
@@ -4181,6 +4256,21 @@ export const ProviderRouteAttemptScalarFieldEnum = {
 export type ProviderRouteAttemptScalarFieldEnum = (typeof ProviderRouteAttemptScalarFieldEnum)[keyof typeof ProviderRouteAttemptScalarFieldEnum]
 
 
+export const EnrichmentDecisionReceiptScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  provider: 'provider',
+  endpoint: 'endpoint',
+  policyVersion: 'policyVersion',
+  cutoff: 'cutoff',
+  outcome: 'outcome',
+  reason: 'reason',
+  createdAt: 'createdAt'
+} as const
+
+export type EnrichmentDecisionReceiptScalarFieldEnum = (typeof EnrichmentDecisionReceiptScalarFieldEnum)[keyof typeof EnrichmentDecisionReceiptScalarFieldEnum]
+
+
 export const ProviderQuotaObservationScalarFieldEnum = {
   id: 'id',
   routeAttemptId: 'routeAttemptId',
@@ -5033,6 +5123,7 @@ export type GlobalOmitConfig = {
   providerCircuitState?: Prisma.ProviderCircuitStateOmit
   providerRouteReceipt?: Prisma.ProviderRouteReceiptOmit
   providerRouteAttempt?: Prisma.ProviderRouteAttemptOmit
+  enrichmentDecisionReceipt?: Prisma.EnrichmentDecisionReceiptOmit
   providerQuotaObservation?: Prisma.ProviderQuotaObservationOmit
   providerThrottleReservation?: Prisma.ProviderThrottleReservationOmit
   evidenceBuild?: Prisma.EvidenceBuildOmit

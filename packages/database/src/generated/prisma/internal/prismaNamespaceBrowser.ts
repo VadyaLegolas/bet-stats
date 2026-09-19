@@ -72,6 +72,7 @@ export const ModelName = {
   ProviderCircuitState: 'ProviderCircuitState',
   ProviderRouteReceipt: 'ProviderRouteReceipt',
   ProviderRouteAttempt: 'ProviderRouteAttempt',
+  EnrichmentDecisionReceipt: 'EnrichmentDecisionReceipt',
   ProviderQuotaObservation: 'ProviderQuotaObservation',
   ProviderThrottleReservation: 'ProviderThrottleReservation',
   EvidenceBuild: 'EvidenceBuild',
@@ -463,6 +464,21 @@ export const ProviderRouteAttemptScalarFieldEnum = {
 } as const
 
 export type ProviderRouteAttemptScalarFieldEnum = (typeof ProviderRouteAttemptScalarFieldEnum)[keyof typeof ProviderRouteAttemptScalarFieldEnum]
+
+
+export const EnrichmentDecisionReceiptScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  provider: 'provider',
+  endpoint: 'endpoint',
+  policyVersion: 'policyVersion',
+  cutoff: 'cutoff',
+  outcome: 'outcome',
+  reason: 'reason',
+  createdAt: 'createdAt'
+} as const
+
+export type EnrichmentDecisionReceiptScalarFieldEnum = (typeof EnrichmentDecisionReceiptScalarFieldEnum)[keyof typeof EnrichmentDecisionReceiptScalarFieldEnum]
 
 
 export const ProviderQuotaObservationScalarFieldEnum = {

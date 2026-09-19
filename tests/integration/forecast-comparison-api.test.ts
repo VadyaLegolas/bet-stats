@@ -31,22 +31,22 @@ describe("forecast comparison API", () => {
     ]);
   });
 
-  it("derives lineup absence only from the matching provider LINEUPS route before kickoff", async () => {
-    const findFirst = vi.fn().mockResolvedValue({ attempts: [{ reason: "CIRCUIT_OPEN" }] });
+  it("derives lineup absence only from the exact fixture enrichment decision", async () => {
+    const findFirst = vi.fn().mockResolvedValue({ outcome: "DENIED", reason: "CIRCUIT_OPEN" });
     const client = {
-      lineupObservation: { findFirst: vi.fn().mockResolvedValue({ id: "lineup-1", observation: { provider: "api-football", observedAt: new Date("2026-09-12T10:00:00Z") }, fixture: { leagueId: "league-1", seasonId: "season-1", kickoffUtc: new Date("2026-09-12T12:00:00Z") } }) },
-      providerRouteReceipt: { findFirst },
+      lineupObservation: { findFirst: vi.fn().mockResolvedValue(null) },
+      fixture: { findUnique: vi.fn().mockResolvedValue({ kickoffUtc: new Date("2026-09-12T12:00:00Z") }) },
+      enrichmentDecisionReceipt: { findFirst },
     };
 
     const repository = createProductionRepository(client as never);
     await expect(repository.absenceReason("fixture-1", "LINEUP_CONFIRMED")).resolves.toBe("PROVIDER_UNAVAILABLE");
     expect(findFirst).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
-        competitionId: "league-1",
-        seasonId: "season-1",
-        endpointFamily: "LINEUPS",
-        createdAt: { lte: new Date("2026-09-12T12:00:00Z") },
-        attempts: { some: { provider: "api-football" } },
+        fixtureId: "fixture-1",
+        provider: "api-football",
+        endpoint: "LINEUPS",
+        cutoff: { lte: new Date("2026-09-12T12:00:00Z") },
       }),
     }));
   });

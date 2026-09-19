@@ -199,6 +199,7 @@ model Fixture {
   closingOddsObservations ClosingOddsObservation[]
   valueSettlements        ValueSettlement[]
   backtestWindows         BacktestWindow[]
+  enrichmentDecisions     EnrichmentDecisionReceipt[]
 
   // D-10: deliberately non-unique; this index finds ±36h candidates only.
   @@index([homeTeamId, awayTeamId, kickoffUtc])
@@ -505,6 +506,23 @@ model ProviderRouteAttempt {
 
   @@index([routeReceiptId, createdAt])
   @@index([provider, state, createdAt])
+}
+
+/// Immutable admission outcome for one optional enrichment attempt and cutoff.
+model EnrichmentDecisionReceipt {
+  id            String   @id
+  fixtureId     String
+  provider      String
+  endpoint      String
+  policyVersion String
+  cutoff        DateTime @db.Timestamptz(3)
+  outcome       String
+  reason        String?
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  fixture       Fixture  @relation(fields: [fixtureId], references: [id], onDelete: Restrict)
+
+  @@unique([fixtureId, provider, endpoint, policyVersion, cutoff])
+  @@index([fixtureId, endpoint, cutoff])
 }
 
 model ProviderQuotaObservation {

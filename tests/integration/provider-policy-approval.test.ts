@@ -48,6 +48,7 @@ describe("provider policy approval", () => {
     expect(JSON.stringify(body)).not.toMatch(/credential|rawHeaders|rawPayload|account/i);
     expect(await database.providerCapability.count()).toBe(1);
     expect(await database.providerRouteAttempt.count()).toBe(1);
+    expect(await database.providerRouteReceipt.findUniqueOrThrow({ where: { id: "provider-policy:approval-1" } })).toMatchObject({ circuitSnapshot: { state: "POLICY_APPROVAL", actor: "policy-operator" } });
   });
 
   it("fails closed with append-only exact-scope rejection evidence", async () => {
@@ -66,6 +67,8 @@ describe("provider policy approval", () => {
     const responses = await Promise.all([authorized(command), authorized(command)]);
     expect(responses.map((response) => response.status)).toEqual([201, 201]);
     expect(await database.providerRouteAttempt.count({ where: { attemptKey: "approval-concurrent" } })).toBe(1);
+    const replay = await fetch(`${origin}/internal/providers/policy/approve`, { method: "POST", headers: { "content-type": "application/json", "x-operator-credential": "policy-test-credential", "x-operator-actor": "different-replay-actor" }, body: JSON.stringify(command) });
+    expect(await replay.json()).toMatchObject({ actor: "policy-operator" });
   });
 
   it.each([

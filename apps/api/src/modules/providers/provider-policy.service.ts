@@ -30,15 +30,28 @@ export class ProviderPolicyService implements OnModuleDestroy {
   }
 
   private async persist(command: ProviderPolicyApprovalCommand, actor: string) {
-    const prior = await this.database!.providerRouteAttempt.findUnique({ where: { attemptKey: command.idempotencyKey } });
-    if (prior) return { decisionId: command.idempotencyKey, status: prior.admitted ? "approved" as const : "rejected" as const, actor, scope: command.scope, policyVersion: command.expectedPolicyVersion, artifactId: command.artifact.artifactId };
-    const repository = createProviderRoutingRepository({ database: this.database! });
     const receiptContent = { policyVersion: command.expectedPolicyVersion, policyHash: command.artifact.requestFingerprint, competitionId: command.scope.competitionId, seasonId: command.scope.seasonId, endpointFamily: command.scope.endpoint, candidates: [command.scope.provider], selectedProvider: command.scope.provider, trigger: "PRIMARY" as const, outcome: "ADMITTED" as const, capabilitySnapshot: { artifactId: command.artifact.artifactId, supported: true }, budgetSnapshot: command.artifact.quota, circuitSnapshot: { state: "POLICY_APPROVAL" }, correlationId: command.idempotencyKey };
     const routeId = `provider-policy:${command.idempotencyKey}`;
-    await repository.appendRoute({ id: routeId, contentHash: routeReceiptContentHash(receiptContent), ...receiptContent });
-    await repository.approveCapability({ provider: command.scope.provider, leagueId: command.scope.competitionId, seasonId: command.scope.seasonId, endpoint: command.scope.endpoint, supported: true, verifiedAt: new Date(command.artifact.capturedAt), expiresAt: command.artifact.quota.resetAt ? new Date(command.artifact.quota.resetAt) : null });
-    await repository.appendAttempt({ id: `${routeId}:decision`, routeReceiptId: routeId, attemptKey: command.idempotencyKey, provider: command.scope.provider, state: "ADMITTED", reason: null, observationId: null, admitted: true });
-    return { decisionId: command.idempotencyKey, status: "approved" as const, actor, scope: command.scope, policyVersion: command.expectedPolicyVersion, artifactId: command.artifact.artifactId };
+    return this.database!.$transaction(async (transaction) => {
+      await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`provider-policy:${command.idempotencyKey}`}, 0))`;
+      const prior = await transaction.providerRouteAttempt.findUnique({ where: { attemptKey: command.idempotencyKey }, include: { routeReceipt: true } });
+      if (prior) {
+        const audit = prior.routeReceipt.circuitSnapshot as { actor?: string };
+        return { decisionId: command.idempotencyKey, status: prior.admitted ? "approved" as const : "rejected" as const, actor: audit.actor ?? "unknown", scope: command.scope, policyVersion: prior.routeReceipt.policyVersion, artifactId: command.artifact.artifactId };
+      }
+      const approvedAt = new Date();
+      const auditedContent = { ...receiptContent, circuitSnapshot: { state: "POLICY_APPROVAL", actor, approvedAt: approvedAt.toISOString() } };
+      await transaction.providerRouteReceipt.create({ data: {
+        id: routeId, contentHash: routeReceiptContentHash(auditedContent), ...auditedContent,
+        attempts: { create: { id: `${routeId}:decision`, attemptKey: command.idempotencyKey, provider: command.scope.provider, state: "ADMITTED", reason: null, observationId: null, admitted: true, createdAt: approvedAt } },
+      } });
+      await transaction.providerCapability.upsert({
+        where: { provider_leagueId_seasonId_endpoint: { provider: command.scope.provider, leagueId: command.scope.competitionId, seasonId: command.scope.seasonId, endpoint: command.scope.endpoint } },
+        create: { provider: command.scope.provider, leagueId: command.scope.competitionId, seasonId: command.scope.seasonId, endpoint: command.scope.endpoint, supported: true, verifiedAt: new Date(command.artifact.capturedAt), expiresAt: command.artifact.quota.resetAt ? new Date(command.artifact.quota.resetAt) : null },
+        update: { supported: true, verifiedAt: new Date(command.artifact.capturedAt), expiresAt: command.artifact.quota.resetAt ? new Date(command.artifact.quota.resetAt) : null },
+      });
+      return { decisionId: command.idempotencyKey, status: "approved" as const, actor, scope: command.scope, policyVersion: command.expectedPolicyVersion, artifactId: command.artifact.artifactId };
+    }, { isolationLevel: "Serializable", timeout: 15_000 });
   }
 
   async onModuleDestroy() { await this.database?.$disconnect(); }

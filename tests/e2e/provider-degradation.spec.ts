@@ -8,7 +8,7 @@ test("fallback and sole-source notices preserve canonical fixture identity", asy
   await expect(fallback.getByText("Fallback source used", { exact: true })).toBeVisible();
   await expect(fallback).toContainText("api-football");
   await fallback.getByText("Exact provider receipt").click();
-  await expect(fallback).toContainText("live-fallback-route");
+  await expect(fallback).toContainText("provider-route-v1:live-pl:live-pl-2026:FIXTURES:live-fallback");
 
   await page.goto(`/fixtures/${LIVE_FIXTURES.limited}`);
   await expect(page.getByRole("heading", { name: "Roma vs Ajax" })).toBeVisible();
@@ -23,7 +23,7 @@ test("fallback and sole-source notices preserve canonical fixture identity", asy
 test("official lineup enrichment is visible through production boundaries", async ({ page }) => {
   await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
   await expect(page.getByLabel("Compare forecast revisions").getByText("LINEUP_CONFIRMED", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Left snapshot").locator('option[value="live-newer"]')).toHaveCount(1);
+  await expect(page.getByLabel("Left snapshot").locator("option").filter({ hasText: "LINEUP_CONFIRMED" })).toHaveCount(1);
   await expect(page.getByLabel("Betting risk disclosure").getByText("Probabilities are estimates, not guarantees.", { exact: false })).toBeVisible();
 });
 

@@ -1,8 +1,12 @@
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { resolve } from "node:path";
 import { createPrismaClient } from "../../packages/database/src/client.js";
+import { createPrismaForecastRepository, createProviderRoutingRepository } from "../../packages/database/src/index.js";
+import { ForecastOrchestrator, currentForecastConfigHash } from "../../packages/domain/src/index.js";
 import { startReplayWorker } from "../../workers/data-sync/src/main.js";
 import { createProductionEnrichmentExecutor } from "../../workers/data-sync/src/jobs/enrichment.js";
+import { resolveCandidateExternalMapping } from "../../workers/data-sync/src/jobs/fixtures.js";
+import { createMappedProviderCandidates, executeDurableMappedRoute, resolveEndpointCandidateMappings } from "../../workers/data-sync/src/ingestion/provider-route-runtime.js";
 import { ApiFootballClient } from "../../packages/football-data/src/index.js";
 
 export const PROVIDER_API_ORIGIN = "http://127.0.0.1:3241";
@@ -54,15 +58,7 @@ async function seedAcceptanceData(db: ReturnType<typeof createPrismaClient>) {
     { id: LIVE_FIXTURES.limited, leagueId: "live-uel", seasonId: "live-uel-2026", homeTeamId: "live-roma", awayTeamId: "live-ajax", kickoffUtc: new Date("2026-09-22T18:00:00.000Z"), status: "SCHEDULED" },
   ] });
   await db.fixtureExternalRef.create({ data: { fixtureId: LIVE_FIXTURES.comparison, provider: "api-football", externalId: "1379123" } });
-  const observation = async (id:string, endpointFamily:string, observedAt:string) => db.sourceObservation.create({ data: { id, provider: "api-football", endpointFamily, externalIdentity: id, observedAt: new Date(observedAt), payloadHash: `${id}-hash`, rawPayload: { deterministic: true }, payloadBytes: 22 } });
-  await observation("live-fallback-observation", "FIXTURES", "2026-09-12T12:00:02.000Z");
-  await observation("live-last-valid-observation", "FIXTURES", "2026-09-11T12:00:00.000Z");
-  await db.providerRouteReceipt.create({ data: { id: "live-fallback-route", contentHash: "live-fallback-route-hash", policyVersion: "provider-policy-v1", policyHash: "live-policy-hash", competitionId: "live-pl", seasonId: "live-pl-2026", endpointFamily: "FIXTURES", candidates: ["football-data.org","api-football"], selectedProvider: "api-football", trigger: "PRIMARY_UNAVAILABLE", outcome: "SUCCEEDED", capabilitySnapshot: {}, budgetSnapshot: {}, circuitSnapshot: {}, correlationId: "live-fallback", createdAt: new Date("2026-09-12T12:00:03.000Z"), attempts: { create: [
-    { id: "live-primary-attempt", attemptKey: "live-primary-attempt", provider: "football-data.org", state: "FAILED", reason: "UPSTREAM_UNAVAILABLE", admitted: true, createdAt: new Date("2026-09-12T12:00:01.000Z") },
-    { id: "live-fallback-attempt", attemptKey: "live-fallback-attempt", provider: "api-football", state: "SUCCEEDED", observationId: "live-fallback-observation", admitted: true, createdAt: new Date("2026-09-12T12:00:02.000Z") },
-  ] } } });
-  await db.providerRouteReceipt.create({ data: { id: "live-prior-route", contentHash: "live-prior-route-hash", policyVersion: "provider-policy-v1", policyHash: "live-policy-hash", competitionId: "live-uel", seasonId: "live-uel-2026", endpointFamily: "FIXTURES", candidates: ["api-football"], selectedProvider: "api-football", trigger: "SCHEDULED", outcome: "SUCCEEDED", capabilitySnapshot: {}, budgetSnapshot: {}, circuitSnapshot: {}, correlationId: "live-prior", createdAt: new Date("2026-09-11T12:00:01.000Z"), attempts: { create: { id: "live-prior-attempt", attemptKey: "live-prior-attempt", provider: "api-football", state: "SUCCEEDED", observationId: "live-last-valid-observation", admitted: true } } } });
-  await db.providerRouteReceipt.create({ data: { id: "live-limited-route", contentHash: "live-limited-route-hash", policyVersion: "provider-policy-v1", policyHash: "live-policy-hash", competitionId: "live-uel", seasonId: "live-uel-2026", endpointFamily: "FIXTURES", candidates: ["api-football"], selectedProvider: null, trigger: "PROVIDER_UNAVAILABLE", outcome: "NO_FALLBACK", capabilitySnapshot: {}, budgetSnapshot: {}, circuitSnapshot: {}, correlationId: "live-limited", createdAt: new Date("2026-09-13T12:00:01.000Z"), attempts: { create: { id: "live-limited-attempt", attemptKey: "live-limited-attempt", provider: "api-football", state: "NO_FALLBACK", reason: "PROVIDER_UNAVAILABLE", admitted: false } } } });
+  await exerciseProductionRouting(db);
   await db.providerCapability.create({ data: { provider: "api-football", leagueId: "live-pl", seasonId: "live-pl-2026", endpoint: "LINEUPS", supported: true, verifiedAt: new Date("2026-09-20T00:00:00.000Z"), expiresAt: new Date("2026-09-22T00:00:00.000Z") } });
   await db.providerCircuitState.create({ data: { provider: "api-football", endpointFamily: "LINEUPS", state: "CLOSED" } });
   const lineupEnvelope = { get: "lineups", parameters: { fixture: "1379123" }, errors: [], results: 2, paging: { current: 1, total: 1 }, response: [42,49].map((teamId) => ({ team: { id: teamId, name: `Team ${teamId}`, logo: null, colors: null }, formation: "4-3-3", coach: { id: teamId + 100, name: `Coach ${teamId}`, photo: null }, startXI: Array.from({length:11},(_,index)=>({player:{id:teamId*100+index,name:`Player ${teamId}-${index}`,number:index+1,pos:"M",grid:"1:1"}})), substitutes: [] })) };
@@ -70,12 +66,58 @@ async function seedAcceptanceData(db: ReturnType<typeof createPrismaClient>) {
   const enrichmentResult = await enrichment({ fixtureId: LIVE_FIXTURES.comparison, endpoint: "LINEUPS", cutoff: "2026-09-21T14:05:00.000Z", policyVersion: "enrichment-v1" });
   if (enrichmentResult.status !== "completed" || enrichmentResult.evidenceState !== "OBSERVED") throw new Error("PRODUCTION_ENRICHMENT_NOT_COMPLETED");
   const lineup = await db.lineupObservation.findFirstOrThrow({ where: { fixtureId: LIVE_FIXTURES.comparison, status: "OFFICIAL_CONFIRMED" } });
-  const probabilities = (home:number) => ({ ONE_X_TWO: [{selection:"HOME",probability:home,fairOdds:(1/home).toFixed(2)},{selection:"DRAW",probability:0.25,fairOdds:"4.00"},{selection:"AWAY",probability:0.75-home,fairOdds:(1/(0.75-home)).toFixed(2)}], OVER_UNDER_2_5: [{selection:"OVER_2_5",probability:0.55,fairOdds:"1.82"},{selection:"UNDER_2_5",probability:0.45,fairOdds:"2.22"}], BTTS: [{selection:"YES",probability:0.6,fairOdds:"1.67"},{selection:"NO",probability:0.4,fairOdds:"2.50"}] });
-  for (const [id,kind,revision,cutoff,home,lineupId] of [["live-left","INITIAL",1,"2026-09-20T10:00:00.000Z",0.4,null],["live-right","PRE_MATCH",1,"2026-09-21T10:00:00.000Z",0.5,null],["live-newer","LINEUP_CONFIRMED",1,"2026-09-21T14:00:00.000Z",0.55,lineup.id]] as const) {
-    const dto:any={id,fixtureId:LIVE_FIXTURES.comparison,kind,officialLineupObservationId:lineupId,revision,cutoff,modelVersion:"poisson-ensemble-v1",modelHash:`model-${id}`,configVersion:"forecast-config-v1",configHash:"live-config",inputHash:`input-${id}`,evidenceFingerprint:`evidence-${id}`,evidenceBuildIds:["live-home-evidence","live-away-evidence"],probabilities:probabilities(home),confidence:{version:"confidence-v1",score:0.8,components:{completeness:0.8,lineupAvailability:lineupId?1:0,freshness:0.9,sourceReliability:0.8,modelStability:0.8}},limitations:lineupId?[]:["LINEUP_NOT_CONFIRMED"],tail:{retainedMass:0.999,tailMass:0.001,warning:false,normalizationVersion:"retained-mass-v1"},assumptions:[],receipt:{forecastSnapshotId:id,officialLineupObservationId:lineupId,evidenceBuildIds:["live-home-evidence","live-away-evidence"],sourceRefs:[],expectedGoals:{home:1.4,away:1.1},adjustments:{home:{multiplier:1,components:{}},away:{multiplier:1,components:{}}}},issuedAt:new Date(new Date(cutoff).getTime()+1000).toISOString()};
-    await db.forecastSnapshot.create({ data: { id, fixtureId: LIVE_FIXTURES.comparison, kind, state:"ISSUED", revision, officialLineupObservationId:lineupId, cutoff:new Date(cutoff), modelVersion:dto.modelVersion, modelHash:dto.modelHash, configVersion:dto.configVersion, configHash:dto.configHash, inputHash:dto.inputHash, evidenceFingerprint:dto.evidenceFingerprint, sourceRefs:[], probabilities:dto.probabilities, confidence:dto.confidence, assumptions:[], receipt:dto, issuedAt:new Date(dto.issuedAt), markets:{create:Object.entries(dto.probabilities).map(([market,values])=>({market,probabilities:values as never}))} } });
+  await issueProductionForecasts(db, lineup.id);
+  return {
+    enrichmentDecisions: await db.enrichmentDecisionReceipt.count(),
+    lineupObservations: await db.lineupObservation.count(),
+    sourceObservations: await db.sourceObservation.count({ where: { endpointFamily: "LINEUPS" } }),
+    routeReceipts: await db.providerRouteReceipt.count(),
+    routeAttempts: await db.providerRouteAttempt.count(),
+    forecastSnapshots: await db.forecastSnapshot.count({ where: { fixtureId: LIVE_FIXTURES.comparison } }),
+  };
+}
+
+async function exerciseProductionRouting(db: ReturnType<typeof createPrismaClient>) {
+  const expiresAt = new Date("2027-01-01T00:00:00.000Z");
+  await db.providerCapability.createMany({ data: [
+    { provider: "football-data.org", leagueId: "live-pl", seasonId: "live-pl-2026", endpoint: "FIXTURES", supported: true, verifiedAt: new Date(), expiresAt },
+    { provider: "api-football", leagueId: "live-pl", seasonId: "live-pl-2026", endpoint: "FIXTURES", supported: true, verifiedAt: new Date(), expiresAt },
+    { provider: "api-football", leagueId: "live-uel", seasonId: "live-uel-2026", endpoint: "FIXTURES", supported: true, verifiedAt: new Date(), expiresAt },
+  ] });
+  await db.providerCircuitState.createMany({ data: [
+    { provider: "football-data.org", endpointFamily: "FIXTURES", state: "CLOSED" },
+    { provider: "api-football", endpointFamily: "FIXTURES", state: "CLOSED" },
+  ] });
+  const repository = createProviderRoutingRepository({ database: db });
+  const execute = async (scope: { competition: string; leagueId: string; seasonId: string; correlationId: string; failPrimary?: boolean; failOnly?: boolean }) => {
+    const mapped = await resolveEndpointCandidateMappings({ competition: scope.competition, season: "2026", endpoint: "FIXTURES", leagueId: scope.leagueId, seasonId: scope.seasonId, resolveMapping: (leagueId, seasonId, provider) => resolveCandidateExternalMapping(db, leagueId, seasonId, provider) });
+    const failure = () => { throw Object.assign(new Error("PROVIDER_UNAVAILABLE"), { code: "PROVIDER_UNAVAILABLE", classification: "fallback" }); };
+    const factories = {
+      "football-data.org": () => ({ run: scope.failPrimary ? failure : async () => ({ provider: "football-data.org" }) }),
+      "api-football": () => ({ run: scope.failOnly ? failure : async () => ({ provider: "api-football" }) }),
+    };
+    return executeDurableMappedRoute({ database: db, repository, context: { assertOwner: async () => undefined }, route: mapped.route, candidates: createMappedProviderCandidates(mapped.route, mapped.mappings, factories), leagueId: scope.leagueId, seasonId: scope.seasonId, correlationId: scope.correlationId, attemptKey: scope.correlationId, allowance: 100, criticalHeadroom: 10, lane: "critical", call: async (dispatch) => dispatch.client.run() });
+  };
+  const fallback = await execute({ competition: "PL", leagueId: "live-pl", seasonId: "live-pl-2026", correlationId: "live-fallback", failPrimary: true });
+  const prior = await execute({ competition: "UEL", leagueId: "live-uel", seasonId: "live-uel-2026", correlationId: "live-prior" });
+  const limited = await execute({ competition: "UEL", leagueId: "live-uel", seasonId: "live-uel-2026", correlationId: "live-limited", failOnly: true });
+  if (fallback.status !== "completed" || fallback.provider !== "api-football" || prior.status !== "completed" || limited.status !== "limited") throw new Error("PRODUCTION_ROUTING_NOT_COMPLETED");
+}
+
+async function issueProductionForecasts(db: ReturnType<typeof createPrismaClient>, lineupId: string) {
+  const repository = createPrismaForecastRepository(db);
+  const orchestrator = new ForecastOrchestrator();
+  for (const [kind, cutoff] of [["INITIAL", "2026-09-20T10:00:00.000Z"], ["PRE_MATCH", "2026-09-21T10:00:00.000Z"], ["LINEUP_CONFIRMED", "2026-09-21T14:00:00.000Z"]] as const) {
+    const runId = `live-forecast-run-${kind.toLowerCase()}`;
+    await db.syncRun.create({ data: { id: runId, logicalKey: runId, revision: 1, provider: "production-evidence", endpointFamily: "RESULTS", lane: "critical", windowFrom: new Date("2026-01-01T00:00:00.000Z"), windowTo: new Date(cutoff), state: "SUCCEEDED", correlationId: runId } });
+    const receipt = { requestedAsOf: cutoff, resolvedAsOf: cutoff, configVersion: "evidence-v1", sourceWindow: { requestedFrom: null, requestedTo: cutoff, returnedFrom: null, returnedTo: null }, inputs: [] };
+    for (const teamId of ["live-arsenal", "live-chelsea"]) {
+      const buildId = `${runId}-${teamId}`;
+      await db.evidenceBuild.create({ data: { id: buildId, teamId, cutoff: new Date(cutoff), configVersion: "evidence-v1", configHash: `live-evidence-${kind}`, syncRunId: runId, state: "PUBLISHED", publishedAt: new Date(cutoff), components: { create: { component: "receipt", value: receipt, sampleSize: 0, sourceTimes: [] } } } });
+    }
+    const forecast = await orchestrator.run({ fixtureId: LIVE_FIXTURES.comparison, asOf: cutoff, kind, modelVersion: "poisson-ensemble-v1", configHash: currentForecastConfigHash(), initiator: { type: "production", correlationId: `live-forecast-${kind.toLowerCase()}` } }, repository);
+    if (kind === "LINEUP_CONFIRMED" && forecast.officialLineupObservationId !== lineupId) throw new Error("PRODUCTION_LINEUP_FORECAST_MISMATCH");
   }
-  return { enrichmentDecisions: await db.enrichmentDecisionReceipt.count(), lineupObservations: await db.lineupObservation.count(), sourceObservations: await db.sourceObservation.count({ where: { endpointFamily: "LINEUPS" } }) };
 }
 export async function stopLiveProviderStack(partial?:{pg:string;redis:string}) { const state=owned; if(state){stop(state.web);stop(state.api);await state.worker?.close();} for(const name of [partial?.redis??state?.redis,partial?.pg??state?.pg])if(name)try{docker("rm","-f",name)}catch{} owned=null; }
 

@@ -89,15 +89,60 @@ function pinnedHttpsFetch(url: URL, init: RequestInit & { pinnedAddress: string 
 function isGlobalUnicast(address: string): boolean {
   try {
     const parsed = ipaddr.process(address);
-    if (parsed.range() !== "unicast") return false;
-    if (parsed.kind() !== "ipv4") return true;
-    const [a, b, c] = parsed.toByteArray();
-    return !(a === 192 && b === 0 && c === 0)
-      && !(a === 192 && b === 88 && c === 99)
-      && !(a === 198 && (b === 18 || b === 19));
+    return !NON_GLOBAL_NETWORKS.some((network) => matchesNetwork(parsed, network));
   } catch {
     return false;
   }
+}
+
+type IpNetwork = readonly [ipaddr.IPv4 | ipaddr.IPv6, number];
+
+// IANA IPv4/IPv6 Special-Purpose Address Registries. The outbound proxy is
+// deliberately stricter than ipaddr.js' `unicast` bucket: special-use space is
+// never a valid CDN destination, even when a registry entry is forwardable.
+const NON_GLOBAL_IPV4: readonly IpNetwork[] = [
+  [ipaddr.parse("0.0.0.0"), 8],
+  [ipaddr.parse("10.0.0.0"), 8],
+  [ipaddr.parse("100.64.0.0"), 10],
+  [ipaddr.parse("127.0.0.0"), 8],
+  [ipaddr.parse("169.254.0.0"), 16],
+  [ipaddr.parse("172.16.0.0"), 12],
+  [ipaddr.parse("192.0.0.0"), 24],
+  [ipaddr.parse("192.0.2.0"), 24],
+  [ipaddr.parse("192.31.196.0"), 24],
+  [ipaddr.parse("192.52.193.0"), 24],
+  [ipaddr.parse("192.88.99.0"), 24],
+  [ipaddr.parse("192.168.0.0"), 16],
+  [ipaddr.parse("192.175.48.0"), 24],
+  [ipaddr.parse("198.18.0.0"), 15],
+  [ipaddr.parse("198.51.100.0"), 24],
+  [ipaddr.parse("203.0.113.0"), 24],
+  [ipaddr.parse("224.0.0.0"), 4],
+  [ipaddr.parse("240.0.0.0"), 4],
+];
+
+const NON_GLOBAL_IPV6: readonly IpNetwork[] = [
+  [ipaddr.parse("::"), 128],
+  [ipaddr.parse("::1"), 128],
+  [ipaddr.parse("64:ff9b::"), 96],
+  [ipaddr.parse("64:ff9b:1::"), 48],
+  [ipaddr.parse("100::"), 64],
+  [ipaddr.parse("2001::"), 23],
+  [ipaddr.parse("2001:db8::"), 32],
+  [ipaddr.parse("2002::"), 16],
+  [ipaddr.parse("2620:4f:8000::"), 48],
+  [ipaddr.parse("3fff::"), 20],
+  [ipaddr.parse("5f00::"), 16],
+  [ipaddr.parse("fc00::"), 7],
+  [ipaddr.parse("fe80::"), 10],
+  [ipaddr.parse("ff00::"), 8],
+];
+const NON_GLOBAL_NETWORKS = [...NON_GLOBAL_IPV4, ...NON_GLOBAL_IPV6] as const;
+
+function matchesNetwork(address: ipaddr.IPv4 | ipaddr.IPv6, [network, prefix]: IpNetwork): boolean {
+  if (address.kind() === "ipv4" && network.kind() === "ipv4") return (address as ipaddr.IPv4).match(network as ipaddr.IPv4, prefix);
+  if (address.kind() === "ipv6" && network.kind() === "ipv6") return (address as ipaddr.IPv6).match(network as ipaddr.IPv6, prefix);
+  return false;
 }
 function signatureMatches(mime: string, bytes: Uint8Array): boolean {
   if (mime === "image/png") return bytes.length >= 8 && [0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a].every((value, index) => bytes[index] === value);

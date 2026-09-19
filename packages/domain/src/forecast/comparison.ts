@@ -12,6 +12,10 @@ export interface ForecastComparisonDto {
   readonly right: ForecastResponseDto;
   readonly cutoff: NumericDelta;
   readonly sources: { readonly added: readonly string[]; readonly removed: readonly string[] };
+  readonly sourceRefs: {
+    readonly added: readonly ForecastResponseDto["receipt"]["sourceRefs"][number][];
+    readonly removed: readonly ForecastResponseDto["receipt"]["sourceRefs"][number][];
+  };
   readonly expectedGoals: { readonly home: NumericDelta; readonly away: NumericDelta };
   readonly adjustments: { readonly home: NumericDelta; readonly away: NumericDelta };
   readonly confidence: { readonly score: NumericDelta; readonly components: Readonly<Record<string, NumericDelta>> };
@@ -33,6 +37,20 @@ export function compareForecastPair(leftValue: unknown, rightValue: unknown): Fo
   const right = parseForecastResponse(rightValue);
   if (left.fixtureId !== right.fixtureId) throw new Error("FORECAST_FIXTURE_MISMATCH");
   const sourceKeys = (forecast: ForecastResponseDto) => forecast.receipt.sourceRefs.map((source) => source.fixtureId).sort();
+  const sourceIdentity = (source: ForecastResponseDto["receipt"]["sourceRefs"][number]) => JSON.stringify([
+    source.fixtureId,
+    source.payloadHash,
+    source.effectiveAt,
+    source.observedAt,
+    source.sourceUpdatedAt,
+  ]);
+  const sourceRefDifference = (
+    candidates: ForecastResponseDto["receipt"]["sourceRefs"],
+    excluded: ForecastResponseDto["receipt"]["sourceRefs"],
+  ) => {
+    const excludedIdentities = new Set(excluded.map(sourceIdentity));
+    return candidates.filter((source) => !excludedIdentities.has(sourceIdentity(source)));
+  };
   const leftSources = sourceKeys(left), rightSources = sourceKeys(right);
   const components: Record<string, NumericDelta> = {};
   for (const key of ["completeness", "lineupAvailability", "freshness", "sourceReliability", "modelStability"] as const) components[key] = delta(left.confidence.components[key], right.confidence.components[key]);
@@ -45,6 +63,10 @@ export function compareForecastPair(leftValue: unknown, rightValue: unknown): Fo
     fixtureId: left.fixtureId, left, right,
     cutoff: delta(Date.parse(left.cutoff), Date.parse(right.cutoff)),
     sources: { added: difference(rightSources, leftSources), removed: difference(leftSources, rightSources) },
+    sourceRefs: {
+      added: sourceRefDifference(right.receipt.sourceRefs, left.receipt.sourceRefs),
+      removed: sourceRefDifference(left.receipt.sourceRefs, right.receipt.sourceRefs),
+    },
     expectedGoals: { home: delta(left.receipt.expectedGoals.home, right.receipt.expectedGoals.home), away: delta(left.receipt.expectedGoals.away, right.receipt.expectedGoals.away) },
     adjustments: { home: delta(left.receipt.adjustments.home.multiplier, right.receipt.adjustments.home.multiplier), away: delta(left.receipt.adjustments.away.multiplier, right.receipt.adjustments.away.multiplier) },
     confidence: { score: delta(left.confidence.score, right.confidence.score), components },

@@ -16,8 +16,25 @@ describe("forecast comparison contract", () => {
     const result = compareForecastPair(left, right);
     expect(result).toMatchObject({ fixtureId: "fixture-1", left: { id: "left" }, right: { id: "right" }, cutoff: { direction: "increase" }, expectedGoals: { home: { delta: 0.2, direction: "increase" } }, confidence: { score: { delta: 0.1, direction: "increase" } }, limitations: { added: ["SOURCE_B"], removed: ["SOURCE_A"] } });
     expect(result.sources).toEqual({ added: ["provider:B"], removed: ["provider:A"] });
+    expect(result.sourceRefs).toEqual({
+      added: [right.receipt.sourceRefs[0]],
+      removed: [left.receipt.sourceRefs[0]],
+    });
     expect(result.probabilities.map((entry) => `${entry.market}:${entry.selection}`)).toEqual(["ONE_X_TWO:HOME", "ONE_X_TWO:DRAW", "ONE_X_TWO:AWAY", "OVER_UNDER_2_5:OVER_2_5", "OVER_UNDER_2_5:UNDER_2_5", "BTTS:YES", "BTTS:NO"]);
     expect(result.probabilities[0]).toMatchObject({ left: 0.45, right: 0.5, delta: 0.05, direction: "increase" });
+  });
+
+  it("reports changed immutable evidence when the fixture identity stays the same", () => {
+    const left = snapshot("left", "INITIAL", 0.45, [], 0.6, 1.2);
+    const right = snapshot("right", "PRE_MATCH", 0.5, [], 0.7, 1.4);
+    const sharedFixture = "provider:shared";
+    (left.receipt.sourceRefs[0] as { fixtureId: string }).fixtureId = sharedFixture;
+    (right.receipt.sourceRefs[0] as { fixtureId: string }).fixtureId = sharedFixture;
+
+    const result = compareForecastPair(left, right);
+
+    expect(result.sourceRefs.added).toEqual([right.receipt.sourceRefs[0]]);
+    expect(result.sourceRefs.removed).toEqual([left.receipt.sourceRefs[0]]);
   });
 
   it("parses fixed-order availability without accepting fabricated fields", () => {

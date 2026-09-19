@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ForecastComparisonService } from "../../apps/api/src/modules/forecasts/forecast-comparison.service.js";
+import { ForecastComparisonService, createProductionRepository } from "../../apps/api/src/modules/forecasts/forecast-comparison.service.js";
 import { ForecastsController } from "../../apps/api/src/modules/forecasts/forecasts.controller.js";
 import { snapshot } from "../unit/forecast-comparison.test.js";
 
@@ -29,5 +29,25 @@ describe("forecast comparison API", () => {
       expect.objectContaining({ kind: "PRE_MATCH", status: "available", snapshot: expect.objectContaining({ id: "pre", revision: 1, sourceCount: 1 }) }),
       { kind: "LINEUP_CONFIRMED", status: "absent", reason: "NO_CONFIRMED_LINEUP" },
     ]);
+  });
+
+  it("derives lineup absence only from the matching provider LINEUPS route before kickoff", async () => {
+    const findFirst = vi.fn().mockResolvedValue({ attempts: [{ reason: "CIRCUIT_OPEN" }] });
+    const client = {
+      lineupObservation: { findFirst: vi.fn().mockResolvedValue({ id: "lineup-1", observation: { provider: "api-football", observedAt: new Date("2026-09-12T10:00:00Z") }, fixture: { leagueId: "league-1", seasonId: "season-1", kickoffUtc: new Date("2026-09-12T12:00:00Z") } }) },
+      providerRouteReceipt: { findFirst },
+    };
+
+    const repository = createProductionRepository(client as never);
+    await expect(repository.absenceReason("fixture-1", "LINEUP_CONFIRMED")).resolves.toBe("PROVIDER_UNAVAILABLE");
+    expect(findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        competitionId: "league-1",
+        seasonId: "season-1",
+        endpointFamily: "LINEUPS",
+        createdAt: { lte: new Date("2026-09-12T12:00:00Z") },
+        attempts: { some: { provider: "api-football" } },
+      }),
+    }));
   });
 });

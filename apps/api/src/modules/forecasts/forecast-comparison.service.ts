@@ -38,7 +38,7 @@ export class ForecastComparisonService implements OnModuleDestroy {
   async onModuleDestroy(): Promise<void> { await this.client?.$disconnect(); }
 }
 
-function createProductionRepository(client: PrismaClient): ForecastComparisonRepository {
+export function createProductionRepository(client: PrismaClient): ForecastComparisonRepository {
   const forecasts = createPrismaForecastRepository(client);
   return {
     findExact: async (id) => {
@@ -48,11 +48,26 @@ function createProductionRepository(client: PrismaClient): ForecastComparisonRep
     listIssued: async (fixtureId) => forecasts.listIssued?.(fixtureId) ?? [],
     absenceReason: async (fixtureId, kind) => {
       if (kind !== "LINEUP_CONFIRMED") return "INSUFFICIENT_EVIDENCE";
-      const lineup = await client.lineupObservation.findFirst({ where: { fixtureId, status: "OFFICIAL_CONFIRMED" }, select: { id: true } });
+      const lineup = await client.lineupObservation.findFirst({
+        where: { fixtureId, status: "OFFICIAL_CONFIRMED" },
+        select: {
+          id: true,
+          observation: { select: { provider: true, observedAt: true } },
+          fixture: { select: { leagueId: true, seasonId: true, kickoffUtc: true } },
+        },
+      });
       if (!lineup) return "NO_CONFIRMED_LINEUP";
-      const fixture = await client.fixture.findUnique({ where: { id: fixtureId }, select: { leagueId: true, seasonId: true } });
-      if (!fixture) return "INSUFFICIENT_EVIDENCE";
-      const route = await client.providerRouteReceipt.findFirst({ where: { competitionId: fixture.leagueId, seasonId: fixture.seasonId }, include: { attempts: { orderBy: { createdAt: "desc" }, take: 1 } }, orderBy: { createdAt: "desc" } });
+      const route = await client.providerRouteReceipt.findFirst({
+        where: {
+          competitionId: lineup.fixture.leagueId,
+          seasonId: lineup.fixture.seasonId,
+          endpointFamily: "LINEUPS",
+          createdAt: { lte: lineup.fixture.kickoffUtc },
+          attempts: { some: { provider: lineup.observation.provider } },
+        },
+        include: { attempts: { where: { provider: lineup.observation.provider }, orderBy: { createdAt: "desc" }, take: 1 } },
+        orderBy: { createdAt: "desc" },
+      });
       const reason = route?.attempts[0]?.reason;
       if (reason?.includes("CAPABILITY")) return "CAPABILITY_DENIED";
       if (reason === "CRITICAL_HEADROOM" || reason === "ALLOWANCE_EXHAUSTED") return "BUDGET_PROTECTED";

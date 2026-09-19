@@ -9,7 +9,7 @@ export interface ProviderPolicyApprovalCommand { idempotencyKey: string; expecte
 @Injectable()
 export class ProviderPolicyService implements OnModuleDestroy {
   private readonly database: PrismaClient | null;
-  private readonly inFlight = new Map<string, Promise<unknown>>();
+  private readonly inFlight = new Map<string, { identity: ApprovalIdentity; decision: Promise<unknown> }>();
   constructor() { this.database = process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null; }
 
   async approve(raw: unknown, actor: string) {
@@ -22,9 +22,13 @@ export class ProviderPolicyService implements OnModuleDestroy {
       throw error;
     }
     const active = this.inFlight.get(command.idempotencyKey);
-    if (active) return active;
+    const identity = approvalIdentity(command);
+    if (active) {
+      if (!sameIdentity(active.identity, identity)) fail("IDEMPOTENCY_KEY_CONFLICT");
+      return active.decision;
+    }
     const decision = this.persist(command, actor);
-    this.inFlight.set(command.idempotencyKey, decision);
+    this.inFlight.set(command.idempotencyKey, { identity, decision });
     try { return await decision; }
     finally { this.inFlight.delete(command.idempotencyKey); }
   }
@@ -36,11 +40,13 @@ export class ProviderPolicyService implements OnModuleDestroy {
       await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`provider-policy:${command.idempotencyKey}`}, 0))`;
       const prior = await transaction.providerRouteAttempt.findUnique({ where: { attemptKey: command.idempotencyKey }, include: { routeReceipt: true } });
       if (prior) {
-        const audit = prior.routeReceipt.circuitSnapshot as { actor?: string };
-        return { decisionId: command.idempotencyKey, status: prior.admitted ? "approved" as const : "rejected" as const, actor: audit.actor ?? "unknown", scope: command.scope, policyVersion: prior.routeReceipt.policyVersion, artifactId: command.artifact.artifactId };
+        const audit = prior.routeReceipt.circuitSnapshot as { actor?: string; commandIdentity?: ApprovalIdentity };
+        const storedIdentity = audit.commandIdentity ?? identityFromReceipt(prior.routeReceipt);
+        if (!sameIdentity(storedIdentity, approvalIdentity(command))) fail("IDEMPOTENCY_KEY_CONFLICT");
+        return { decisionId: command.idempotencyKey, status: prior.admitted ? "approved" as const : "rejected" as const, actor: audit.actor ?? "unknown", scope: storedIdentity.scope, policyVersion: storedIdentity.policyVersion, artifactId: storedIdentity.artifactId };
       }
       const approvedAt = new Date();
-      const auditedContent = { ...receiptContent, circuitSnapshot: { state: "POLICY_APPROVAL", actor, approvedAt: approvedAt.toISOString() } };
+      const auditedContent = { ...receiptContent, circuitSnapshot: { state: "POLICY_APPROVAL", actor, approvedAt: approvedAt.toISOString(), commandIdentity: JSON.parse(JSON.stringify(approvalIdentity(command))) } };
       await transaction.providerRouteReceipt.create({ data: {
         id: routeId, contentHash: routeReceiptContentHash(auditedContent), ...auditedContent,
         attempts: { create: { id: `${routeId}:decision`, attemptKey: command.idempotencyKey, provider: command.scope.provider, state: "ADMITTED", reason: null, observationId: null, admitted: true, createdAt: approvedAt } },
@@ -55,6 +61,22 @@ export class ProviderPolicyService implements OnModuleDestroy {
   }
 
   async onModuleDestroy() { await this.database?.$disconnect(); }
+}
+
+interface ApprovalIdentity { policyVersion: string; scope: ProviderPolicyScope; artifactId: string; requestFingerprint: string }
+function approvalIdentity(command: ProviderPolicyApprovalCommand): ApprovalIdentity { return { policyVersion: command.expectedPolicyVersion, scope: command.scope, artifactId: command.artifact.artifactId, requestFingerprint: command.artifact.requestFingerprint }; }
+function sameIdentity(left: ApprovalIdentity, right: ApprovalIdentity): boolean {
+  return left.policyVersion === right.policyVersion
+    && left.artifactId === right.artifactId
+    && left.requestFingerprint === right.requestFingerprint
+    && left.scope.provider === right.scope.provider
+    && left.scope.competitionId === right.scope.competitionId
+    && left.scope.seasonId === right.scope.seasonId
+    && left.scope.endpoint === right.scope.endpoint;
+}
+function identityFromReceipt(receipt: { policyVersion: string; policyHash: string; competitionId: string; seasonId: string; endpointFamily: string; selectedProvider: string | null; capabilitySnapshot: unknown }): ApprovalIdentity {
+  const capability = receipt.capabilitySnapshot as { artifactId?: unknown };
+  return { policyVersion: receipt.policyVersion, scope: { provider: receipt.selectedProvider ?? "", competitionId: receipt.competitionId, seasonId: receipt.seasonId, endpoint: receipt.endpointFamily }, artifactId: typeof capability.artifactId === "string" ? capability.artifactId : "", requestFingerprint: receipt.policyHash };
 }
 
 function parseCommand(raw: unknown): ProviderPolicyApprovalCommand {

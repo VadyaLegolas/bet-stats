@@ -71,6 +71,24 @@ describe("provider policy approval", () => {
     expect(await replay.json()).toMatchObject({ actor: "policy-operator" });
   });
 
+  it("rejects replay of an idempotency key for a different approved command identity", async () => {
+    const original = approvalCommand("approval-conflict");
+    const conflicting = approvalCommand("approval-conflict");
+    conflicting.scope.endpoint = "RESULTS";
+    conflicting.artifact.endpoint = "RESULTS";
+    conflicting.artifact.scope.endpoint = "RESULTS";
+    conflicting.artifact.coverage[0]!.endpoint = "RESULTS";
+    conflicting.artifact.artifactId = "candidate-2";
+    conflicting.artifact.requestFingerprint = "sha256:different-request";
+
+    const [first, replay] = await Promise.all([authorized(original), authorized(conflicting)]);
+    expect([first.status, replay.status].sort()).toEqual([201, 400]);
+    const conflict = first.status === 400 ? first : replay;
+    expect(await conflict.json()).toEqual({ code: "IDEMPOTENCY_KEY_CONFLICT" });
+    expect(await database.providerRouteAttempt.count({ where: { attemptKey: "approval-conflict" } })).toBe(1);
+    expect(await database.providerCapability.count({ where: { OR: [{ endpoint: "FIXTURES" }, { endpoint: "RESULTS" }] } })).toBe(1);
+  });
+
   it.each([
     ["stale", (command: any) => { command.artifact.capturedAt = "2020-01-01T00:00:00.000Z"; }, "ARTIFACT_STALE"],
     ["mismatch", (command: any) => { command.artifact.scope.endpoint = "RESULTS"; }, "ARTIFACT_SCOPE_MISMATCH"],

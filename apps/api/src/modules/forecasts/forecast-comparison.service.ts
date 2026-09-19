@@ -70,7 +70,7 @@ export function createProductionRepository(client: PrismaClient): ForecastCompar
       });
       const reason = decision?.reason;
       if (reason?.includes("CAPABILITY")) return "CAPABILITY_DENIED";
-      if (reason === "CRITICAL_HEADROOM" || reason === "ALLOWANCE_EXHAUSTED") return "BUDGET_PROTECTED";
+      if (reason === "BUDGET_PROTECTED" || reason === "CRITICAL_HEADROOM" || reason === "ALLOWANCE_EXHAUSTED") return "BUDGET_PROTECTED";
       if (reason === "CIRCUIT_OPEN" || reason === "PROVIDER_UNAVAILABLE") return "PROVIDER_UNAVAILABLE";
       return decision?.outcome === "ADMITTED" ? "NO_CONFIRMED_LINEUP" : "INSUFFICIENT_EVIDENCE";
     },

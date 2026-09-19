@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ForecastComparisonService, createProductionRepository } from "../../apps/api/src/modules/forecasts/forecast-comparison.service.js";
 import { ForecastsController } from "../../apps/api/src/modules/forecasts/forecasts.controller.js";
+import { createProductionEnrichmentExecutor } from "../../workers/data-sync/src/jobs/enrichment.js";
 import { snapshot } from "../unit/forecast-comparison.test.js";
 
 describe("forecast comparison API", () => {
@@ -49,5 +50,29 @@ describe("forecast comparison API", () => {
         cutoff: { lte: new Date("2026-09-12T12:00:00Z") },
       }),
     }));
+  });
+
+  it("projects a production enrichment critical-headroom denial as budget protected", async () => {
+    let decision: { outcome: string; reason: string | null } | null = null;
+    const client = {
+      $queryRawUnsafe: vi.fn().mockResolvedValue([{ leagueId: "league-1", seasonId: "season-1", externalId: "42" }]),
+      providerCapability: { findUnique: vi.fn().mockResolvedValue({ supported: true, expiresAt: null }) },
+      providerCircuitState: { findUnique: vi.fn().mockResolvedValue({ state: "CLOSED" }) },
+      enrichmentDecisionReceipt: {
+        upsert: vi.fn(async ({ create }) => { decision = { outcome: create.outcome, reason: create.reason }; return create; }),
+        findFirst: vi.fn(async () => decision),
+      },
+      lineupObservation: { findFirst: vi.fn().mockResolvedValue(null) },
+      fixture: { findUnique: vi.fn().mockResolvedValue({ kickoffUtc: new Date("2026-09-12T18:00:00Z") }) },
+    };
+    const execute = createProductionEnrichmentExecutor({
+      database: client as never,
+      apiFootballFactory: vi.fn() as never,
+      reserve: async () => ({ reserved: false, reason: "CRITICAL_HEADROOM" }),
+    });
+
+    await expect(execute({ fixtureId: "fixture-1", endpoint: "LINEUPS", cutoff: "2026-09-12T17:00:00.000Z", policyVersion: "enrichment-v1" })).resolves.toEqual({ status: "denied", reason: "BUDGET_PROTECTED" });
+    await expect(createProductionRepository(client as never).absenceReason("fixture-1", "LINEUP_CONFIRMED")).resolves.toBe("BUDGET_PROTECTED");
+    expect(decision).toEqual({ outcome: "DENIED", reason: "BUDGET_PROTECTED" });
   });
 });

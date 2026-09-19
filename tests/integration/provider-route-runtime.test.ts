@@ -23,7 +23,7 @@ describe("durable provider route runtime", () => {
   });
   it("converges terminal replay without constructing or calling the provider", async () => {
     const factory = vi.fn(() => "client"), call = vi.fn();
-    const result = await executeProviderRoute({ routeId: "route-3", attemptKey: "job-3", candidates: [{ provider: "primary", factory }], appendRoute: async () => {}, admitAttempt: async () => ({ admitted: true, reused: true, terminal: { state: "SUCCEEDED", observationId: "obs", provider: "primary" } }), completeAttempt: async () => {}, call, classifyFailure: () => ({ eligible: false }), persistObservation: async () => ({ id: "never", observedAt: "" }), findLastValid: async () => null });
-    expect(result).toMatchObject({ status: "replayed", observationId: "obs" }); expect(factory).not.toHaveBeenCalled(); expect(call).not.toHaveBeenCalled();
+    const result = await executeProviderRoute({ routeId: "route-3", attemptKey: "job-3", candidates: [{ provider: "primary", factory }], appendRoute: async () => {}, admitAttempt: async () => ({ admitted: true, reused: true, terminal: { state: "SUCCEEDED", observationId: "obs", provider: "primary" } }), completeAttempt: async () => {}, call, classifyFailure: () => ({ eligible: false }), persistObservation: async () => ({ id: "never", observedAt: "" }), loadObservation: async () => ({ fixtures: [1] }), findLastValid: async () => null });
+    expect(result).toEqual({ status: "replayed", provider: "primary", observationId: "obs", value: { fixtures: [1] } }); expect(factory).not.toHaveBeenCalled(); expect(call).not.toHaveBeenCalled();
   });
 });

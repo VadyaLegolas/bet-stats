@@ -9,7 +9,7 @@ type Admission = { admitted: boolean; reused: boolean; reason?: string | null; t
 
 export type DurableRouteExecutionResult<T> =
   | { status: "completed"; provider: string; value: T; observationId: string }
-  | { status: "replayed"; provider: string; observationId: string | null }
+  | { status: "replayed"; provider: string; value: T; observationId: string }
   | { status: "limited"; reason: "NO_FALLBACK"; lastValidAt: string | null; lastValidValue: T | null };
 
 export async function resolveEndpointCandidateMappings<T>(input: {
@@ -94,6 +94,11 @@ export async function executeDurableMappedRoute<T>(input: {
       if (!rows[0]) { const existing = await input.database.$queryRawUnsafe<Array<{ id: string }>>(`SELECT id FROM "SourceObservation" WHERE provider=$1 AND "endpointFamily"=$2 AND "payloadHash"=$3`, provider, input.route.endpoint, payloadHash); id = existing[0]!.id; }
       return { id, observedAt: observedAt.toISOString() };
     },
+    loadObservation: async (observationId) => {
+      const observation = await input.database.sourceObservation.findUnique({ where: { id: observationId }, select: { provider: true, endpointFamily: true, rawPayload: true } });
+      if (!observation || observation.endpointFamily !== input.route.endpoint) throw new Error("REPLAY_OBSERVATION_NOT_FOUND");
+      return observation.rawPayload as T;
+    },
     findLastValid: async () => null,
   });
 }
@@ -108,6 +113,7 @@ export async function executeProviderRoute<TProvider, TValue>(input: {
   call: (provider: TProvider) => Promise<TValue>;
   classifyFailure: (error: unknown) => { eligible: boolean; trigger?: string };
   persistObservation: (observation: { provider: string; value: TValue; attemptKey: string }) => Promise<{ id: string; observedAt: string }>;
+  loadObservation?: (observationId: string) => Promise<TValue>;
   findLastValid: () => Promise<{ at: string; value: TValue } | null>;
 }): Promise<DurableRouteExecutionResult<TValue>> {
   if (input.candidates.length === 0 || input.candidates.length > 2) throw new Error("INVALID_PROVIDER_CANDIDATE_LIST");
@@ -116,7 +122,14 @@ export async function executeProviderRoute<TProvider, TValue>(input: {
     const candidate = input.candidates[ordinal]!;
     const attemptKey = `${input.attemptKey}:${ordinal}`;
     const admission = await input.admitAttempt({ routeId: input.routeId, attemptKey, attemptId: `${input.routeId}:attempt:${ordinal}`, provider: candidate.provider, ordinal });
-    if (admission.reused && admission.terminal) return { status: "replayed", provider: admission.terminal.provider, observationId: admission.terminal.observationId };
+    if (admission.reused && admission.terminal) {
+      if (admission.terminal.state === "SUCCEEDED" && admission.terminal.observationId) {
+        if (!input.loadObservation) throw new Error("REPLAY_OBSERVATION_LOADER_REQUIRED");
+        return { status: "replayed", provider: admission.terminal.provider, observationId: admission.terminal.observationId, value: await input.loadObservation(admission.terminal.observationId) };
+      }
+      if (admission.terminal.state === "NO_FALLBACK") break;
+      continue;
+    }
     if (!admission.admitted) continue;
     try {
       const value = await input.call(candidate.factory());

@@ -1,6 +1,6 @@
 import { Module } from "../../apps/api/node_modules/@nestjs/common/index.js";
 import { NestFactory } from "../../apps/api/node_modules/@nestjs/core/index.js";
-import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
 import { AppModule } from "../../apps/api/src/app.module.js";
 import { MediaModule } from "../../apps/api/src/modules/media/media.module.js";
 import { ProviderLogoController } from "../../apps/api/src/modules/media/provider-logo.controller.js";
@@ -47,5 +47,15 @@ describe("provider logo HTTP boundary", () => {
     const result = await bounded.fetchReference(bounded.issueReference("https://r2.thesportsdb.com/large.png"));
     expect(pinned).toBe("104.21.1.10");
     expect(result).toBeNull();
+  });
+
+  it.each([
+    "::ffff:127.0.0.1", "::ffff:192.168.1.1", "ff02::1", "fc00::1", "fe80::1", "2001:db8::1",
+    "192.0.2.1", "198.18.0.1", "224.0.0.1", "240.0.0.1", "100.64.0.1",
+  ])("rejects non-global destination %s before opening a connection", async (address) => {
+    const fetcher = vi.fn(async () => new Response(png, { headers: { "content-type": "image/png" } }));
+    const guarded = new ProviderLogoService({ resolve: async () => [address], fetcher });
+    await expect(guarded.fetchReference(guarded.issueReference("https://r2.thesportsdb.com/logo.png"))).resolves.toBeNull();
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });

@@ -3,6 +3,7 @@ import { isIP } from "node:net";
 import { promises as dns } from "node:dns";
 import { request as httpsRequest } from "node:https";
 import { Inject, Injectable, Optional } from "@nestjs/common";
+import ipaddr from "ipaddr.js";
 
 type Fetcher = (input: URL, init: RequestInit & { pinnedAddress: string }) => Promise<Response>;
 type Resolver = (hostname: string) => Promise<readonly string[]>;
@@ -61,7 +62,7 @@ export class ProviderLogoService {
   async #assertSafe(url: URL): Promise<string> {
     if (url.protocol !== "https:" || url.username || url.password || !HOSTS.has(url.hostname.toLowerCase())) throw new Error();
     const addresses = isIP(url.hostname) ? [url.hostname] : await this.#resolve(url.hostname);
-    if (!addresses.length || addresses.some(isPrivate)) throw new Error();
+    if (!addresses.length || addresses.some((address) => !isGlobalUnicast(address))) throw new Error();
     return addresses[0]!;
   }
 }
@@ -85,11 +86,18 @@ function pinnedHttpsFetch(url: URL, init: RequestInit & { pinnedAddress: string 
     request.once("error", reject); request.once("close", () => init.signal?.removeEventListener("abort", abort)); request.end();
   });
 }
-function isPrivate(address: string): boolean {
-  const lower = address.toLowerCase();
-  if (lower === "::1" || lower === "::" || lower.startsWith("fe80:") || lower.startsWith("fc") || lower.startsWith("fd")) return true;
-  const parts = address.split(".").map(Number); if (parts.length !== 4) return false;
-  const [a = 0, b = 0] = parts; return a === 10 || a === 127 || a === 0 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+function isGlobalUnicast(address: string): boolean {
+  try {
+    const parsed = ipaddr.process(address);
+    if (parsed.range() !== "unicast") return false;
+    if (parsed.kind() !== "ipv4") return true;
+    const [a, b, c] = parsed.toByteArray();
+    return !(a === 192 && b === 0 && c === 0)
+      && !(a === 192 && b === 88 && c === 99)
+      && !(a === 198 && (b === 18 || b === 19));
+  } catch {
+    return false;
+  }
 }
 function signatureMatches(mime: string, bytes: Uint8Array): boolean {
   if (mime === "image/png") return bytes.length >= 8 && [0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a].every((value, index) => bytes[index] === value);

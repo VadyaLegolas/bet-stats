@@ -23,20 +23,28 @@ function parseRange(fromValue?: string, toValue?: string): { from: Date; to: Dat
   if (to <= from || to.getTime() - from.getTime() > MAX_RANGE_MS) throw new BadRequestException("Fixture range must be positive and no longer than 31 days");
   return { from, to };
 }
-type RouteRow = { id: string; policyVersion: string; selectedProvider: string | null; candidates: unknown; trigger: string; outcome: string; createdAt: Date; attempts: Array<{ provider: string | null; reason: string | null; createdAt: Date; observation: { observedAt: Date } | null }> };
+type RouteRow = { id: string; policyVersion: string; selectedProvider: string | null; candidates: unknown; trigger: string; outcome: string; createdAt: Date; attempts: Array<{ state: string; provider: string | null; reason: string | null; createdAt: Date; observation: { observedAt: Date } | null }> };
 export function projectProviderState(route: RouteRow | null, lastValidAt: string | null = null): ProviderStateProjection {
   if (!route) return { state: "PENDING", provider: "unknown", reason: "ROUTE_PENDING", capturedAt: null, lastValidAt: null, retryAllowed: true, receipt: null };
   const candidates = Array.isArray(route.candidates) ? route.candidates.filter((item): item is string => typeof item === "string") : [];
-  const latest = route.attempts.at(-1); const capturedAt = latest?.observation?.observedAt.toISOString() ?? null;
+  const latest = route.attempts.at(-1);
+  const succeeded = [...route.attempts].reverse().find((attempt) => attempt.state === "SUCCEEDED" && attempt.observation);
+  const failedPrimary = route.attempts.find((attempt) => attempt.state === "FAILED");
+  const terminalNoFallback = [...route.attempts].reverse().find((attempt) => attempt.state === "NO_FALLBACK");
+  const effective = succeeded ?? terminalNoFallback ?? latest;
+  const effectiveProvider = effective?.provider ?? route.selectedProvider ?? candidates[0] ?? "unknown";
+  const effectiveTrigger = failedPrimary?.reason ?? effective?.reason ?? route.trigger;
+  const effectiveOutcome = succeeded ? "SUCCEEDED" : terminalNoFallback ? "NO_FALLBACK" : route.outcome;
+  const capturedAt = succeeded?.observation?.observedAt.toISOString() ?? null;
   const soleSource = candidates.length === 1;
-  let state: ProviderStateProjection["state"] = route.selectedProvider ? (candidates.indexOf(route.selectedProvider) > 0 ? "FALLBACK" : "PRIMARY") : "UNAVAILABLE";
-  let reason = route.trigger;
-  if (route.outcome === "NO_FALLBACK" && soleSource) { state = "LIMITED"; reason = "NO_PRODUCTION_FALLBACK"; }
-  else if (route.trigger === "UNSUPPORTED_CAPABILITY") state = "UNSUPPORTED";
-  else if (route.trigger === "STALE_CAPABILITY") state = "STALE_CAPABILITY";
-  else if (route.trigger === "CRITICAL_HEADROOM" || route.trigger === "ALLOWANCE_EXHAUSTED") state = "BUDGET_PROTECTED";
-  else if (route.trigger === "CIRCUIT_OPEN") state = "CIRCUIT_DENIED";
-  return { state, provider: route.selectedProvider ?? latest?.provider ?? candidates[0] ?? "unknown", reason, capturedAt, lastValidAt: state === "LIMITED" ? lastValidAt : null, retryAllowed: state !== "PRIMARY" && state !== "FALLBACK", receipt: { id: route.id, policyVersion: route.policyVersion, outcome: route.outcome, trigger: route.trigger } };
+  let state: ProviderStateProjection["state"] = succeeded ? (candidates.indexOf(effectiveProvider) > 0 ? "FALLBACK" : "PRIMARY") : "UNAVAILABLE";
+  let reason = effectiveTrigger;
+  if (terminalNoFallback && soleSource) { state = "LIMITED"; reason = "NO_PRODUCTION_FALLBACK"; }
+  else if (effectiveTrigger === "UNSUPPORTED_CAPABILITY") state = "UNSUPPORTED";
+  else if (effectiveTrigger === "STALE_CAPABILITY" || effectiveTrigger === "EXPIRED_CAPABILITY") state = "STALE_CAPABILITY";
+  else if (effectiveTrigger === "CRITICAL_HEADROOM" || effectiveTrigger === "ALLOWANCE_EXHAUSTED") state = "BUDGET_PROTECTED";
+  else if (effectiveTrigger === "CIRCUIT_OPEN") state = "CIRCUIT_DENIED";
+  return { state, provider: effectiveProvider, reason, capturedAt, lastValidAt: state === "LIMITED" ? lastValidAt : null, retryAllowed: state !== "PRIMARY" && state !== "FALLBACK", receipt: { id: route.id, policyVersion: route.policyVersion, outcome: effectiveOutcome, trigger: effectiveTrigger } };
 }
 function project(row: FixtureRow, providerState: ProviderStateProjection): FixtureProjection {
   const source = row.provenance[0];
@@ -66,8 +74,9 @@ export class FixturesService implements OnModuleDestroy {
     if (!this.database) return projectProviderState(null);
     const route = await this.database.providerRouteReceipt.findFirst({ where: { competitionId: row.league.id, seasonId: row.season.id, endpointFamily: "FIXTURES" }, include: { attempts: { orderBy: { createdAt: "asc" }, include: { observation: { select: { observedAt: true } } } } }, orderBy: { createdAt: "desc" } });
     if (!route) return projectProviderState(null);
-    const provider = route.selectedProvider ?? (Array.isArray(route.candidates) && typeof route.candidates[0] === "string" ? route.candidates[0] : null);
-    const prior = route.outcome === "NO_FALLBACK" && provider ? await this.database.providerRouteAttempt.findFirst({ where: { provider, state: "SUCCEEDED", observationId: { not: null }, routeReceipt: { competitionId: row.league.id, seasonId: row.season.id, endpointFamily: "FIXTURES" } }, include: { observation: { select: { observedAt: true } } }, orderBy: { createdAt: "desc" } }) : null;
+    const terminalNoFallback = route.attempts.find((attempt) => attempt.state === "NO_FALLBACK");
+    const provider = terminalNoFallback?.provider ?? route.selectedProvider ?? (Array.isArray(route.candidates) && typeof route.candidates[0] === "string" ? route.candidates[0] : null);
+    const prior = terminalNoFallback && provider ? await this.database.providerRouteAttempt.findFirst({ where: { provider, state: "SUCCEEDED", observationId: { not: null }, routeReceipt: { competitionId: row.league.id, seasonId: row.season.id, endpointFamily: "FIXTURES" } }, include: { observation: { select: { observedAt: true } } }, orderBy: { createdAt: "desc" } }) : null;
     return projectProviderState(route as unknown as RouteRow, prior?.observation?.observedAt.toISOString() ?? null);
   }
 }

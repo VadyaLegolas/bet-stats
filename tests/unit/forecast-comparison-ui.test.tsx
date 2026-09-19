@@ -26,6 +26,17 @@ describe("forecast revision comparison UI", () => {
     expect(markup).toContain("Probabilities are estimates, not guarantees. You can lose money when betting.");
   });
 
+  it("renders composite evidence changes when fixture IDs are unchanged", () => {
+    const left = snapshot("left", "INITIAL", 0.45, [], 0.6, 1.2);
+    const right = snapshot("right", "PRE_MATCH", 0.5, [], 0.7, 1.4);
+    Object.assign(left.receipt.sourceRefs[0]!, { fixtureId: "shared", payloadHash: "hash-before" });
+    Object.assign(right.receipt.sourceRefs[0]!, { fixtureId: "shared", payloadHash: "hash-after" });
+    const markup = renderToStaticMarkup(createElement(ForecastComparisonPanel, { comparison: compareForecastPair(left, right) }));
+    expect(markup).toContain("hash-before");
+    expect(markup).toContain("hash-after");
+    expect(markup).not.toContain("No displayed model components changed");
+  });
+
   it("renders documented one-snapshot and absent-lineup states with persistent risk disclosure", () => {
     const markup = renderToStaticMarkup(createElement(ForecastWorkbench, { fixtureId: "fixture-1", forecasts: [snapshot("only", "INITIAL", 0.45, [], 0.6, 1.2)] }));
     expect(markup).toContain("No comparable forecast pair yet");

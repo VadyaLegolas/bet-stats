@@ -42,12 +42,15 @@ export function initializeComparisonPair(params: URLSearchParams, forecasts: rea
 export function swapComparisonPair(pair: { leftId: string; rightId: string }) { return { leftId: pair.rightId, rightId: pair.leftId }; }
 function signedPercent(value: number): string { return `${value > 0 ? "+" : ""}${(value * 100).toFixed(1)}%`; }
 function directionText(direction: "increase" | "decrease" | "unchanged", delta: number): string { return direction === "increase" ? `increased by ${signedPercent(delta)}` : direction === "decrease" ? `decreased by ${signedPercent(Math.abs(delta))}` : "unchanged"; }
+function sourceRefLabel(source: ForecastComparisonDto["sourceRefs"]["added"][number]): string {
+  return `${source.fixtureId} · payload ${source.payloadHash} · observed ${source.observedAt} · effective ${source.effectiveAt}`;
+}
 
 export function ForecastComparisonPanel({ comparison }: { comparison: ForecastComparisonDto }) {
-  const material = comparison.sources.added.length + comparison.sources.removed.length + comparison.limitations.added.length + comparison.limitations.removed.length;
+  const material = comparison.sourceRefs.added.length + comparison.sourceRefs.removed.length + comparison.limitations.added.length + comparison.limitations.removed.length;
   return <div>
     <h4>Material evidence, model, and limitation changes</h4>
-    {material === 0 ? <p>No displayed model components changed between these exact snapshots.</p> : <ul><li>Sources added: {comparison.sources.added.join(", ") || "none"}</li><li>Sources removed: {comparison.sources.removed.join(", ") || "none"}</li><li>Limitations added: {comparison.limitations.added.join(", ") || "none"}</li><li>Limitations resolved: {comparison.limitations.removed.join(", ") || "none"}</li></ul>}
+    {material === 0 ? <p>No displayed model components changed between these exact snapshots.</p> : <ul><li>Evidence added: {comparison.sourceRefs.added.map(sourceRefLabel).join("; ") || "none"}</li><li>Evidence removed: {comparison.sourceRefs.removed.map(sourceRefLabel).join("; ") || "none"}</li><li>Limitations added: {comparison.limitations.added.join(", ") || "none"}</li><li>Limitations resolved: {comparison.limitations.removed.join(", ") || "none"}</li></ul>}
     <div role="region" aria-label="Probability delta table" style={{ overflowX: "auto" }}><table><caption>Stable probability changes for the selected immutable snapshots</caption><thead><tr><th scope="col">Market</th><th scope="col">Selection</th><th scope="col">Left</th><th scope="col">Right</th><th scope="col">Change</th></tr></thead><tbody>{comparison.probabilities.map((row) => <tr key={`${row.market}:${row.selection}`}><th scope="row">{row.market} — {row.selection}</th><td>{row.selection}</td><td>{percent(row.left)}</td><td>{percent(row.right)}</td><td><span aria-hidden="true">{row.direction === "increase" ? "↑" : row.direction === "decrease" ? "↓" : "—"} {signedPercent(row.delta)}</span><span className="sr-only"> {directionText(row.direction, row.delta)}</span></td></tr>)}</tbody></table></div>
     <details><summary>Exact comparison receipts</summary><dl><dt>Left snapshot ID</dt><dd><code>{comparison.left.id}</code></dd><dt>Right snapshot ID</dt><dd><code>{comparison.right.id}</code></dd><dt>Left cutoff</dt><dd><time dateTime={comparison.left.cutoff}>{comparison.left.cutoff}</time></dd><dt>Right cutoff</dt><dd><time dateTime={comparison.right.cutoff}>{comparison.right.cutoff}</time></dd></dl></details>
     <p>Probabilities are estimates, not guarantees. You can lose money when betting.</p>

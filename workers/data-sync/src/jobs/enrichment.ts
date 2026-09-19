@@ -8,6 +8,7 @@ type Capability = { supported: boolean; expiresAt: string | null };
 export type EnrichmentJobResult =
   | { status: "denied"; reason: "UNKNOWN_CAPABILITY" | "UNSUPPORTED_CAPABILITY" | "STALE_CAPABILITY" | "CIRCUIT_OPEN" | "BUDGET_PROTECTED" }
   | { status: "completed"; evidenceState: "OBSERVED_EMPTY"; observationId: null; forecastId: null }
+  | { status: "reschedule"; runAt: string; reason: "PRE_CUTOFF_EMPTY" }
   | { status: "completed"; evidenceState: "OBSERVED"; observationId: string; receiptHash: string; forecastId: string | null };
 
 export async function runEnrichmentJob(input: {
@@ -31,7 +32,10 @@ export async function runEnrichmentJob(input: {
   if (!(await input.reserve()).reserved) return { status: "denied", reason: "BUDGET_PROTECTED" };
 
   const observation = await input.providerFactory().fetch();
-  if (observation.state === "observed-empty") return { status: "completed", evidenceState: "OBSERVED_EMPTY", observationId: null, forecastId: null };
+  if (observation.state === "observed-empty") {
+    if (now < new Date(input.cutoff)) return { status: "reschedule", runAt: input.cutoff, reason: "PRE_CUTOFF_EMPTY" };
+    return { status: "completed", evidenceState: "OBSERVED_EMPTY", observationId: null, forecastId: null };
+  }
   const officialLineup = input.endpoint === "LINEUPS" && officialSameFixtureBeforeCutoff(observation, input.fixtureId, input.cutoff);
   const stored = await input.persist(observation, { officialLineup });
   let forecastId: string | null = null;

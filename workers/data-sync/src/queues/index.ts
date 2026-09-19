@@ -1,4 +1,4 @@
-import { Queue, Worker, UnrecoverableError, type Job, type JobsOptions, type Processor } from "bullmq";
+import { DelayedError, Queue, Worker, UnrecoverableError, type Job, type JobsOptions, type Processor } from "bullmq";
 import type { PrismaClient } from "@bet-stats/database";
 import { claimReplayExecution, type ReplayExecutionContext, type ReplayExecutionLeaseOptions } from "./replay-execution.js";
 import type { BacktestPlanReceipt } from "../jobs/backtests.js";
@@ -16,30 +16,42 @@ export const BACKTEST_MAX_ATTEMPTS = 3;
 export const ENRICHMENT_MAX_ATTEMPTS = 2;
 
 export type EnrichmentEndpoint = "LINEUPS" | "INJURIES" | "ODDS" | "STATISTICS";
-export interface EnrichmentJobData { fixtureId: string; endpoint: EnrichmentEndpoint; cutoff: string; policyVersion: string }
+export interface EnrichmentJobData { fixtureId: string; endpoint: EnrichmentEndpoint; cutoff: string; runAt: string; policyVersion: string }
 
 export function createEnrichmentJobId(data: EnrichmentJobData): string {
-  return `${data.policyVersion}:${data.fixtureId}:${data.endpoint}:${data.cutoff}`;
+  return `${data.policyVersion}:${data.fixtureId}:${data.endpoint}:${data.runAt}`;
 }
 
 export function createEnrichmentSchedule(input: { fixtureId: string; kickoffUtc: string; policyVersion: string }): EnrichmentJobData[] {
   const kickoff = new Date(input.kickoffUtc);
   if (Number.isNaN(kickoff.getTime())) throw new Error("INVALID_ENRICHMENT_KICKOFF");
   const cutoff = new Date(kickoff.getTime() - 60 * 60_000).toISOString();
-  return (["LINEUPS", "INJURIES", "ODDS", "STATISTICS"] as const).map((endpoint) => ({ fixtureId: input.fixtureId, endpoint, cutoff, policyVersion: input.policyVersion }));
+  return (["LINEUPS", "INJURIES", "ODDS", "STATISTICS"] as const).map((endpoint) => ({ fixtureId: input.fixtureId, endpoint, cutoff, runAt: cutoff, policyVersion: input.policyVersion }));
 }
 
-export function createEnrichmentQueue(input: { redisUrl: string; prefix?: string }) {
-  const queue = new Queue<EnrichmentJobData>(optionalQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
+export function createEnrichmentQueue(input: { redisUrl: string; prefix?: string; queueFactory?: typeof Queue; now?: () => Date }) {
+  const QueueFactory = input.queueFactory ?? Queue;
+  const queue = new QueueFactory(optionalQueue(input.prefix), { connection: redisConnection(input.redisUrl) }) as Queue<EnrichmentJobData>;
   return {
-    enqueue: (data: EnrichmentJobData) => queue.add(data.endpoint.toLowerCase(), data, { attempts: ENRICHMENT_MAX_ATTEMPTS, backoff: { type: "exponential", delay: 1_000, jitter: 0.25 }, removeOnComplete: { age: 86_400, count: 1_000 }, removeOnFail: { age: 604_800, count: 5_000 }, jobId: createEnrichmentJobId(data).replaceAll(":", "-") }),
+    enqueue: (data: EnrichmentJobData) => queue.add(data.endpoint.toLowerCase(), data, { attempts: ENRICHMENT_MAX_ATTEMPTS, backoff: { type: "exponential", delay: 1_000, jitter: 0.25 }, delay: Math.max(0, Date.parse(data.runAt) - (input.now?.() ?? new Date()).getTime()), removeOnComplete: { age: 86_400, count: 1_000 }, removeOnFail: { age: 604_800, count: 5_000 }, jobId: createEnrichmentJobId(data).replaceAll(":", "-") }),
     close: () => queue.close(),
   };
 }
 
 export function createEnrichmentWorker(input: { redisUrl: string; prefix?: string; execute: (data: EnrichmentJobData) => Promise<unknown>; workerFactory?: typeof Worker }) {
   const WorkerFactory = input.workerFactory ?? Worker;
-  return new WorkerFactory<EnrichmentJobData>(optionalQueue(input.prefix), (job: Job<EnrichmentJobData>) => input.execute(job.data), { connection: redisConnection(input.redisUrl), concurrency: 1, maxStalledCount: 2, lockDuration: 30_000 });
+  return new WorkerFactory<EnrichmentJobData>(optionalQueue(input.prefix), async (job: Job<EnrichmentJobData>) => {
+    const result = await input.execute(job.data);
+    if (isEnrichmentReschedule(result)) {
+      await job.moveToDelayed(Date.parse(result.runAt), job.token);
+      throw new DelayedError();
+    }
+    return result;
+  }, { connection: redisConnection(input.redisUrl), concurrency: 1, maxStalledCount: 2, lockDuration: 30_000 });
+}
+
+function isEnrichmentReschedule(value: unknown): value is { status: "reschedule"; runAt: string } {
+  return typeof value === "object" && value !== null && (value as { status?: unknown }).status === "reschedule" && typeof (value as { runAt?: unknown }).runAt === "string";
 }
 
 export interface BacktestJobData { planId: string; planHash: string; correlationId: string }

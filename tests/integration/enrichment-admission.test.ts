@@ -49,9 +49,21 @@ describe("optional enrichment admission", () => {
 
   it("schedules bounded deterministic optional jobs without crossing critical headroom", async () => {
     expect(createEnrichmentSchedule({ fixtureId: "fixture-1", kickoffUtc: "2026-09-12T18:00:00.000Z", policyVersion: "enrichment-v1" }).map((job) => job.endpoint)).toEqual(["LINEUPS", "INJURIES", "ODDS", "STATISTICS"]);
-    expect(createEnrichmentJobId({ fixtureId: "fixture-1", endpoint: "ODDS", cutoff: "2026-09-12T17:00:00.000Z", policyVersion: "enrichment-v1" })).toBe("enrichment-v1:fixture-1:ODDS:2026-09-12T17:00:00.000Z");
+    expect(createEnrichmentJobId({ fixtureId: "fixture-1", endpoint: "ODDS", cutoff: "2026-09-12T17:00:00.000Z", runAt: "2026-09-12T17:00:00.000Z", policyVersion: "enrichment-v1" })).toBe("enrichment-v1:fixture-1:ODDS:2026-09-12T17:00:00.000Z");
     const factory = vi.fn(() => ({ fetch: async () => ({ state: "observed" as const, capturedAt: "2026-09-12T16:00:00.000Z", payload: { bookmaker: "provider-feed", price: "2.10" } }) }));
     expect(await runEnrichmentJob({ fixtureId: "fixture-1", endpoint: "ODDS", cutoff: "2026-09-12T17:00:00.000Z", readCapability: async () => ({ supported: true, expiresAt: null }), readCircuit: async () => "CLOSED", reserve: async () => ({ reserved: false, reason: "CRITICAL_HEADROOM" }), providerFactory: factory, persist: async () => ({ observationId: "never", receiptHash: "never" }) })).toEqual({ status: "denied", reason: "BUDGET_PROTECTED" });
     expect(factory).not.toHaveBeenCalled();
+  });
+
+  it("reschedules an empty response observed before the intended run window", async () => {
+    const result = await runEnrichmentJob({
+      fixtureId: "fixture-1", endpoint: "LINEUPS", cutoff: "2026-09-12T17:00:00.000Z",
+      readCapability: async () => ({ supported: true, expiresAt: null }), readCircuit: async () => "CLOSED",
+      reserve: async () => ({ reserved: true }),
+      providerFactory: () => ({ fetch: async () => ({ state: "observed-empty" as const, capturedAt: "2026-09-12T16:00:00.000Z", payload: null }) }),
+      persist: async () => ({ observationId: "never", receiptHash: "never" }),
+      now: new Date("2026-09-12T16:00:00.000Z"),
+    });
+    expect(result).toEqual({ status: "reschedule", runAt: "2026-09-12T17:00:00.000Z", reason: "PRE_CUTOFF_EMPTY" });
   });
 });

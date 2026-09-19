@@ -1,20 +1,17 @@
 ---
 phase: 05-provider-aware-coverage-and-enrichment
-verified: 2026-09-19T11:27:17Z
+verified: 2026-09-19T17:53:44Z
 status: passed
 score: 15/15 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 re_verification:
-  previous_status: gaps_found
-  previous_score: 4/14
+  previous_status: passed
+  previous_score: 15/15
   gaps_closed:
-    - "Production worker executes versioned provider routes with durable attempts and canonical fallback reconciliation."
-    - "Sole-source degradation projects the latest valid immutable observation timestamp."
-    - "Optional enrichment is scheduled and consumed behind capability, circuit and protected-budget admission."
-    - "The web workbench renders server-derived forecast availability reasons."
-    - "Provider season identity is scoped by canonical league through a forward migration."
-    - "Live PostgreSQL/Redis/worker/Nest/Next tests prove degradation, enrichment and exact-pair behavior."
+    - "Post-review CR-01: every IANA special-use IPv4/IPv6 logo destination is denied while global controls remain accepted."
+    - "Post-review WR-01: owned live acceptance now creates routes and forecasts through production repositories/orchestrators instead of direct seeding."
+    - "Post-review WR-02: a persisted critical-headroom denial remains BUDGET_PROTECTED through the public availability projection."
   gaps_remaining: []
   regressions: []
 human_verification: []
@@ -23,9 +20,9 @@ human_verification: []
 # Phase 5: Provider-Aware Coverage and Enrichment Verification Report
 
 **Phase Goal:** As a football analytics user, I want to access configured competition coverage and pre-match evidence updates, so that provider failures remain visible and canonical identities remain stable.
-**Verified:** 2026-09-19T11:27:17Z
+**Verified:** 2026-09-19T17:53:44Z
 **Status:** passed
-**Re-verification:** Yes — after Plans 05-11 through 05-16
+**Re-verification:** Yes — post-code-review regression verification after commits `5a9ad1d`, `b8c8436`, and `e6db080`
 
 ## User Flow Coverage
 
@@ -71,7 +68,8 @@ human_verification: []
 | `workers/data-sync/src/jobs/enrichment.ts` | ✓ VERIFIED | Registered consumer; admission precedes provider construction and persistence. |
 | `apps/api/src/modules/fixtures/fixtures.service.ts` | ✓ VERIFIED | Projects real last-valid observation timestamp. |
 | `apps/web/app/fixtures/[fixtureId]/forecast-workbench.tsx` | ✓ VERIFIED | Consumes availability DTO and preserves exact URL pair. |
-| `packages/database/prisma/migrations/20260913_phase05_season_external_ref_scope/migration.sql` | ✓ VERIFIED | Guarded lossless backfill and compound relational enforcement. |
+| `packages/database/prisma/migrations/20260913_phase05_season_external_ref_scope/migration.sql` | ✓ VERIFIED | Guarded lossless backfill and compound relational enforcement; populated/empty migration tests pass. |
+| `packages/database/src/generated/prisma/` | ✓ VERIFIED | Generated client exists and the database package passes a forced typecheck against the scoped compound key. |
 | `tests/e2e/live-provider-stack.ts` | ✓ VERIFIED | Owned migrated stack with exact PID/container cleanup and no interception. |
 
 ### Key Links and Data Flow
@@ -91,13 +89,14 @@ human_verification: []
 
 | Check | Result | Status |
 | --- | --- | --- |
-| Five linked unit files | 51/51 tests passed | ✓ PASS |
-| Fourteen linked integration files | 13 files/75 tests passed; replay file needed its documented test-only ingress env | ✓ PASS |
-| `replay-boundary.test.ts` with synthetic signing secret and allowed subject | 17/17 passed | ✓ PASS |
-| Phase 5 Playwright Chromium acceptance | 5/5 passed against real PostgreSQL/Redis/worker/Nest/Next | ✓ PASS |
+| Five linked unit files | 5 files, 54/54 tests passed | ✓ PASS |
+| Post-review provider/security/enrichment/API regression selection | 12 files, 122/122 tests passed | ✓ PASS |
+| `replay-boundary.test.ts` with synthetic signing secret and `local-test-operator` authorization | 17/17 passed | ✓ PASS |
+| D-15 migration, scoped worker routing and owned live-stack smoke | 3 files, 20/20 tests passed | ✓ PASS |
+| Phase 5 Playwright Chromium acceptance | 5/5 passed against owned PostgreSQL/Redis/worker/Nest/Next; routing and snapshots were produced through production composition | ✓ PASS |
 | `turbo run typecheck --force` under Node 24.14.0 | 7/7 packages passed, cache bypassed | ✓ PASS |
 
-The first aggregate integration attempt produced 17 replay failures only because `OPERATOR_PROXY_SIGNING_SECRET` was omitted. The named suite passed 17/17 after supplying the required synthetic test secret and `local-test-operator` allowlist; this is test invocation configuration, not a product gap.
+The first aggregate integration invocation used the wrong allowlist variable name (`OPERATOR_PROXY_ALLOWED_SUBJECTS`) and also included `forecast-snapshots.test.ts` without its required external `DATABASE_URL`; 12 independent files still passed 122 tests. The replay suite then passed 17/17 with the documented `OPERATOR_AUTHORIZED_SUBJECTS=local-test-operator` and synthetic signing secret. Database-dependent forecast issuance was independently exercised by the owned live-stack smoke and Playwright runs, which provision their own migrated PostgreSQL/Redis resources. These were invocation prerequisites, not product failures.
 
 ### Probe Execution
 
@@ -121,16 +120,16 @@ No orphaned Phase 5 requirements were found.
 
 | Area | Evidence | Skipped | Circular | Verdict |
 | --- | --- | ---: | --- | --- |
-| Routing/identity/migration | PostgreSQL integration plus live browser | 0 | No | Strong behavioral/value assertions |
+| Routing/identity/migration | PostgreSQL integration, replay boundary and live browser | 0 | No | Strong behavioral/value assertions |
 | Optional enrichment | Integration plus real worker/browser | 0 | No | Strong behavioral assertions |
 | Comparison/availability | Unit, API and real browser | 0 | No | Strong behavioral/value assertions |
 | TheSportsDB/media/security | Adversarial integration | 0 | No | Strong behavioral assertions |
 
-Disabled requirement tests: **0**. Circular expected-value generators: **0**. Insufficient assertions: **0**. The former isolated-helper risk is closed by an owned live stack with no request interception or page substitution.
+Disabled requirement tests: **0**. Circular expected-value generators: **0**. Insufficient assertions: **0**. The former isolated-helper risk remains closed: the live stack seeds only prerequisites, then calls `executeDurableMappedRoute`, `createProviderRoutingRepository`, `ForecastOrchestrator`, and `createPrismaForecastRepository`; browser tests use the resulting immutable IDs without request interception or page substitution.
 
 ### Anti-Patterns Found
 
-No unreferenced `TBD`, `FIXME`, or `XXX` markers occur in Phase 5 production artifacts. `return null` matches are deliberate fail-closed parsing/security branches, not user-visible stubs. No hollow prop or placeholder terminates a required data flow.
+No unreferenced `TBD`, `FIXME`, or `XXX` markers occur in the post-review production artifacts. `placeholder` in `ProviderLogoService` is the explicit safe fallback result after a rejected/missing image, not an implementation stub. `return null` matches are deliberate fail-closed parsing/security branches. No hollow prop terminates a required data flow.
 
 ### Decision Coverage
 
@@ -142,9 +141,9 @@ N/A — previously unverified runtime behaviors now have real live-stack Playwri
 
 ### Gaps Summary
 
-All prior blockers are closed. No gaps remain, nothing is deferred to Phase 6, and no override was applied.
+All prior blockers and all three final code-review fixes are verified in the current code. No gaps remain, nothing is deferred to Phase 6, and no override was applied. Temporary owned Docker resources were cleaned up after the live runs.
 
 ---
 
-_Verified: 2026-09-19T11:27:17Z_  
+_Verified: 2026-09-19T17:53:44Z_
 _Verifier: the agent (gsd-verifier)_

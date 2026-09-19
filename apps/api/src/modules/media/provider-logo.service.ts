@@ -1,9 +1,10 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
 import { promises as dns } from "node:dns";
+import { request as httpsRequest } from "node:https";
 import { Inject, Injectable, Optional } from "@nestjs/common";
 
-type Fetcher = (input: string | URL, init?: RequestInit) => Promise<Response>;
+type Fetcher = (input: URL, init: RequestInit & { pinnedAddress: string }) => Promise<Response>;
 type Resolver = (hostname: string) => Promise<readonly string[]>;
 const HOSTS = new Set(["www.thesportsdb.com", "r2.thesportsdb.com", "images.thesportsdb.com"]);
 const MAX_BYTES = 1_000_000;
@@ -13,7 +14,7 @@ const REFERENCE_SECRET = randomBytes(32);
 export class ProviderLogoService {
   readonly #fetcher: Fetcher; readonly #resolve: Resolver; readonly #timeoutMs: number;
   constructor(@Optional() @Inject("PROVIDER_LOGO_OPTIONS") options: { fetcher?: Fetcher; resolve?: Resolver; timeoutMs?: number } = {}) {
-    this.#fetcher = options.fetcher ?? fetch;
+    this.#fetcher = options.fetcher ?? pinnedHttpsFetch;
     this.#resolve = options.resolve ?? (async (host) => (await dns.lookup(host, { all: true })).map((entry) => entry.address));
     this.#timeoutMs = options.timeoutMs ?? 5_000;
   }
@@ -41,8 +42,8 @@ export class ProviderLogoService {
   async #fetchValidated(candidate: string): Promise<{ mime: string; bytes: Uint8Array } | null> {
     try { let url = new URL(candidate);
       for (let redirect = 0; redirect <= 2; redirect += 1) {
-        await this.#assertSafe(url);
-        const response = await this.#fetcher(url, { redirect: "manual", signal: AbortSignal.timeout(this.#timeoutMs), headers: { accept: "image/png,image/jpeg,image/webp" } });
+        const pinnedAddress = await this.#assertSafe(url);
+        const response = await this.#fetcher(url, { pinnedAddress, redirect: "manual", signal: AbortSignal.timeout(this.#timeoutMs), headers: { accept: "image/png,image/jpeg,image/webp" } });
         if (response.status >= 300 && response.status < 400) {
           const location = response.headers.get("location"); if (!location || redirect === 2) return null;
           url = new URL(location, url); continue;
@@ -51,17 +52,38 @@ export class ProviderLogoService {
         const mime = response.headers.get("content-type")?.split(";")[0]?.trim();
         if (!mime || !["image/png", "image/jpeg", "image/webp"].includes(mime)) return null;
         const announced = Number(response.headers.get("content-length") ?? 0); if (announced > MAX_BYTES) return null;
-        const bytes = new Uint8Array(await response.arrayBuffer()); if (bytes.length > MAX_BYTES || !signatureMatches(mime, bytes)) return null;
+        const bytes = await readBounded(response, MAX_BYTES); if (!bytes || !signatureMatches(mime, bytes)) return null;
         return { mime, bytes };
       }
       return null;
     } catch { return null; }
   }
-  async #assertSafe(url: URL): Promise<void> {
+  async #assertSafe(url: URL): Promise<string> {
     if (url.protocol !== "https:" || url.username || url.password || !HOSTS.has(url.hostname.toLowerCase())) throw new Error();
     const addresses = isIP(url.hostname) ? [url.hostname] : await this.#resolve(url.hostname);
     if (!addresses.length || addresses.some(isPrivate)) throw new Error();
+    return addresses[0]!;
   }
+}
+async function readBounded(response: Response, limit: number): Promise<Uint8Array | null> {
+  if (!response.body) return null;
+  const reader = response.body.getReader(); const chunks: Uint8Array[] = []; let length = 0;
+  try { for (;;) { const { done, value } = await reader.read(); if (done) break; if (!value) continue; length += value.byteLength; if (length > limit) { await reader.cancel(); return null; } chunks.push(value); } }
+  finally { reader.releaseLock(); }
+  const bytes = new Uint8Array(length); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; } return bytes;
+}
+function pinnedHttpsFetch(url: URL, init: RequestInit & { pinnedAddress: string }): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const request = httpsRequest(url, {
+      method: "GET", headers: init.headers as Record<string, string>, servername: url.hostname,
+      lookup: (_hostname, _options, callback) => callback(null, init.pinnedAddress, isIP(init.pinnedAddress)),
+    }, (incoming) => {
+      const headers = new Headers(); for (const [key, value] of Object.entries(incoming.headers)) if (value !== undefined) headers.set(key, Array.isArray(value) ? value.join(", ") : value);
+      resolve(new Response(incoming as unknown as BodyInit, { status: incoming.statusCode ?? 500, statusText: incoming.statusMessage ?? "", headers }));
+    });
+    const abort = () => request.destroy(new Error("ABORTED")); init.signal?.addEventListener("abort", abort, { once: true });
+    request.once("error", reject); request.once("close", () => init.signal?.removeEventListener("abort", abort)); request.end();
+  });
 }
 function isPrivate(address: string): boolean {
   const lower = address.toLowerCase();

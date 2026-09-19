@@ -34,4 +34,18 @@ describe("provider logo HTTP boundary", () => {
     const response = await fetch(`${origin}/internal/media/provider-logo/forged.reference`, { headers: { "x-operator-credential": "logo-secret" } });
     expect(response.status).toBe(404); expect(await response.json()).toEqual({ message: "Not found", error: "Not Found", statusCode: 404 });
   });
+
+  it("pins the validated address and aborts chunked bodies above the byte limit", async () => {
+    let pinned = "";
+    const oversized = new ReadableStream<Uint8Array>({
+      start(controller) { controller.enqueue(new Uint8Array(750_000)); controller.enqueue(new Uint8Array(750_000)); controller.close(); },
+    });
+    const bounded = new ProviderLogoService({
+      resolve: async () => ["104.21.1.10"],
+      fetcher: async (_url, init) => { pinned = init.pinnedAddress; return new Response(oversized, { headers: { "content-type": "image/png" } }); },
+    });
+    const result = await bounded.fetchReference(bounded.issueReference("https://r2.thesportsdb.com/large.png"));
+    expect(pinned).toBe("104.21.1.10");
+    expect(result).toBeNull();
+  });
 });

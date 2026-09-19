@@ -58,4 +58,44 @@ describe("API-Football strict provider adapter", () => {
     await expect(client.fetchStandings({ leagueId: 39, season: 2026, competitionCode: "PL" })).resolves.toMatchObject({ provider: "api-football", rows: [{ teamExternalId: "42" }] });
     await expect(client.fetchTeams({ leagueId: 39, season: 2026 })).resolves.toEqual([expect.objectContaining({ provider: "api-football", externalId: "42" })]);
   });
+
+  it("normalizes official lineup enrichment with the client clock and canonical fixture identity", async () => {
+    const payload = {
+      get: "lineups", parameters: { fixture: "1379123" }, errors: [], results: 1,
+      paging: { current: 1, total: 1 },
+      response: [{ fixture: 1379123, confirmed: true, players: [{ id: 42, name: "Player One" }] }],
+    };
+    const client = new ApiFootballClient({
+      apiKey: "secret",
+      fetcher: async () => new Response(JSON.stringify(payload)),
+      now: () => new Date("2026-09-12T16:50:00.000Z"),
+    });
+
+    await expect(client.fetchEnrichment("lineups", 1379123, "fixture-1")).resolves.toEqual({
+      state: "observed",
+      capturedAt: "2026-09-12T16:50:00.000Z",
+      payload: {
+        fixtureId: "fixture-1",
+        externalFixtureId: "1379123",
+        status: "OFFICIAL_CONFIRMED",
+        players: [{ externalId: "42", name: "Player One" }],
+      },
+    });
+  });
+
+  it("uses the fixtures/statistics endpoint for statistics enrichment", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+      get: "fixtures/statistics", parameters: { fixture: "1379123" }, errors: [], results: 0,
+      paging: { current: 1, total: 1 }, response: [],
+    })));
+    const client = new ApiFootballClient({ apiKey: "secret", fetcher, now: () => new Date("2026-09-12T16:50:00.000Z") });
+
+    await expect(client.fetchEnrichment("fixtures/statistics", 1379123, "fixture-1")).resolves.toMatchObject({
+      state: "observed-empty", capturedAt: "2026-09-12T16:50:00.000Z", payload: null,
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://v3.football.api-sports.io/fixtures/statistics?fixture=1379123",
+      expect.any(Object),
+    );
+  });
 });

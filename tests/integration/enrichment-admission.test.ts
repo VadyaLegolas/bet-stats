@@ -14,12 +14,30 @@ describe("optional enrichment admission", () => {
       readCircuit: async () => { order.push("circuit"); return "CLOSED"; },
       reserve: async () => { order.push("reserve"); return { reserved: true, reused: false }; },
       providerFactory: () => { order.push("factory"); return { fetch: async () => ({ state: "observed", capturedAt: "2026-09-12T16:50:00.000Z", payload: { fixtureId: "fixture-1", status: "OFFICIAL_CONFIRMED", players: ["p1"] } }) }; },
-      persist: async () => { order.push("persist"); return { observationId: "lineup-1", receiptHash: "sha256:lineup" }; }, issueLineupForecast: issue,
+      persist: async (_observation, classification) => { order.push("persist"); expect(classification).toEqual({ officialLineup: true }); return { observationId: "lineup-1", receiptHash: "sha256:lineup" }; }, issueLineupForecast: issue,
       now: new Date("2026-09-12T16:00:00.000Z"),
     });
     expect(order).toEqual(["capability", "circuit", "reserve", "factory", "persist"]);
     expect(result).toMatchObject({ status: "completed", observationId: "lineup-1", forecastId: "forecast-lineup-v1" });
     expect(issue).toHaveBeenCalledWith({ fixtureId: "fixture-1", cutoff: "2026-09-12T17:00:00.000Z", officialLineupObservationId: "lineup-1", receiptHash: "sha256:lineup" });
+  });
+
+  it("does not classify unofficial or wrong-fixture lineup evidence as official", async () => {
+    const classifications: unknown[] = [];
+    const issue = vi.fn(async () => "never");
+    const base = {
+      fixtureId: "fixture-1", endpoint: "LINEUPS" as const, cutoff: "2026-09-12T17:00:00.000Z",
+      readCapability: async () => ({ supported: true, expiresAt: null }), readCircuit: async () => "CLOSED" as const,
+      reserve: async () => ({ reserved: true }),
+      persist: async (_observation: unknown, classification: unknown) => { classifications.push(classification); return { observationId: "lineup-1", receiptHash: "sha256:lineup" }; },
+      issueLineupForecast: issue, now: new Date("2026-09-12T16:55:00.000Z"),
+    };
+
+    await runEnrichmentJob({ ...base, providerFactory: () => ({ fetch: async () => ({ state: "observed" as const, capturedAt: "2026-09-12T16:50:00.000Z", payload: { fixtureId: "fixture-1", status: "PROVISIONAL", players: ["p1"] } }) }) });
+    await runEnrichmentJob({ ...base, providerFactory: () => ({ fetch: async () => ({ state: "observed" as const, capturedAt: "2026-09-12T16:50:00.000Z", payload: { fixtureId: "fixture-2", status: "OFFICIAL_CONFIRMED", players: ["p1"] } }) }) });
+
+    expect(classifications).toEqual([{ officialLineup: false }, { officialLineup: false }]);
+    expect(issue).not.toHaveBeenCalled();
   });
 
   it("denies before provider construction and distinguishes observed empty", async () => {

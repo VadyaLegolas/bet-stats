@@ -1,10 +1,14 @@
 import type { ConfiguredCompetitionCode, NormalizedFixture, NormalizedStandingSnapshot, NormalizedTeamObservation } from "../../provider.interface.js";
 import type { z } from "zod";
-import { apiFootballFixturesEnvelopeSchema, apiFootballStandingsEnvelopeSchema, apiFootballTeamsEnvelopeSchema } from "./schema.js";
+import { apiFootballFixturesEnvelopeSchema, apiFootballStandingsEnvelopeSchema, apiFootballTeamsEnvelopeSchema, type ApiFootballEnrichmentEndpoint } from "./schema.js";
 
 type FixtureEnvelope = z.infer<typeof apiFootballFixturesEnvelopeSchema>;
 type StandingEnvelope = z.infer<typeof apiFootballStandingsEnvelopeSchema>;
 type TeamsEnvelope = z.infer<typeof apiFootballTeamsEnvelopeSchema>;
+
+export type ApiFootballEnrichmentObservation =
+  | { readonly state: "observed-empty"; readonly capturedAt: string; readonly payload: null }
+  | { readonly state: "observed"; readonly capturedAt: string; readonly payload: unknown };
 
 function status(value: string): NormalizedFixture["status"] {
   switch (value) {
@@ -54,4 +58,29 @@ export function normalizeApiFootballStandings(payload: StandingEnvelope, competi
 
 export function normalizeApiFootballTeams(payload: TeamsEnvelope, leagueId: number, season: number, capturedAt: Date): readonly NormalizedTeamObservation[] {
   return payload.response.map(({ team }) => ({ provider: "api-football", externalId: String(team.id), name: team.name, competitionExternalId: String(leagueId), seasonExternalId: String(season), capturedAt: capturedAt.toISOString(), sourceUpdatedAt: null, raw: team }));
+}
+
+export function normalizeApiFootballEnrichment(
+  endpoint: ApiFootballEnrichmentEndpoint,
+  payload: { readonly state: "observed-empty"; readonly payload: null } | { readonly state: "observed"; readonly payload: readonly unknown[] },
+  externalFixtureId: number,
+  canonicalFixtureId: string,
+  capturedAt: Date,
+): ApiFootballEnrichmentObservation {
+  const capturedAtIso = capturedAt.toISOString();
+  if (payload.state === "observed-empty") return { ...payload, capturedAt: capturedAtIso };
+  if (endpoint !== "lineups") return { state: "observed", capturedAt: capturedAtIso, payload: payload.payload };
+
+  const lineups = payload.payload as ReadonlyArray<{ fixture: number; confirmed: boolean; players: ReadonlyArray<{ id: number; name: string }> }>;
+  if (lineups.some((lineup) => lineup.fixture !== externalFixtureId)) throw new Error("ENRICHMENT_FIXTURE_MISMATCH");
+  return {
+    state: "observed",
+    capturedAt: capturedAtIso,
+    payload: {
+      fixtureId: canonicalFixtureId,
+      externalFixtureId: String(externalFixtureId),
+      status: lineups.every((lineup) => lineup.confirmed) ? "OFFICIAL_CONFIRMED" : "PROVISIONAL",
+      players: lineups.flatMap((lineup) => lineup.players.map((player) => ({ externalId: String(player.id), name: player.name }))),
+    },
+  };
 }

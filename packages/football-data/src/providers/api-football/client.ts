@@ -1,5 +1,5 @@
 import { ProviderPayloadError, type ConfiguredCompetitionCode, type NormalizedFixture, type NormalizedResult, type NormalizedStandingSnapshot, type NormalizedTeamObservation } from "../../provider.interface.js";
-import { normalizeApiFootballFixtures, normalizeApiFootballStandings, normalizeApiFootballTeams } from "./normalize.js";
+import { normalizeApiFootballEnrichment, normalizeApiFootballFixtures, normalizeApiFootballStandings, normalizeApiFootballTeams } from "./normalize.js";
 import { apiFootballFixturesEnvelopeSchema, apiFootballLeaguesEnvelopeSchema, apiFootballStandingsEnvelopeSchema, apiFootballTeamsEnvelopeSchema, parametersMatch, parseApiFootballEnrichmentEnvelope, type ApiFootballEnrichmentEndpoint } from "./schema.js";
 
 type Fetcher = (input: string | URL, init?: RequestInit) => Promise<Response>;
@@ -92,9 +92,10 @@ export class ApiFootballClient {
     return normalizeApiFootballTeams(parsed.data, request.leagueId, request.season, this.#now());
   }
 
-  async fetchEnrichment(endpoint: ApiFootballEnrichmentEndpoint, fixtureId: number) {
+  async fetchEnrichment(endpoint: ApiFootballEnrichmentEndpoint, fixtureId: number, canonicalFixtureId = String(fixtureId)) {
     const parameters = { fixture: String(fixtureId) };
-    return parseApiFootballEnrichmentEnvelope(endpoint, await this.#request(endpoint, parameters), parameters);
+    const parsed = parseApiFootballEnrichmentEnvelope(endpoint, await this.#request(endpoint, parameters), parameters);
+    return normalizeApiFootballEnrichment(endpoint, parsed, fixtureId, canonicalFixtureId, this.#now());
   }
 
   async #request(endpoint: string, parameters: Record<string, string>): Promise<unknown> {

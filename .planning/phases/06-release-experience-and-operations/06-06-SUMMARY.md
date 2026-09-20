@@ -12,7 +12,7 @@ provides:
   - Explicit prohibition on invented subject mechanisms or retention policy values
 affects: [06-07, 06-08, privacy-retention, consent-withdrawal]
 actuals:
-  tokens: 0
+  tokens: 3314
   tasks: 1
   commits: 2
 tech-stack:
@@ -94,7 +94,7 @@ Ordinary anonymous analysis remains available. This approval does not authorize 
 
 ## Task Commits
 
-1. **Task 1: Record the approved one-way D-14 deletion boundary** - `PENDING` (docs)
+1. **Task 1: Record the approved one-way D-14 deletion boundary** - `aa83b1b` (docs)
 
 ## Files Created/Modified
 
@@ -143,6 +143,13 @@ Until then, durable opt-in must remain disabled. This summary does not invent or
 
 - Plan 06-07 has explicit authority to implement the persistence boundary fail closed without inventing identity or retention policy inputs.
 - Plan 06-08 has the exact withdrawal inventory, cache invalidation, future-write denial, and unlinkability contract to verify.
+
+## Self-Check: PASSED
+
+- The canonical summary, STATE, ROADMAP, and REQUIREMENTS files exist.
+- Task commit `aa83b1b` exists in git history.
+- The summary contains the selected `approve-fail-closed` option, every required deletion action, all four explicitly absent policy inputs, and the no-reverse-link requirement.
+- The plan introduced no application-source changes; the pre-existing `apps/web/next-env.d.ts` working-tree modification was left untouched.
 
 ---
 *Phase: 06-release-experience-and-operations*

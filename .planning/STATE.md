@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 06
 current_phase_name: Release Experience and Operations
-current_plan: 6
+current_plan: 7
 status: executing
-stopped_at: Completed 06-05-PLAN.md
-last_updated: "2026-09-20T15:47:16.236Z"
+stopped_at: Completed 06-06-PLAN.md
+last_updated: "2026-09-20T15:52:35.285Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 86
-  completed_plans: 82
+  completed_plans: 83
   percent: 83
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 06 (Release Experience and Operations) — EXECUTING
-Current Plan: 6
+Current Plan: 7
 Total Plans in Phase: 9
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 06 execution started
@@ -114,6 +114,7 @@ Progress: [████████░░] 83%
 | Phase 06 P04 | 5h 8m | 3 tasks | 9 files |
 | Phase 06 P03 | 4h 54m | 2 tasks | 7 files |
 | Phase 06 P05 | 5h 3m | 2 tasks | 4 files |
+| Phase 06 P06 | 5min | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -203,6 +204,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 06]: Phase 06: Recovery reasons are frozen at preview time and bounded to 10-500 characters.
 - [Phase 06]: Phase 06: Evaluation recovery identity is exact ResultVersion, ForecastSnapshot, and policy hash.
 - [Phase 06]: Phase 06: Recovery confirmation re-locks and revalidates the frozen preview before converging to one durable plan and delivery.
+- [Phase 06]: Phase 06: Durable personal-history opt-in remains disabled unless an approved signed subject-provider adapter and retention duration, policy version, and effective date are all configured.
+- [Phase 06]: Phase 06: Withdrawal locks the subject boundary, revokes consent, deletes all linkable retained odds/view history, invalidates related cache, denies future writes, and leaves no reverse link in logs or immutable receipts.
+- [Phase 06]: Phase 06: No subject mechanism, retention duration, policy version, or effective date was supplied or may be invented.
 
 ### Pending Todos
 
@@ -222,6 +226,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-20T15:47:15.954Z
-Stopped at: Completed 06-05-PLAN.md
+Last session: 2026-09-20T15:52:35.001Z
+Stopped at: Completed 06-06-PLAN.md
 Resume file: None

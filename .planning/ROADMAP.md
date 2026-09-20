@@ -307,7 +307,31 @@ Plans:
   4. An operator can safely retry ingestion and evaluation work and verify that durable facts and immutable snapshots remain consistent.
   5. Release checks exercise the complete fixture-to-forecast-to-odds-to-settlement loop and provider degradation states, while betting-related history is not retained without explicit consent and a documented boundary.
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+
+**Wave 1**
+
+- [ ] 06-01-PLAN.md — Prove one real fixture-to-scorecard release tracer.
+
+**Wave 2** *(after the tracer)*
+
+- [ ] 06-02-PLAN.md — Deliver responsive, accessible, locally resilient public workflows.
+- [ ] 06-04-PLAN.md — Deliver the guarded, secret-safe operations center.
+
+**Wave 3** *(after their Wave 2 prerequisites)*
+
+- [ ] 06-03-PLAN.md — Publish the versioned methodology/model card and contextual warnings.
+- [ ] 06-05-PLAN.md — Extend preview-confirm recovery across ingestion and evaluation.
+
+**Wave 4** *(after methodology and operations contracts)*
+
+- [ ] 06-06-PLAN.md — Enforce fail-closed consent retention and one-way withdrawal.
+
+**Wave 5** *(after all expansion plans)*
+
+- [ ] 06-07-PLAN.md — Run the full responsive, privacy, operator, and degradation release gate.
 **UI hint**: yes
 
 ## Progress

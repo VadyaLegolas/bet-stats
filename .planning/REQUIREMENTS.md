@@ -76,9 +76,9 @@
 ### Release Experience and Operations
 
 - [x] **UX-01**: A user can use fixture, match analysis, manual odds, value, and performance workflows on mobile and desktop with keyboard-accessible controls and readable charts.
-- [ ] **UX-02**: A user can view a versioned methodology/model-card page explaining inputs, exclusions, confidence, limitations, evaluation, and responsible-use policy.
+- [x] **UX-02**: A user can view a versioned methodology/model-card page explaining inputs, exclusions, confidence, limitations, evaluation, and responsible-use policy.
 - [x] **OPS-01**: An operator can inspect job failures, dead-lettered work, provider health, quota consumption, data-quality errors, and correlation identifiers without exposing secrets.
-- [ ] **OPS-02**: An operator can safely retry or replay failed ingestion/evaluation work and verify that durable facts and immutable snapshots remain consistent.
+- [x] **OPS-02**: An operator can safely retry or replay failed ingestion/evaluation work and verify that durable facts and immutable snapshots remain consistent.
 - [x] **OPS-03**: Release verification covers the complete fixture-to-forecast-to-manual-odds-to-settlement workflow and representative provider degradation states.
 - [ ] **PRIV-01**: The system does not persist user betting-related history without explicit consent and a documented retention boundary.
 
@@ -172,9 +172,9 @@
 | PROV-06 | Phase 5 | Complete |
 | PROV-07 | Phase 5 | Complete |
 | UX-01 | Phase 6 | Complete |
-| UX-02 | Phase 6 | Pending |
+| UX-02 | Phase 6 | Complete |
 | OPS-01 | Phase 6 | Complete |
-| OPS-02 | Phase 6 | Pending |
+| OPS-02 | Phase 6 | Complete |
 | OPS-03 | Phase 6 | Complete |
 | PRIV-01 | Phase 6 | Pending |
 

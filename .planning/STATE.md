@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 06
 current_phase_name: Release Experience and Operations
-current_plan: 4
+current_plan: 6
 status: executing
-stopped_at: Completed 06-04-PLAN.md
-last_updated: "2026-09-20T10:36:44.062Z"
+stopped_at: Completed 06-05-PLAN.md
+last_updated: "2026-09-20T15:47:16.236Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 86
-  completed_plans: 80
+  completed_plans: 82
   percent: 83
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 06 (Release Experience and Operations) — EXECUTING
-Current Plan: 4
+Current Plan: 6
 Total Plans in Phase: 9
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 06 execution started
@@ -112,6 +112,8 @@ Progress: [████████░░] 83%
 | Phase 06 P01 | 12min | 2 tasks | 5 files |
 | Phase 06 P02 | 5h 6m | 3 tasks | 8 files |
 | Phase 06 P04 | 5h 8m | 3 tasks | 9 files |
+| Phase 06 P03 | 4h 54m | 2 tasks | 7 files |
+| Phase 06 P05 | 5h 3m | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -196,6 +198,11 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 06]: Keep retry state local to forecast availability, retain the last valid content, and restore focus to the retry control after a failed retry.
 - [Phase 06]: Phase 06: Operations projections use explicit Prisma selects and closed scalar DTO constructors so raw payloads, secrets, headers, environments, stacks, arbitrary metadata, and logs never cross the browser boundary.
 - [Phase 06]: Phase 06: Operations failure details are bounded to 25 safe logical job identities per page behind canonical signed HMAC ingress.
+- [Phase 06]: Phase 06: Public methodology binds directly to executable forecast and evaluation constants so disclosed identities cannot drift.
+- [Phase 06]: Phase 06: Contextual methodology links are fixed fragment-only URLs and never carry analytical activity state.
+- [Phase 06]: Phase 06: Recovery reasons are frozen at preview time and bounded to 10-500 characters.
+- [Phase 06]: Phase 06: Evaluation recovery identity is exact ResultVersion, ForecastSnapshot, and policy hash.
+- [Phase 06]: Phase 06: Recovery confirmation re-locks and revalidates the frozen preview before converging to one durable plan and delivery.
 
 ### Pending Todos
 
@@ -215,6 +222,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-20T10:36:43.816Z
-Stopped at: Completed 06-04-PLAN.md
+Last session: 2026-09-20T15:47:15.954Z
+Stopped at: Completed 06-05-PLAN.md
 Resume file: None

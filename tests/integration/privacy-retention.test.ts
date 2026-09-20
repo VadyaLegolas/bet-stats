@@ -9,6 +9,12 @@ import {
   resolveApprovedRetentionSubject,
   resolveRetentionPolicy,
 } from "@bet-stats/domain";
+import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import {
+  grantRetentionConsent,
+  retainViewedResult,
+  withdrawRetentionConsent,
+} from "../../apps/api/src/modules/privacy/privacy.service.js";
 
 describe("privacy retention policy", () => {
   it("is default deny when no approved inputs are configured", () => {
@@ -76,6 +82,8 @@ const workspaceRoot = resolve(import.meta.dirname, "../..");
 const databaseRoot = resolve(workspaceRoot, "packages/database");
 const prismaCli = resolve(databaseRoot, "node_modules/prisma/build/index.js");
 const containerName = `bet-stats-privacy-${process.pid}`;
+let databaseUrl = "";
+let database: PrismaClient;
 
 function docker(...args: string[]): string {
   return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
@@ -106,11 +114,13 @@ describe("privacy retention persistence", () => {
     waitForPostgres();
     const port = docker("port", containerName, "5432/tcp").split(":").at(-1);
     if (!port) throw new Error("Docker did not publish the PostgreSQL port");
+    databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${port}/bet_stats`;
     execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], {
       cwd: databaseRoot,
-      env: { ...process.env, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${port}/bet_stats` },
+      env: { ...process.env, DATABASE_URL: databaseUrl },
       stdio: "pipe",
     });
+    database = createPrismaClient(databaseUrl);
     sql(`
       INSERT INTO "League" (id, name, "countryCode", "createdAt", "updatedAt") VALUES ('privacy-league', 'Privacy League', 'PL', now(), now());
       INSERT INTO "Season" (id, "leagueId", label, "startsOn", "endsOn", "createdAt", "updatedAt") VALUES ('privacy-season', 'privacy-league', '2026', '2026-01-01', '2026-12-31', now(), now());
@@ -124,6 +134,7 @@ describe("privacy retention persistence", () => {
   }, 180_000);
 
   afterAll(() => {
+    void database?.$disconnect();
     try { docker("rm", "--force", containerName); } catch { /* owned-container cleanup is best effort */ }
   });
 
@@ -164,5 +175,51 @@ describe("privacy retention persistence", () => {
       ORDER BY 1;
     `);
     expect(forbidden).toEqual([]);
+  });
+
+  it("consent transaction creates an active versioned grant under the subject lock", async () => {
+    const granted = await grantRetentionConsent(database, {
+      subjectId: "transaction-subject",
+      subjectKey: "transaction-key",
+      policy: { version: "test-policy-v1", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 },
+      now: new Date("2026-09-20T12:00:00.000Z"),
+    });
+    expect(granted).toMatchObject({ status: "ON", policyVersion: "test-policy-v1" });
+    expect(await database.retentionConsent.count({ where: { subjectId: "transaction-subject", revokedAt: null } })).toBe(1);
+  });
+
+  it("withdrawal race converges with a retained write and removes every link", async () => {
+    await grantRetentionConsent(database, {
+      subjectId: "race-subject", subjectKey: "race-key",
+      policy: { version: "race-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 },
+      now: new Date("2026-09-20T12:00:00.000Z"),
+    });
+    const before = await database.manualOddsSnapshot.findUniqueOrThrow({ where: { id: "privacy-odds" }, select: { id: true, inputHash: true } });
+    const invalidated: string[] = [];
+    await Promise.allSettled([
+      retainViewedResult(database, { subjectId: "race-subject", resourceType: "RESULT", resourceId: "privacy-fixture", now: new Date("2026-09-20T12:01:00.000Z") }),
+      withdrawRetentionConsent(database, "race-subject", { invalidate: async (subjectId) => { invalidated.push(subjectId); } }, new Date("2026-09-20T12:01:00.000Z")),
+    ]);
+    expect(await database.retainedViewHistory.count({ where: { subjectId: "race-subject" } })).toBe(0);
+    expect(await database.retainedOddsHistory.count({ where: { subjectId: "race-subject" } })).toBe(0);
+    expect((await database.retentionSubject.findUniqueOrThrow({ where: { id: "race-subject" } })).retentionBlockedAt).not.toBeNull();
+    expect(invalidated).toEqual(["race-subject"]);
+    expect(await database.manualOddsSnapshot.findUniqueOrThrow({ where: { id: "privacy-odds" }, select: { id: true, inputHash: true } })).toEqual(before);
+  });
+
+  it("future deny rejects retained writes after withdrawal", async () => {
+    await expect(retainViewedResult(database, { subjectId: "race-subject", resourceType: "RESULT", resourceId: "privacy-fixture", now: new Date("2026-09-20T12:02:00.000Z") })).rejects.toMatchObject({ code: "RETENTION_DENIED" });
+  });
+
+  it("unlinkable immutable facts survive rollback-safe withdrawal", async () => {
+    await grantRetentionConsent(database, {
+      subjectId: "rollback-subject", subjectKey: "rollback-key",
+      policy: { version: "rollback-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 },
+      now: new Date("2026-09-20T12:00:00.000Z"),
+    });
+    await retainViewedResult(database, { subjectId: "rollback-subject", resourceType: "RESULT", resourceId: "privacy-fixture", now: new Date("2026-09-20T12:01:00.000Z") });
+    await expect(withdrawRetentionConsent(database, "rollback-subject", { invalidate: async () => { throw new Error("cache unavailable"); } })).rejects.toMatchObject({ code: "WITHDRAWAL_FAILED" });
+    expect(await database.retainedViewHistory.count({ where: { subjectId: "rollback-subject" } })).toBe(1);
+    expect((await database.retentionSubject.findUniqueOrThrow({ where: { id: "rollback-subject" } })).retentionBlockedAt).toBeNull();
   });
 });

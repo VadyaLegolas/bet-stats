@@ -86,6 +86,9 @@ function ingressHeaders(path: string[], method: "GET" | "POST", options: { subje
 }
 
 async function proxy(path: string[], method: "GET" | "POST", body?: Record<string, unknown>, headers = ingressHeaders(path, method)) {
+  if (method === "POST" && path.at(-1) === "preview" && body && body.reason === undefined && body.purpose === undefined) {
+    body = { ...body, reason: "Recover the exact bounded scope after an audited operational failure." };
+  }
   const url = `http://web.test/internal-api/pipeline/replay/${path.join("/")}`;
   const request = new NextRequest(url, {
     method,
@@ -384,6 +387,55 @@ describe("production replay proxy boundary", () => {
     await startApi();
     expect((await proxy([replayPlanId], "GET")).json).toMatchObject({ state: "SUCCEEDED", outcome: "COMPLETED" });
   }, 30_000);
+
+  it("freezes a recovery preview with bounded reason, expiry, scope, quota and immutable guarantees", async () => {
+    const result = await proxy(["preview"], "POST", {
+      recoveryType: "INGESTION", reason: "Recover the exact result window after the provider outage was resolved.",
+      provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS",
+      from: "2026-09-02T00:00:00.000Z", to: "2026-09-02T23:59:59.999Z",
+    });
+    expect(result.response.status, JSON.stringify(result.json)).toBe(201);
+    expect(result.json).toMatchObject({
+      recoveryType: "INGESTION",
+      reason: "Recover the exact result window after the provider outage was resolved.",
+      lane: "critical",
+      scope: { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS" },
+      quotaEffect: { reservations: 1 },
+      immutableGuarantees: { observations: "UNCHANGED", issuedForecasts: "UNCHANGED", valueReceipts: "UNCHANGED", results: "UNCHANGED", settlements: "UNCHANGED" },
+    });
+    expect(result.json.logicalIdentity).toEqual(expect.any(String));
+    expect(result.json.expiresAt).toEqual(expect.any(String));
+    expect(result.json.fingerprint).toBe(result.json.previewVersion);
+  });
+
+  it("requires a 10-500 character reason for every recovery preview", async () => {
+    const result = await proxy(["preview"], "POST", {
+      recoveryType: "INGESTION", reason: "short", provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS",
+      from: "2026-09-02T00:00:00.000Z", to: "2026-09-02T23:59:59.999Z",
+    });
+    expect(result.response.status).toBe(400);
+    expect(result.json).toMatchObject({ code: "RECOVERY_REASON_INVALID" });
+  });
+
+  it("rejects tampered recovery confirmation and converges duplicate confirmation without immutable changes", async () => {
+    const before = { observations: await prisma.sourceObservation.count(), forecasts: await prisma.forecastSnapshot.count(), values: await prisma.valueReceipt.count(), results: await prisma.resultVersion.count(), settlements: await prisma.settlementReceipt.count() };
+    const preview = await proxy(["preview"], "POST", {
+      recoveryType: "INGESTION", reason: "Recover the exact fixture result after an audited provider interruption.",
+      provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS",
+      from: "2026-09-02T00:00:00.000Z", to: "2026-09-02T23:59:59.999Z",
+    });
+    const tampered = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion, fingerprint: "0".repeat(64) });
+    expect(tampered.response.status).toBe(409);
+    expect(await prisma.replayPlan.count({ where: { previewId: String(preview.json.previewId) } })).toBe(0);
+    const confirmation = { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion, fingerprint: preview.json.fingerprint };
+    const first = await proxy(["queue"], "POST", confirmation);
+    const second = await proxy(["queue"], "POST", confirmation);
+    expect(second.json).toMatchObject({ replayPlanId: first.json.replayPlanId, duplicate: true, queued: false });
+    expect(first.json).toMatchObject({ correlationId: expect.any(String), lane: "critical", immutableGuarantees: preview.json.immutableGuarantees });
+    expect(await prisma.replayPlan.count({ where: { previewId: String(preview.json.previewId) } })).toBe(1);
+    expect(await prisma.replayDelivery.count({ where: { syncRun: { replayPlanId: String(first.json.replayPlanId) } } })).toBe(1);
+    expect({ observations: await prisma.sourceObservation.count(), forecasts: await prisma.forecastSnapshot.count(), values: await prisma.valueReceipt.count(), results: await prisma.resultVersion.count(), settlements: await prisma.settlementReceipt.count() }).toEqual(before);
+  });
 
   it("projects exhausted retries as a classified durable dead letter", async () => {
     const worker = createReplayWorker({ redisUrl, database: prisma, prefix: queuePrefix, execute: async () => { throw Object.assign(new Error("raw provider secret"), { code: "PROVIDER_TIMEOUT" }); } });

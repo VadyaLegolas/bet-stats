@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import type { ReactNode } from "react";
+
+import { ReleaseNavigation } from "../components/release-navigation";
+
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Bet Stats",
@@ -10,19 +13,17 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, background: "#F8FAFC", color: "#0F172A", fontFamily: "system-ui, sans-serif" }}>
-        <style>{"fieldset,select{min-width:0;max-width:100%;box-sizing:border-box}"}</style>
-        <header style={{ borderBottom: "1px solid #CBD5E1", background: "#FFFFFF" }}>
-          <div style={{ width: "100%", maxWidth: 1200, boxSizing: "border-box", margin: "0 auto", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <strong>Bet Stats</strong>
-            <nav aria-label="Primary navigation">
-              <Link href="/fixtures" style={{ color: "#1D4ED8", minHeight: 48, display: "inline-flex", alignItems: "center" }}>Fixtures</Link>
-            </nav>
+      <body>
+        <a className="skip-link" href="#main-content">Skip to main content</a>
+        <header className="release-header">
+          <div className="release-frame release-header-inner">
+            <strong className="release-brand">Bet Stats</strong>
+            <ReleaseNavigation />
           </div>
         </header>
-        <main style={{ width: "100%", maxWidth: 1200, boxSizing: "border-box", margin: "0 auto", minHeight: "70vh", padding: "48px 24px" }}>{children}</main>
-        <footer style={{ borderTop: "1px solid #CBD5E1", background: "#FFFFFF" }}>
-          <p style={{ width: "100%", maxWidth: 1200, boxSizing: "border-box", margin: "0 auto", padding: "24px", fontSize: 14, lineHeight: 1.4 }}>
+        <main id="main-content" className="release-frame release-main" tabIndex={-1}>{children}</main>
+        <footer className="release-footer">
+          <p className="release-frame">
             Football data and analytical information only. Outcomes remain uncertain. If betting is legal where you are, be aware of the risk of financial loss.
           </p>
         </footer>

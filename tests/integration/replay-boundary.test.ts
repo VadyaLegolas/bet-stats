@@ -162,6 +162,22 @@ async function seedReplayReferences() {
     provider, leagueId: pdLeague.id, seasonId: pdSeason.id, endpoint: "FIXTURES", supported: true,
     verifiedAt: new Date(), expiresAt: new Date("2027-01-01T00:00:00.000Z"),
   })) });
+
+  const observation = await prisma.sourceObservation.create({ data: {
+    id: "recovery-result-observation", provider: "football-data.org", endpointFamily: "RESULTS", externalIdentity: "result-fixture",
+    observedAt: new Date("2026-09-03T00:00:00.000Z"), payloadHash: "recovery-result-hash", rawPayload: { status: "FINISHED" }, payloadBytes: 21,
+  } });
+  await prisma.resultVersion.create({ data: {
+    id: "recovery-result-v1", fixtureId: fixture.id, observationId: observation.id, effectiveAt: new Date("2026-09-02T20:00:00.000Z"),
+    observedAt: observation.observedAt, homeGoals: 2, awayGoals: 1, status: "FINISHED", revision: 1,
+  } });
+  await prisma.forecastSnapshot.create({ data: {
+    id: "recovery-forecast-v1", fixtureId: fixture.id, kind: "PRE_MATCH", state: "ISSUED", revision: 1,
+    cutoff: new Date("2026-09-02T17:00:00.000Z"), modelVersion: "recovery-model-v1", modelHash: "recovery-model-hash",
+    configVersion: "recovery-config-v1", configHash: "recovery-config-hash", inputHash: "recovery-input-hash",
+    evidenceFingerprint: "recovery-evidence-hash", sourceRefs: [], probabilities: {}, confidence: {}, assumptions: {}, receipt: {},
+    issuedAt: new Date("2026-09-02T17:00:00.000Z"),
+  } });
 }
 
 function replayProvider(calls: string[]) {
@@ -415,6 +431,30 @@ describe("production replay proxy boundary", () => {
     });
     expect(result.response.status).toBe(400);
     expect(result.json).toMatchObject({ code: "RECOVERY_REASON_INVALID" });
+  });
+
+  it("freezes evaluation recovery to exact ResultVersion, ForecastSnapshot and policy hash", async () => {
+    const preview = await proxy(["preview"], "POST", {
+      recoveryType: "EVALUATION",
+      reason: "Re-run settlement projection after the evaluator interruption was resolved.",
+      resultVersionId: "recovery-result-v1",
+      forecastSnapshotId: "recovery-forecast-v1",
+      policyHash: "settlement-policy-hash-v1",
+    });
+    expect(preview.response.status, JSON.stringify(preview.json)).toBe(201);
+    expect(preview.json).toMatchObject({
+      recoveryType: "EVALUATION",
+      lane: "evaluation",
+      scope: { resultVersionId: "recovery-result-v1", forecastSnapshotId: "recovery-forecast-v1", policyHash: "settlement-policy-hash-v1" },
+      quotaEffect: { reservations: 0, remainingCalls: null },
+    });
+    const queued = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion, fingerprint: preview.json.fingerprint });
+    expect(queued.response.status, JSON.stringify(queued.json)).toBe(201);
+    expect(queued.json).toMatchObject({ queued: true, lane: "evaluation", correlationId: expect.any(String) });
+    const plan = await prisma.replayPlan.findUniqueOrThrow({ where: { id: String(queued.json.replayPlanId) }, include: { syncRuns: { include: { delivery: true } } } });
+    expect(plan.logicalKey).toBe(preview.json.logicalIdentity);
+    expect(plan.syncRuns).toHaveLength(1);
+    expect(plan.syncRuns[0]).toMatchObject({ provider: "evaluation", endpointFamily: "SETTLEMENT", lane: "evaluation", delivery: { state: "PENDING" } });
   });
 
   it("rejects tampered recovery confirmation and converges duplicate confirmation without immutable changes", async () => {

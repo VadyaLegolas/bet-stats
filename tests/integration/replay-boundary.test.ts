@@ -458,7 +458,14 @@ describe("production replay proxy boundary", () => {
   });
 
   it("rejects tampered recovery confirmation and converges duplicate confirmation without immutable changes", async () => {
-    const before = { observations: await prisma.sourceObservation.count(), forecasts: await prisma.forecastSnapshot.count(), values: await prisma.valueReceipt.count(), results: await prisma.resultVersion.count(), settlements: await prisma.settlementReceipt.count() };
+    const immutableFacts = () => Promise.all([
+      prisma.sourceObservation.findMany({ orderBy: { id: "asc" }, select: { id: true, payloadHash: true, payloadBytes: true } }),
+      prisma.forecastSnapshot.findMany({ orderBy: { id: "asc" }, select: { id: true, modelHash: true, configHash: true, inputHash: true, evidenceFingerprint: true, probabilities: true, receipt: true } }),
+      prisma.valueReceipt.findMany({ orderBy: { id: "asc" }, select: { id: true, forecastSnapshotId: true, oddsSnapshotId: true, outcome: true, receipt: true } }),
+      prisma.resultVersion.findMany({ orderBy: { id: "asc" }, select: { id: true, observationId: true, revision: true, homeGoals: true, awayGoals: true, status: true } }),
+      prisma.settlementReceipt.findMany({ orderBy: { id: "asc" }, select: { id: true, resultVersionId: true, forecastSnapshotId: true, policyHash: true, receipt: true } }),
+    ]);
+    const before = await immutableFacts();
     const preview = await proxy(["preview"], "POST", {
       recoveryType: "INGESTION", reason: "Recover the exact fixture result after an audited provider interruption.",
       provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS",
@@ -474,7 +481,7 @@ describe("production replay proxy boundary", () => {
     expect(first.json).toMatchObject({ correlationId: expect.any(String), lane: "critical", immutableGuarantees: preview.json.immutableGuarantees });
     expect(await prisma.replayPlan.count({ where: { previewId: String(preview.json.previewId) } })).toBe(1);
     expect(await prisma.replayDelivery.count({ where: { syncRun: { replayPlanId: String(first.json.replayPlanId) } } })).toBe(1);
-    expect({ observations: await prisma.sourceObservation.count(), forecasts: await prisma.forecastSnapshot.count(), values: await prisma.valueReceipt.count(), results: await prisma.resultVersion.count(), settlements: await prisma.settlementReceipt.count() }).toEqual(before);
+    expect(await immutableFacts()).toEqual(before);
   });
 
   it("projects exhausted retries as a classified durable dead letter", async () => {

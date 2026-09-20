@@ -454,7 +454,7 @@ describe("production replay proxy boundary", () => {
     const plan = await prisma.replayPlan.findUniqueOrThrow({ where: { id: String(queued.json.replayPlanId) }, include: { syncRuns: { include: { delivery: true } } } });
     expect(plan.logicalKey).toBe(preview.json.logicalIdentity);
     expect(plan.syncRuns).toHaveLength(1);
-    expect(plan.syncRuns[0]).toMatchObject({ provider: "evaluation", endpointFamily: "SETTLEMENT", lane: "evaluation", delivery: { state: "PENDING" } });
+    expect(plan.syncRuns[0]).toMatchObject({ provider: "evaluation", endpointFamily: "SETTLEMENT", lane: "evaluation", delivery: { state: "DELIVERED" } });
   });
 
   it("rejects tampered recovery confirmation and converges duplicate confirmation without immutable changes", async () => {

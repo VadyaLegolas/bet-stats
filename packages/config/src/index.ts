@@ -76,3 +76,28 @@ export function dependencyReadiness(state: { postgres: boolean; redis: boolean }
     },
   };
 }
+
+export type PrivacyRetentionConfig = {
+  subjectProviderMode?: "signed" | undefined;
+  durationDays?: number | undefined;
+  version?: string | undefined;
+  effectiveAt?: string | undefined;
+};
+
+/**
+ * Reads only explicit policy inputs. Invalid or absent inputs remain absent so
+ * callers deterministically fail closed instead of guessing legal policy.
+ */
+export function readPrivacyRetentionConfig(input: Record<string, string | undefined>): PrivacyRetentionConfig {
+  const duration = input.PRIVACY_RETENTION_DURATION_DAYS;
+  const parsedDuration = duration === undefined ? undefined : Number(duration);
+  const version = input.PRIVACY_RETENTION_POLICY_VERSION?.trim();
+  const effectiveAt = input.PRIVACY_RETENTION_EFFECTIVE_AT?.trim();
+
+  return {
+    subjectProviderMode: input.PRIVACY_SUBJECT_PROVIDER_MODE === "signed" ? "signed" : undefined,
+    durationDays: Number.isSafeInteger(parsedDuration) && (parsedDuration ?? 0) > 0 ? parsedDuration : undefined,
+    version: version ? version : undefined,
+    effectiveAt: effectiveAt ? effectiveAt : undefined,
+  };
+}

@@ -20,9 +20,9 @@ function signedHeaders(pathname: string, search: string) {
 test.beforeAll(async () => {
   const database = createPrismaClient(readLiveReleaseState().databaseUrl);
   try {
-    await database.sourceObservation.create({ data: { id: "operator-canary-observation", provider: "operator-canary", endpointFamily: "RESULTS", externalIdentity: "operator-canary", observedAt: new Date(), payloadHash: "sha256:operator-canary", rawPayload: { secret: canaries }, payloadBytes: 128 } });
-    await database.syncRun.create({ data: { id: "operator-failed-run", logicalKey: "operator-failed-job", revision: 1, provider: "football-data.org", endpointFamily: "RESULTS", lane: "critical", windowFrom: new Date("2026-09-20T10:00:00Z"), windowTo: new Date("2026-09-20T11:00:00Z"), state: "FAILED", correlationId: "corr-operator-failure" } });
-    await database.syncAttempt.create({ data: { id: "operator-failed-attempt", syncRunId: "operator-failed-run", attemptNumber: 1, state: "FAILED", classifiedReason: "UPSTREAM_5XX", startedAt: new Date(), finishedAt: new Date() } });
+    await database.sourceObservation.upsert({ where: { id: "operator-canary-observation" }, update: {}, create: { id: "operator-canary-observation", provider: "operator-canary", endpointFamily: "RESULTS", externalIdentity: "operator-canary", observedAt: new Date(), payloadHash: "sha256:operator-canary", rawPayload: { secret: canaries }, payloadBytes: 128 } });
+    await database.syncRun.upsert({ where: { id: "operator-failed-run" }, update: {}, create: { id: "operator-failed-run", logicalKey: "operator-failed-job", revision: 1, provider: "football-data.org", endpointFamily: "RESULTS", lane: "critical", windowFrom: new Date("2026-09-20T10:00:00Z"), windowTo: new Date("2026-09-20T11:00:00Z"), state: "FAILED", correlationId: "corr-operator-failure" } });
+    await database.syncAttempt.upsert({ where: { id: "operator-failed-attempt" }, update: {}, create: { id: "operator-failed-attempt", syncRunId: "operator-failed-run", attemptNumber: 1, state: "FAILED", classifiedReason: "UPSTREAM_5XX", startedAt: new Date(), finishedAt: new Date() } });
   } finally { await database.$disconnect(); }
 });
 

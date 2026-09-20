@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ResponsiveEvidence, type EvidenceColumn } from "../../components/responsive-evidence";
 import { LocalDataBlock } from "../../components/local-data-block";
+import { ContextualMethodologyWarning } from "../../components/contextual-methodology-warning";
 
 export type ScorecardViewModel = Readonly<{
   cohortIdentity: { modelVersion: string; competitionId: string; market: string; from: string; to: string };
@@ -30,6 +31,7 @@ export function ScorecardDashboard({ scorecard, candidates, cursor }: { scorecar
   return <section>
     <h1>Forecast evidence scorecard</h1>
     <p>Historical evaluation of frozen forecasts and manually entered prices. This is analytical evidence, not betting advice.</p>
+    <ContextualMethodologyWarning context="scorecard" />
     <form method="get" style={{ ...panel, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12 }}>
       {(["modelVersion", "competitionId", "market", "from", "to"] as const).map((key) => <label key={key}>{key}<input name={key} defaultValue={scorecard.cohortIdentity[key]} style={{ width: "100%", minHeight: 44 }} /></label>)}
       <button type="submit" style={{ minHeight: 44 }}>Apply exact cohort</button>
@@ -46,7 +48,7 @@ export function ScorecardDashboard({ scorecard, candidates, cursor }: { scorecar
     <section style={panel}><h2>Flat one-unit evidence</h2><p>{scorecard.financial.count} settled candidates · {scorecard.financial.totalStakedUnits} units evaluated · {scorecard.financial.totalProfitUnits} units result</p><p>ROI / Yield: {scorecard.financial.roi ?? "unavailable"}</p></section>
     <section style={panel}><h2>Closing-line evidence</h2>{scorecard.clv.status === "AVAILABLE" ? <p>{scorecard.clv.comparableCount} comparable prices.</p> : <p>Closing-line evidence is unavailable: {scorecard.clv.reason}.</p>}</section>
     <section style={panel}><h2>Candidate ledger</h2>{candidates.items.length === 0 ? <p>No settled value candidates exist in this exact cohort.</p> : <div style={{ overflowX: "auto" }}><table><thead><tr><th>Selection</th><th>Odds</th><th>Outcome</th><th>Stake units</th><th>Profit units</th><th>CLV</th></tr></thead><tbody>{candidates.items.map((item) => <tr key={item.id}><td>{item.selection}</td><td>{item.decimalOdds}</td><td>{item.outcome}</td><td>{item.stakeUnits}</td><td>{Number(item.profitUnits) > 0 ? `+${item.profitUnits}` : item.profitUnits}</td><td>{item.clv.value ?? item.clv.reason ?? item.clv.status}</td></tr>)}</tbody></table></div>}<p>Page totals: {candidates.pageTotals.count} candidates, {candidates.pageTotals.stakeUnits} units staked, {candidates.pageTotals.profitUnits} units profit.</p><nav aria-label="Candidate pages">{cursor && <Link href={`/scorecards?${identityQuery}`}>Previous (first page)</Link>} {candidates.nextCursor && <Link href={`/scorecards?${identityQuery}&cursor=${encodeURIComponent(candidates.nextCursor)}`}>Next</Link>}</nav></section>
-    <details><summary>Formula and policy receipts</summary><dl><dt>Formula</dt><dd>{scorecard.receipts.formulaId}</dd><dt>Cohort policy</dt><dd>{scorecard.receipts.cohortPolicyId}</dd><dt>Reliability policy</dt><dd>{scorecard.reliability.policyId}</dd><dt>Financial policy</dt><dd>{scorecard.financial.policyId}</dd></dl></details>
+    <details id="formula-policy-receipts"><summary>Formula and policy receipts</summary><dl><dt>Formula</dt><dd>{scorecard.receipts.formulaId}</dd><dt>Cohort policy</dt><dd>{scorecard.receipts.cohortPolicyId}</dd><dt>Reliability policy</dt><dd>{scorecard.reliability.policyId}</dd><dt>Financial policy</dt><dd>{scorecard.financial.policyId}</dd></dl></details>
   </section>;
 }
 

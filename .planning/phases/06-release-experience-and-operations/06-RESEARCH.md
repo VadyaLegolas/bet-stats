@@ -413,27 +413,15 @@ Playwright device profiles include viewport, screen size, user agent and touch b
 | A3 | [ASSUMED] Exact legal retention duration is not yet selected. The implementation should use a versioned policy value and fail closed, but planning must obtain product/legal approval before naming a duration. | Privacy | An invented duration would create a false compliance promise. |
 | A4 | [ASSUMED] Chromium desktop plus Chromium mobile emulation is the minimum automated release matrix; additional WebKit/Firefox coverage depends on declared supported browsers. | Validation | Browser-specific issues could escape if support expectations are broader. |
 
-## Open Questions
+## Resolved Questions
 
-1. **What identifies the consenting subject without pulling v2 accounts into v1?**
-   - What we know: personal history needs a subject to consent, withdraw and erase; current immutable facts have no intended user linkage.
-   - What's unclear: authenticated account, signed anonymous privacy token, or another product identity contract.
-   - Recommendation: make this a planning checkpoint before schema design; never use IP address, raw cookie or correlation ID as implicit consent identity.
+1. **RESOLVED — Consenting subject identity:** The exact subject mechanism remains intentionally unset behind the blocking D-14 checkpoint in Plan 06-06. Until an approved signed subject-provider input is supplied, durable opt-in fails closed; IP addresses, raw cookies, user agents, session/correlation IDs, source labels, and logs are never implicit identity.
 
-2. **What is the exact retention duration and policy version?**
-   - What we know: the duration/criteria must be documented, withdrawal must stop retention, and storage cannot outlive its purpose. [CITED: https://eur-lex.europa.eu/eli/reg/2016/679/oj]
-   - What's unclear: approved duration and any jurisdiction-specific exception.
-   - Recommendation: require legal/product confirmation; encode the approved result as a versioned policy and test expiry/deletion.
+2. **RESOLVED — Retention duration and policy version:** The legal duration and policy metadata remain intentionally unset behind the same D-14 checkpoint and versioned policy seam. No duration or version is invented. Missing approved duration, version, or effective date disables durable retention while ordinary anonymous analysis remains available.
 
-3. **Which browsers are release-supported?**
-   - What we know: existing acceptance is Chromium desktop only.
-   - What's unclear: whether Safari/WebKit and Firefox are release blockers.
-   - Recommendation: lock a support matrix; at minimum execute desktop and mobile Chromium, and add one WebKit smoke if Safari is supported.
+3. **RESOLVED — Release browser matrix:** Phase 06 release support is desktop Chromium plus mobile Chromium emulation. Both projects are mandatory in `playwright.phase06.config.ts`; WebKit and Firefox are not release blockers unless the published support policy is expanded later.
 
-4. **How should evaluation retries be previewed?**
-   - What we know: ingestion replay already has the required preview/confirm/audit model.
-   - What's unclear: whether evaluation retry can reuse `ReplayPlan` or needs a domain-specific plan table.
-   - Recommendation: reuse the recovery command envelope and guarantees, but keep evaluation logical identity explicit (`ResultVersion` + `ForecastSnapshot` + policy hash).
+4. **RESOLVED — Evaluation retry model:** Evaluation retry reuses the existing preview/confirm/audit recovery envelope. Its stable logical identity is `ResultVersion` + `ForecastSnapshot` + policy hash, with the same fingerprint, expiry, stale rejection, idempotency, quota-impact, and immutable-fact guarantees as ingestion replay.
 
 ## Environment Availability
 

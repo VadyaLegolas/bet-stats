@@ -113,3 +113,10 @@ export const ForecastSnapshotState = {
 } as const
 
 export type ForecastSnapshotState = (typeof ForecastSnapshotState)[keyof typeof ForecastSnapshotState]
+
+
+export const RetentionSubjectProviderMode = {
+  SIGNED: 'SIGNED'
+} as const
+
+export type RetentionSubjectProviderMode = (typeof RetentionSubjectProviderMode)[keyof typeof RetentionSubjectProviderMode]

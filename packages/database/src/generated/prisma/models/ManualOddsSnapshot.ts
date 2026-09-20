@@ -215,6 +215,7 @@ export type ManualOddsSnapshotWhereInput = {
   replacedBy?: Prisma.XOR<Prisma.ManualOddsSnapshotNullableScalarRelationFilter, Prisma.ManualOddsSnapshotWhereInput> | null
   selections?: Prisma.ManualOddsSelectionListRelationFilter
   valueReceipts?: Prisma.ValueReceiptListRelationFilter
+  retainedHistory?: Prisma.RetainedOddsHistoryListRelationFilter
 }
 
 export type ManualOddsSnapshotOrderByWithRelationInput = {
@@ -232,6 +233,7 @@ export type ManualOddsSnapshotOrderByWithRelationInput = {
   replacedBy?: Prisma.ManualOddsSnapshotOrderByWithRelationInput
   selections?: Prisma.ManualOddsSelectionOrderByRelationAggregateInput
   valueReceipts?: Prisma.ValueReceiptOrderByRelationAggregateInput
+  retainedHistory?: Prisma.RetainedOddsHistoryOrderByRelationAggregateInput
 }
 
 export type ManualOddsSnapshotWhereUniqueInput = Prisma.AtLeast<{
@@ -253,6 +255,7 @@ export type ManualOddsSnapshotWhereUniqueInput = Prisma.AtLeast<{
   replacedBy?: Prisma.XOR<Prisma.ManualOddsSnapshotNullableScalarRelationFilter, Prisma.ManualOddsSnapshotWhereInput> | null
   selections?: Prisma.ManualOddsSelectionListRelationFilter
   valueReceipts?: Prisma.ValueReceiptListRelationFilter
+  retainedHistory?: Prisma.RetainedOddsHistoryListRelationFilter
 }, "id" | "replacesOddsId" | "fixtureId_market_inputHash">
 
 export type ManualOddsSnapshotOrderByWithAggregationInput = {
@@ -298,6 +301,7 @@ export type ManualOddsSnapshotCreateInput = {
   replacedBy?: Prisma.ManualOddsSnapshotCreateNestedOneWithoutReplacesOddsInput
   selections?: Prisma.ManualOddsSelectionCreateNestedManyWithoutOddsSnapshotInput
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutOddsSnapshotInput
+  retainedHistory?: Prisma.RetainedOddsHistoryCreateNestedManyWithoutOddsSnapshotInput
 }
 
 export type ManualOddsSnapshotUncheckedCreateInput = {
@@ -313,6 +317,7 @@ export type ManualOddsSnapshotUncheckedCreateInput = {
   replacedBy?: Prisma.ManualOddsSnapshotUncheckedCreateNestedOneWithoutReplacesOddsInput
   selections?: Prisma.ManualOddsSelectionUncheckedCreateNestedManyWithoutOddsSnapshotInput
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutOddsSnapshotInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUncheckedCreateNestedManyWithoutOddsSnapshotInput
 }
 
 export type ManualOddsSnapshotUpdateInput = {
@@ -328,6 +333,7 @@ export type ManualOddsSnapshotUpdateInput = {
   replacedBy?: Prisma.ManualOddsSnapshotUpdateOneWithoutReplacesOddsNestedInput
   selections?: Prisma.ManualOddsSelectionUpdateManyWithoutOddsSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutOddsSnapshotNestedInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUpdateManyWithoutOddsSnapshotNestedInput
 }
 
 export type ManualOddsSnapshotUncheckedUpdateInput = {
@@ -343,6 +349,7 @@ export type ManualOddsSnapshotUncheckedUpdateInput = {
   replacedBy?: Prisma.ManualOddsSnapshotUncheckedUpdateOneWithoutReplacesOddsNestedInput
   selections?: Prisma.ManualOddsSelectionUncheckedUpdateManyWithoutOddsSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutOddsSnapshotNestedInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUncheckedUpdateManyWithoutOddsSnapshotNestedInput
 }
 
 export type ManualOddsSnapshotCreateManyInput = {
@@ -529,6 +536,20 @@ export type ManualOddsSnapshotUncheckedUpdateOneWithoutReplacesOddsNestedInput =
   update?: Prisma.XOR<Prisma.XOR<Prisma.ManualOddsSnapshotUpdateToOneWithWhereWithoutReplacesOddsInput, Prisma.ManualOddsSnapshotUpdateWithoutReplacesOddsInput>, Prisma.ManualOddsSnapshotUncheckedUpdateWithoutReplacesOddsInput>
 }
 
+export type ManualOddsSnapshotCreateNestedOneWithoutRetainedHistoryInput = {
+  create?: Prisma.XOR<Prisma.ManualOddsSnapshotCreateWithoutRetainedHistoryInput, Prisma.ManualOddsSnapshotUncheckedCreateWithoutRetainedHistoryInput>
+  connectOrCreate?: Prisma.ManualOddsSnapshotCreateOrConnectWithoutRetainedHistoryInput
+  connect?: Prisma.ManualOddsSnapshotWhereUniqueInput
+}
+
+export type ManualOddsSnapshotUpdateOneRequiredWithoutRetainedHistoryNestedInput = {
+  create?: Prisma.XOR<Prisma.ManualOddsSnapshotCreateWithoutRetainedHistoryInput, Prisma.ManualOddsSnapshotUncheckedCreateWithoutRetainedHistoryInput>
+  connectOrCreate?: Prisma.ManualOddsSnapshotCreateOrConnectWithoutRetainedHistoryInput
+  upsert?: Prisma.ManualOddsSnapshotUpsertWithoutRetainedHistoryInput
+  connect?: Prisma.ManualOddsSnapshotWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ManualOddsSnapshotUpdateToOneWithWhereWithoutRetainedHistoryInput, Prisma.ManualOddsSnapshotUpdateWithoutRetainedHistoryInput>, Prisma.ManualOddsSnapshotUncheckedUpdateWithoutRetainedHistoryInput>
+}
+
 export type ManualOddsSnapshotCreateNestedOneWithoutSelectionsInput = {
   create?: Prisma.XOR<Prisma.ManualOddsSnapshotCreateWithoutSelectionsInput, Prisma.ManualOddsSnapshotUncheckedCreateWithoutSelectionsInput>
   connectOrCreate?: Prisma.ManualOddsSnapshotCreateOrConnectWithoutSelectionsInput
@@ -569,6 +590,7 @@ export type ManualOddsSnapshotCreateWithoutFixtureInput = {
   replacedBy?: Prisma.ManualOddsSnapshotCreateNestedOneWithoutReplacesOddsInput
   selections?: Prisma.ManualOddsSelectionCreateNestedManyWithoutOddsSnapshotInput
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutOddsSnapshotInput
+  retainedHistory?: Prisma.RetainedOddsHistoryCreateNestedManyWithoutOddsSnapshotInput
 }
 
 export type ManualOddsSnapshotUncheckedCreateWithoutFixtureInput = {
@@ -583,6 +605,7 @@ export type ManualOddsSnapshotUncheckedCreateWithoutFixtureInput = {
   replacedBy?: Prisma.ManualOddsSnapshotUncheckedCreateNestedOneWithoutReplacesOddsInput
   selections?: Prisma.ManualOddsSelectionUncheckedCreateNestedManyWithoutOddsSnapshotInput
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutOddsSnapshotInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUncheckedCreateNestedManyWithoutOddsSnapshotInput
 }
 
 export type ManualOddsSnapshotCreateOrConnectWithoutFixtureInput = {
@@ -638,6 +661,7 @@ export type ManualOddsSnapshotCreateWithoutReplacedByInput = {
   replacesOdds?: Prisma.ManualOddsSnapshotCreateNestedOneWithoutReplacedByInput
   selections?: Prisma.ManualOddsSelectionCreateNestedManyWithoutOddsSnapshotInput
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutOddsSnapshotInput
+  retainedHistory?: Prisma.RetainedOddsHistoryCreateNestedManyWithoutOddsSnapshotInput
 }
 
 export type ManualOddsSnapshotUncheckedCreateWithoutReplacedByInput = {
@@ -652,6 +676,7 @@ export type ManualOddsSnapshotUncheckedCreateWithoutReplacedByInput = {
   createdAt?: Date | string
   selections?: Prisma.ManualOddsSelectionUncheckedCreateNestedManyWithoutOddsSnapshotInput
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutOddsSnapshotInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUncheckedCreateNestedManyWithoutOddsSnapshotInput
 }
 
 export type ManualOddsSnapshotCreateOrConnectWithoutReplacedByInput = {
@@ -671,6 +696,7 @@ export type ManualOddsSnapshotCreateWithoutReplacesOddsInput = {
   replacedBy?: Prisma.ManualOddsSnapshotCreateNestedOneWithoutReplacesOddsInput
   selections?: Prisma.ManualOddsSelectionCreateNestedManyWithoutOddsSnapshotInput
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutOddsSnapshotInput
+  retainedHistory?: Prisma.RetainedOddsHistoryCreateNestedManyWithoutOddsSnapshotInput
 }
 
 export type ManualOddsSnapshotUncheckedCreateWithoutReplacesOddsInput = {
@@ -685,6 +711,7 @@ export type ManualOddsSnapshotUncheckedCreateWithoutReplacesOddsInput = {
   replacedBy?: Prisma.ManualOddsSnapshotUncheckedCreateNestedOneWithoutReplacesOddsInput
   selections?: Prisma.ManualOddsSelectionUncheckedCreateNestedManyWithoutOddsSnapshotInput
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutOddsSnapshotInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUncheckedCreateNestedManyWithoutOddsSnapshotInput
 }
 
 export type ManualOddsSnapshotCreateOrConnectWithoutReplacesOddsInput = {
@@ -715,6 +742,7 @@ export type ManualOddsSnapshotUpdateWithoutReplacedByInput = {
   replacesOdds?: Prisma.ManualOddsSnapshotUpdateOneWithoutReplacedByNestedInput
   selections?: Prisma.ManualOddsSelectionUpdateManyWithoutOddsSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutOddsSnapshotNestedInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUpdateManyWithoutOddsSnapshotNestedInput
 }
 
 export type ManualOddsSnapshotUncheckedUpdateWithoutReplacedByInput = {
@@ -729,6 +757,7 @@ export type ManualOddsSnapshotUncheckedUpdateWithoutReplacedByInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   selections?: Prisma.ManualOddsSelectionUncheckedUpdateManyWithoutOddsSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutOddsSnapshotNestedInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUncheckedUpdateManyWithoutOddsSnapshotNestedInput
 }
 
 export type ManualOddsSnapshotUpsertWithoutReplacesOddsInput = {
@@ -754,6 +783,7 @@ export type ManualOddsSnapshotUpdateWithoutReplacesOddsInput = {
   replacedBy?: Prisma.ManualOddsSnapshotUpdateOneWithoutReplacesOddsNestedInput
   selections?: Prisma.ManualOddsSelectionUpdateManyWithoutOddsSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutOddsSnapshotNestedInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUpdateManyWithoutOddsSnapshotNestedInput
 }
 
 export type ManualOddsSnapshotUncheckedUpdateWithoutReplacesOddsInput = {
@@ -762,6 +792,83 @@ export type ManualOddsSnapshotUncheckedUpdateWithoutReplacesOddsInput = {
   market?: Prisma.StringFieldUpdateOperationsInput | string
   inputHash?: Prisma.StringFieldUpdateOperationsInput | string
   source?: Prisma.StringFieldUpdateOperationsInput | string
+  receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  replacedBy?: Prisma.ManualOddsSnapshotUncheckedUpdateOneWithoutReplacesOddsNestedInput
+  selections?: Prisma.ManualOddsSelectionUncheckedUpdateManyWithoutOddsSnapshotNestedInput
+  valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutOddsSnapshotNestedInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUncheckedUpdateManyWithoutOddsSnapshotNestedInput
+}
+
+export type ManualOddsSnapshotCreateWithoutRetainedHistoryInput = {
+  id?: string
+  market: string
+  inputHash: string
+  source: string
+  receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  submittedAt?: Date | string
+  createdAt?: Date | string
+  fixture: Prisma.FixtureCreateNestedOneWithoutManualOddsSnapshotsInput
+  replacesOdds?: Prisma.ManualOddsSnapshotCreateNestedOneWithoutReplacedByInput
+  replacedBy?: Prisma.ManualOddsSnapshotCreateNestedOneWithoutReplacesOddsInput
+  selections?: Prisma.ManualOddsSelectionCreateNestedManyWithoutOddsSnapshotInput
+  valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutOddsSnapshotInput
+}
+
+export type ManualOddsSnapshotUncheckedCreateWithoutRetainedHistoryInput = {
+  id?: string
+  fixtureId: string
+  market: string
+  inputHash: string
+  source: string
+  replacesOddsId?: string | null
+  receipt: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  submittedAt?: Date | string
+  createdAt?: Date | string
+  replacedBy?: Prisma.ManualOddsSnapshotUncheckedCreateNestedOneWithoutReplacesOddsInput
+  selections?: Prisma.ManualOddsSelectionUncheckedCreateNestedManyWithoutOddsSnapshotInput
+  valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutOddsSnapshotInput
+}
+
+export type ManualOddsSnapshotCreateOrConnectWithoutRetainedHistoryInput = {
+  where: Prisma.ManualOddsSnapshotWhereUniqueInput
+  create: Prisma.XOR<Prisma.ManualOddsSnapshotCreateWithoutRetainedHistoryInput, Prisma.ManualOddsSnapshotUncheckedCreateWithoutRetainedHistoryInput>
+}
+
+export type ManualOddsSnapshotUpsertWithoutRetainedHistoryInput = {
+  update: Prisma.XOR<Prisma.ManualOddsSnapshotUpdateWithoutRetainedHistoryInput, Prisma.ManualOddsSnapshotUncheckedUpdateWithoutRetainedHistoryInput>
+  create: Prisma.XOR<Prisma.ManualOddsSnapshotCreateWithoutRetainedHistoryInput, Prisma.ManualOddsSnapshotUncheckedCreateWithoutRetainedHistoryInput>
+  where?: Prisma.ManualOddsSnapshotWhereInput
+}
+
+export type ManualOddsSnapshotUpdateToOneWithWhereWithoutRetainedHistoryInput = {
+  where?: Prisma.ManualOddsSnapshotWhereInput
+  data: Prisma.XOR<Prisma.ManualOddsSnapshotUpdateWithoutRetainedHistoryInput, Prisma.ManualOddsSnapshotUncheckedUpdateWithoutRetainedHistoryInput>
+}
+
+export type ManualOddsSnapshotUpdateWithoutRetainedHistoryInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  market?: Prisma.StringFieldUpdateOperationsInput | string
+  inputHash?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  fixture?: Prisma.FixtureUpdateOneRequiredWithoutManualOddsSnapshotsNestedInput
+  replacesOdds?: Prisma.ManualOddsSnapshotUpdateOneWithoutReplacedByNestedInput
+  replacedBy?: Prisma.ManualOddsSnapshotUpdateOneWithoutReplacesOddsNestedInput
+  selections?: Prisma.ManualOddsSelectionUpdateManyWithoutOddsSnapshotNestedInput
+  valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutOddsSnapshotNestedInput
+}
+
+export type ManualOddsSnapshotUncheckedUpdateWithoutRetainedHistoryInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
+  market?: Prisma.StringFieldUpdateOperationsInput | string
+  inputHash?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  replacesOddsId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   receipt?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -782,6 +889,7 @@ export type ManualOddsSnapshotCreateWithoutSelectionsInput = {
   replacesOdds?: Prisma.ManualOddsSnapshotCreateNestedOneWithoutReplacedByInput
   replacedBy?: Prisma.ManualOddsSnapshotCreateNestedOneWithoutReplacesOddsInput
   valueReceipts?: Prisma.ValueReceiptCreateNestedManyWithoutOddsSnapshotInput
+  retainedHistory?: Prisma.RetainedOddsHistoryCreateNestedManyWithoutOddsSnapshotInput
 }
 
 export type ManualOddsSnapshotUncheckedCreateWithoutSelectionsInput = {
@@ -796,6 +904,7 @@ export type ManualOddsSnapshotUncheckedCreateWithoutSelectionsInput = {
   createdAt?: Date | string
   replacedBy?: Prisma.ManualOddsSnapshotUncheckedCreateNestedOneWithoutReplacesOddsInput
   valueReceipts?: Prisma.ValueReceiptUncheckedCreateNestedManyWithoutOddsSnapshotInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUncheckedCreateNestedManyWithoutOddsSnapshotInput
 }
 
 export type ManualOddsSnapshotCreateOrConnectWithoutSelectionsInput = {
@@ -826,6 +935,7 @@ export type ManualOddsSnapshotUpdateWithoutSelectionsInput = {
   replacesOdds?: Prisma.ManualOddsSnapshotUpdateOneWithoutReplacedByNestedInput
   replacedBy?: Prisma.ManualOddsSnapshotUpdateOneWithoutReplacesOddsNestedInput
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutOddsSnapshotNestedInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUpdateManyWithoutOddsSnapshotNestedInput
 }
 
 export type ManualOddsSnapshotUncheckedUpdateWithoutSelectionsInput = {
@@ -840,6 +950,7 @@ export type ManualOddsSnapshotUncheckedUpdateWithoutSelectionsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replacedBy?: Prisma.ManualOddsSnapshotUncheckedUpdateOneWithoutReplacesOddsNestedInput
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutOddsSnapshotNestedInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUncheckedUpdateManyWithoutOddsSnapshotNestedInput
 }
 
 export type ManualOddsSnapshotCreateWithoutValueReceiptsInput = {
@@ -854,6 +965,7 @@ export type ManualOddsSnapshotCreateWithoutValueReceiptsInput = {
   replacesOdds?: Prisma.ManualOddsSnapshotCreateNestedOneWithoutReplacedByInput
   replacedBy?: Prisma.ManualOddsSnapshotCreateNestedOneWithoutReplacesOddsInput
   selections?: Prisma.ManualOddsSelectionCreateNestedManyWithoutOddsSnapshotInput
+  retainedHistory?: Prisma.RetainedOddsHistoryCreateNestedManyWithoutOddsSnapshotInput
 }
 
 export type ManualOddsSnapshotUncheckedCreateWithoutValueReceiptsInput = {
@@ -868,6 +980,7 @@ export type ManualOddsSnapshotUncheckedCreateWithoutValueReceiptsInput = {
   createdAt?: Date | string
   replacedBy?: Prisma.ManualOddsSnapshotUncheckedCreateNestedOneWithoutReplacesOddsInput
   selections?: Prisma.ManualOddsSelectionUncheckedCreateNestedManyWithoutOddsSnapshotInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUncheckedCreateNestedManyWithoutOddsSnapshotInput
 }
 
 export type ManualOddsSnapshotCreateOrConnectWithoutValueReceiptsInput = {
@@ -898,6 +1011,7 @@ export type ManualOddsSnapshotUpdateWithoutValueReceiptsInput = {
   replacesOdds?: Prisma.ManualOddsSnapshotUpdateOneWithoutReplacedByNestedInput
   replacedBy?: Prisma.ManualOddsSnapshotUpdateOneWithoutReplacesOddsNestedInput
   selections?: Prisma.ManualOddsSelectionUpdateManyWithoutOddsSnapshotNestedInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUpdateManyWithoutOddsSnapshotNestedInput
 }
 
 export type ManualOddsSnapshotUncheckedUpdateWithoutValueReceiptsInput = {
@@ -912,6 +1026,7 @@ export type ManualOddsSnapshotUncheckedUpdateWithoutValueReceiptsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   replacedBy?: Prisma.ManualOddsSnapshotUncheckedUpdateOneWithoutReplacesOddsNestedInput
   selections?: Prisma.ManualOddsSelectionUncheckedUpdateManyWithoutOddsSnapshotNestedInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUncheckedUpdateManyWithoutOddsSnapshotNestedInput
 }
 
 export type ManualOddsSnapshotCreateManyFixtureInput = {
@@ -937,6 +1052,7 @@ export type ManualOddsSnapshotUpdateWithoutFixtureInput = {
   replacedBy?: Prisma.ManualOddsSnapshotUpdateOneWithoutReplacesOddsNestedInput
   selections?: Prisma.ManualOddsSelectionUpdateManyWithoutOddsSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUpdateManyWithoutOddsSnapshotNestedInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUpdateManyWithoutOddsSnapshotNestedInput
 }
 
 export type ManualOddsSnapshotUncheckedUpdateWithoutFixtureInput = {
@@ -951,6 +1067,7 @@ export type ManualOddsSnapshotUncheckedUpdateWithoutFixtureInput = {
   replacedBy?: Prisma.ManualOddsSnapshotUncheckedUpdateOneWithoutReplacesOddsNestedInput
   selections?: Prisma.ManualOddsSelectionUncheckedUpdateManyWithoutOddsSnapshotNestedInput
   valueReceipts?: Prisma.ValueReceiptUncheckedUpdateManyWithoutOddsSnapshotNestedInput
+  retainedHistory?: Prisma.RetainedOddsHistoryUncheckedUpdateManyWithoutOddsSnapshotNestedInput
 }
 
 export type ManualOddsSnapshotUncheckedUpdateManyWithoutFixtureInput = {
@@ -972,11 +1089,13 @@ export type ManualOddsSnapshotUncheckedUpdateManyWithoutFixtureInput = {
 export type ManualOddsSnapshotCountOutputType = {
   selections: number
   valueReceipts: number
+  retainedHistory: number
 }
 
 export type ManualOddsSnapshotCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   selections?: boolean | ManualOddsSnapshotCountOutputTypeCountSelectionsArgs
   valueReceipts?: boolean | ManualOddsSnapshotCountOutputTypeCountValueReceiptsArgs
+  retainedHistory?: boolean | ManualOddsSnapshotCountOutputTypeCountRetainedHistoryArgs
 }
 
 /**
@@ -1003,6 +1122,13 @@ export type ManualOddsSnapshotCountOutputTypeCountValueReceiptsArgs<ExtArgs exte
   where?: Prisma.ValueReceiptWhereInput
 }
 
+/**
+ * ManualOddsSnapshotCountOutputType without action
+ */
+export type ManualOddsSnapshotCountOutputTypeCountRetainedHistoryArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.RetainedOddsHistoryWhereInput
+}
+
 
 export type ManualOddsSnapshotSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1019,6 +1145,7 @@ export type ManualOddsSnapshotSelect<ExtArgs extends runtime.Types.Extensions.In
   replacedBy?: boolean | Prisma.ManualOddsSnapshot$replacedByArgs<ExtArgs>
   selections?: boolean | Prisma.ManualOddsSnapshot$selectionsArgs<ExtArgs>
   valueReceipts?: boolean | Prisma.ManualOddsSnapshot$valueReceiptsArgs<ExtArgs>
+  retainedHistory?: boolean | Prisma.ManualOddsSnapshot$retainedHistoryArgs<ExtArgs>
   _count?: boolean | Prisma.ManualOddsSnapshotCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["manualOddsSnapshot"]>
 
@@ -1069,6 +1196,7 @@ export type ManualOddsSnapshotInclude<ExtArgs extends runtime.Types.Extensions.I
   replacedBy?: boolean | Prisma.ManualOddsSnapshot$replacedByArgs<ExtArgs>
   selections?: boolean | Prisma.ManualOddsSnapshot$selectionsArgs<ExtArgs>
   valueReceipts?: boolean | Prisma.ManualOddsSnapshot$valueReceiptsArgs<ExtArgs>
+  retainedHistory?: boolean | Prisma.ManualOddsSnapshot$retainedHistoryArgs<ExtArgs>
   _count?: boolean | Prisma.ManualOddsSnapshotCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ManualOddsSnapshotIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1088,6 +1216,7 @@ export type $ManualOddsSnapshotPayload<ExtArgs extends runtime.Types.Extensions.
     replacedBy: Prisma.$ManualOddsSnapshotPayload<ExtArgs> | null
     selections: Prisma.$ManualOddsSelectionPayload<ExtArgs>[]
     valueReceipts: Prisma.$ValueReceiptPayload<ExtArgs>[]
+    retainedHistory: Prisma.$RetainedOddsHistoryPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1498,6 +1627,7 @@ export interface Prisma__ManualOddsSnapshotClient<T, Null = never, ExtArgs exten
   replacedBy<T extends Prisma.ManualOddsSnapshot$replacedByArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ManualOddsSnapshot$replacedByArgs<ExtArgs>>): Prisma.Prisma__ManualOddsSnapshotClient<runtime.Types.Result.GetResult<Prisma.$ManualOddsSnapshotPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   selections<T extends Prisma.ManualOddsSnapshot$selectionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ManualOddsSnapshot$selectionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ManualOddsSelectionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   valueReceipts<T extends Prisma.ManualOddsSnapshot$valueReceiptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ManualOddsSnapshot$valueReceiptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ValueReceiptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  retainedHistory<T extends Prisma.ManualOddsSnapshot$retainedHistoryArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ManualOddsSnapshot$retainedHistoryArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RetainedOddsHistoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2020,6 +2150,30 @@ export type ManualOddsSnapshot$valueReceiptsArgs<ExtArgs extends runtime.Types.E
   take?: number
   skip?: number
   distinct?: Prisma.ValueReceiptScalarFieldEnum | Prisma.ValueReceiptScalarFieldEnum[]
+}
+
+/**
+ * ManualOddsSnapshot.retainedHistory
+ */
+export type ManualOddsSnapshot$retainedHistoryArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the RetainedOddsHistory
+   */
+  select?: Prisma.RetainedOddsHistorySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the RetainedOddsHistory
+   */
+  omit?: Prisma.RetainedOddsHistoryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RetainedOddsHistoryInclude<ExtArgs> | null
+  where?: Prisma.RetainedOddsHistoryWhereInput
+  orderBy?: Prisma.RetainedOddsHistoryOrderByWithRelationInput | Prisma.RetainedOddsHistoryOrderByWithRelationInput[]
+  cursor?: Prisma.RetainedOddsHistoryWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.RetainedOddsHistoryScalarFieldEnum | Prisma.RetainedOddsHistoryScalarFieldEnum[]
 }
 
 /**

@@ -195,6 +195,26 @@ export type ForecastMarket = Prisma.ForecastMarketModel
  */
 export type ManualOddsSnapshot = Prisma.ManualOddsSnapshotModel
 /**
+ * Model RetentionSubject
+ * Signed-provider subject boundary. No analytical fact points back to this row.
+ */
+export type RetentionSubject = Prisma.RetentionSubjectModel
+/**
+ * Model RetentionConsent
+ * Versioned proof of explicit durable-history consent.
+ */
+export type RetentionConsent = Prisma.RetentionConsentModel
+/**
+ * Model RetainedOddsHistory
+ * Deletable personal association to an immutable manual-odds fact.
+ */
+export type RetainedOddsHistory = Prisma.RetainedOddsHistoryModel
+/**
+ * Model RetainedViewHistory
+ * Deletable viewed-result history; resource identity exists only on this side.
+ */
+export type RetainedViewHistory = Prisma.RetainedViewHistoryModel
+/**
  * Model ManualOddsSelection
  * 
  */

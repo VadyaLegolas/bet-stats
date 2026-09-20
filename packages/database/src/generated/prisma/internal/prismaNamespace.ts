@@ -427,6 +427,10 @@ export const ModelName = {
   ForecastSnapshot: 'ForecastSnapshot',
   ForecastMarket: 'ForecastMarket',
   ManualOddsSnapshot: 'ManualOddsSnapshot',
+  RetentionSubject: 'RetentionSubject',
+  RetentionConsent: 'RetentionConsent',
+  RetainedOddsHistory: 'RetainedOddsHistory',
+  RetainedViewHistory: 'RetainedViewHistory',
   ManualOddsSelection: 'ManualOddsSelection',
   ValueReceipt: 'ValueReceipt',
   ResultVersion: 'ResultVersion',
@@ -458,7 +462,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "enrichmentDecisionReceipt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "enrichmentDecisionReceipt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "retentionSubject" | "retentionConsent" | "retainedOddsHistory" | "retainedViewHistory" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2682,6 +2686,302 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    RetentionSubject: {
+      payload: Prisma.$RetentionSubjectPayload<ExtArgs>
+      fields: Prisma.RetentionSubjectFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.RetentionSubjectFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionSubjectPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.RetentionSubjectFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionSubjectPayload>
+        }
+        findFirst: {
+          args: Prisma.RetentionSubjectFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionSubjectPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.RetentionSubjectFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionSubjectPayload>
+        }
+        findMany: {
+          args: Prisma.RetentionSubjectFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionSubjectPayload>[]
+        }
+        create: {
+          args: Prisma.RetentionSubjectCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionSubjectPayload>
+        }
+        createMany: {
+          args: Prisma.RetentionSubjectCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.RetentionSubjectCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionSubjectPayload>[]
+        }
+        delete: {
+          args: Prisma.RetentionSubjectDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionSubjectPayload>
+        }
+        update: {
+          args: Prisma.RetentionSubjectUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionSubjectPayload>
+        }
+        deleteMany: {
+          args: Prisma.RetentionSubjectDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.RetentionSubjectUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.RetentionSubjectUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionSubjectPayload>[]
+        }
+        upsert: {
+          args: Prisma.RetentionSubjectUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionSubjectPayload>
+        }
+        aggregate: {
+          args: Prisma.RetentionSubjectAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateRetentionSubject>
+        }
+        groupBy: {
+          args: Prisma.RetentionSubjectGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RetentionSubjectGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.RetentionSubjectCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RetentionSubjectCountAggregateOutputType> | number
+        }
+      }
+    }
+    RetentionConsent: {
+      payload: Prisma.$RetentionConsentPayload<ExtArgs>
+      fields: Prisma.RetentionConsentFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.RetentionConsentFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionConsentPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.RetentionConsentFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionConsentPayload>
+        }
+        findFirst: {
+          args: Prisma.RetentionConsentFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionConsentPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.RetentionConsentFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionConsentPayload>
+        }
+        findMany: {
+          args: Prisma.RetentionConsentFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionConsentPayload>[]
+        }
+        create: {
+          args: Prisma.RetentionConsentCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionConsentPayload>
+        }
+        createMany: {
+          args: Prisma.RetentionConsentCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.RetentionConsentCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionConsentPayload>[]
+        }
+        delete: {
+          args: Prisma.RetentionConsentDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionConsentPayload>
+        }
+        update: {
+          args: Prisma.RetentionConsentUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionConsentPayload>
+        }
+        deleteMany: {
+          args: Prisma.RetentionConsentDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.RetentionConsentUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.RetentionConsentUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionConsentPayload>[]
+        }
+        upsert: {
+          args: Prisma.RetentionConsentUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionConsentPayload>
+        }
+        aggregate: {
+          args: Prisma.RetentionConsentAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateRetentionConsent>
+        }
+        groupBy: {
+          args: Prisma.RetentionConsentGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RetentionConsentGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.RetentionConsentCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RetentionConsentCountAggregateOutputType> | number
+        }
+      }
+    }
+    RetainedOddsHistory: {
+      payload: Prisma.$RetainedOddsHistoryPayload<ExtArgs>
+      fields: Prisma.RetainedOddsHistoryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.RetainedOddsHistoryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedOddsHistoryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.RetainedOddsHistoryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedOddsHistoryPayload>
+        }
+        findFirst: {
+          args: Prisma.RetainedOddsHistoryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedOddsHistoryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.RetainedOddsHistoryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedOddsHistoryPayload>
+        }
+        findMany: {
+          args: Prisma.RetainedOddsHistoryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedOddsHistoryPayload>[]
+        }
+        create: {
+          args: Prisma.RetainedOddsHistoryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedOddsHistoryPayload>
+        }
+        createMany: {
+          args: Prisma.RetainedOddsHistoryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.RetainedOddsHistoryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedOddsHistoryPayload>[]
+        }
+        delete: {
+          args: Prisma.RetainedOddsHistoryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedOddsHistoryPayload>
+        }
+        update: {
+          args: Prisma.RetainedOddsHistoryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedOddsHistoryPayload>
+        }
+        deleteMany: {
+          args: Prisma.RetainedOddsHistoryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.RetainedOddsHistoryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.RetainedOddsHistoryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedOddsHistoryPayload>[]
+        }
+        upsert: {
+          args: Prisma.RetainedOddsHistoryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedOddsHistoryPayload>
+        }
+        aggregate: {
+          args: Prisma.RetainedOddsHistoryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateRetainedOddsHistory>
+        }
+        groupBy: {
+          args: Prisma.RetainedOddsHistoryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RetainedOddsHistoryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.RetainedOddsHistoryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RetainedOddsHistoryCountAggregateOutputType> | number
+        }
+      }
+    }
+    RetainedViewHistory: {
+      payload: Prisma.$RetainedViewHistoryPayload<ExtArgs>
+      fields: Prisma.RetainedViewHistoryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.RetainedViewHistoryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedViewHistoryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.RetainedViewHistoryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedViewHistoryPayload>
+        }
+        findFirst: {
+          args: Prisma.RetainedViewHistoryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedViewHistoryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.RetainedViewHistoryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedViewHistoryPayload>
+        }
+        findMany: {
+          args: Prisma.RetainedViewHistoryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedViewHistoryPayload>[]
+        }
+        create: {
+          args: Prisma.RetainedViewHistoryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedViewHistoryPayload>
+        }
+        createMany: {
+          args: Prisma.RetainedViewHistoryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.RetainedViewHistoryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedViewHistoryPayload>[]
+        }
+        delete: {
+          args: Prisma.RetainedViewHistoryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedViewHistoryPayload>
+        }
+        update: {
+          args: Prisma.RetainedViewHistoryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedViewHistoryPayload>
+        }
+        deleteMany: {
+          args: Prisma.RetainedViewHistoryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.RetainedViewHistoryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.RetainedViewHistoryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedViewHistoryPayload>[]
+        }
+        upsert: {
+          args: Prisma.RetainedViewHistoryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetainedViewHistoryPayload>
+        }
+        aggregate: {
+          args: Prisma.RetainedViewHistoryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateRetainedViewHistory>
+        }
+        groupBy: {
+          args: Prisma.RetainedViewHistoryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RetainedViewHistoryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.RetainedViewHistoryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RetainedViewHistoryCountAggregateOutputType> | number
+        }
+      }
+    }
     ManualOddsSelection: {
       payload: Prisma.$ManualOddsSelectionPayload<ExtArgs>
       fields: Prisma.ManualOddsSelectionFieldRefs
@@ -4393,6 +4693,60 @@ export const ManualOddsSnapshotScalarFieldEnum = {
 export type ManualOddsSnapshotScalarFieldEnum = (typeof ManualOddsSnapshotScalarFieldEnum)[keyof typeof ManualOddsSnapshotScalarFieldEnum]
 
 
+export const RetentionSubjectScalarFieldEnum = {
+  id: 'id',
+  providerMode: 'providerMode',
+  subjectKey: 'subjectKey',
+  approvedAt: 'approvedAt',
+  retentionBlockedAt: 'retentionBlockedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RetentionSubjectScalarFieldEnum = (typeof RetentionSubjectScalarFieldEnum)[keyof typeof RetentionSubjectScalarFieldEnum]
+
+
+export const RetentionConsentScalarFieldEnum = {
+  id: 'id',
+  subjectId: 'subjectId',
+  policyVersion: 'policyVersion',
+  policyEffectiveAt: 'policyEffectiveAt',
+  durationDays: 'durationDays',
+  grantedAt: 'grantedAt',
+  expiresAt: 'expiresAt',
+  revokedAt: 'revokedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RetentionConsentScalarFieldEnum = (typeof RetentionConsentScalarFieldEnum)[keyof typeof RetentionConsentScalarFieldEnum]
+
+
+export const RetainedOddsHistoryScalarFieldEnum = {
+  id: 'id',
+  subjectId: 'subjectId',
+  consentId: 'consentId',
+  oddsSnapshotId: 'oddsSnapshotId',
+  retainedAt: 'retainedAt',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RetainedOddsHistoryScalarFieldEnum = (typeof RetainedOddsHistoryScalarFieldEnum)[keyof typeof RetainedOddsHistoryScalarFieldEnum]
+
+
+export const RetainedViewHistoryScalarFieldEnum = {
+  id: 'id',
+  subjectId: 'subjectId',
+  consentId: 'consentId',
+  resourceType: 'resourceType',
+  resourceId: 'resourceId',
+  viewedAt: 'viewedAt',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RetainedViewHistoryScalarFieldEnum = (typeof RetainedViewHistoryScalarFieldEnum)[keyof typeof RetainedViewHistoryScalarFieldEnum]
+
+
 export const ManualOddsSelectionScalarFieldEnum = {
   id: 'id',
   oddsSnapshotId: 'oddsSnapshotId',
@@ -4855,6 +5209,20 @@ export type ListEnumForecastSnapshotStateFieldRefInput<$PrismaModel> = FieldRefI
 
 
 /**
+ * Reference to a field of type 'RetentionSubjectProviderMode'
+ */
+export type EnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'RetentionSubjectProviderMode'>
+    
+
+
+/**
+ * Reference to a field of type 'RetentionSubjectProviderMode[]'
+ */
+export type ListEnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'RetentionSubjectProviderMode[]'>
+    
+
+
+/**
  * Reference to a field of type 'Float'
  */
 export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
@@ -5132,6 +5500,10 @@ export type GlobalOmitConfig = {
   forecastSnapshot?: Prisma.ForecastSnapshotOmit
   forecastMarket?: Prisma.ForecastMarketOmit
   manualOddsSnapshot?: Prisma.ManualOddsSnapshotOmit
+  retentionSubject?: Prisma.RetentionSubjectOmit
+  retentionConsent?: Prisma.RetentionConsentOmit
+  retainedOddsHistory?: Prisma.RetainedOddsHistoryOmit
+  retainedViewHistory?: Prisma.RetainedViewHistoryOmit
   manualOddsSelection?: Prisma.ManualOddsSelectionOmit
   valueReceipt?: Prisma.ValueReceiptOmit
   resultVersion?: Prisma.ResultVersionOmit

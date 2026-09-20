@@ -81,6 +81,10 @@ export const ModelName = {
   ForecastSnapshot: 'ForecastSnapshot',
   ForecastMarket: 'ForecastMarket',
   ManualOddsSnapshot: 'ManualOddsSnapshot',
+  RetentionSubject: 'RetentionSubject',
+  RetentionConsent: 'RetentionConsent',
+  RetainedOddsHistory: 'RetainedOddsHistory',
+  RetainedViewHistory: 'RetainedViewHistory',
   ManualOddsSelection: 'ManualOddsSelection',
   ValueReceipt: 'ValueReceipt',
   ResultVersion: 'ResultVersion',
@@ -601,6 +605,60 @@ export const ManualOddsSnapshotScalarFieldEnum = {
 } as const
 
 export type ManualOddsSnapshotScalarFieldEnum = (typeof ManualOddsSnapshotScalarFieldEnum)[keyof typeof ManualOddsSnapshotScalarFieldEnum]
+
+
+export const RetentionSubjectScalarFieldEnum = {
+  id: 'id',
+  providerMode: 'providerMode',
+  subjectKey: 'subjectKey',
+  approvedAt: 'approvedAt',
+  retentionBlockedAt: 'retentionBlockedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RetentionSubjectScalarFieldEnum = (typeof RetentionSubjectScalarFieldEnum)[keyof typeof RetentionSubjectScalarFieldEnum]
+
+
+export const RetentionConsentScalarFieldEnum = {
+  id: 'id',
+  subjectId: 'subjectId',
+  policyVersion: 'policyVersion',
+  policyEffectiveAt: 'policyEffectiveAt',
+  durationDays: 'durationDays',
+  grantedAt: 'grantedAt',
+  expiresAt: 'expiresAt',
+  revokedAt: 'revokedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RetentionConsentScalarFieldEnum = (typeof RetentionConsentScalarFieldEnum)[keyof typeof RetentionConsentScalarFieldEnum]
+
+
+export const RetainedOddsHistoryScalarFieldEnum = {
+  id: 'id',
+  subjectId: 'subjectId',
+  consentId: 'consentId',
+  oddsSnapshotId: 'oddsSnapshotId',
+  retainedAt: 'retainedAt',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RetainedOddsHistoryScalarFieldEnum = (typeof RetainedOddsHistoryScalarFieldEnum)[keyof typeof RetainedOddsHistoryScalarFieldEnum]
+
+
+export const RetainedViewHistoryScalarFieldEnum = {
+  id: 'id',
+  subjectId: 'subjectId',
+  consentId: 'consentId',
+  resourceType: 'resourceType',
+  resourceId: 'resourceId',
+  viewedAt: 'viewedAt',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RetainedViewHistoryScalarFieldEnum = (typeof RetainedViewHistoryScalarFieldEnum)[keyof typeof RetainedViewHistoryScalarFieldEnum]
 
 
 export const ManualOddsSelectionScalarFieldEnum = {

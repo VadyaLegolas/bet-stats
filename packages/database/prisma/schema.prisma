@@ -80,6 +80,10 @@ enum ForecastSnapshotState {
   FAILED
 }
 
+enum RetentionSubjectProviderMode {
+  SIGNED
+}
+
 model League {
   id                   String               @id @default(cuid())
   name                 String
@@ -664,9 +668,81 @@ model ManualOddsSnapshot {
   replacedBy     ManualOddsSnapshot?   @relation("OddsReplacement")
   selections     ManualOddsSelection[]
   valueReceipts  ValueReceipt[]
+  retainedHistory RetainedOddsHistory[]
 
   @@unique([fixtureId, market, inputHash])
   @@index([fixtureId, market, submittedAt])
+}
+
+/// Signed-provider subject boundary. No analytical fact points back to this row.
+model RetentionSubject {
+  id                 String                       @id
+  providerMode       RetentionSubjectProviderMode
+  subjectKey         String
+  approvedAt         DateTime                     @db.Timestamptz(3)
+  retentionBlockedAt DateTime?                    @db.Timestamptz(3)
+  createdAt          DateTime                     @default(now()) @db.Timestamptz(3)
+  consents           RetentionConsent[]
+  retainedOdds       RetainedOddsHistory[]
+  retainedViews      RetainedViewHistory[]
+
+  @@unique([providerMode, subjectKey])
+  @@index([retentionBlockedAt])
+}
+
+/// Versioned proof of explicit durable-history consent.
+model RetentionConsent {
+  id                String                @id
+  subjectId         String
+  policyVersion     String
+  policyEffectiveAt DateTime              @db.Timestamptz(3)
+  durationDays      Int
+  grantedAt         DateTime              @db.Timestamptz(3)
+  expiresAt         DateTime              @db.Timestamptz(3)
+  revokedAt         DateTime?             @db.Timestamptz(3)
+  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
+  subject           RetentionSubject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  retainedOdds      RetainedOddsHistory[]
+  retainedViews     RetainedViewHistory[]
+
+  @@unique([subjectId, policyVersion, grantedAt])
+  @@index([subjectId, revokedAt, expiresAt])
+  @@index([expiresAt])
+}
+
+/// Deletable personal association to an immutable manual-odds fact.
+model RetainedOddsHistory {
+  id             String             @id
+  subjectId      String
+  consentId      String
+  oddsSnapshotId String
+  retainedAt     DateTime           @db.Timestamptz(3)
+  expiresAt      DateTime           @db.Timestamptz(3)
+  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+  subject        RetentionSubject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  consent        RetentionConsent   @relation(fields: [consentId], references: [id], onDelete: Cascade)
+  oddsSnapshot   ManualOddsSnapshot @relation(fields: [oddsSnapshotId], references: [id], onDelete: Restrict)
+
+  @@unique([subjectId, oddsSnapshotId])
+  @@index([subjectId, expiresAt])
+  @@index([consentId])
+}
+
+/// Deletable viewed-result history; resource identity exists only on this side.
+model RetainedViewHistory {
+  id           String           @id
+  subjectId    String
+  consentId    String
+  resourceType String
+  resourceId   String
+  viewedAt     DateTime         @db.Timestamptz(3)
+  expiresAt    DateTime         @db.Timestamptz(3)
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  subject      RetentionSubject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  consent      RetentionConsent @relation(fields: [consentId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId, expiresAt])
+  @@index([consentId])
 }
 
 model ManualOddsSelection {

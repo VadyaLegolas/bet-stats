@@ -406,6 +406,23 @@ export type EnumForecastSnapshotStateWithAggregatesFilter<$PrismaModel = never> 
   _max?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel>
 }
 
+export type EnumRetentionSubjectProviderModeFilter<$PrismaModel = never> = {
+  equals?: $Enums.RetentionSubjectProviderMode | Prisma.EnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel>
+  in?: $Enums.RetentionSubjectProviderMode[] | Prisma.ListEnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.RetentionSubjectProviderMode[] | Prisma.ListEnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumRetentionSubjectProviderModeFilter<$PrismaModel> | $Enums.RetentionSubjectProviderMode
+}
+
+export type EnumRetentionSubjectProviderModeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.RetentionSubjectProviderMode | Prisma.EnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel>
+  in?: $Enums.RetentionSubjectProviderMode[] | Prisma.ListEnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.RetentionSubjectProviderMode[] | Prisma.ListEnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumRetentionSubjectProviderModeWithAggregatesFilter<$PrismaModel> | $Enums.RetentionSubjectProviderMode
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumRetentionSubjectProviderModeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumRetentionSubjectProviderModeFilter<$PrismaModel>
+}
+
 export type FloatFilter<$PrismaModel = never> = {
   equals?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   in?: number[] | Prisma.ListFloatFieldRefInput<$PrismaModel>
@@ -894,6 +911,23 @@ export type NestedEnumForecastSnapshotStateWithAggregatesFilter<$PrismaModel = n
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel>
   _max?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel>
+}
+
+export type NestedEnumRetentionSubjectProviderModeFilter<$PrismaModel = never> = {
+  equals?: $Enums.RetentionSubjectProviderMode | Prisma.EnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel>
+  in?: $Enums.RetentionSubjectProviderMode[] | Prisma.ListEnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.RetentionSubjectProviderMode[] | Prisma.ListEnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumRetentionSubjectProviderModeFilter<$PrismaModel> | $Enums.RetentionSubjectProviderMode
+}
+
+export type NestedEnumRetentionSubjectProviderModeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.RetentionSubjectProviderMode | Prisma.EnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel>
+  in?: $Enums.RetentionSubjectProviderMode[] | Prisma.ListEnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.RetentionSubjectProviderMode[] | Prisma.ListEnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumRetentionSubjectProviderModeWithAggregatesFilter<$PrismaModel> | $Enums.RetentionSubjectProviderMode
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumRetentionSubjectProviderModeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumRetentionSubjectProviderModeFilter<$PrismaModel>
 }
 
 export type NestedFloatWithAggregatesFilter<$PrismaModel = never> = {

@@ -307,7 +307,7 @@ Plans:
   4. An operator can safely retry ingestion and evaluation work and verify that durable facts and immutable snapshots remain consistent.
   5. Release checks exercise the complete fixture-to-forecast-to-odds-to-settlement loop and provider degradation states, while betting-related history is not retained without explicit consent and a documented boundary.
 
-**Plans**: 6/9 plans executed
+**Plans**: 7/9 plans executed
 
 Plans:
 
@@ -331,7 +331,7 @@ Plans:
 
 **Wave 5** *(after the D-14 decision)*
 
-- [ ] 06-07-PLAN.md — Encode fail-closed privacy policy, schema, migration, and persistence.
+- [x] 06-07-PLAN.md — Encode fail-closed privacy policy, schema, migration, and persistence.
 
 **Wave 6** *(after privacy persistence)*
 
@@ -352,4 +352,4 @@ Plans:
 | 3. Forecast and Manual Value Workbench | 12/12 | Complete    | 2026-09-08 |
 | 4. Settlement and Evidence Scorecard | 9/9 | Complete    | 2026-09-09 |
 | 5. Provider-Aware Coverage and Enrichment | 16/16 | Complete    | 2026-09-20 |
-| 6. Release Experience and Operations | 6/9 | In Progress|  |
+| 6. Release Experience and Operations | 7/9 | In Progress|  |

@@ -28,3 +28,4 @@ export * from "./evaluation/financial.js";
 export * from "./evaluation/clv.js";
 export * from "./evaluation/backtest.js";
 export * from "./evaluation/forecast-orchestrator.js";
+export * from "./methodology/model-card.js";

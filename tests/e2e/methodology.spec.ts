@@ -21,6 +21,7 @@ test("versioned model card presents plain-language and exact technical evidence"
   await expect(page.locator("#evaluation-technical")).toContainText("proper-score-v1");
   await expect(page.locator("#evaluation-technical")).toContainText("settlement-policy-v1");
   await expect(page.locator("#confidence-technical")).toContainText("minimum 5 matches");
+  await page.locator("#inputs").getByText("Technical details", { exact: true }).click();
   await expect(page.getByRole("link", { name: "Forecast receipt details" })).toHaveAttribute("href", "/fixtures#forecast-receipts");
 
   const changes = page.locator("#change-history article");

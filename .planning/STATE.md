@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 06
 current_phase_name: Release Experience and Operations
-current_plan: 2
+current_plan: 4
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-09-20T05:25:07.581Z"
+stopped_at: Completed 06-04-PLAN.md
+last_updated: "2026-09-20T10:36:44.062Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 86
-  completed_plans: 78
+  completed_plans: 80
   percent: 83
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 06 (Release Experience and Operations) — EXECUTING
-Current Plan: 2
+Current Plan: 4
 Total Plans in Phase: 9
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 06 execution started
@@ -110,6 +110,8 @@ Progress: [████████░░] 83%
 | Phase 05 P15 | 1h 5m | 3 tasks | 16 files |
 | Phase 05-provider-aware-coverage-and-enrichment P16 | 23m | 2 tasks | 7 files |
 | Phase 06 P01 | 12min | 2 tasks | 5 files |
+| Phase 06 P02 | 5h 6m | 3 tasks | 8 files |
+| Phase 06 P04 | 5h 8m | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -190,6 +192,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 05]: Strict forecast comparison strips repository-only state only after persisted-state validation.
 - [Phase 06]: Phase 06: The release tracer extends the proven Phase 05 owned stack with a dedicated BullMQ settlement worker and exact queue prefix.
 - [Phase 06]: Phase 06: Limited forecast evidence remains fail-closed as INSUFFICIENT_EVIDENCE rather than being fabricated into a value candidate.
+- [Phase 06]: Render desktop tables and mobile conclusion-first cards from one typed evidence projection so semantics cannot drift by breakpoint.
+- [Phase 06]: Keep retry state local to forecast availability, retain the last valid content, and restore focus to the retry control after a failed retry.
+- [Phase 06]: Phase 06: Operations projections use explicit Prisma selects and closed scalar DTO constructors so raw payloads, secrets, headers, environments, stacks, arbitrary metadata, and logs never cross the browser boundary.
+- [Phase 06]: Phase 06: Operations failure details are bounded to 25 safe logical job identities per page behind canonical signed HMAC ingress.
 
 ### Pending Todos
 
@@ -209,6 +215,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-20T05:25:07.334Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-09-20T10:36:43.816Z
+Stopped at: Completed 06-04-PLAN.md
 Resume file: None

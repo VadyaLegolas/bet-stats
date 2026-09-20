@@ -40,7 +40,7 @@ export default function MethodologyPage() {
 
     <section id="what-is-excluded" style={panel}>
       <h2>What is excluded</h2>
-      <p>The model does not use paid bookmaker feeds, automatic wagering, live/in-play signals, personalized staking, unofficial future information or evidence observed after the forecast cutoff.</p>
+      <p>The model does not use paid bookmaker feeds, wager-submission features, live/in-play signals, personalized staking, unofficial future information or evidence observed after the forecast cutoff.</p>
       <TechnicalDetails id="what-is-excluded-technical">
         <p>Leakage prevention requires every evidence source timestamp and evidence receipt boundary to be at or before the exact cutoff. Rolling-origin backtests keep training windows before forecast cutoffs and result knowledge at a later, separate evaluation time.</p>
         <p>Backtest policy: <code>{card.policies.backtest}</code>.</p>
@@ -82,9 +82,9 @@ export default function MethodologyPage() {
 
     <section id="responsible-use" style={panel}>
       <h2>Responsible use</h2>
-      <p>Use these estimates as transparent analytical evidence only. Do not treat them as guaranteed tips, stake more than you can afford to lose, or bet where it is unlawful or inappropriate for your age.</p>
+      <p>Use these estimates as transparent analytical evidence only. Do not treat them as instructions, stake more than you can afford to lose, or bet where it is unlawful or inappropriate for your age.</p>
       <TechnicalDetails id="responsible-use-technical">
-        <p>No automatic wagering or personalized staking is supported. Financial evidence uses <code>{card.policies.financial}</code> and defines ROI/Yield as <code>{card.evaluation.financialRate}</code>. Closing-line comparison uses <code>{card.policies.clv}</code>.</p>
+        <p>The product never submits wagers and does not support personalized staking. Financial evidence uses <code>{card.policies.financial}</code> and defines ROI/Yield as <code>{card.evaluation.financialRate}</code>. Closing-line comparison uses <code>{card.policies.clv}</code>.</p>
       </TechnicalDetails>
     </section>
 

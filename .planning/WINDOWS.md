@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 19
+open_count: 21
 waived_count: 0
 fixed_count: 0
-total_count: 19
-last_updated: 2026-09-12T16:33:46.954Z
+total_count: 21
+last_updated: 2026-09-20T05:24:02.774Z
 ---
 
 # Broken Windows Ledger
@@ -34,6 +34,8 @@ last_updated: 2026-09-12T16:33:46.954Z
 | 17 | 04 | unrun-verify | tests/integration |  | Repository-wide integration command requires external shared database state; plan-owned PostgreSQL acceptance passed | open |  | 2026-09-09T03:34:56.324Z |  |
 | 18 | 05 | deviation | packages/database/src/provider-routing/repository.ts |  | Canonical route hash initially included repository identity fields and was corrected during tracer verification | open |  | 2026-09-12T16:32:58.637Z |  |
 | 19 | 05 | deviation | .planning/STATE.md |  | state.advance-plan could not parse the initial Not started position; plan 02 state was recorded directly | open |  | 2026-09-12T16:33:46.954Z |  |
+| 20 | 06 | deviation | tests/e2e/release-journey.spec.ts |  | Aligned tracer assertions with canonical hash, fail-closed value outcome, and three retained market score facts | open |  | 2026-09-20T05:24:02.284Z |  |
+| 21 | 06 | deviation | package.json |  | Used explicit pnpm workspace-root flag for the approved accessibility dependency | open |  | 2026-09-20T05:24:02.774Z |  |
 
 ````json
 [
@@ -263,6 +265,30 @@ last_updated: 2026-09-12T16:33:46.954Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-12T16:33:46.954Z",
+    "resolved_at": null
+  },
+  {
+    "id": 20,
+    "kind": "deviation",
+    "phase": "06",
+    "file": "tests/e2e/release-journey.spec.ts",
+    "line": null,
+    "description": "Aligned tracer assertions with canonical hash, fail-closed value outcome, and three retained market score facts",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-20T05:24:02.284Z",
+    "resolved_at": null
+  },
+  {
+    "id": 21,
+    "kind": "deviation",
+    "phase": "06",
+    "file": "package.json",
+    "line": null,
+    "description": "Used explicit pnpm workspace-root flag for the approved accessibility dependency",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-20T05:24:02.774Z",
     "resolved_at": null
   }
 ]

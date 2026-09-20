@@ -79,7 +79,7 @@
 - [ ] **UX-02**: A user can view a versioned methodology/model-card page explaining inputs, exclusions, confidence, limitations, evaluation, and responsible-use policy.
 - [ ] **OPS-01**: An operator can inspect job failures, dead-lettered work, provider health, quota consumption, data-quality errors, and correlation identifiers without exposing secrets.
 - [ ] **OPS-02**: An operator can safely retry or replay failed ingestion/evaluation work and verify that durable facts and immutable snapshots remain consistent.
-- [ ] **OPS-03**: Release verification covers the complete fixture-to-forecast-to-manual-odds-to-settlement workflow and representative provider degradation states.
+- [x] **OPS-03**: Release verification covers the complete fixture-to-forecast-to-manual-odds-to-settlement workflow and representative provider degradation states.
 - [ ] **PRIV-01**: The system does not persist user betting-related history without explicit consent and a documented retention boundary.
 
 ## v2 Requirements
@@ -175,7 +175,7 @@
 | UX-02 | Phase 6 | Pending |
 | OPS-01 | Phase 6 | Pending |
 | OPS-02 | Phase 6 | Pending |
-| OPS-03 | Phase 6 | Pending |
+| OPS-03 | Phase 6 | Complete |
 | PRIV-01 | Phase 6 | Pending |
 
 **Coverage:**

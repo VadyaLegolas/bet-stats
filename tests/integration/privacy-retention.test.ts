@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
+
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { readPrivacyRetentionConfig } from "@bet-stats/config";
 import {
@@ -66,5 +69,100 @@ describe("privacy retention policy", () => {
       subjectId: "opaque-subject",
       signatureVerified: false,
     })).toEqual({ available: false, reason: "SUBJECT_IDENTITY_UNAVAILABLE" });
+  });
+});
+
+const workspaceRoot = resolve(import.meta.dirname, "../..");
+const databaseRoot = resolve(workspaceRoot, "packages/database");
+const prismaCli = resolve(databaseRoot, "node_modules/prisma/build/index.js");
+const containerName = `bet-stats-privacy-${process.pid}`;
+
+function docker(...args: string[]): string {
+  return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+}
+
+function sql(statement: string): string[] {
+  const output = docker("exec", containerName, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats", "-At", "-c", statement);
+  return output.length === 0 ? [] : output.split(/\r?\n/);
+}
+
+function waitForPostgres(): void {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    try {
+      docker("exec", containerName, "pg_isready", "-U", "postgres", "-d", "bet_stats");
+      return;
+    } catch (error) {
+      lastError = error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);
+    }
+  }
+  throw lastError;
+}
+
+describe("privacy retention persistence", () => {
+  beforeAll(() => {
+    docker("run", "--detach", "--name", containerName, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "--publish", "127.0.0.1::5432", "postgres:18-alpine");
+    waitForPostgres();
+    const port = docker("port", containerName, "5432/tcp").split(":").at(-1);
+    if (!port) throw new Error("Docker did not publish the PostgreSQL port");
+    execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], {
+      cwd: databaseRoot,
+      env: { ...process.env, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${port}/bet_stats` },
+      stdio: "pipe",
+    });
+    sql(`
+      INSERT INTO "League" (id, name, "countryCode", "createdAt", "updatedAt") VALUES ('privacy-league', 'Privacy League', 'PL', now(), now());
+      INSERT INTO "Season" (id, "leagueId", label, "startsOn", "endsOn", "createdAt", "updatedAt") VALUES ('privacy-season', 'privacy-league', '2026', '2026-01-01', '2026-12-31', now(), now());
+      INSERT INTO "Team" (id, name, "normalizedName", "countryCode", "createdAt", "updatedAt") VALUES
+        ('privacy-home', 'Home', 'home', 'PL', now(), now()), ('privacy-away', 'Away', 'away', 'PL', now(), now());
+      INSERT INTO "Fixture" (id, "leagueId", "seasonId", "homeTeamId", "awayTeamId", "kickoffUtc", status, "createdAt", "updatedAt") VALUES
+        ('privacy-fixture', 'privacy-league', 'privacy-season', 'privacy-home', 'privacy-away', now() + interval '1 day', 'SCHEDULED', now(), now());
+      INSERT INTO "ManualOddsSnapshot" (id, "fixtureId", market, "inputHash", source, receipt, "submittedAt", "createdAt") VALUES
+        ('privacy-odds', 'privacy-fixture', 'ONE_X_TWO', 'privacy-input', 'manual', '{}'::jsonb, now(), now());
+    `);
+  }, 180_000);
+
+  afterAll(() => {
+    try { docker("rm", "--force", containerName); } catch { /* owned-container cleanup is best effort */ }
+  });
+
+  it("default deny creates no personal history without active consent", () => {
+    sql(`INSERT INTO "RetentionSubject" (id, "providerMode", "subjectKey", "approvedAt", "createdAt") VALUES ('deny-subject', 'SIGNED', 'deny-key', now(), now());`);
+    expect(() => sql(`INSERT INTO "RetainedViewHistory" (id, "subjectId", "consentId", "resourceType", "resourceId", "viewedAt", "expiresAt", "createdAt") VALUES ('deny-view', 'deny-subject', 'missing-consent', 'RESULT', 'privacy-fixture', now(), now() + interval '1 day', now());`)).toThrow();
+    expect(sql(`SELECT count(*) FROM "RetainedViewHistory" WHERE "subjectId"='deny-subject';`)).toEqual(["0"]);
+  });
+
+  it("keeps the association boundary separate and completely deletable", () => {
+    sql(`
+      INSERT INTO "RetentionSubject" (id, "providerMode", "subjectKey", "approvedAt", "createdAt") VALUES ('active-subject', 'SIGNED', 'active-key', now(), now());
+      INSERT INTO "RetentionConsent" (id, "subjectId", "policyVersion", "policyEffectiveAt", "durationDays", "grantedAt", "expiresAt", "createdAt") VALUES ('active-consent', 'active-subject', 'test-policy', now() - interval '1 day', 30, now(), now() + interval '30 days', now());
+      INSERT INTO "RetainedOddsHistory" (id, "subjectId", "consentId", "oddsSnapshotId", "retainedAt", "expiresAt", "createdAt") VALUES ('active-odds', 'active-subject', 'active-consent', 'privacy-odds', now(), now() + interval '29 days', now());
+      INSERT INTO "RetainedViewHistory" (id, "subjectId", "consentId", "resourceType", "resourceId", "viewedAt", "expiresAt", "createdAt") VALUES ('active-view', 'active-subject', 'active-consent', 'RESULT', 'privacy-fixture', now(), now() + interval '29 days', now());
+    `);
+    expect(sql(`SELECT (SELECT count(*) FROM "RetainedOddsHistory") || ':' || (SELECT count(*) FROM "RetainedViewHistory");`)).toEqual(["1:1"]);
+
+    sql(`DELETE FROM "RetentionSubject" WHERE id='active-subject';`);
+    expect(sql(`SELECT (SELECT count(*) FROM "RetainedOddsHistory") || ':' || (SELECT count(*) FROM "RetainedViewHistory") || ':' || (SELECT count(*) FROM "ManualOddsSnapshot" WHERE id='privacy-odds');`)).toEqual(["0:0:1"]);
+  });
+
+  it("expiry denies new personal associations", () => {
+    sql(`
+      INSERT INTO "RetentionSubject" (id, "providerMode", "subjectKey", "approvedAt", "createdAt") VALUES ('expired-subject', 'SIGNED', 'expired-key', now() - interval '3 days', now());
+      INSERT INTO "RetentionConsent" (id, "subjectId", "policyVersion", "policyEffectiveAt", "durationDays", "grantedAt", "expiresAt", "createdAt") VALUES ('expired-consent', 'expired-subject', 'expired-policy', now() - interval '3 days', 1, now() - interval '2 days', now() - interval '1 day', now());
+    `);
+    expect(() => sql(`INSERT INTO "RetainedViewHistory" (id, "subjectId", "consentId", "resourceType", "resourceId", "viewedAt", "expiresAt", "createdAt") VALUES ('expired-view', 'expired-subject', 'expired-consent', 'RESULT', 'privacy-fixture', now(), now() + interval '1 hour', now());`)).toThrow();
+  });
+
+  it("keeps immutable schema free of reverse subject links", () => {
+    const forbidden = sql(`
+      SELECT "table_name" || '.' || "column_name"
+      FROM information_schema.columns
+      WHERE table_schema='public'
+        AND "table_name" IN ('ForecastSnapshot','ForecastMarket','ManualOddsSnapshot','ManualOddsSelection','ValueReceipt','SettlementReceipt','ForecastScore','ValueSettlement')
+        AND lower("column_name") ~ '(subject|session|correlation|consent)'
+      ORDER BY 1;
+    `);
+    expect(forbidden).toEqual([]);
   });
 });

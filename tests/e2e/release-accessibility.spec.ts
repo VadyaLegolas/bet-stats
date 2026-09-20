@@ -51,3 +51,57 @@ test("keyboard users can skip navigation and retain visible focus", async ({ pag
   const outline = await skip.evaluate((element) => getComputedStyle(element, ":focus-visible").outlineStyle);
   expect(outline).not.toBe("none");
 });
+
+test("evidence parity keeps one complete field inventory across layouts", async ({ page }) => {
+  await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
+  const projection = page.locator('[data-evidence-projection="forecast-one-x-two"]');
+  await expect(projection).toBeVisible();
+  const desktopFields = await projection.locator("[data-evidence-desktop] [data-evidence-field]").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-evidence-field")));
+  const mobileFields = await projection.locator("[data-evidence-mobile] [data-evidence-field]").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-evidence-field")));
+  expect(new Set(mobileFields)).toEqual(new Set(desktopFields));
+  expect(desktopFields).toEqual(expect.arrayContaining(["selection", "probability", "fairOdds"]));
+});
+
+test("chart alternative exposes the complete reliability evidence", async ({ page }) => {
+  const query = new URLSearchParams({ modelVersion: "poisson-ensemble-v1", competitionId: "live-pl", market: "ONE_X_TWO", from: "2026-01-01T00:00:00.000Z", to: "2027-01-01T00:00:00.000Z" });
+  await page.goto(`/scorecards?${query}`);
+  const reliability = page.getByRole("region", { name: "Reliability evidence" });
+  await expect(reliability.getByText(/Conclusion:/)).toBeVisible();
+  const alternative = reliability.getByRole("table", { name: "Complete reliability data" });
+  await expect(alternative).toBeVisible();
+  await expect(alternative.locator("th")).toContainText(["Range", "Mean forecast", "Observed", "Count", "Direction"]);
+});
+
+test("manual odds workflow is keyboard operable without losing evidence", async ({ page }) => {
+  await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
+  await page.getByLabel("Bookmaker or source label").focus();
+  await page.keyboard.type("Keyboard source");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("4");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("2");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("2");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Immutable odds snapshot" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Frozen forecast" })).toBeVisible();
+});
+
+test("local failure and retrying preserve valid siblings", async ({ context, page }) => {
+  await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
+  const snapshot = page.getByRole("heading", { name: "Exact snapshot comparison" }).locator("xpath=following-sibling::p").locator("code");
+  const snapshotId = await snapshot.textContent();
+  await expect(page.getByRole("heading", { name: "Frozen forecast" })).toBeVisible();
+
+  await context.setOffline(true);
+  await page.getByRole("button", { name: "Refresh forecast availability" }).click();
+  await expect(page.locator('[data-local-state="stale"]')).toContainText("Forecast availability is not current");
+  await expect(snapshot).toHaveText(snapshotId ?? "");
+  await expect(page.getByRole("heading", { name: "Frozen forecast" })).toBeVisible();
+
+  await context.setOffline(false);
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Updated" })).toBeVisible();
+  await expect(snapshot).toHaveText(snapshotId ?? "");
+});

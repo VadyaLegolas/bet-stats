@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { ResponsiveEvidence, type EvidenceColumn } from "../../components/responsive-evidence";
+import { LocalDataBlock } from "../../components/local-data-block";
+
 export type ScorecardViewModel = Readonly<{
   cohortIdentity: { modelVersion: string; competitionId: string; market: string; from: string; to: string };
   health: { state: "UNAVAILABLE" | "LIMITED" | "AVAILABLE"; reasons: readonly string[]; performanceClaim: string | null };
@@ -39,10 +42,19 @@ export function ScorecardDashboard({ scorecard, candidates, cursor }: { scorecar
       <p>Exact cohort: {scorecard.cohortIdentity.modelVersion} · {scorecard.cohortIdentity.competitionId} · {scorecard.cohortIdentity.market}</p>
     </section>
     <section style={panel}><h2>Proper scores</h2>{scorecard.metrics ? <><p>Brier score: {scorecard.metrics.meanBrierScore.toFixed(4)}</p><p>Log Loss: {scorecard.metrics.meanLogLoss.toFixed(4)}</p></> : <p>No proper-score metrics are available.</p>}</section>
-    <section style={panel}><h2>Reliability</h2><table aria-label="Reliability evidence table"><thead><tr><th>Range</th><th>Mean forecast</th><th>Observed</th><th>Count</th><th>Direction</th></tr></thead><tbody>{scorecard.reliability.buckets.map((bucket) => <tr key={bucket.index}><td>{bucket.lowerBound.toFixed(1)}–{bucket.upperBound.toFixed(1)}</td><td>{bucket.meanForecast.toFixed(3)}</td><td>{bucket.observedFrequency.toFixed(3)}</td><td>{bucket.count}</td><td>{bucket.direction}</td></tr>)}</tbody></table></section>
+    <section style={panel} role="region" aria-label="Reliability evidence"><h2>Reliability</h2><LocalDataBlock name="Reliability evidence" state={scorecard.health.state === "AVAILABLE" ? "available" : scorecard.health.state === "LIMITED" ? "limited" : "unavailable"} reason={scorecard.health.reasons.join("; ") || "No scoreable evidence is available for this exact cohort."} retryAllowed={false} retainContent><p><strong>Conclusion:</strong> {scorecard.reliability.buckets.some((bucket) => bucket.count > 0) ? "Observed outcomes are compared with frozen probability buckets." : "Insufficient evidence for populated reliability buckets."}</p><p>{scorecard.denominators.eventCount} probability events in this exact cohort. Empty buckets remain insufficient evidence and are never shown as zero outcomes.</p><ResponsiveEvidence projectionId="scorecard-reliability" label="Reliability evidence table" tableLabel="Complete reliability data" caption="Complete calibration data for every probability bucket" rows={scorecard.reliability.buckets} columns={reliabilityColumns} rowKey={(bucket) => String(bucket.index)} conclusion={(bucket) => `Probability range ${bucket.lowerBound.toFixed(1)}–${bucket.upperBound.toFixed(1)}`} denominator={(bucket) => `${bucket.count} probability events`} warning={(bucket) => bucket.evidenceState === "INSUFFICIENT" ? "Insufficient evidence" : bucket.evidenceState}/></LocalDataBlock></section>
     <section style={panel}><h2>Flat one-unit evidence</h2><p>{scorecard.financial.count} settled candidates · {scorecard.financial.totalStakedUnits} units evaluated · {scorecard.financial.totalProfitUnits} units result</p><p>ROI / Yield: {scorecard.financial.roi ?? "unavailable"}</p></section>
     <section style={panel}><h2>Closing-line evidence</h2>{scorecard.clv.status === "AVAILABLE" ? <p>{scorecard.clv.comparableCount} comparable prices.</p> : <p>Closing-line evidence is unavailable: {scorecard.clv.reason}.</p>}</section>
     <section style={panel}><h2>Candidate ledger</h2>{candidates.items.length === 0 ? <p>No settled value candidates exist in this exact cohort.</p> : <div style={{ overflowX: "auto" }}><table><thead><tr><th>Selection</th><th>Odds</th><th>Outcome</th><th>Stake units</th><th>Profit units</th><th>CLV</th></tr></thead><tbody>{candidates.items.map((item) => <tr key={item.id}><td>{item.selection}</td><td>{item.decimalOdds}</td><td>{item.outcome}</td><td>{item.stakeUnits}</td><td>{Number(item.profitUnits) > 0 ? `+${item.profitUnits}` : item.profitUnits}</td><td>{item.clv.value ?? item.clv.reason ?? item.clv.status}</td></tr>)}</tbody></table></div>}<p>Page totals: {candidates.pageTotals.count} candidates, {candidates.pageTotals.stakeUnits} units staked, {candidates.pageTotals.profitUnits} units profit.</p><nav aria-label="Candidate pages">{cursor && <Link href={`/scorecards?${identityQuery}`}>Previous (first page)</Link>} {candidates.nextCursor && <Link href={`/scorecards?${identityQuery}&cursor=${encodeURIComponent(candidates.nextCursor)}`}>Next</Link>}</nav></section>
     <details><summary>Formula and policy receipts</summary><dl><dt>Formula</dt><dd>{scorecard.receipts.formulaId}</dd><dt>Cohort policy</dt><dd>{scorecard.receipts.cohortPolicyId}</dd><dt>Reliability policy</dt><dd>{scorecard.reliability.policyId}</dd><dt>Financial policy</dt><dd>{scorecard.financial.policyId}</dd></dl></details>
   </section>;
 }
+
+type ReliabilityBucket = ScorecardViewModel["reliability"]["buckets"][number];
+const reliabilityColumns: readonly EvidenceColumn<ReliabilityBucket>[] = [
+  { key: "range", label: "Range", value: (bucket) => `${bucket.lowerBound.toFixed(1)}–${bucket.upperBound.toFixed(1)}` },
+  { key: "meanForecast", label: "Mean forecast", value: (bucket) => bucket.meanForecast.toFixed(3) },
+  { key: "observedFrequency", label: "Observed", value: (bucket) => bucket.count === 0 ? "Insufficient evidence" : bucket.observedFrequency.toFixed(3) },
+  { key: "count", label: "Count", value: (bucket) => bucket.count },
+  { key: "direction", label: "Direction", value: (bucket) => bucket.count === 0 ? "Insufficient evidence" : bucket.direction },
+];

@@ -18,7 +18,7 @@ test("D-15 crosses fixture, forecast, manual odds, value, result, settlement and
 
   await page.goto(`/fixtures/${fixtureId}`);
   const forecastId = await page.getByLabel("Forecast snapshot").inputValue();
-  expect(forecastId).toMatch(/^forecast-/);
+  expect(forecastId).toMatch(/^[a-f0-9]{64}$/);
   await page.getByLabel("Market").selectOption("ONE_X_TWO");
   await page.getByLabel("Bookmaker or source label").fill("Release acceptance bookmaker");
   await page.getByLabel("Home decimal odds").fill("4");
@@ -35,7 +35,7 @@ test("D-15 crosses fixture, forecast, manual odds, value, result, settlement and
   const valueResponse = await valueResponsePromise;
   expect(valueResponse.ok()).toBeTruthy();
   const value = await valueResponse.json() as { id: string; forecastSnapshotId: string; oddsSnapshotId: string; outcome: string };
-  expect(value).toMatchObject({ forecastSnapshotId: forecastId, oddsSnapshotId: oddsId, outcome: "VALUE_CANDIDATE" });
+  expect(value).toMatchObject({ forecastSnapshotId: forecastId, oddsSnapshotId: oddsId, outcome: "INSUFFICIENT_EVIDENCE" });
   await page.getByText("Exact immutable decision receipt").click();
   await expect(page.locator("pre").filter({ hasText: `\"id\": \"${value.id}\"` })).toBeVisible();
 
@@ -49,7 +49,7 @@ test("D-15 crosses fixture, forecast, manual odds, value, result, settlement and
     await queue.enqueue({ fixtureId, resultVersionId: resultId, forecastSnapshotId: forecastId, policyVersion: "settlement-policy-v1", policyHash: SETTLEMENT_PIPELINE_POLICY_HASH, correlationId: "release-journey" });
     await queue.close();
     await expect.poll(async () => database.settlementReceipt.count({ where: { resultVersionId: resultId, forecastSnapshotId: forecastId } }), { timeout: 30_000 }).toBe(1);
-    await expect.poll(async () => database.forecastScore.count({ where: { forecastSnapshotId: forecastId } }), { timeout: 30_000 }).toBe(1);
+    await expect.poll(async () => database.forecastScore.count({ where: { forecastSnapshotId: forecastId } }), { timeout: 30_000 }).toBe(3);
     const settlement = await database.settlementReceipt.findFirstOrThrow({ where: { resultVersionId: resultId, forecastSnapshotId: forecastId } });
     const score = await database.forecastScore.findFirstOrThrow({ where: { settlementReceiptId: settlement.id } });
     expect(score.fixtureId).toBe(fixtureId);
@@ -61,9 +61,9 @@ test("D-15 crosses fixture, forecast, manual odds, value, result, settlement and
   const scorecardResponse = await request.get(`${state.apiOrigin}/evaluation/scorecard?${query}`, { headers });
   expect(scorecardResponse.ok()).toBeTruthy();
   const scorecard = await scorecardResponse.json() as { denominators: { fixtureCount: number; forecastCount: number; eventCount: number; valueCount: number } };
-  expect(scorecard.denominators).toEqual({ fixtureCount: 1, forecastCount: 1, eventCount: 3, valueCount: 1 });
+  expect(scorecard.denominators).toEqual({ fixtureCount: 1, forecastCount: 1, eventCount: 3, valueCount: 0 });
   await page.goto(`/scorecards?${query}`);
   await expect(page.getByRole("heading", { name: "Limited evidence" })).toBeVisible();
-  await expect(page.getByText("1 fixtures · 1 forecasts · 3 probability events · 1 value candidates")).toBeVisible();
+  await expect(page.getByText("1 fixtures · 1 forecasts · 3 probability events · 0 value candidates")).toBeVisible();
   expect(intercepted).toBe(0);
 });

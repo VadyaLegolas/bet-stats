@@ -1,9 +1,10 @@
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 import { describe, expect, it, vi } from "vitest";
 
 import { OperatorGuard } from "../../apps/api/src/modules/reconciliation/operator.guard.js";
 import { createOperationsProjection } from "../../apps/api/src/modules/operations/operations.service.js";
+import { verifyIngressOperationsRequest } from "../../apps/web/app/internal-api/operations/[[...path]]/route.js";
 
 const CANARIES = [
   "secret-token-canary",
@@ -67,7 +68,30 @@ describe("operator overview", () => {
 });
 
 describe("signed gateway", () => {
-  it.todo("normalizes and verifies the signed operations ingress without forwarding unapproved headers");
+  it("normalizes and verifies the signed operations ingress", () => {
+    vi.stubEnv("OPERATOR_PROXY_SIGNING_SECRET", "operations-signing-secret-that-is-long-enough");
+    vi.stubEnv("OPERATOR_AUTHORIZED_SUBJECTS", "ops@example.com");
+    const timestamp = "2026-09-20T12:00:00.000Z";
+    const pathname = "/internal-api/operations/overview";
+    const search = "?page=1&impact=BLOCKING";
+    const signature = sign(process.env.OPERATOR_PROXY_SIGNING_SECRET!, "ops@example.com", timestamp, "GET", pathname, queryDigest(search));
+    const request = requestLike(pathname, search, { "x-operator-subject": "ops@example.com", "x-operator-timestamp": timestamp, "x-operator-signature": signature });
+    expect(verifyIngressOperationsRequest(request as never, Date.parse(timestamp))).toEqual({ subject: "ops@example.com" });
+    vi.unstubAllEnvs();
+  });
+
+  it("returns the same denial for malformed, expired, invalid and non-NFKC ingress", () => {
+    vi.stubEnv("OPERATOR_PROXY_SIGNING_SECRET", "operations-signing-secret-that-is-long-enough");
+    vi.stubEnv("OPERATOR_AUTHORIZED_SUBJECTS", "ops@example.com");
+    const now = Date.parse("2026-09-20T12:00:00.000Z");
+    for (const headers of [
+      {},
+      { "x-operator-subject": "ops@example.com", "x-operator-timestamp": "2026-09-20T11:00:00.000Z", "x-operator-signature": "x".repeat(43) },
+      { "x-operator-subject": "ops@example.com", "x-operator-timestamp": "2026-09-20T12:00:00.000Z", "x-operator-signature": "x".repeat(43) },
+      { "x-operator-subject": "ｏps@example.com", "x-operator-timestamp": "2026-09-20T12:00:00.000Z", "x-operator-signature": "x".repeat(43) },
+    ]) expect(verifyIngressOperationsRequest(requestLike("/internal-api/operations/overview", "", headers) as never, now)).toBeNull();
+    vi.unstubAllEnvs();
+  });
 });
 
 function sign(secret: string, subject: string, timestamp: string, method: string, pathname: string, queryDigest: string): string {
@@ -75,3 +99,12 @@ function sign(secret: string, subject: string, timestamp: string, method: string
 }
 
 void sign;
+
+function queryDigest(search: string): string {
+  const pairs = [...new URLSearchParams(search).entries()].sort(([leftKey, leftValue], [rightKey, rightValue]) => leftKey.localeCompare(rightKey) || leftValue.localeCompare(rightValue));
+  return createHash("sha256").update(new URLSearchParams(pairs).toString(), "utf8").digest("base64url");
+}
+
+function requestLike(pathname: string, search: string, values: Record<string, string>) {
+  return { method: "GET", nextUrl: { pathname, search }, headers: { get: (name: string) => values[name] ?? null } };
+}

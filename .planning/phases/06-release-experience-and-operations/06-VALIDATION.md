@@ -14,14 +14,15 @@ The final release gate runs against owned PostgreSQL 18 and Redis 8 resources, t
 
 | Order | Owner | Test-first artifact | Consumed by | Gate |
 |---|---|---|---|---|
-| 0A | 06-01 Task 1 | `tests/e2e/live-release-stack.ts`, `playwright.phase06.config.ts`, `tests/e2e/release-journey.spec.ts` | Plans 06-02 through 06-07 | Desktop tracer crosses PostgreSQL, Redis, worker, API, and web with zero interception. |
-| 0B | 06-01 Task 2 | `@axe-core/playwright@4.13.0` lockfile entry and serial failure-artifact policy | 06-02 and 06-07 accessibility tests | Frozen install and Playwright test discovery succeed. |
+| 0A | 06-01 Task 1 | `tests/e2e/live-release-stack.ts`, `playwright.phase06.config.ts`, `tests/e2e/release-journey.spec.ts` | Plans 06-02 through 06-09 | Desktop tracer crosses PostgreSQL, Redis, worker, API, and web with zero interception. |
+| 0B | 06-01 Task 2 | `@axe-core/playwright@4.13.0` lockfile entry and serial failure-artifact policy | 06-02 and 06-09 accessibility tests | Frozen install and Playwright test discovery succeed. |
 | 0C | 06-02 Tasks 1-3 | `tests/e2e/release-accessibility.spec.ts` RED cases | Responsive shell, evidence, local failures | Each named grep fails before its corresponding production edit, then passes. |
 | 0D | 06-03 Tasks 1-2 | `tests/e2e/methodology.spec.ts` RED cases | Model card and contextual warnings | Versioned-card and contextual-warning cases fail first, then pass. |
 | 0E | 06-04 Tasks 1-3 | `tests/integration/operator-overview.test.ts`, `tests/e2e/operator-overview.spec.ts` RED cases | Operations API, gateway, UI | Closed DTO, signed gateway, canary absence, and ordered UI fail first, then pass. |
 | 0F | 06-05 Tasks 1-2 | New RED cases in `tests/integration/replay-boundary.test.ts` and `tests/e2e/operator-recovery.spec.ts` | Shared ingestion/evaluation recovery | Recovery envelope and three-step UI cases fail first, then pass. |
-| 0G | 06-06 Tasks 2-3, after D-14 checkpoint | `tests/integration/privacy-retention.test.ts`, `tests/e2e/privacy-retention.spec.ts` RED cases | Consent schema/API/UI | Default deny, incomplete policy, withdrawal race, and unlinkability fail first, then pass. |
-| 0H | 06-07 Tasks 1-2 | `tests/e2e/release-degradation.spec.ts` plus expanded journey/accessibility RED cases | Final degradation and parity expansion | All D-16 scenarios and both Chromium projects fail until implemented. |
+| 0G | 06-07 Tasks 1-2, after the 06-06 D-14 checkpoint | `tests/integration/privacy-retention.test.ts` RED cases | Consent policy/schema/persistence | Default deny, incomplete policy, association isolation, expiry, and immutable-schema cases fail first, then pass. |
+| 0H | 06-08 Tasks 1-2 | Expanded `tests/integration/privacy-retention.test.ts` plus `tests/e2e/privacy-retention.spec.ts` RED cases | Consent API/UI and withdrawal | Withdrawal race, future deny, unlinkability, exact copy, and partial-failure cases fail first, then pass. |
+| 0I | 06-09 Tasks 1-2 | `tests/e2e/release-degradation.spec.ts` plus expanded journey/accessibility RED cases | Final degradation and parity expansion | All D-16 scenarios and both Chromium projects fail until implemented. |
 
 The D-14 blocking decision precedes 0G because the tests must encode the approved one-way deletion inventory without inventing subject identity or legal retention values.
 
@@ -34,8 +35,10 @@ The D-14 blocking decision precedes 0G because the tests must encode the approve
 | 06-03 | UX-02, D-05–D-08 | `pnpm exec playwright test -c playwright.phase06.config.ts tests/e2e/methodology.spec.ts` | None. Published identities are asserted against source constants. |
 | 06-04 | OPS-01, D-09/D-10/D-12 | `pnpm exec vitest run --project integration tests/integration/operator-overview.test.ts && pnpm exec playwright test -c playwright.phase06.config.ts tests/e2e/operator-overview.spec.ts` | None. Secret canaries are checked recursively in JSON, DOM, traces, and screenshots. |
 | 06-05 | OPS-02, D-11 | `pnpm exec vitest run --project integration tests/integration/replay-boundary.test.ts -t "recovery preview|evaluation recovery|immutable" && pnpm exec playwright test -c playwright.phase06.config.ts tests/e2e/operator-recovery.spec.ts` | None. Immutable before/after hashes and counts are machine checked. |
-| 06-06 | PRIV-01, D-13/D-14 | `pnpm exec vitest run --project integration tests/integration/privacy-retention.test.ts && pnpm exec playwright test -c playwright.phase06.config.ts tests/e2e/privacy-retention.spec.ts` | Blocking D-14 checkpoint approves the deletion inventory/policy seam before schema execution. |
-| 06-07 | All requirements, D-15/D-16 | `pnpm verify:release` | Screen-reader pass for navigation, chart alternative, recovery dialog, and consent-withdrawal dialog. |
+| 06-06 | PRIV-01, D-14 | Recorded checkpoint outcome in `06-06-SUMMARY.md` | Blocking D-14 checkpoint approves the deletion inventory/policy seam before schema execution. |
+| 06-07 | PRIV-01, D-13/D-14 | `pnpm exec vitest run --project integration tests/integration/privacy-retention.test.ts -t "default deny|policy incomplete|approved policy|identity rejection|association boundary|expiry|immutable schema"` | None; consumes the recorded 06-06 decision. |
+| 06-08 | PRIV-01, D-13/D-14 | `pnpm exec vitest run --project integration tests/integration/privacy-retention.test.ts -t "consent transaction|withdrawal race|future deny|unlinkable immutable" && pnpm exec playwright test -c playwright.phase06.config.ts tests/e2e/privacy-retention.spec.ts` | None; irreversible authority is inherited from 06-06. |
+| 06-09 | All requirements, D-15/D-16 | `pnpm verify:release` | Screen-reader pass for navigation, chart alternative, recovery dialog, and consent-withdrawal dialog. |
 
 ## Degradation and Invariant Evidence
 
@@ -56,7 +59,7 @@ Keep the command, exit code, test/scenario name, browser project, deterministic 
 ## Manual Checkpoints
 
 1. Plan 06-06 blocking decision: approve the fail-closed D-14 boundary or provide exact approved signed-subject and retention-policy inputs.
-2. Plan 06-07 end-of-phase human check: with a screen reader, confirm navigation, one chart alternative, recovery confirmation, and consent-withdrawal focus/announcements match `06-UI-SPEC.md`.
+2. Plan 06-09 end-of-phase human check: with a screen reader, confirm navigation, one chart alternative, recovery confirmation, and consent-withdrawal focus/announcements match `06-UI-SPEC.md`.
 
 ## Completion Criteria
 

@@ -307,7 +307,7 @@ Plans:
   4. An operator can safely retry ingestion and evaluation work and verify that durable facts and immutable snapshots remain consistent.
   5. Release checks exercise the complete fixture-to-forecast-to-odds-to-settlement loop and provider degradation states, while betting-related history is not retained without explicit consent and a documented boundary.
 
-**Plans**: 7 plans
+**Plans**: 9 plans
 
 Plans:
 
@@ -327,11 +327,19 @@ Plans:
 
 **Wave 4** *(after methodology and operations contracts)*
 
-- [ ] 06-06-PLAN.md — Enforce fail-closed consent retention and one-way withdrawal.
+- [ ] 06-06-PLAN.md — Approve the one-way D-14 deletion boundary before implementation.
 
-**Wave 5** *(after all expansion plans)*
+**Wave 5** *(after the D-14 decision)*
 
-- [ ] 06-07-PLAN.md — Run the full responsive, privacy, operator, and degradation release gate.
+- [ ] 06-07-PLAN.md — Encode fail-closed privacy policy, schema, migration, and persistence.
+
+**Wave 6** *(after privacy persistence)*
+
+- [ ] 06-08-PLAN.md — Deliver transactional consent, withdrawal API, and privacy UI.
+
+**Wave 7** *(after all expansion plans)*
+
+- [ ] 06-09-PLAN.md — Run the full responsive, privacy, operator, and degradation release gate.
 **UI hint**: yes
 
 ## Progress

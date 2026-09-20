@@ -103,5 +103,6 @@ test("local failure and retrying preserve valid siblings", async ({ context, pag
   await context.setOffline(false);
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Updated" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Refresh forecast availability" })).toBeFocused();
   await expect(snapshot).toHaveText(snapshotId ?? "");
 });

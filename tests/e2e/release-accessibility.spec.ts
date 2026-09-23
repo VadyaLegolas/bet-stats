@@ -2,15 +2,18 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 import { LIVE_FIXTURES } from "./live-provider-stack.js";
+import { prepareReleaseFixture } from "./live-release-stack.js";
 
 const destinationNames = ["Fixtures", "Analysis", "Results", "Methodology"] as const;
 
-test("navigation is equivalent on desktop and mobile", async ({ page }) => {
+test("navigation is equivalent on desktop and mobile", async ({ page }, testInfo) => {
   await page.goto("/fixtures");
 
   const primary = page.getByRole("navigation", { name: "Primary navigation" });
+  if (testInfo.project.name === "mobile-chromium") await page.getByRole("button", { name: "Menu" }).click();
   await expect(primary.getByRole("link")).toHaveText(destinationNames);
   await expect(primary.getByRole("link", { name: "Fixtures" })).toHaveAttribute("aria-current", "page");
+  if (testInfo.project.name === "mobile-chromium") await page.keyboard.press("Escape");
 
   await page.setViewportSize({ width: 390, height: 844 });
   const menu = page.getByRole("button", { name: "Menu" });
@@ -28,6 +31,10 @@ test("navigation is equivalent on desktop and mobile", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Menu" })).toHaveAttribute("aria-expanded", "false");
 });
 
+test("declared release support is desktop and mobile Chromium", async ({}, testInfo) => {
+  expect(["desktop-chromium", "mobile-chromium"]).toContain(testInfo.project.name);
+});
+
 test("reflow keeps the page inside 320 CSS pixels and respects user media", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 900 });
   await page.emulateMedia({ reducedMotion: "reduce", forcedColors: "active" });
@@ -37,6 +44,26 @@ test("reflow keeps the page inside 320 CSS pixels and respects user media", asyn
   expect(overflow).toBeLessThanOrEqual(1);
   await expect(page.getByRole("contentinfo")).toContainText("Outcomes remain uncertain");
 
+  const accessibility = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
+  expect(accessibility.violations).toEqual([]);
+});
+
+test("200 percent text zoom keeps essential actions and content available", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
+  await page.locator("html").evaluate((element) => { element.style.fontSize = "200%"; });
+  await expect(page.getByRole("heading", { name: "Frozen forecast" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save complete immutable odds book" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+});
+
+test("methodology and fail-closed privacy expose accessible release facts", async ({ page }) => {
+  await page.goto("/methodology");
+  await expect(page.getByRole("heading", { name: "How forecasts work" })).toBeVisible();
+  await expect(page.getByText(/Model card version/).first()).toBeVisible();
+  await page.goto("/privacy");
+  await expect(page.getByRole("heading", { name: "History retention is unavailable" })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /Allow retention/ })).toBeDisabled();
   const accessibility = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
   expect(accessibility.violations).toEqual([]);
 });
@@ -67,15 +94,16 @@ test("chart alternative exposes the complete reliability evidence", async ({ pag
   await page.goto(`/scorecards?${query}`);
   const reliability = page.getByRole("region", { name: "Reliability evidence" });
   await expect(reliability.getByText(/Conclusion:/)).toBeVisible();
-  const alternative = reliability.getByRole("table", { name: "Complete reliability data" });
-  await expect(alternative).toBeVisible();
+  const alternative = reliability.locator('table[aria-label="Complete reliability data"]');
+  await expect(alternative).toBeAttached();
   await expect(alternative.locator("th")).toContainText(["Range", "Mean forecast", "Observed", "Count", "Direction"]);
 });
 
-test("manual odds workflow is keyboard operable without losing evidence", async ({ page }) => {
+test("manual odds workflow is keyboard operable without losing evidence", async ({ page }, testInfo) => {
+  await prepareReleaseFixture(LIVE_FIXTURES.comparison);
   await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
   await page.getByLabel("Bookmaker or source label").focus();
-  await page.keyboard.type("Keyboard source");
+  await page.keyboard.type(`Keyboard source ${testInfo.project.name}`);
   await page.keyboard.press("Tab");
   await page.keyboard.type("4");
   await page.keyboard.press("Tab");

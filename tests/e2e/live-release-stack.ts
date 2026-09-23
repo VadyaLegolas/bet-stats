@@ -48,6 +48,19 @@ export async function assertNoReleaseCanary(page: Page, canary: string): Promise
   }
 }
 
+export async function prepareReleaseFixture(fixtureId: string): Promise<void> {
+  const state = readLiveReleaseState();
+  const database = createPrismaClient(state.databaseUrl);
+  try {
+    await database.fixture.update({
+      where: { id: fixtureId },
+      data: { status: "SCHEDULED", kickoffUtc: new Date("2026-09-24T15:00:00.000Z") },
+    });
+  } finally {
+    await database.$disconnect();
+  }
+}
+
 async function teardown(): Promise<void> {
   try { await releaseWorker?.close(); } finally {
     releaseWorker = undefined;

@@ -14,5 +14,8 @@ export default defineConfig({
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },
-  projects: [{ name: "desktop-chromium", use: { ...devices["Desktop Chrome"], timezoneId: "Europe/Warsaw" } }],
+  projects: [
+    { name: "desktop-chromium", use: { ...devices["Desktop Chrome"], timezoneId: "Europe/Warsaw" } },
+    { name: "mobile-chromium", use: { ...devices["Pixel 5"], timezoneId: "Europe/Warsaw" } },
+  ],
 });

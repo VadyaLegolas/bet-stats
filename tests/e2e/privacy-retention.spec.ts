@@ -22,7 +22,7 @@ test("retention starts off, requires explicit consent, and cancellation keeps co
   await expect(page.getByRole("heading", { name: "Privacy and retained history" })).toBeVisible();
   await expect(page.getByText("History retention is off")).toBeVisible();
   await expect(page.getByRole("checkbox", { name: /Allow retention/ })).not.toBeChecked();
-  await page.getByRole("checkbox", { name: /Allow retention/ }).check();
+  await page.getByRole("checkbox", { name: /Allow retention/ }).click();
   await expect(page.getByText("History retention is on")).toBeVisible();
   await page.getByRole("button", { name: "Withdraw consent and delete history" }).click();
   const dialog = page.getByRole("dialog", { name: "Delete retained betting history?" });
@@ -35,7 +35,7 @@ test("retention starts off, requires explicit consent, and cancellation keeps co
 
 test("withdrawal reports success only after deletion and future retention is denied", async ({ page, request }) => {
   await page.goto("/privacy");
-  if (await page.getByText("History retention is off").isVisible()) await page.getByRole("checkbox", { name: /Allow retention/ }).check();
+  if (await page.getByRole("heading", { name: "History retention is off", exact: true }).isVisible()) await page.getByRole("checkbox", { name: /Allow retention/ }).click();
   const retained = await request.post(`${readLiveReleaseState().webOrigin}/internal-api/privacy/history/view`, {
     headers: subjectHeaders(), data: { resourceType: "RESULT", resourceId: "live-comparison-fixture" },
   });

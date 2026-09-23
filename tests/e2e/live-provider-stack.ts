@@ -12,6 +12,7 @@ import { ApiFootballClient } from "../../packages/football-data/src/index.js";
 export const PROVIDER_API_ORIGIN = "http://127.0.0.1:3241";
 export const PROVIDER_WEB_ORIGIN = "http://127.0.0.1:3240";
 const OPERATOR_TEST_ENV = { OPERATOR_CREDENTIAL: "phase-06-operator-credential", OPERATOR_PROXY_SIGNING_SECRET: "phase-06-operations-signing-secret-32-bytes", OPERATOR_AUTHORIZED_SUBJECTS: "release-operator" } as const;
+const PRIVACY_TEST_ENV = { PRIVACY_SUBJECT_PROVIDER_MODE: "signed", PRIVACY_SUBJECT_SIGNING_SECRET: "phase-06-privacy-signing-secret-32-bytes", PRIVACY_RETENTION_DURATION_DAYS: "30", PRIVACY_RETENTION_POLICY_VERSION: "privacy-test-v1", PRIVACY_RETENTION_EFFECTIVE_AT: "2026-09-01T00:00:00.000Z" } as const;
 type Runtime = { pg: string; redis: string; api?: ChildProcess; web?: ChildProcess; worker?: ReturnType<typeof startReplayWorker>; databaseUrl: string; redisUrl: string };
 let owned: Runtime | null = null;
 export const LIVE_FIXTURES = {
@@ -39,9 +40,9 @@ export async function startLiveProviderStack() {
     const worker=startReplayWorker({databaseUrl,redisUrl,footballDataApiToken:"deterministic",apiFootballApiKey:"deterministic",providerFactories:deterministic,prefix:`p5-${suffix}`}); await worker.waitUntilReady();
     const run=(args:string[],env:NodeJS.ProcessEnv)=>spawn("cmd.exe",["/d","/s","/c","corepack",...args],{cwd:process.cwd(),env:{...process.env,...env},stdio:["ignore","pipe","pipe"],windowsHide:true});
     execFileSync("cmd.exe",["/d","/s","/c","corepack","pnpm","--filter","@bet-stats/api...","build"],{cwd:process.cwd(),env:process.env,stdio:"pipe"});
-    const api=observe(run(["pnpm","--filter","@bet-stats/api","dev"],{DATABASE_URL:databaseUrl,REDIS_URL:redisUrl,POSTGRES_READY:"true",REDIS_READY:"true",API_HOST:"127.0.0.1",API_PORT:"3241",NODE_ENV:"test",ELIGIBILITY_ALLOWED_REGIONS:"PL",...OPERATOR_TEST_ENV}),"api"); await wait(`${PROVIDER_API_ORIGIN}/health/ready`);
-    execFileSync("cmd.exe",["/d","/s","/c","corepack","pnpm","--filter","@bet-stats/web","build"],{cwd:process.cwd(),env:{...process.env,API_ORIGIN:PROVIDER_API_ORIGIN,...OPERATOR_TEST_ENV},stdio:"pipe"});
-    const web=observe(run(["pnpm","--filter","@bet-stats/web","exec","next","start","--hostname","127.0.0.1","--port","3240"],{API_ORIGIN:PROVIDER_API_ORIGIN,ELIGIBILITY_REGION:"PL",ELIGIBILITY_AGE_ACKNOWLEDGED:"true",ELIGIBILITY_CHECKED_AT:new Date().toISOString(),...OPERATOR_TEST_ENV}),"web"); await wait(PROVIDER_WEB_ORIGIN);
+    const api=observe(run(["pnpm","--filter","@bet-stats/api","dev"],{DATABASE_URL:databaseUrl,REDIS_URL:redisUrl,POSTGRES_READY:"true",REDIS_READY:"true",API_HOST:"127.0.0.1",API_PORT:"3241",NODE_ENV:"test",ELIGIBILITY_ALLOWED_REGIONS:"PL",...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV}),"api"); await wait(`${PROVIDER_API_ORIGIN}/health/ready`);
+    execFileSync("cmd.exe",["/d","/s","/c","corepack","pnpm","--filter","@bet-stats/web","build"],{cwd:process.cwd(),env:{...process.env,API_ORIGIN:PROVIDER_API_ORIGIN,...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV},stdio:"pipe"});
+    const web=observe(run(["pnpm","--filter","@bet-stats/web","exec","next","start","--hostname","127.0.0.1","--port","3240"],{API_ORIGIN:PROVIDER_API_ORIGIN,ELIGIBILITY_REGION:"PL",ELIGIBILITY_AGE_ACKNOWLEDGED:"true",ELIGIBILITY_CHECKED_AT:new Date().toISOString(),...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV}),"web"); await wait(PROVIDER_WEB_ORIGIN);
     owned={pg,redis,api,web,worker,databaseUrl,redisUrl}; return {databaseUrl,redisUrl,workerReady:true,seeded:["PL","39","78","848"],productionCounts};
   } catch(error){await stopLiveProviderStack({pg,redis});throw error;}
 }
@@ -60,7 +61,7 @@ async function seedAcceptanceData(db: ReturnType<typeof createPrismaClient>) {
   ] });
   await db.fixtureExternalRef.create({ data: { fixtureId: LIVE_FIXTURES.comparison, provider: "api-football", externalId: "1379123" } });
   await exerciseProductionRouting(db);
-  await db.providerCapability.create({ data: { provider: "api-football", leagueId: "live-pl", seasonId: "live-pl-2026", endpoint: "LINEUPS", supported: true, verifiedAt: new Date("2026-09-20T00:00:00.000Z"), expiresAt: new Date("2026-09-22T00:00:00.000Z") } });
+  await db.providerCapability.create({ data: { provider: "api-football", leagueId: "live-pl", seasonId: "live-pl-2026", endpoint: "LINEUPS", supported: true, verifiedAt: new Date("2026-09-20T00:00:00.000Z"), expiresAt: new Date("2027-01-01T00:00:00.000Z") } });
   await db.providerCircuitState.create({ data: { provider: "api-football", endpointFamily: "LINEUPS", state: "CLOSED" } });
   const lineupEnvelope = { get: "lineups", parameters: { fixture: "1379123" }, errors: [], results: 2, paging: { current: 1, total: 1 }, response: [42,49].map((teamId) => ({ team: { id: teamId, name: `Team ${teamId}`, logo: null, colors: null }, formation: "4-3-3", coach: { id: teamId + 100, name: `Coach ${teamId}`, photo: null }, startXI: Array.from({length:11},(_,index)=>({player:{id:teamId*100+index,name:`Player ${teamId}-${index}`,number:index+1,pos:"M",grid:"1:1"}})), substitutes: [] })) };
   const enrichment = createProductionEnrichmentExecutor({ database: db, apiFootballFactory: () => new ApiFootballClient({ apiKey: "stub", now: () => new Date("2026-09-21T14:00:00.000Z"), fetcher: async () => new Response(JSON.stringify(lineupEnvelope)) }) });

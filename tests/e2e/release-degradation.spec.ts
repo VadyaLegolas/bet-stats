@@ -34,7 +34,7 @@ test("D-16 quota exhaustion and open circuit stay local and visible", async ({ p
     await page.setExtraHTTPHeaders(signedHeaders("/internal-api/operations/overview", search));
     await page.goto(`/internal/operations${search}`);
     await expect(page.getByText("QUOTA_EXHAUSTED").first()).toBeVisible();
-    await expect(page.getByText("OPEN", { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("region", { name: "Provider health" })).toContainText("RESULTS · OPEN");
     await assertNoReleaseCanary(page, CANARY);
   } finally {
     await database.providerCircuitState.update({ where: { provider_endpointFamily: { provider: "football-data.org", endpointFamily: "RESULTS" } }, data: { state: "CLOSED", lastError: null } }).catch(() => undefined);
@@ -87,7 +87,7 @@ test("D-16 recovery preview is explicit and immutable before replay", async ({ p
 
 test("D-16 incomplete privacy policy fails closed while anonymous analysis remains available", async ({ page }) => {
   await page.goto("/privacy");
-  await expect(page.getByRole("heading", { name: "Personal history is unavailable" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "History retention is unavailable" })).toBeVisible();
   await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
   await expect(page.getByRole("heading", { name: "Frozen forecast" })).toBeVisible();
   await assertNoReleaseCanary(page, CANARY);

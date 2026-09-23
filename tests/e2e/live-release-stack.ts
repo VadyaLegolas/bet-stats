@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Page } from "@playwright/test";
 import { createPrismaClient, createSettlementPipelineService } from "../../packages/database/src/index.js";
 import { createSettlementJobHandler } from "../../workers/data-sync/src/jobs/settlement.js";
 import { createSettlementWorker } from "../../workers/data-sync/src/queues/index.js";
@@ -35,6 +36,15 @@ export function readLiveReleaseState(): LiveReleaseState {
     return JSON.parse(readFileSync(statePath, "utf8")) as LiveReleaseState;
   } catch {
     throw new Error("RELEASE_STACK_STATE_UNAVAILABLE: the owned release stack did not finish setup");
+  }
+}
+
+/** Fail the release gate if a seeded secret crosses into browser-visible output. */
+export async function assertNoReleaseCanary(page: Page, canary: string): Promise<void> {
+  const body = await page.locator("body").innerText();
+  const html = await page.content();
+  if (body.includes(canary) || html.includes(canary)) {
+    throw new Error("RELEASE_CANARY_LEAK: seeded private data reached the rendered document");
   }
 }
 

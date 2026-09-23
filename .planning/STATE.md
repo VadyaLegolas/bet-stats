@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 current_phase: 06
 current_phase_name: Release Experience and Operations
-current_plan: 8
+current_plan: 9
 status: executing
-stopped_at: Completed 06-07-PLAN.md
-last_updated: "2026-09-20T20:39:25.425Z"
+stopped_at: Completed 06-08-PLAN.md
+last_updated: "2026-09-23T14:05:50.679Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 86
-  completed_plans: 84
+  completed_plans: 85
   percent: 83
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 06 (Release Experience and Operations) — EXECUTING
-Current Plan: 8
+Current Plan: 9
 Total Plans in Phase: 9
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 06 execution started
@@ -116,6 +116,7 @@ Progress: [████████░░] 83%
 | Phase 06 P05 | 5h 3m | 2 tasks | 4 files |
 | Phase 06 P06 | 5min | 1 tasks | 4 files |
 | Phase 06 P07 | 9min | 2 tasks | 19 files |
+| Phase 06 P08 | 35min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -210,6 +211,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 06]: Phase 06: No subject mechanism, retention duration, policy version, or effective date was supplied or may be invented.
 - [Phase 06]: Durable retention stays unavailable until signed subject mode, duration, policy version, and effective timestamp are all explicitly configured.
 - [Phase 06]: Personal odds and viewed-result history remains cascade-deletable and one-way linked; immutable analytical facts have no reverse subject link.
+- [Phase 06]: Phase 06: Privacy ingress accepts only bounded HMAC-signed subject-provider assertions and otherwise fails closed.
+- [Phase 06]: Phase 06: Consent, retained writes, and withdrawal serialize on one subject row; only serialization conflicts are retried.
+- [Phase 06]: Phase 06: Cache invalidation failure rolls back withdrawal and can never produce a success response.
+- [Phase 06]: Phase 06: Cache invalidation failure rolls back withdrawal and can never produce a success response.
 
 ### Pending Todos
 
@@ -229,6 +234,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-20T20:39:25.111Z
-Stopped at: Completed 06-07-PLAN.md
+Last session: 2026-09-23T14:05:50.473Z
+Stopped at: Completed 06-08-PLAN.md
 Resume file: None

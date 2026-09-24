@@ -12,7 +12,7 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "test": "vitest run --project unit",
+    "test": "vitest run --project unit && pnpm --filter @bet-stats/web test",
     "test:e2e": "playwright test",
     "test:integration": "vitest run --project integration",
     "typecheck": "turbo run typecheck",

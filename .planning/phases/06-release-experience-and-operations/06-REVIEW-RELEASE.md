@@ -47,6 +47,13 @@ One release blocker remains: the mandatory D-15 privacy E2E flow still sends the
 
 **Fix:** Add the real authenticated-session issuer/boundary to the web runtime and require its signing configuration in the production config contract. Update the owned release stack to provide that secret, then have the E2E test obtain a signed `auth_session` and POST `/internal-api/privacy/session` to receive the short-lived privacy cookie before exercising status/consent/withdrawal. Keep a negative assertion that the legacy credential is rejected. Re-run the complete `pnpm verify:release` gate under Node 24.
 
+## CR-01 remediation evidence — 2026-09-24
+
+- The owned production-like stack now supplies `AUTH_SESSION_SIGNING_SECRET` to both the built web application and its runtime process.
+- The D-15 privacy journey creates a signed `auth_session`, calls `POST /internal-api/privacy/session` in the browser, and uses only the proxy-issued, `HttpOnly` short-lived privacy session for consent, retained-view creation, withdrawal, and post-withdrawal denial.
+- A separate production-boundary assertion rejects the retired direct `privacy_session=<subject>.<hmac>` format and a valid privacy session after the authenticated subject changes.
+- Node 24 workspace typechecking and the web proxy unit suite passed. The production-like Playwright rerun is pending the separately tracked `proper-lockfile`/Node 24 migration-start failure, which occurs before any browser test begins.
+
 ## Verified Closed Items
 
 - Proxy signatures cover the canonical JSON body and exact upstream pathname; malformed/non-object POST bodies fail closed.

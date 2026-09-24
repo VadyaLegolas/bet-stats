@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -108,6 +109,38 @@ function waitForPostgres(): void {
   }
   throw lastError;
 }
+
+describe("retained-view bounds migration", () => {
+  it("quarantines legacy values accepted by the preceding PostgreSQL schema before narrowing", () => {
+    const legacyContainer = `bet-stats-privacy-legacy-${process.pid}`;
+    try {
+      docker("run", "--detach", "--name", legacyContainer, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "postgres:18-alpine");
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        try { docker("exec", legacyContainer, "pg_isready", "-U", "postgres", "-d", "bet_stats"); break; }
+        catch { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250); }
+      }
+      const migrationsRoot = resolve(databaseRoot, "prisma/migrations");
+      for (const name of readdirSync(migrationsRoot).filter((entry) => entry < "20260924_retained_view_bounds").sort()) {
+        const source = resolve(migrationsRoot, name, "migration.sql");
+        execFileSync("docker", ["cp", source, `${legacyContainer}:/tmp/migration.sql`], { stdio: "pipe" });
+        docker("exec", legacyContainer, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats", "-f", "/tmp/migration.sql");
+      }
+      const legacySql = `
+        INSERT INTO "RetentionSubject" (id, "providerMode", "subjectKey", "approvedAt", "createdAt") VALUES ('legacy-subject', 'SIGNED', 'legacy-key', now(), now());
+        INSERT INTO "RetentionConsent" (id, "subjectId", "policyVersion", "policyEffectiveAt", "durationDays", "grantedAt", "expiresAt", "createdAt") VALUES ('legacy-consent', 'legacy-subject', 'legacy', now() - interval '1 day', 30, now(), now() + interval '1 day', now());
+        INSERT INTO "RetainedViewHistory" (id, "subjectId", "consentId", "resourceType", "resourceId", "viewedAt", "expiresAt", "createdAt") VALUES ('legacy-invalid', 'legacy-subject', 'legacy-consent', 'LEGACY_RESOURCE', repeat('x', 129), now(), now() + interval '1 day', now());
+      `;
+      docker("exec", "-i", legacyContainer, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats", "-c", legacySql);
+      const bounds = resolve(migrationsRoot, "20260924_retained_view_bounds", "migration.sql");
+      execFileSync("docker", ["cp", bounds, `${legacyContainer}:/tmp/bounds.sql`], { stdio: "pipe" });
+      docker("exec", legacyContainer, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats", "-f", "/tmp/bounds.sql");
+      const output = docker("exec", legacyContainer, "psql", "-At", "-U", "postgres", "-d", "bet_stats", "-c", `SELECT (SELECT count(*) FROM "RetainedViewHistory") || ':' || (SELECT count(*) FROM "RetentionMigrationQuarantine" WHERE id='legacy-invalid');`);
+      expect(output).toBe("0:1");
+    } finally {
+      try { docker("rm", "--force", legacyContainer); } catch { /* owned container cleanup */ }
+    }
+  }, 180_000);
+});
 
 describe("privacy retention persistence", () => {
   beforeAll(() => {
@@ -255,5 +288,20 @@ describe("privacy retention persistence", () => {
     expect(await database.retainedViewHistory.count({ where: { subjectId: "purge-subject" } })).toBe(0);
     const audit = await database.$queryRaw<Array<{ oddsDeleted: number; viewsDeleted: number }>>`SELECT "oddsDeleted", "viewsDeleted" FROM "RetentionPurgeAudit" WHERE id = ${result.auditId}`;
     expect(audit).toEqual([{ oddsDeleted: result.oddsDeleted, viewsDeleted: result.viewsDeleted }]);
+  });
+
+  it("deletes a personal association at its exact PostgreSQL expiresAt boundary", async () => {
+    await grantRetentionConsent(database, {
+      subjectId: "boundary-subject", subjectKey: "boundary-key",
+      policy: { version: "boundary-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 1 },
+      now: new Date("2026-09-20T12:00:00.000Z"),
+    });
+    const view = await retainViewedResult(database, {
+      subjectId: "boundary-subject", resourceType: "RESULT", resourceId: "privacy-fixture",
+      policy: { version: "boundary-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 1 },
+      now: new Date("2026-09-20T12:00:00.000Z"),
+    });
+    await purgeExpiredRetention(database, view.expiresAt);
+    expect(await database.retainedViewHistory.count({ where: { id: view.id } })).toBe(0);
   });
 });

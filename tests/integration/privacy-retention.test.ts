@@ -188,6 +188,23 @@ describe("privacy retention persistence", () => {
     expect(await database.retentionConsent.count({ where: { subjectId: "transaction-subject", revokedAt: null } })).toBe(1);
   });
 
+  it("superseded policy consent cannot authorize new retained history", async () => {
+    await grantRetentionConsent(database, {
+      subjectId: "superseded-subject",
+      subjectKey: "superseded-key",
+      policy: { version: "policy-v1", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 },
+      now: new Date("2026-09-20T12:00:00.000Z"),
+    });
+
+    await expect(retainViewedResult(database, {
+      subjectId: "superseded-subject",
+      resourceType: "RESULT",
+      resourceId: "privacy-fixture",
+      policy: { version: "policy-v2", effectiveAt: "2026-09-15T00:00:00.000Z", durationDays: 14 },
+      now: new Date("2026-09-20T12:01:00.000Z"),
+    })).rejects.toMatchObject({ code: "RETENTION_DENIED" });
+  });
+
   it("withdrawal race converges with a retained write and removes every link", async () => {
     await grantRetentionConsent(database, {
       subjectId: "race-subject", subjectKey: "race-key",
@@ -197,7 +214,7 @@ describe("privacy retention persistence", () => {
     const before = await database.manualOddsSnapshot.findUniqueOrThrow({ where: { id: "privacy-odds" }, select: { id: true, inputHash: true } });
     const invalidated: string[] = [];
     await Promise.allSettled([
-      retainViewedResult(database, { subjectId: "race-subject", resourceType: "RESULT", resourceId: "privacy-fixture", now: new Date("2026-09-20T12:01:00.000Z") }),
+      retainViewedResult(database, { subjectId: "race-subject", resourceType: "RESULT", resourceId: "privacy-fixture", policy: { version: "race-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 }, now: new Date("2026-09-20T12:01:00.000Z") }),
       withdrawRetentionConsent(database, "race-subject", { invalidate: async (subjectId) => { invalidated.push(subjectId); } }, new Date("2026-09-20T12:01:00.000Z")),
     ]);
     expect(await database.retainedViewHistory.count({ where: { subjectId: "race-subject" } })).toBe(0);
@@ -208,7 +225,7 @@ describe("privacy retention persistence", () => {
   });
 
   it("future deny rejects retained writes after withdrawal", async () => {
-    await expect(retainViewedResult(database, { subjectId: "race-subject", resourceType: "RESULT", resourceId: "privacy-fixture", now: new Date("2026-09-20T12:02:00.000Z") })).rejects.toMatchObject({ code: "RETENTION_DENIED" });
+    await expect(retainViewedResult(database, { subjectId: "race-subject", resourceType: "RESULT", resourceId: "privacy-fixture", policy: { version: "race-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 }, now: new Date("2026-09-20T12:02:00.000Z") })).rejects.toMatchObject({ code: "RETENTION_DENIED" });
   });
 
   it("unlinkable immutable facts survive rollback-safe withdrawal", async () => {
@@ -217,7 +234,7 @@ describe("privacy retention persistence", () => {
       policy: { version: "rollback-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 },
       now: new Date("2026-09-20T12:00:00.000Z"),
     });
-    await retainViewedResult(database, { subjectId: "rollback-subject", resourceType: "RESULT", resourceId: "privacy-fixture", now: new Date("2026-09-20T12:01:00.000Z") });
+    await retainViewedResult(database, { subjectId: "rollback-subject", resourceType: "RESULT", resourceId: "privacy-fixture", policy: { version: "rollback-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 }, now: new Date("2026-09-20T12:01:00.000Z") });
     await expect(withdrawRetentionConsent(database, "rollback-subject", { invalidate: async () => { throw new Error("cache unavailable"); } })).rejects.toMatchObject({ code: "WITHDRAWAL_FAILED" });
     expect(await database.retainedViewHistory.count({ where: { subjectId: "rollback-subject" } })).toBe(1);
     expect((await database.retentionSubject.findUniqueOrThrow({ where: { id: "rollback-subject" } })).retentionBlockedAt).toBeNull();

@@ -51,14 +51,22 @@ export async function grantRetentionConsent(
 
 export async function retainViewedResult(
   database: PrismaClient,
-  input: { subjectId: string; resourceType: string; resourceId: string; now?: Date },
+  input: { subjectId: string; resourceType: string; resourceId: string; policy: ConsentPolicy; now?: Date },
 ) {
   const now = input.now ?? new Date();
   return database.$transaction(async (tx) => {
     const subject = await lockSubject(tx as PrismaClient, input.subjectId);
     if (!subject || subject.retentionBlockedAt) throw coded("RETENTION_DENIED");
     const consent = await tx.retentionConsent.findFirst({
-      where: { subjectId: input.subjectId, revokedAt: null, grantedAt: { lte: now }, expiresAt: { gt: now } },
+      where: {
+        subjectId: input.subjectId,
+        revokedAt: null,
+        grantedAt: { lte: now },
+        expiresAt: { gt: now },
+        policyVersion: input.policy.version,
+        policyEffectiveAt: new Date(input.policy.effectiveAt),
+        durationDays: input.policy.durationDays,
+      },
       orderBy: { grantedAt: "desc" },
     });
     if (!consent) throw coded("RETENTION_DENIED");
@@ -135,7 +143,15 @@ export class PrivacyService implements OnModuleDestroy {
     if (!policy.available) return { status: "UNAVAILABLE" as const, reason: policy.reason, missing: policy.missing, categories: ["MANUAL_ODDS", "VIEWED_RESULT"] };
     const subject = await this.subjects.resolve(request);
     if (!subject || !this.database) return { status: "UNAVAILABLE" as const, reason: "SUBJECT_IDENTITY_UNAVAILABLE", policyVersion: policy.version, effectiveAt: policy.effectiveAt, categories: policy.coveredCategories };
-    const active = await this.database.retentionConsent.findFirst({ where: { subjectId: subject.subjectId, revokedAt: null, expiresAt: { gt: new Date() }, subject: { retentionBlockedAt: null } }, orderBy: { grantedAt: "desc" } });
+    const active = await this.database.retentionConsent.findFirst({ where: {
+      subjectId: subject.subjectId,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+      policyVersion: policy.version,
+      policyEffectiveAt: new Date(policy.effectiveAt),
+      durationDays: policy.durationDays,
+      subject: { retentionBlockedAt: null },
+    }, orderBy: { grantedAt: "desc" } });
     return { status: active ? "ON" as const : "OFF" as const, policyVersion: policy.version, effectiveAt: policy.effectiveAt, categories: policy.coveredCategories };
   }
 
@@ -157,13 +173,15 @@ export class PrivacyService implements OnModuleDestroy {
   }
 
   async retainView(request: unknown, input: unknown) {
+    const policy = this.policy();
+    if (!policy.available) throw new ServiceUnavailableException({ code: policy.reason });
     const subject = await this.subjects.resolve(request);
     if (!subject) throw new BadRequestException({ code: "SUBJECT_IDENTITY_UNAVAILABLE" });
     if (!input || typeof input !== "object" || Array.isArray(input)) throw new BadRequestException({ code: "INVALID_RETAINED_VIEW" });
     const candidate = input as Record<string, unknown>;
     if (Object.keys(candidate).sort().join(",") !== "resourceId,resourceType" || typeof candidate.resourceType !== "string" || typeof candidate.resourceId !== "string" || !candidate.resourceType || !candidate.resourceId) throw new BadRequestException({ code: "INVALID_RETAINED_VIEW" });
     if (!this.database) throw new ServiceUnavailableException({ code: "DATABASE_UNAVAILABLE" });
-    try { await retainViewedResult(this.database, { subjectId: subject.subjectId, resourceType: candidate.resourceType, resourceId: candidate.resourceId }); return { retained: true }; }
+    try { await retainViewedResult(this.database, { subjectId: subject.subjectId, resourceType: candidate.resourceType, resourceId: candidate.resourceId, policy }); return { retained: true }; }
     catch { throw new ConflictException({ code: "RETENTION_DENIED" }); }
   }
 

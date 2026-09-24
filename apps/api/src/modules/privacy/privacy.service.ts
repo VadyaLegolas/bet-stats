@@ -31,22 +31,32 @@ export async function grantRetentionConsent(
 ) {
   const now = input.now ?? new Date();
   const expiresAt = new Date(now.getTime() + input.policy.durationDays * 86_400_000);
-  return database.$transaction(async (tx) => {
-    await tx.retentionSubject.upsert({
-      where: { id: input.subjectId },
-      create: { id: input.subjectId, providerMode: "SIGNED", subjectKey: input.subjectKey, approvedAt: now },
-      update: {},
-    });
-    const subject = await lockSubject(tx as PrismaClient, input.subjectId);
-    if (!subject || subject.retentionBlockedAt) throw coded("RETENTION_DENIED");
-    await tx.retentionConsent.updateMany({ where: { subjectId: input.subjectId, revokedAt: null }, data: { revokedAt: now } });
-    const consent = await tx.retentionConsent.create({ data: {
-      id: randomUUID(), subjectId: input.subjectId, policyVersion: input.policy.version,
-      policyEffectiveAt: new Date(input.policy.effectiveAt), durationDays: input.policy.durationDays,
-      grantedAt: now, expiresAt,
-    } });
-    return { status: "ON" as const, policyVersion: consent.policyVersion, effectiveAt: consent.policyEffectiveAt.toISOString(), expiresAt: consent.expiresAt.toISOString() };
-  }, { isolationLevel: "Serializable" });
+  const correlationId = randomUUID();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await database.$transaction(async (tx) => {
+        await tx.retentionSubject.upsert({
+          where: { id: input.subjectId },
+          create: { id: input.subjectId, providerMode: "SIGNED", subjectKey: input.subjectKey, approvedAt: now },
+          update: {},
+        });
+        const subject = await lockSubject(tx as PrismaClient, input.subjectId);
+        if (!subject || subject.retentionBlockedAt) throw coded("RETENTION_DENIED");
+        await tx.retentionConsent.updateMany({ where: { subjectId: input.subjectId, revokedAt: null }, data: { revokedAt: now } });
+        const consent = await tx.retentionConsent.create({ data: {
+          id: randomUUID(), subjectId: input.subjectId, policyVersion: input.policy.version,
+          policyEffectiveAt: new Date(input.policy.effectiveAt), durationDays: input.policy.durationDays,
+          grantedAt: now, expiresAt,
+        } });
+        return { status: "ON" as const, policyVersion: consent.policyVersion, effectiveAt: consent.policyEffectiveAt.toISOString(), expiresAt: consent.expiresAt.toISOString() };
+      }, { isolationLevel: "Serializable" });
+    } catch (error) {
+      const retryable = error && typeof error === "object" && ("code" in error && error.code === "P2034" || "message" in error && /serializ|deadlock/i.test(String(error.message)));
+      if (!retryable) throw error;
+      if (attempt === 2) throw coded("CONSENT_CONFLICT", correlationId);
+    }
+  }
+  throw coded("CONSENT_CONFLICT", correlationId);
 }
 
 export async function retainViewedResult(
@@ -161,7 +171,12 @@ export class PrivacyService implements OnModuleDestroy {
     const subject = await this.subjects.resolve(request);
     if (!subject) throw new BadRequestException({ code: "SUBJECT_IDENTITY_UNAVAILABLE" });
     if (!this.database) throw new ServiceUnavailableException({ code: "DATABASE_UNAVAILABLE" });
-    return grantRetentionConsent(this.database, { ...subject, policy });
+    try { return await grantRetentionConsent(this.database, { ...subject, policy }); }
+    catch (error) {
+      const failure = error as { code?: string; correlationId?: string };
+      if (failure.code === "CONSENT_CONFLICT") throw new ConflictException({ code: failure.code, correlationId: failure.correlationId });
+      throw error;
+    }
   }
 
   async withdraw(request: unknown) {

@@ -96,11 +96,11 @@ function sql(statement: string): string[] {
   return output.length === 0 ? [] : output.split(/\r?\n/);
 }
 
-function waitForPostgres(): void {
+function waitForPostgres(targetContainer = containerName): void {
   let lastError: unknown;
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
-      docker("exec", containerName, "pg_isready", "-U", "postgres", "-d", "bet_stats");
+      docker("exec", targetContainer, "pg_isready", "-U", "postgres", "-d", "bet_stats");
       return;
     } catch (error) {
       lastError = error;
@@ -115,15 +115,12 @@ describe("retained-view bounds migration", () => {
     const legacyContainer = `bet-stats-privacy-legacy-${process.pid}`;
     try {
       docker("run", "--detach", "--name", legacyContainer, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "postgres:18-alpine");
-      for (let attempt = 0; attempt < 60; attempt += 1) {
-        try { docker("exec", legacyContainer, "pg_isready", "-U", "postgres", "-d", "bet_stats"); break; }
-        catch { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250); }
-      }
+      waitForPostgres(legacyContainer);
       const migrationsRoot = resolve(databaseRoot, "prisma/migrations");
       for (const name of readdirSync(migrationsRoot).filter((entry) => entry < "20260924_retained_view_bounds").sort()) {
         const source = resolve(migrationsRoot, name, "migration.sql");
         execFileSync("docker", ["cp", source, `${legacyContainer}:/tmp/migration.sql`], { stdio: "pipe" });
-        docker("exec", legacyContainer, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats", "-f", "/tmp/migration.sql");
+        docker("exec", legacyContainer, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats", "-c", "BEGIN", "-f", "/tmp/migration.sql", "-c", "COMMIT");
       }
       const legacySql = `
         INSERT INTO "RetentionSubject" (id, "providerMode", "subjectKey", "approvedAt", "createdAt") VALUES ('legacy-subject', 'SIGNED', 'legacy-key', now(), now());
@@ -291,15 +288,16 @@ describe("privacy retention persistence", () => {
   });
 
   it("deletes a personal association at its exact PostgreSQL expiresAt boundary", async () => {
+    const boundaryNow = new Date();
     await grantRetentionConsent(database, {
       subjectId: "boundary-subject", subjectKey: "boundary-key",
       policy: { version: "boundary-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 1 },
-      now: new Date("2026-09-20T12:00:00.000Z"),
+      now: boundaryNow,
     });
     const view = await retainViewedResult(database, {
       subjectId: "boundary-subject", resourceType: "RESULT", resourceId: "privacy-fixture",
       policy: { version: "boundary-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 1 },
-      now: new Date("2026-09-20T12:00:00.000Z"),
+      now: boundaryNow,
     });
     await purgeExpiredRetention(database, view.expiresAt);
     expect(await database.retainedViewHistory.count({ where: { id: view.id } })).toBe(0);

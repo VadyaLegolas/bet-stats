@@ -22,6 +22,27 @@ export const LIVE_FIXTURES = {
   comparison: "live-comparison-fixture",
 } as const;
 const docker = (...args: string[]) => execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+async function waitForPostgres(container: string) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    try {
+      docker("exec", container, "pg_isready", "-U", "postgres", "-d", "bet_stats");
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolveWait) => setTimeout(resolveWait, 500));
+    }
+  }
+  throw new Error(`POSTGRES_NOT_READY: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
+}
+function applyMigrations(databaseUrl: string) {
+  try {
+    execFileSync(process.execPath,[resolve("packages/database/node_modules/prisma/build/index.js"),"migrate","deploy"],{cwd:resolve("packages/database"),env:{...process.env,DATABASE_URL:databaseUrl},stdio:"pipe"});
+  } catch (error) {
+    const detail = error && typeof error === "object" && "stderr" in error ? String((error as { stderr?: Buffer }).stderr ?? "").trim() : "";
+    throw new Error(`PRISMA_MIGRATE_DEPLOY_FAILED${detail ? `: ${detail}` : ""}`, { cause: error });
+  }
+}
 async function wait(url: string) { for (let i=0;i<120;i++){ try { if ((await fetch(url)).ok) return; } catch {} await new Promise(r=>setTimeout(r,500)); } throw new Error(`SERVICE_NOT_READY:${url}`); }
 async function stop(child?: ChildProcess) { if (!child?.pid || child.exitCode !== null) return; const closed = new Promise<void>((resolveClose) => child.once("close", () => resolveClose())); try { execFileSync("taskkill", ["/pid",String(child.pid),"/T","/F"], { stdio:"ignore" }); } catch {} await Promise.race([closed,new Promise<void>((resolveTimeout)=>setTimeout(resolveTimeout,5_000))]); }
 function observe(child: ChildProcess, label: string) { for (const stream of [child.stdout, child.stderr]) stream?.on("data", (chunk) => { const safe=String(chunk).replace(/postgresql:\/\/[^\s]+/g,"[REDACTED_DATABASE_URL]").replace(/deterministic/g,"[REDACTED]"); diagnosticTails.set(child, `${diagnosticTails.get(child) ?? ""}${safe}`.slice(-4_000)); process.stderr.write(`[${label}] ${safe}`); }); return child; }
@@ -48,10 +69,10 @@ export async function startLiveProviderStack() {
   try {
     docker("run","-d","--name",pg,"-e","POSTGRES_PASSWORD=postgres","-e","POSTGRES_DB=bet_stats","-p","127.0.0.1::5432","postgres:18-alpine");
     docker("run","-d","--name",redis,"-p","127.0.0.1::6379","redis:8-alpine");
-    for(let i=0;i<60;i++){try{docker("exec",pg,"pg_isready","-U","postgres","-d","bet_stats");break}catch{await new Promise(r=>setTimeout(r,500));}}
+    await waitForPostgres(pg);
     const databaseUrl=`postgresql://postgres:postgres@127.0.0.1:${docker("port",pg,"5432/tcp").split(":").at(-1)}/bet_stats`, redisUrl=`redis://127.0.0.1:${docker("port",redis,"6379/tcp").split(":").at(-1)}`;
     owned.databaseUrl=databaseUrl; owned.redisUrl=redisUrl;
-    execFileSync(process.execPath,[resolve("packages/database/node_modules/prisma/build/index.js"),"migrate","deploy"],{cwd:resolve("packages/database"),env:{...process.env,DATABASE_URL:databaseUrl},stdio:"pipe"});
+    applyMigrations(databaseUrl);
     const db=createPrismaClient(databaseUrl);
     for(const [id,name,fd,api] of [["pl","Premier League","PL","39"],["uel","Europa League",null,"78"],["uecl","Conference League",null,"848"]] as const){const leagueId=`live-${id}`,seasonId=`live-${id}-2026`;await db.league.create({data:{id:leagueId,name,countryCode:"EU"}});await db.season.create({data:{id:seasonId,leagueId,label:"2026",startsOn:new Date("2026-01-01"),endsOn:new Date("2026-12-31")}});if(fd){await db.leagueExternalRef.create({data:{leagueId,provider:"football-data.org",externalId:fd}});await db.seasonExternalRef.create({data:{seasonId,leagueId,provider:"football-data.org",externalId:"2026"}});}await db.leagueExternalRef.create({data:{leagueId,provider:"api-football",externalId:api}});await db.seasonExternalRef.create({data:{seasonId,leagueId,provider:"api-football",externalId:"2026"}});}
     const productionCounts=await seedAcceptanceData(db);

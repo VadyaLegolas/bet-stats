@@ -22,3 +22,40 @@ export async function purgeExpiredRetention(database: PrismaClient, cutoff = new
   if (!row) throw new Error("RETENTION_PURGE_AUDIT_MISSING");
   return { auditId, cutoff: cutoff.toISOString(), oddsDeleted: row.oddsDeleted, viewsDeleted: row.viewsDeleted };
 }
+
+export type RetentionPurgeScheduler = Readonly<{ close(): void; refresh(): Promise<void> }>;
+
+/** Arms each purge at the earliest persisted expiry and recomputes after it. */
+export function scheduleRetentionPurge(input: {
+  database: PrismaClient;
+  now?: () => Date;
+  setTimeout?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout>;
+  clearTimeout?: (timer: ReturnType<typeof setTimeout>) => void;
+  onError?: (error: unknown) => void;
+  idlePollMs?: number;
+}): RetentionPurgeScheduler {
+  const now = input.now ?? (() => new Date());
+  const setTimer = input.setTimeout ?? setTimeout;
+  const clearTimer = input.clearTimeout ?? clearTimeout;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let closed = false;
+  const arm = async (): Promise<void> => {
+    if (closed) return;
+    if (timer) clearTimer(timer);
+    const [row] = await input.database.$queryRaw<Array<{ expiresAt: Date | null }>>`
+      SELECT min("expiresAt") AS "expiresAt" FROM (
+        SELECT "expiresAt" FROM "RetainedOddsHistory"
+        UNION ALL SELECT "expiresAt" FROM "RetainedViewHistory"
+      ) expiries
+    `;
+    const delay = row?.expiresAt ? Math.max(0, row.expiresAt.getTime() - now().getTime()) : (input.idlePollMs ?? 1_000);
+    timer = setTimer(() => { void run(); }, delay);
+  };
+  const run = async (): Promise<void> => {
+    if (closed) return;
+    try { await purgeExpiredRetention(input.database, now()); } catch (error) { input.onError?.(error); }
+    await arm();
+  };
+  void arm().catch(input.onError);
+  return { close: () => { closed = true; if (timer) clearTimer(timer); }, refresh: arm };
+}

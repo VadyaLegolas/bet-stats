@@ -1,4 +1,4 @@
-import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 import { BadRequestException, ConflictException, Injectable, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
 import { readPrivacyRetentionConfig } from "@bet-stats/config";
@@ -10,6 +10,7 @@ export type ConsentPolicy = Readonly<{ version: string; effectiveAt: string; dur
 export type RetentionSubjectInput = Readonly<{ subjectId: string; subjectKey: string }>;
 export type RetentionCache = { invalidate(subjectId: string): Promise<void> };
 export type PrivacySubjectProvider = { resolve(request: unknown): Promise<RetentionSubjectInput | null> };
+export type PrivacyNonceStore = { consume(nonce: string, ttlSeconds: number): Promise<boolean> };
 export const RETAINED_VIEW_RESOURCE_TYPES = ["RESULT"] as const;
 export type RetainedViewResourceType = (typeof RETAINED_VIEW_RESOURCE_TYPES)[number];
 const RETAINED_VIEW_RESOURCE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
@@ -132,20 +133,27 @@ function policyFromEnvironment(): RetentionPolicyResolution {
   return resolveRetentionPolicy(readPrivacyRetentionConfig(process.env));
 }
 
-function signedEnvironmentSubjectProvider(): PrivacySubjectProvider {
+export function signedEnvironmentSubjectProvider(nonces: PrivacyNonceStore): PrivacySubjectProvider {
   return { resolve: async (request) => {
     const secret = process.env.PRIVACY_SUBJECT_SIGNING_SECRET;
     if (!secret || secret.length < 32 || !request || typeof request !== "object" || !("headers" in request)) return null;
     const headers = (request as { headers?: Record<string, unknown> }).headers ?? {};
     const subjectId = headers["x-privacy-subject"];
     const timestamp = headers["x-privacy-timestamp"];
+    const nonce = headers["x-privacy-nonce"];
     const signature = headers["x-privacy-signature"];
-    if (typeof subjectId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/.test(subjectId) || typeof timestamp !== "string" || typeof signature !== "string") return null;
+    if (typeof subjectId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/.test(subjectId) || typeof timestamp !== "string" || typeof nonce !== "string" || !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(nonce) || typeof signature !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(signature)) return null;
     const instant = Date.parse(timestamp);
     if (!Number.isFinite(instant) || Math.abs(Date.now() - instant) > 5 * 60_000) return null;
-    const expected = Buffer.from(createHmac("sha256", secret).update(`${subjectId}\n${timestamp}`).digest("base64url"));
+    const typed = request as { method?: unknown; originalUrl?: unknown; body?: unknown };
+    if (typeof typed.method !== "string" || typeof typed.originalUrl !== "string") return null;
+    const pathname = new URL(typed.originalUrl, "http://privacy.internal").pathname;
+    const body = typed.method.toUpperCase() === "POST" ? JSON.stringify(typed.body ?? {}) : "";
+    const bodyDigest = createHash("sha256").update(body).digest("base64url");
+    const expected = Buffer.from(createHmac("sha256", secret).update([subjectId, timestamp, nonce, typed.method.toUpperCase(), pathname, bodyDigest].join("\n")).digest("base64url"));
     const presented = Buffer.from(signature);
     if (expected.length !== presented.length || !timingSafeEqual(expected, presented)) return null;
+    if (!await nonces.consume(nonce, 300)) return null;
     return { subjectId, subjectKey: createHmac("sha256", secret).update(`subject-key\n${subjectId}`).digest("base64url") };
   } };
 }
@@ -155,7 +163,8 @@ export class PrivacyService implements OnModuleDestroy {
   private readonly database = process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null;
   private readonly redis = process.env.REDIS_URL ? new Redis(process.env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 1 }) : null;
   private readonly cache: RetentionCache = this.redis ? { invalidate: async (subjectId) => { if (this.redis!.status === "wait") await this.redis!.connect(); await this.redis!.del(`privacy:history:${subjectId}`); } } : noCache;
-  private readonly subjects: PrivacySubjectProvider = process.env.PRIVACY_SUBJECT_SIGNING_SECRET ? signedEnvironmentSubjectProvider() : noApprovedSubjectProvider;
+  private readonly nonces: PrivacyNonceStore = this.redis ? { consume: async (nonce, ttlSeconds) => { if (this.redis!.status === "wait") await this.redis!.connect(); return (await this.redis!.set(`privacy:nonce:${nonce}`, "1", "EX", ttlSeconds, "NX")) === "OK"; } } : { consume: async () => false };
+  private readonly subjects: PrivacySubjectProvider = process.env.PRIVACY_SUBJECT_SIGNING_SECRET ? signedEnvironmentSubjectProvider(this.nonces) : noApprovedSubjectProvider;
 
   policy() { return policyFromEnvironment(); }
 

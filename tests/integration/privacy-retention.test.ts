@@ -15,6 +15,7 @@ import {
   retainViewedResult,
   withdrawRetentionConsent,
 } from "../../apps/api/src/modules/privacy/privacy.service.js";
+import { purgeExpiredRetention } from "../../workers/data-sync/src/jobs/retention-purge.js";
 
 describe("privacy retention policy", () => {
   it("is default deny when no approved inputs are configured", () => {
@@ -238,5 +239,21 @@ describe("privacy retention persistence", () => {
     await expect(withdrawRetentionConsent(database, "rollback-subject", { invalidate: async () => { throw new Error("cache unavailable"); } })).rejects.toMatchObject({ code: "WITHDRAWAL_FAILED" });
     expect(await database.retainedViewHistory.count({ where: { subjectId: "rollback-subject" } })).toBe(1);
     expect((await database.retentionSubject.findUniqueOrThrow({ where: { id: "rollback-subject" } })).retentionBlockedAt).toBeNull();
+  });
+
+  it("purges expiry-bound personal links and writes durable audit counts", async () => {
+    await grantRetentionConsent(database, {
+      subjectId: "purge-subject", subjectKey: "purge-key",
+      policy: { version: "purge-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 },
+      now: new Date("2026-09-20T12:00:00.000Z"),
+    });
+    await retainViewedResult(database, { subjectId: "purge-subject", resourceType: "RESULT", resourceId: "privacy-fixture", policy: { version: "purge-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 }, now: new Date("2026-09-20T12:01:00.000Z") });
+
+    const result = await purgeExpiredRetention(database, new Date("2026-10-21T12:00:00.000Z"));
+
+    expect(result.viewsDeleted).toBeGreaterThanOrEqual(1);
+    expect(await database.retainedViewHistory.count({ where: { subjectId: "purge-subject" } })).toBe(0);
+    const audit = await database.$queryRaw<Array<{ oddsDeleted: number; viewsDeleted: number }>>`SELECT "oddsDeleted", "viewsDeleted" FROM "RetentionPurgeAudit" WHERE id = ${result.auditId}`;
+    expect(audit).toEqual([{ oddsDeleted: result.oddsDeleted, viewsDeleted: result.viewsDeleted }]);
   });
 });

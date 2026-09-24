@@ -749,6 +749,19 @@ model RetainedViewHistory {
   @@index([consentId])
 }
 
+/// Durable operational evidence for each idempotent expiry purge.
+model RetentionPurgeAudit {
+  id           String   @id
+  startedAt    DateTime @db.Timestamptz(3)
+  completedAt  DateTime @db.Timestamptz(3)
+  cutoff       DateTime @db.Timestamptz(3)
+  oddsDeleted  Int
+  viewsDeleted Int
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([completedAt])
+}
+
 model ManualOddsSelection {
   id               String             @id @default(cuid())
   oddsSnapshotId   String

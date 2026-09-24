@@ -8,6 +8,7 @@ import { runReplayStandingsJob } from "./jobs/standings.js";
 import { createProductionEnrichmentExecutor } from "./jobs/enrichment.js";
 import { createSettlementJobHandler } from "./jobs/settlement.js";
 import { reconcileBacktestDelivery, runBacktestPlan } from "./jobs/backtests.js";
+import { purgeExpiredRetention } from "./jobs/retention-purge.js";
 import { createBacktestQueue, createBacktestWorker, createEnrichmentQueue, createEnrichmentSchedule, createEnrichmentWorker, createReplayWorker, createSettlementQueue, createSettlementWorker, type EnrichmentJobData, type ReplayJobData } from "./queues/index.js";
 import { createDurableProviderCircuitRegistry } from "./resilience/circuits.js";
 
@@ -57,7 +58,11 @@ export function startReplayWorker(input: { databaseUrl: string; redisUrl: string
   const reconcile = () => reconcileBacktestDelivery({ receipts: backtestReceipts, queue: backtestQueueHandle }).catch(() => undefined);
   void reconcile();
   const backtestReconcileTimer = setInterval(() => { void reconcile(); }, 5_000);
-  return { worker, settlementWorker, backtestWorker, enrichmentWorker, enrichmentQueue: enrichmentQueueHandle, async waitUntilReady() { await Promise.all([worker.waitUntilReady(), enrichmentWorker.waitUntilReady(), settlementWorker.waitUntilReady(), backtestWorker.waitUntilReady()]); return { ready: true, workers: ["replay", "enrichment", "settlement", "backtest"] as const }; }, async close() { clearInterval(backtestReconcileTimer); await worker.close(); await enrichmentWorker.close(); await settlementWorker.close(); await backtestWorker.close(); await enrichmentQueueHandle.close(); await backtestQueueHandle.close(); await settlementQueueHandle.close(); await database.$disconnect(); } };
+  const purge = () => purgeExpiredRetention(database).catch((error) => console.error(JSON.stringify({ event: "privacy.retention_purge.failed", error: error instanceof Error ? error.message : "UNKNOWN" })));
+  void purge();
+  const retentionPurgeTimer = setInterval(() => { void purge(); }, 24 * 60 * 60_000);
+  retentionPurgeTimer.unref();
+  return { worker, settlementWorker, backtestWorker, enrichmentWorker, enrichmentQueue: enrichmentQueueHandle, async waitUntilReady() { await Promise.all([worker.waitUntilReady(), enrichmentWorker.waitUntilReady(), settlementWorker.waitUntilReady(), backtestWorker.waitUntilReady()]); return { ready: true, workers: ["replay", "enrichment", "settlement", "backtest"] as const }; }, async close() { clearInterval(backtestReconcileTimer); clearInterval(retentionPurgeTimer); await worker.close(); await enrichmentWorker.close(); await settlementWorker.close(); await backtestWorker.close(); await enrichmentQueueHandle.close(); await backtestQueueHandle.close(); await settlementQueueHandle.close(); await database.$disconnect(); } };
 }
 
 function start(): void {

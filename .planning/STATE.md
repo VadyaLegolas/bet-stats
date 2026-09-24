@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 current_phase: 06
 current_phase_name: Release Experience and Operations
 current_plan: 9
-status: executing
-stopped_at: Completed 06-08-PLAN.md
-last_updated: "2026-09-23T14:05:50.679Z"
+status: verifying
+stopped_at: Completed 06-09-PLAN.md
+last_updated: "2026-09-24T08:43:24.226Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 86
-  completed_plans: 85
+  completed_plans: 86
   percent: 83
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 Phase: 06 (Release Experience and Operations) — EXECUTING
 Current Plan: 9
 Total Plans in Phase: 9
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-20 — Phase 06 execution started
 Last Activity Description: Phase 06 execution started
 
@@ -117,6 +117,7 @@ Progress: [████████░░] 83%
 | Phase 06 P06 | 5min | 1 tasks | 4 files |
 | Phase 06 P07 | 9min | 2 tasks | 19 files |
 | Phase 06 P08 | 35min | 2 tasks | 9 files |
+| Phase 06 P09 | 2d | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -215,6 +216,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 06]: Phase 06: Consent, retained writes, and withdrawal serialize on one subject row; only serialization conflicts are retried.
 - [Phase 06]: Phase 06: Cache invalidation failure rolls back withdrawal and can never produce a success response.
 - [Phase 06]: Phase 06: Cache invalidation failure rolls back withdrawal and can never produce a success response.
+- [Phase 06]: Phase 06: Desktop and mobile Chromium are the declared automated browser support matrix; broader support requires an explicit release project.
+- [Phase 06]: Phase 06: The release integration gate uses parent-owned PostgreSQL and Redis with awaited child supervision and exact test-owned BullMQ cleanup.
 
 ### Pending Todos
 
@@ -234,6 +237,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-09-23T14:05:50.473Z
-Stopped at: Completed 06-08-PLAN.md
+Last session: 2026-09-24T08:43:23.998Z
+Stopped at: Completed 06-09-PLAN.md
 Resume file: None

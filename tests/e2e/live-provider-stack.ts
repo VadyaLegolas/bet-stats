@@ -13,8 +13,9 @@ export const PROVIDER_API_ORIGIN = "http://127.0.0.1:3241";
 export const PROVIDER_WEB_ORIGIN = "http://127.0.0.1:3240";
 const OPERATOR_TEST_ENV = { OPERATOR_CREDENTIAL: "phase-06-operator-credential", OPERATOR_PROXY_SIGNING_SECRET: "phase-06-operations-signing-secret-32-bytes", OPERATOR_AUTHORIZED_SUBJECTS: "release-operator" } as const;
 const PRIVACY_TEST_ENV = { PRIVACY_SUBJECT_PROVIDER_MODE: "signed", PRIVACY_SUBJECT_SIGNING_SECRET: "phase-06-privacy-signing-secret-32-bytes", PRIVACY_RETENTION_DURATION_DAYS: "30", PRIVACY_RETENTION_POLICY_VERSION: "privacy-test-v1", PRIVACY_RETENTION_EFFECTIVE_AT: "2026-09-01T00:00:00.000Z" } as const;
-type Runtime = { pg: string; redis: string; api?: ChildProcess; web?: ChildProcess; worker?: ReturnType<typeof startReplayWorker>; databaseUrl: string; redisUrl: string };
+type Runtime = { pg: string; redis: string; api?: ChildProcess; web?: ChildProcess; supervision?: ReturnType<typeof superviseLiveChildren>; worker?: ReturnType<typeof startReplayWorker>; databaseUrl: string; redisUrl: string };
 let owned: Runtime | null = null;
+const diagnosticTails = new WeakMap<object, string>();
 export const LIVE_FIXTURES = {
   fallback: "live-fallback-fixture",
   limited: "live-limited-fixture",
@@ -22,8 +23,22 @@ export const LIVE_FIXTURES = {
 } as const;
 const docker = (...args: string[]) => execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 async function wait(url: string) { for (let i=0;i<120;i++){ try { if ((await fetch(url)).ok) return; } catch {} await new Promise(r=>setTimeout(r,500)); } throw new Error(`SERVICE_NOT_READY:${url}`); }
-function stop(child?: ChildProcess) { if (!child?.pid) return; try { execFileSync("taskkill", ["/pid",String(child.pid),"/T","/F"], { stdio:"ignore" }); } catch {} }
-function observe(child: ChildProcess, label: string) { for (const stream of [child.stdout, child.stderr]) stream?.on("data", (chunk) => { const safe=String(chunk).replace(/postgresql:\/\/[^\s]+/g,"[REDACTED_DATABASE_URL]").replace(/deterministic/g,"[REDACTED]"); process.stderr.write(`[${label}] ${safe}`); }); return child; }
+async function stop(child?: ChildProcess) { if (!child?.pid || child.exitCode !== null) return; const closed = new Promise<void>((resolveClose) => child.once("close", () => resolveClose())); try { execFileSync("taskkill", ["/pid",String(child.pid),"/T","/F"], { stdio:"ignore" }); } catch {} await Promise.race([closed,new Promise<void>((resolveTimeout)=>setTimeout(resolveTimeout,5_000))]); }
+function observe(child: ChildProcess, label: string) { for (const stream of [child.stdout, child.stderr]) stream?.on("data", (chunk) => { const safe=String(chunk).replace(/postgresql:\/\/[^\s]+/g,"[REDACTED_DATABASE_URL]").replace(/deterministic/g,"[REDACTED]"); diagnosticTails.set(child, `${diagnosticTails.get(child) ?? ""}${safe}`.slice(-4_000)); process.stderr.write(`[${label}] ${safe}`); }); return child; }
+export function superviseLiveChildren(children: Array<{label:string;child: Pick<ChildProcess,"pid"|"once"|"off">;diagnostic?:()=>string}>, terminate: (child:any)=>Promise<void> = stop) {
+  let disposed=false;
+  let rejectFailure!: (error: Error)=>void;
+  const failure=new Promise<never>((_,reject)=>{rejectFailure=reject;});
+  const listeners=children.map(({label,child})=>{
+    const listener=(code:number|null,signal:NodeJS.Signals|null)=>{if(disposed)return;disposed=true;void Promise.all(children.filter((entry)=>entry.child!==child).map((entry)=>terminate(entry.child))).then(()=>{const detail=(children.find((entry)=>entry.child===child)?.diagnostic?.() ?? diagnosticTails.get(child as object) ?? "").trim();rejectFailure(new Error(`LIVE_CHILD_FAILED:${label}:exit=${code ?? signal ?? "unknown"}${detail ? `:cause=${detail}` : ""}`));});};
+    child.once("exit",listener);
+    return {child,listener};
+  });
+  return {failure,dispose(){disposed=true;for(const {child,listener} of listeners)child.off("exit",listener);}};
+}
+export function runSupervisedLiveOwner<T>(supervision: ReturnType<typeof superviseLiveChildren>, owner: () => Promise<T>): Promise<T> {
+  return Promise.race([Promise.resolve().then(owner), supervision.failure]);
+}
 export async function startLiveProviderStack() {
   const suffix = `${process.pid}-${Date.now()}`, pg=`bet-stats-p5-pg-${suffix}`, redis=`bet-stats-p5-redis-${suffix}`;
   try {
@@ -42,8 +57,11 @@ export async function startLiveProviderStack() {
     execFileSync("cmd.exe",["/d","/s","/c","corepack","pnpm","--filter","@bet-stats/api...","build"],{cwd:process.cwd(),env:process.env,stdio:"pipe"});
     const api=observe(run(["pnpm","--filter","@bet-stats/api","dev"],{DATABASE_URL:databaseUrl,REDIS_URL:redisUrl,POSTGRES_READY:"true",REDIS_READY:"true",API_HOST:"127.0.0.1",API_PORT:"3241",NODE_ENV:"test",ELIGIBILITY_ALLOWED_REGIONS:"PL",...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV}),"api"); await wait(`${PROVIDER_API_ORIGIN}/health/ready`);
     execFileSync("cmd.exe",["/d","/s","/c","corepack","pnpm","--filter","@bet-stats/web","build"],{cwd:process.cwd(),env:{...process.env,API_ORIGIN:PROVIDER_API_ORIGIN,...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV},stdio:"pipe"});
-    const web=observe(run(["pnpm","--filter","@bet-stats/web","exec","next","start","--hostname","127.0.0.1","--port","3240"],{API_ORIGIN:PROVIDER_API_ORIGIN,ELIGIBILITY_REGION:"PL",ELIGIBILITY_AGE_ACKNOWLEDGED:"true",ELIGIBILITY_CHECKED_AT:new Date().toISOString(),...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV}),"web"); await wait(PROVIDER_WEB_ORIGIN);
-    owned={pg,redis,api,web,worker,databaseUrl,redisUrl}; return {databaseUrl,redisUrl,workerReady:true,seeded:["PL","39","78","848"],productionCounts};
+    const web=observe(run(["pnpm","--filter","@bet-stats/web","exec","next","start","--hostname","127.0.0.1","--port","3240"],{API_ORIGIN:PROVIDER_API_ORIGIN,ELIGIBILITY_REGION:"PL",ELIGIBILITY_AGE_ACKNOWLEDGED:"true",ELIGIBILITY_CHECKED_AT:new Date().toISOString(),...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV}),"web");
+    const supervision=superviseLiveChildren([{label:"api",child:api},{label:"web",child:web}]);
+    await Promise.race([wait(PROVIDER_WEB_ORIGIN),supervision.failure]);
+    void supervision.failure.catch(()=>undefined);
+    owned={pg,redis,api,web,supervision,worker,databaseUrl,redisUrl}; return {databaseUrl,redisUrl,workerReady:true,seeded:["PL","39","78","848"],productionCounts,supervision};
   } catch(error){await stopLiveProviderStack({pg,redis});throw error;}
 }
 
@@ -121,6 +139,6 @@ async function issueProductionForecasts(db: ReturnType<typeof createPrismaClient
     if (kind === "LINEUP_CONFIRMED" && forecast.officialLineupObservationId !== lineupId) throw new Error("PRODUCTION_LINEUP_FORECAST_MISMATCH");
   }
 }
-export async function stopLiveProviderStack(partial?:{pg:string;redis:string}) { const state=owned; if(state){stop(state.web);stop(state.api);await state.worker?.close();} for(const name of [partial?.redis??state?.redis,partial?.pg??state?.pg])if(name)try{docker("rm","-f",name)}catch{} owned=null; }
+export async function stopLiveProviderStack(partial?:{pg:string;redis:string}) { const state=owned; if(state){state.supervision?.dispose();await stop(state.web);await stop(state.api);await state.worker?.close();} for(const name of [partial?.redis??state?.redis,partial?.pg??state?.pg])if(name)try{docker("rm","-f",name)}catch{} owned=null; }
 
 export default async function setup() { await startLiveProviderStack(); return async () => stopLiveProviderStack(); }

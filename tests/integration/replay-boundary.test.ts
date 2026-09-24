@@ -9,12 +9,13 @@ import { resolve } from "node:path";
 import { NestFactory } from "../../apps/api/node_modules/@nestjs/core/index.js";
 import type { INestApplication } from "../../apps/api/node_modules/@nestjs/common/index.js";
 import { NextRequest } from "../../apps/web/node_modules/next/server.js";
+import { Queue } from "../../workers/data-sync/node_modules/bullmq/dist/esm/index.js";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import { AppModule } from "../../apps/api/src/app.module.js";
 import { GET as proxyGet, POST as proxyPost } from "../../apps/web/app/internal-api/pipeline/replay/[[...path]]/route.js";
 import { startReplayWorker } from "../../workers/data-sync/src/main.js";
-import { createReplayWorker } from "../../workers/data-sync/src/queues/index.js";
+import { createReplayWorker, redisConnection, standardQueue } from "../../workers/data-sync/src/queues/index.js";
 
 const credential = "boundary-operator-secret";
 const authorizedSubject = "local-test-operator";
@@ -108,6 +109,23 @@ async function waitForPlan(planId: string, state: "SUCCEEDED" | "FAILED") {
     await new Promise((resolveWait) => setTimeout(resolveWait, 100));
   }
   throw new Error(`Replay plan did not reach ${state} within 16 seconds: ${JSON.stringify(last)}`);
+}
+
+async function removeUnexecutedReplayJob(replayPlanId: string) {
+  const delivery = await prisma.replayDelivery.findFirstOrThrow({
+    where: { syncRun: { replayPlanId } },
+    select: { jobId: true },
+  });
+  const queue = new Queue(standardQueue(queuePrefix), { connection: redisConnection(redisUrl) });
+  try {
+    const job = await queue.getJob(delivery.jobId);
+    expect(job, `expected queued replay job ${delivery.jobId}`).not.toBeUndefined();
+    expect(await job!.getState()).toBe("waiting");
+    await job!.remove();
+    expect(await queue.getJob(delivery.jobId)).toBeUndefined();
+  } finally {
+    await queue.close();
+  }
 }
 
 async function seedReplayReferences() {
@@ -455,6 +473,7 @@ describe("production replay proxy boundary", () => {
     expect(plan.logicalKey).toBe(preview.json.logicalIdentity);
     expect(plan.syncRuns).toHaveLength(1);
     expect(plan.syncRuns[0]).toMatchObject({ provider: "evaluation", endpointFamily: "SETTLEMENT", lane: "evaluation", delivery: { state: "DELIVERED" } });
+    await removeUnexecutedReplayJob(String(queued.json.replayPlanId));
   });
 
   it("rejects tampered recovery confirmation and converges duplicate confirmation without immutable changes", async () => {
@@ -469,7 +488,7 @@ describe("production replay proxy boundary", () => {
     const preview = await proxy(["preview"], "POST", {
       recoveryType: "INGESTION", reason: "Recover the exact fixture result after an audited provider interruption.",
       provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS",
-      from: "2026-09-02T00:00:00.000Z", to: "2026-09-02T23:59:59.999Z",
+      from: "2026-09-08T00:00:00.000Z", to: "2026-09-08T23:59:59.999Z",
     });
     const tampered = await proxy(["queue"], "POST", { previewId: preview.json.previewId, previewVersion: preview.json.previewVersion, fingerprint: "0".repeat(64) });
     expect(tampered.response.status).toBe(409);
@@ -482,6 +501,7 @@ describe("production replay proxy boundary", () => {
     expect(await prisma.replayPlan.count({ where: { previewId: String(preview.json.previewId) } })).toBe(1);
     expect(await prisma.replayDelivery.count({ where: { syncRun: { replayPlanId: String(first.json.replayPlanId) } } })).toBe(1);
     expect(await immutableFacts()).toEqual(before);
+    await removeUnexecutedReplayJob(String(first.json.replayPlanId));
   });
 
   it("projects exhausted retries as a classified durable dead letter", async () => {

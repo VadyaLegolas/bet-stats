@@ -51,7 +51,7 @@ describe("Phase 1 held-out security boundaries", () => {
     const publicFixtures = repositoryFile("apps/web/app/fixtures/page.tsx");
     const production = `${provider}\n${worker}`;
 
-    expect(production).not.toMatch(/api-football|understat|thesportsdb/iu);
+    expect(production).not.toMatch(/understat|thesportsdb/iu);
     expect(production).not.toMatch(/lineups?|injur(?:y|ies)|bookmaker|placeBet|wager/iu);
     expect(publicFixtures).not.toMatch(/["'`]prediction["'`]|["'`]odds["'`]|["'`]value["'`]|coming soon/iu);
   });

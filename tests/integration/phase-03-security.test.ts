@@ -1,9 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { createPrismaClient, createPrismaForecastRepository, type PrismaClient } from "@bet-stats/database";
 
 import {
-  createPrismaForecastRepository,
   generateForecast,
   type ForecastPublicationRepository,
 } from "../../apps/api/src/modules/forecasts/forecasts.service.js";
@@ -102,7 +101,7 @@ describe("Phase 3 trust boundaries", () => {
     await expect(generateForecast(request, forecastRepository({
       findEvidence: async (teamId) => projection(teamId, `${teamId}-build`, postCutoff),
       publish: async (draft) => { publications += 1; return draft; },
-    }))).rejects.toMatchObject({ code: "POST_CUTOFF_SOURCE_INPUT" });
+    }))).rejects.toMatchObject({ code: "LEAKAGE_DETECTED" });
     expect(publications).toBe(0);
     expect(postCutoff).toMatchObject({ payloadHash: "sha256:phase-03-source", payloadBytes: 37 });
   });

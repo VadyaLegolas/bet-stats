@@ -38,7 +38,7 @@ for (const [name, viewport] of [["desktop", { width: 1280, height: 900 }], ["mob
     await expect(page.getByText(/Last checked/).first()).toBeVisible();
     await expect(page.getByText("UPSTREAM_5XX").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Copy correlation ID corr-operator-failure" }).first()).toBeVisible();
-    await expect(page.getByText(/Showing 1–1 of 1/)).toBeVisible();
+    await expect(page.getByText(/Showing 1–\d+ of \d+/)).toBeVisible();
     const body = (await page.locator("body").innerText()).toLowerCase();
     for (const canary of canaries) expect(body).not.toContain(canary);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);

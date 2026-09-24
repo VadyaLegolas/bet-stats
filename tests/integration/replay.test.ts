@@ -22,7 +22,7 @@ import { createDurableProviderCircuitRegistry } from "../../workers/data-sync/sr
 import { NestFactory } from "../../apps/api/node_modules/@nestjs/core/index.js";
 import { AppModule } from "../../apps/api/src/app.module.js";
 
-const request = { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-01T00:00:00.000Z", to: "2026-08-03T00:00:00.000Z" };
+const request = { recoveryType: "INGESTION" as const, reason: "Recover the exact bounded result window after an audited provider interruption.", provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-01T00:00:00.000Z", to: "2026-08-03T00:00:00.000Z" };
 const databaseRoot = resolve(import.meta.dirname, "../../packages/database");
 const prismaCli = resolve(databaseRoot, "node_modules/prisma/build/index.js");
 const containerName = `bet-stats-replay-${process.pid}`;

@@ -37,10 +37,15 @@ describe("selection-aware value receipts", () => {
       INSERT INTO "Fixture" (id,"leagueId","seasonId","homeTeamId","awayTeamId","kickoffUtc",status,"updatedAt") VALUES ('${id("fixture")}','value-league','value-season','value-home','value-away','2026-09-10T18:00:00Z','SCHEDULED',now());
       INSERT INTO "Fixture" (id,"leagueId","seasonId","homeTeamId","awayTeamId","kickoffUtc",status,"updatedAt") VALUES ('${id("other-fixture")}','value-league','value-season','value-home','value-away','2026-09-11T18:00:00Z','SCHEDULED',now());
     `);
-    for (const [suffix, state] of [["issued", "ISSUED"], ["building", "BUILDING"], ["failed", "FAILED"]] as const) {
+    for (const [suffix, state, revision, supersedes] of [
+      ["issued", "ISSUED", 1, null],
+      ["building", "BUILDING", 2, "issued"],
+      ["failed", "FAILED", 3, "building"],
+    ] as const) {
       await prisma.$executeRawUnsafe(
-        `INSERT INTO "ForecastSnapshot" (id,"fixtureId",kind,state,revision,cutoff,"modelVersion","modelHash","configVersion","configHash","inputHash","evidenceFingerprint","sourceRefs",probabilities,confidence,assumptions,receipt,"issuedAt") VALUES ($1,$2,'PRE_MATCH',$3::"ForecastSnapshotState",1,'2026-09-10T16:00:00Z','poisson-v1',$4,'forecast-config-v1',$5,$6,$7,'[]','{}','{}','[]','{}',CASE WHEN $3='ISSUED' THEN now() ELSE NULL END)`,
-        id(`forecast-${suffix}`), id("fixture"), state, id(`model-${suffix}`), id(`config-${suffix}`), id(`input-${suffix}`), id(`evidence-${suffix}`),
+        `INSERT INTO "ForecastSnapshot" (id,"fixtureId",kind,state,revision,"supersedesForecastId",cutoff,"modelVersion","modelHash","configVersion","configHash","inputHash","evidenceFingerprint","sourceRefs",probabilities,confidence,assumptions,receipt,"issuedAt") VALUES ($1,$2,'PRE_MATCH',$3::"ForecastSnapshotState",$4,$5,'2026-09-10T16:00:00Z','poisson-v1',$6,'forecast-config-v1',$7,$8,$9,'[]','{}','{}','[]','{}',CASE WHEN $3='ISSUED' THEN now() ELSE NULL END)`,
+        id(`forecast-${suffix}`), id("fixture"), state, revision, supersedes ? id(`forecast-${supersedes}`) : null,
+        id(`model-${suffix}`), id(`config-${suffix}`), id(`input-${suffix}`), id(`evidence-${suffix}`),
       );
       await prisma.$executeRawUnsafe(`INSERT INTO "ForecastMarket" (id,"forecastSnapshotId",market,probabilities) VALUES ($1,$2,'MATCH_RESULT',$3::jsonb)`, id(`market-${suffix}`), id(`forecast-${suffix}`), JSON.stringify(probabilities));
     }

@@ -22,7 +22,7 @@ findings:
   warning: 0
   info: 0
   total: 3
-status: issues_found
+status: resolved
 ---
 
 # Phase 06: Final Adversarial Review
@@ -80,5 +80,19 @@ However, Phase 06 still has three blocker-class defects. The replacement privacy
 
 ---
 
+## Resolution Evidence (2026-09-24)
+
+All three blockers were resolved in `0bea1cb` and `6232b41`.
+
+- CR-01: the web proxy now creates `privacy_session` only from a signed `auth_session`; both credentials have signed subject, session ID, version, and expiry. The privacy credential is capped at 15 minutes, emitted as `HttpOnly; Secure; SameSite=Lax`, and rejected when expired, invalid, or bound to a different subject/session/version.
+- CR-02: re-arm failures are caught, reported, and scheduled through a bounded retry timer. The deterministic scheduler test simulates a failed second minimum-expiry query and proves the retry re-arms the idle poll.
+- CR-03: NextRequest-based proxy tests now run in `apps/web`, the workspace that owns `next`; root `pnpm test` invokes `pnpm --filter @bet-stats/web test`.
+
+Verification (Node 24 requested by release policy; this workstation currently exposes Node 25.2.1, so the commands passed with an engine warning):
+
+- `pnpm --filter @bet-stats/web typecheck` — passed.
+- `pnpm --filter @bet-stats/web test` — 1 file, 5 tests passed.
+- `pnpm vitest run --project unit tests/unit/retention-purge-scheduler.test.ts` — 1 file, 2 tests passed.
+
 _Reviewer: the agent (gsd-code-reviewer)_  
-_Reviewed commits: 526f878, 762607b, 2db89ef, 3b345a2_
+_Reviewed commits: 526f878, 762607b, 2db89ef, 3b345a2, 0bea1cb, 6232b41_

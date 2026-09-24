@@ -33,6 +33,7 @@ export function scheduleRetentionPurge(input: {
   clearTimeout?: (timer: ReturnType<typeof setTimeout>) => void;
   onError?: (error: unknown) => void;
   idlePollMs?: number;
+  retryMs?: number;
 }): RetentionPurgeScheduler {
   const now = input.now ?? (() => new Date());
   const setTimer = input.setTimeout ?? setTimeout;
@@ -49,12 +50,17 @@ export function scheduleRetentionPurge(input: {
       ) expiries
     `;
     const delay = row?.expiresAt ? Math.max(0, row.expiresAt.getTime() - now().getTime()) : (input.idlePollMs ?? 1_000);
-    timer = setTimer(() => { void run(); }, delay);
+    timer = setTimer(() => { void run().catch(input.onError); }, delay);
   };
   const run = async (): Promise<void> => {
     if (closed) return;
-    try { await purgeExpiredRetention(input.database, now()); } catch (error) { input.onError?.(error); }
-    await arm();
+    try {
+      await purgeExpiredRetention(input.database, now());
+      await arm();
+    } catch (error) {
+      input.onError?.(error);
+      if (!closed) timer = setTimer(() => { void run().catch(input.onError); }, input.retryMs ?? 1_000);
+    }
   };
   void arm().catch(input.onError);
   return { close: () => { closed = true; if (timer) clearTimer(timer); }, refresh: arm };

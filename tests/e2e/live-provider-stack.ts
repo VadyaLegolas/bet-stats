@@ -57,7 +57,7 @@ export async function startLiveProviderStack() {
     const productionCounts=await seedAcceptanceData(db);
     await db.$disconnect();
     const deterministic:any={"football-data.org":()=>({}),"api-football":()=>({fetchEnrichment:async()=>({state:"observed-empty",payload:null})})};
-    const worker=startReplayWorker({databaseUrl,redisUrl,footballDataApiToken:"deterministic",apiFootballApiKey:"deterministic",providerFactories:deterministic,prefix:`p5-${suffix}`}); owned.worker=worker; await worker.waitUntilReady();
+    const worker=startReplayWorker({databaseUrl,redisUrl,footballDataApiToken:"deterministic",apiFootballApiKey:"deterministic",providerFactories:deterministic}); owned.worker=worker; await worker.waitUntilReady();
     const run=(args:string[],env:NodeJS.ProcessEnv)=>spawn("cmd.exe",["/d","/s","/c","corepack",...args],{cwd:process.cwd(),env:{...process.env,...env},stdio:["ignore","pipe","pipe"],windowsHide:true});
     execFileSync("cmd.exe",["/d","/s","/c","corepack","pnpm","--filter","@bet-stats/api...","build"],{cwd:process.cwd(),env:process.env,stdio:"pipe"});
     const api=observe(run(["pnpm","--filter","@bet-stats/api","dev"],{DATABASE_URL:databaseUrl,REDIS_URL:redisUrl,POSTGRES_READY:"true",REDIS_READY:"true",API_HOST:"127.0.0.1",API_PORT:"3241",NODE_ENV:"test",ELIGIBILITY_ALLOWED_REGIONS:"PL",...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV}),"api"); owned.api=api; await wait(`${PROVIDER_API_ORIGIN}/health/ready`);
@@ -111,6 +111,7 @@ async function exerciseProductionRouting(db: ReturnType<typeof createPrismaClien
   ] });
   await db.providerCircuitState.createMany({ data: [
     { provider: "football-data.org", endpointFamily: "FIXTURES", state: "CLOSED" },
+    { provider: "football-data.org", endpointFamily: "RESULTS", state: "CLOSED" },
     { provider: "api-football", endpointFamily: "FIXTURES", state: "CLOSED" },
   ] });
   const repository = createProviderRoutingRepository({ database: db });

@@ -84,6 +84,10 @@ enum RetentionSubjectProviderMode {
   SIGNED
 }
 
+enum RetainedViewResourceType {
+  RESULT
+}
+
 model League {
   id                   String               @id @default(cuid())
   name                 String
@@ -733,8 +737,8 @@ model RetainedViewHistory {
   id           String           @id
   subjectId    String
   consentId    String
-  resourceType String
-  resourceId   String
+  resourceType RetainedViewResourceType
+  resourceId   String                   @db.VarChar(128)
   viewedAt     DateTime         @db.Timestamptz(3)
   expiresAt    DateTime         @db.Timestamptz(3)
   createdAt    DateTime         @default(now()) @db.Timestamptz(3)

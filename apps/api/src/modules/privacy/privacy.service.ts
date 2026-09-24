@@ -10,6 +10,17 @@ export type ConsentPolicy = Readonly<{ version: string; effectiveAt: string; dur
 export type RetentionSubjectInput = Readonly<{ subjectId: string; subjectKey: string }>;
 export type RetentionCache = { invalidate(subjectId: string): Promise<void> };
 export type PrivacySubjectProvider = { resolve(request: unknown): Promise<RetentionSubjectInput | null> };
+export const RETAINED_VIEW_RESOURCE_TYPES = ["RESULT"] as const;
+export type RetainedViewResourceType = (typeof RETAINED_VIEW_RESOURCE_TYPES)[number];
+const RETAINED_VIEW_RESOURCE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+
+export function parseRetainedViewInput(input: unknown): { resourceType: RetainedViewResourceType; resourceId: string } | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+  const candidate = input as Record<string, unknown>;
+  if (Object.keys(candidate).sort().join(",") !== "resourceId,resourceType") return null;
+  if (candidate.resourceType !== "RESULT" || typeof candidate.resourceId !== "string" || !RETAINED_VIEW_RESOURCE_ID.test(candidate.resourceId)) return null;
+  return { resourceType: candidate.resourceType, resourceId: candidate.resourceId };
+}
 
 const noApprovedSubjectProvider: PrivacySubjectProvider = { resolve: async () => null };
 const noCache: RetentionCache = { invalidate: async () => undefined };
@@ -61,7 +72,7 @@ export async function grantRetentionConsent(
 
 export async function retainViewedResult(
   database: PrismaClient,
-  input: { subjectId: string; resourceType: string; resourceId: string; policy: ConsentPolicy; now?: Date },
+  input: { subjectId: string; resourceType: RetainedViewResourceType; resourceId: string; policy: ConsentPolicy; now?: Date },
 ) {
   const now = input.now ?? new Date();
   return database.$transaction(async (tx) => {
@@ -192,9 +203,8 @@ export class PrivacyService implements OnModuleDestroy {
     if (!policy.available) throw new ServiceUnavailableException({ code: policy.reason });
     const subject = await this.subjects.resolve(request);
     if (!subject) throw new BadRequestException({ code: "SUBJECT_IDENTITY_UNAVAILABLE" });
-    if (!input || typeof input !== "object" || Array.isArray(input)) throw new BadRequestException({ code: "INVALID_RETAINED_VIEW" });
-    const candidate = input as Record<string, unknown>;
-    if (Object.keys(candidate).sort().join(",") !== "resourceId,resourceType" || typeof candidate.resourceType !== "string" || typeof candidate.resourceId !== "string" || !candidate.resourceType || !candidate.resourceId) throw new BadRequestException({ code: "INVALID_RETAINED_VIEW" });
+    const candidate = parseRetainedViewInput(input);
+    if (!candidate) throw new BadRequestException({ code: "INVALID_RETAINED_VIEW" });
     if (!this.database) throw new ServiceUnavailableException({ code: "DATABASE_UNAVAILABLE" });
     try { await retainViewedResult(this.database, { subjectId: subject.subjectId, resourceType: candidate.resourceType, resourceId: candidate.resourceId, policy }); return { retained: true }; }
     catch { throw new ConflictException({ code: "RETENTION_DENIED" }); }

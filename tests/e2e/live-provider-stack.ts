@@ -12,7 +12,7 @@ import { ApiFootballClient } from "../../packages/football-data/src/index.js";
 export const PROVIDER_API_ORIGIN = "http://127.0.0.1:3241";
 export const PROVIDER_WEB_ORIGIN = "http://127.0.0.1:3240";
 const OPERATOR_TEST_ENV = { OPERATOR_CREDENTIAL: "phase-06-operator-credential", OPERATOR_PROXY_SIGNING_SECRET: "phase-06-operations-signing-secret-32-bytes", OPERATOR_AUTHORIZED_SUBJECTS: "release-operator" } as const;
-const PRIVACY_TEST_ENV = { PRIVACY_SUBJECT_PROVIDER_MODE: "signed", PRIVACY_SUBJECT_SIGNING_SECRET: "phase-06-privacy-signing-secret-32-bytes", PRIVACY_RETENTION_DURATION_DAYS: "30", PRIVACY_RETENTION_POLICY_VERSION: "privacy-test-v1", PRIVACY_RETENTION_EFFECTIVE_AT: "2026-09-01T00:00:00.000Z" } as const;
+const PRIVACY_TEST_ENV = { PRIVACY_SUBJECT_PROVIDER_MODE: "signed", PRIVACY_SUBJECT_SIGNING_SECRET: "phase-06-privacy-signing-secret-32-bytes", PRIVACY_SESSION_SIGNING_SECRET: "phase-06-privacy-session-secret-32-bytes", PRIVACY_RETENTION_DURATION_DAYS: "30", PRIVACY_RETENTION_POLICY_VERSION: "privacy-test-v1", PRIVACY_RETENTION_EFFECTIVE_AT: "2026-09-01T00:00:00.000Z" } as const;
 type Runtime = { pg: string; redis: string; api?: ChildProcess; web?: ChildProcess; supervision?: ReturnType<typeof superviseLiveChildren>; worker?: ReturnType<typeof startReplayWorker>; databaseUrl?: string; redisUrl?: string };
 let owned: Runtime | null = null;
 const diagnosticTails = new WeakMap<object, string>();

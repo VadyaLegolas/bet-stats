@@ -5,20 +5,19 @@ import { createPrismaClient } from "../../packages/database/src/index.js";
 import { readLiveReleaseState } from "./live-release-stack.js";
 
 const subjectId = "release-privacy-subject";
-const signingSecret = "phase-06-privacy-signing-secret-32-bytes";
+const sessionSecret = "phase-06-privacy-session-secret-32-bytes";
 
 function projectSubject(projectName: string) {
   return `${subjectId}-${projectName}`;
 }
 
-function subjectHeaders(activeSubjectId: string) {
-  const timestamp = new Date().toISOString();
-  const signature = createHmac("sha256", signingSecret).update(`${activeSubjectId}\n${timestamp}`).digest("base64url");
-  return { "x-privacy-subject": activeSubjectId, "x-privacy-timestamp": timestamp, "x-privacy-signature": signature };
+function sessionHeaders(activeSubjectId: string) {
+  const signature = createHmac("sha256", sessionSecret).update(`privacy-session\n${activeSubjectId}`).digest("base64url");
+  return { cookie: `privacy_session=${activeSubjectId}.${signature}` };
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
-  await page.setExtraHTTPHeaders(subjectHeaders(projectSubject(testInfo.project.name)));
+  await page.setExtraHTTPHeaders(sessionHeaders(projectSubject(testInfo.project.name)));
 });
 
 test("retention starts off, requires explicit consent, and cancellation keeps consent", async ({ page }) => {
@@ -42,7 +41,7 @@ test("withdrawal reports success only after deletion and future retention is den
   await page.goto("/privacy");
   if (await page.getByRole("heading", { name: "History retention is off", exact: true }).isVisible()) await page.getByRole("checkbox", { name: /Allow retention/ }).click();
   const retained = await request.post(`${readLiveReleaseState().webOrigin}/internal-api/privacy/history/view`, {
-    headers: subjectHeaders(activeSubjectId), data: { resourceType: "RESULT", resourceId: "live-comparison-fixture" },
+    headers: sessionHeaders(activeSubjectId), data: { resourceType: "RESULT", resourceId: "live-comparison-fixture" },
   });
   expect(retained.ok()).toBeTruthy();
   await page.getByRole("button", { name: "Withdraw consent and delete history" }).click();
@@ -55,7 +54,7 @@ test("withdrawal reports success only after deletion and future retention is den
     expect((await database.retentionSubject.findUniqueOrThrow({ where: { id: activeSubjectId } })).retentionBlockedAt).not.toBeNull();
   } finally { await database.$disconnect(); }
   const denied = await request.post(`${readLiveReleaseState().webOrigin}/internal-api/privacy/history/view`, {
-    headers: subjectHeaders(activeSubjectId), data: { resourceType: "RESULT", resourceId: "live-comparison-fixture" },
+    headers: sessionHeaders(activeSubjectId), data: { resourceType: "RESULT", resourceId: "live-comparison-fixture" },
   });
   expect(denied.status()).toBe(409);
 });

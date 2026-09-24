@@ -6,7 +6,7 @@ import type { Page } from "@playwright/test";
 import { createPrismaClient, createSettlementPipelineService } from "../../packages/database/src/index.js";
 import { createSettlementJobHandler } from "../../workers/data-sync/src/jobs/settlement.js";
 import { createSettlementWorker } from "../../workers/data-sync/src/queues/index.js";
-import { PROVIDER_API_ORIGIN, PROVIDER_WEB_ORIGIN, startLiveProviderStack, stopLiveProviderStack } from "./live-provider-stack.js";
+import { armFatalLiveSupervision, PROVIDER_API_ORIGIN, PROVIDER_WEB_ORIGIN, startLiveProviderStack, stopLiveProviderStack } from "./live-provider-stack.js";
 
 export type LiveReleaseState = Readonly<{
   databaseUrl: string;
@@ -74,6 +74,7 @@ export default async function setup(): Promise<() => Promise<void>> {
   rmSync(statePath, { force: true });
   try {
     const provider = await startLiveProviderStack();
+    armFatalLiveSupervision(provider.supervision);
     const workerPrefix = `p6-release-${process.pid}-${Date.now()}`;
     const database = createPrismaClient(provider.databaseUrl);
     releaseWorker = createSettlementWorker({

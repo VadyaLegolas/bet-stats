@@ -39,6 +39,9 @@ export function superviseLiveChildren(children: Array<{label:string;child: Pick<
 export function runSupervisedLiveOwner<T>(supervision: ReturnType<typeof superviseLiveChildren>, owner: () => Promise<T>): Promise<T> {
   return Promise.race([Promise.resolve().then(owner), supervision.failure]);
 }
+export function armFatalLiveSupervision(supervision: ReturnType<typeof superviseLiveChildren>, fatal: (error: Error) => void = (error) => { setImmediate(() => { throw error; }); }) {
+  void supervision.failure.catch(fatal);
+}
 export async function startLiveProviderStack() {
   const suffix = `${process.pid}-${Date.now()}`, pg=`bet-stats-p5-pg-${suffix}`, redis=`bet-stats-p5-redis-${suffix}`;
   owned={pg,redis};

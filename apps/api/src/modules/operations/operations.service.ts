@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException, Optional } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, Optional, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 
 const CORRELATION = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/;
@@ -106,11 +106,14 @@ export function createPrismaOperationsRepository(database: PrismaClient, clock =
 }
 
 @Injectable()
-export class OperationsService {
+export class OperationsService implements OnModuleDestroy {
   private readonly projection: ReturnType<typeof createOperationsProjection> | null;
+  private readonly ownedClient: PrismaClient | null;
   constructor(@Optional() database?: PrismaClient) {
-    const client = database ?? (process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null);
+    this.ownedClient = database ? null : process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null;
+    const client = database ?? this.ownedClient;
     this.projection = client ? createOperationsProjection(createPrismaOperationsRepository(client)) : null;
   }
   overview(query: OperationsQuery) { if (!this.projection) throw new NotFoundException("Not found"); return this.projection.overview(query); }
+  async onModuleDestroy() { await this.ownedClient?.$disconnect(); }
 }

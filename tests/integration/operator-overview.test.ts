@@ -3,7 +3,7 @@ import { createHash, createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
 import { OperatorGuard } from "../../apps/api/src/modules/reconciliation/operator.guard.js";
-import { createOperationsProjection } from "../../apps/api/src/modules/operations/operations.service.js";
+import { createOperationsProjection, OperationsService } from "../../apps/api/src/modules/operations/operations.service.js";
 import { verifyIngressOperationsRequest } from "../../apps/web/app/internal-api/operations/[[...path]]/route.js";
 
 const CANARIES = [
@@ -40,6 +40,15 @@ function repository() {
 }
 
 describe("operator overview", () => {
+  it("does not disconnect an injected application-owned Prisma client", async () => {
+    const disconnect = vi.fn(async () => undefined);
+    const service = new OperationsService({ $disconnect: disconnect } as never);
+
+    await service.onModuleDestroy();
+
+    expect(disconnect).not.toHaveBeenCalled();
+  });
+
   it("projects the ordered closed D-09/D-10 overview with bounded jobs", async () => {
     const projection = createOperationsProjection(repository(), () => new Date("2026-09-20T12:00:00.000Z"));
     const overview = await projection.overview({ page: 1, pageSize: 25, windowHours: 24 });

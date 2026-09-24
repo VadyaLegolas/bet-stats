@@ -1,5 +1,8 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
-import { NextRequest, NextResponse } from "next/server";
+// Next 16 exposes this CommonJS entrypoint as `server.js`. The explicit
+// extension keeps the route importable by Node's ESM resolver in Playwright,
+// as well as by Next's bundler.
+import { NextRequest, NextResponse } from "next/server.js";
 
 const privateHeaders = { "cache-control": "private, no-store, max-age=0" };
 const SUBJECT = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/;

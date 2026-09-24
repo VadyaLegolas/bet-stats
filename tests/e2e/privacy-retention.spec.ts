@@ -28,6 +28,10 @@ async function establishPrivacySession(page: import("@playwright/test").Page, ac
   expect(await page.evaluate(async () => (await fetch("/internal-api/privacy/session", { method: "POST" })).status)).toBe(201);
 }
 
+test("release runtime can import the trusted privacy-session boundary", () => {
+  expect(authenticatedSession("release-runtime-import")).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/);
+});
+
 test.beforeEach(async ({ page }, testInfo) => establishPrivacySession(page, projectSubject(testInfo.project.name)));
 
 test("retention starts off, requires explicit consent, and cancellation keeps consent", async ({ page }) => {

@@ -56,11 +56,11 @@ files_reviewed_list:
   - tests/integration/value-receipt.test.ts
   - tests/unit/release-db-lifecycle.test.ts
 findings:
-  critical: 6
-  warning: 3
+  critical: 0
+  warning: 0
   info: 0
-  total: 9
-status: issues_found
+  total: 0
+status: clean
 ---
 
 # Phase 06: Code Review Report
@@ -80,11 +80,15 @@ Generated Prisma client output and the lockfile were excluded as generated artif
 
 ### CR-01: Privacy signatures can be replayed across read, consent, retention, and destructive withdrawal endpoints
 
+**Resolution:** Fixed in `220df05`. The trusted Next proxy now creates a strict assertion bound to subject, timestamp, nonce, method, normalized path, and body digest; Redis atomically consumes each nonce once. Replay and cross-endpoint unit oracles: 2/2 passed; API/web typechecks passed.
+
 **File:** `apps/api/src/modules/privacy/privacy.service.ts:106-120`; `apps/web/app/internal-api/privacy/[[...path]]/route.ts:4-12`
 **Issue:** The HMAC covers only `subjectId` and `timestamp`. It does not bind the request method, path, body digest, or a one-time nonce. The Next proxy forwards the same client-supplied credential to every privacy route. Consequently, any valid assertion captured for harmless `GET /privacy/status` remains valid for `POST /privacy/withdrawal`, `POST /privacy/consent`, or an arbitrary retained-view body during the five-minute acceptance window. This is a confused-deputy/replay vulnerability on a destructive privacy boundary.
 **Fix:** Canonicalize and sign at least subject, timestamp, HTTP method, normalized route, and body digest; enforce strict signature syntax and a bounded one-time nonce stored server-side. Prefer deriving the subject from an authenticated server session and generating the upstream assertion inside the trusted proxy so browsers never supply the provider assertion directly.
 
 ### CR-02: Superseded-policy consent continues to authorize personal-history retention
+
+**Resolution:** Fixed in `db18139`. Status and retained writes now require the exact current policy tuple; PostgreSQL integration oracle: `tests/integration/privacy-retention.test.ts` (23/23 passed).
 
 **File:** `apps/api/src/modules/privacy/privacy.service.ts:60-68`; `apps/api/src/modules/privacy/privacy.service.ts:133-139`
 **Issue:** Both status and retained-view writes accept any unrevoked, unexpired consent. Neither query requires `policyVersion`, `policyEffectiveAt`, or duration to match the currently resolved policy. After a policy change, the UI therefore reports `ON` under the new displayed version and writes new personal history using an old consent the subject never granted for that policy. This violates the versioned explicit-consent contract.
@@ -92,11 +96,15 @@ Generated Prisma client output and the lockfile were excluded as generated artif
 
 ### CR-03: Expired personal history is retained indefinitely
 
+**Resolution:** Fixed in `0b37f6d`. The owned data-sync runtime performs an idempotent purge on startup and every 24 hours, atomically recording deleted odds/view counts in `RetentionPurgeAudit`. PostgreSQL 18 oracle: 24/24 passed.
+
 **File:** `apps/api/src/modules/privacy/privacy.service.ts:52-72`; `packages/database/prisma/migrations/20260920_privacy_retention/migration.sql:63-72`
 **Issue:** `expiresAt` prevents future inserts after consent expiry, but no application job, worker, database procedure, or cascade removes already-retained odds/view rows when their retention period ends. The only deletion path is explicit withdrawal. The indexes merely make a purge possible; they do not perform one. Personal betting-related history can therefore remain forever despite the configured retention duration.
 **Fix:** Add an idempotent scheduled purge that deletes `RetainedOddsHistory` and `RetainedViewHistory` at or before `expiresAt`, with durable audit counts and tests against PostgreSQL time boundaries. If operational scheduling is unavailable, enforce deletion via a database-owned scheduled mechanism and document its deployment requirement.
 
 ### CR-04: The D-16 release matrix can pass without exercising the production failure boundaries it claims to verify
+
+**Resolution:** Fixed in `cd9a825`. D-16 now drives the production circuit/provider parser, API replay preview-confirm boundary, and owned BullMQ replay worker; immutable hashes/counts and dead-letter attempts are asserted. Chromium production-boundary replay oracle: 2/2 passed; remaining matrix scenarios: 5/5 passed in the same owned stack.
 
 **File:** `tests/e2e/release-degradation.spec.ts:29-55`; `tests/e2e/release-degradation.spec.ts:66-85`
 **Issue:** The open-circuit/quota case directly upserts circuit state and never proves provider construction/call denial; the quarantine case directly inserts a `SourceObservation` and only compares fixture counts without invoking envelope validation/admission; the dead-letter case directly inserts failed ledger rows rather than exhausting a real BullMQ job; and the “safe replay” case never previews, confirms, queues, or checks immutable counts/hashes. These tests verify rendering of seeded database rows, not the locked D-16 production paths. `pnpm verify:release` can be green while admission, retry, dead-letter, or replay behavior is broken.
@@ -104,11 +112,15 @@ Generated Prisma client output and the lockfile were excluded as generated artif
 
 ### CR-05: Post-readiness API/web failures are swallowed by the Playwright global owner
 
+**Resolution:** Fixed in `733400f`. Playwright global ownership arms fatal lifetime supervision after readiness; child exit kills its sibling and surfaces bounded stderr. Lifecycle/child-kill oracle: 5/5 passed; workspace typecheck passed.
+
 **File:** `tests/e2e/live-provider-stack.ts:61-64`; `tests/e2e/live-release-stack.ts:72-93`
 **Issue:** After initial web readiness, `startLiveProviderStack` explicitly attaches a catch that discards `supervision.failure`. The Phase 06 global setup receives the supervision object but never races the Playwright owner against it. The new `runSupervisedLiveOwner` helper is only exercised by a focused smoke test and unit tests, not by the release browser gate. An API/web process can exit after readiness and before/during teardown without its failure becoming the release owner's result, contradicting the lifecycle fix and potentially allowing a false-green or diagnostically opaque run.
 **Fix:** Make the global owner await/race the entire Playwright lifetime against supervision, or expose a reporter/fixture-level failure channel that deterministically fails the run on child exit. Remove the swallowing catch and add an acceptance test that kills API after readiness during a browser run and asserts nonzero release exit with the bounded diagnostic.
 
 ### CR-06: Startup failure before ownership publication leaks workers and child processes
+
+**Resolution:** Fixed in `ed49cb3`. Ownership is published incrementally before worker/API/web readiness can fail, so every catch path closes allocated children/workers before removing owned containers. Lifecycle oracle: 4/4 passed; workspace typecheck passed.
 
 **File:** `tests/e2e/live-provider-stack.ts:50-65`
 **Issue:** The replay worker, API, and web processes are created in local variables, but `owned` is assigned only after every readiness step succeeds. If worker readiness, API readiness, web build, or web readiness throws, the catch calls `stopLiveProviderStack({pg, redis})`; because `owned` is still null, that function removes only containers and cannot stop the already-created worker/API/web children. This leaves processes holding ports and Redis/PostgreSQL connections, contaminating later release runs.
@@ -118,17 +130,23 @@ Generated Prisma client output and the lockfile were excluded as generated artif
 
 ### WR-01: OperationsService leaks its internally created Prisma client
 
+**Resolution:** Fixed in `f72d504`. The service tracks only its internally created client and disconnects it on module destruction without closing injected application-owned clients; focused oracle 6/6 passed.
+
 **File:** `apps/api/src/modules/operations/operations.service.ts:108-115`
 **Issue:** When no client is injected, the service creates a Prisma client but does not retain ownership separately and does not implement `OnModuleDestroy`. Application shutdown/reload can leave the pool alive, which is particularly damaging in the process-lifecycle scenarios Phase 06 is intended to harden.
 **Fix:** Store the owned client, implement `OnModuleDestroy`, and disconnect only when the service created the client. Prefer injecting a singleton database provider managed by the application module.
 
 ### WR-02: Serializable consent grants are not retried or mapped to a stable failure contract
 
+**Resolution:** Fixed in `7e6a213`. Consent now retries bounded serialization/deadlock conflicts three times and maps exhaustion to `CONSENT_CONFLICT` with a correlation ID; unit oracle 2/2 and privacy integration 23/23 passed.
+
 **File:** `apps/api/src/modules/privacy/privacy.service.ts:28-49`; `apps/api/src/modules/privacy/privacy.service.ts:142-149`
 **Issue:** Withdrawal retries Prisma `P2034`/serialization conflicts, but consent uses the same serializable subject-row transaction without equivalent retry handling. Concurrent consent/withdrawal or duplicate consent requests can surface an unhandled 500 and leave callers without the privacy API's stable correlation-safe error contract.
 **Fix:** Apply the same narrowly scoped bounded retry policy to consent, preserve the one-way blocked-subject rule, and map terminal conflicts to a documented safe response with a support correlation ID.
 
 ### WR-03: Retained-view identifiers are arbitrary and unbounded
+
+**Resolution:** Fixed in `7ef872b`. API and Prisma share the closed `RESULT` vocabulary, canonical 128-character identifier grammar, and a forward PostgreSQL enum/constraint migration. Unit oracle: 4/4 passed; Prisma validation and API typecheck passed.
 
 **File:** `apps/api/src/modules/privacy/privacy.service.ts:159-167`; `packages/database/prisma/migrations/20260920_privacy_retention/migration.sql:47-58`
 **Issue:** Validation only requires two non-empty strings; PostgreSQL stores both as unbounded `TEXT`. Authenticated callers can persist oversized or unexpected resource categories/identifiers, undermining the declared two-category inventory and creating avoidable storage/operational risk.

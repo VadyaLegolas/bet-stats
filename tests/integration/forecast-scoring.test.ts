@@ -16,11 +16,37 @@ function docker(...args: string[]): string {
 }
 
 function waitForPostgres(): void {
+  let lastError: unknown;
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try { docker("exec", container, "pg_isready", "-U", "postgres", "-d", "bet_stats"); return; }
-    catch { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500); }
+    catch (error) {
+      lastError = error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);
+    }
   }
-  throw new Error("PostgreSQL did not become ready");
+  throw new Error(`POSTGRES_NOT_READY: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
+}
+
+function redactMigrationDiagnostic(value: string): string {
+  return value.replace(/postgres(?:ql)?:\/\/[^\s'"`]+/gi, "[REDACTED_DATABASE_URL]");
+}
+
+function applyMigrations(databaseUrl: string): void {
+  try {
+    execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], {
+      cwd: databaseRoot,
+      env: { ...process.env, DATABASE_URL: databaseUrl },
+      stdio: "pipe",
+    });
+  } catch (error) {
+    const output = error && typeof error === "object"
+      ? ["stdout", "stderr"].flatMap((key) => {
+        const value = (error as Record<string, unknown>)[key];
+        return value instanceof Buffer ? [value.toString("utf8").trim()] : typeof value === "string" ? [value.trim()] : [];
+      }).filter(Boolean).join("\n")
+      : "";
+    throw new Error(`PRISMA_MIGRATE_DEPLOY_FAILED${output ? `: ${redactMigrationDiagnostic(output)}` : ""}`, { cause: error });
+  }
 }
 
 const probabilities = [
@@ -52,9 +78,10 @@ describe("immutable forecast scoring facts", () => {
   beforeAll(async () => {
     docker("run", "--detach", "--name", container, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "--publish", "127.0.0.1::5432", "postgres:18-alpine");
     waitForPostgres();
-    const port = docker("port", container, "5432/tcp").split(":").at(-1)!;
+    const port = docker("port", container, "5432/tcp").split(":").at(-1);
+    if (!port) throw new Error("POSTGRES_PORT_UNAVAILABLE");
     const url = `postgresql://postgres:postgres@127.0.0.1:${port}/bet_stats`;
-    execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], { cwd: databaseRoot, env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" });
+    applyMigrations(url);
     prisma = createPrismaClient(url);
     await prisma.$executeRawUnsafe(`
       INSERT INTO "League" (id,name,"countryCode","updatedAt") VALUES ('score-league','League','GB',now());

@@ -13,7 +13,7 @@ const headers = {
 
 test("D-15 crosses fixture, forecast, manual odds, value, result, settlement and scorecard boundaries", async ({ page, request }, testInfo) => {
   const state = readLiveReleaseState();
-  await prepareReleaseFixture(fixtureId);
+  const kickoffUtc = await prepareReleaseFixture(fixtureId);
   let intercepted = 0;
   page.on("request", (request) => { if (request.isNavigationRequest() && request.url().startsWith("data:")) intercepted += 1; });
 
@@ -25,11 +25,23 @@ test("D-15 crosses fixture, forecast, manual odds, value, result, settlement and
   await page.getByLabel("Home decimal odds").fill("4");
   await page.getByLabel("Draw decimal odds").fill("2");
   await page.getByLabel("Away decimal odds").fill("2");
+  const oddsRequestPromise = page.waitForRequest((request) => request.url().includes(`/internal-api/fixtures/${fixtureId}/odds`) && request.method() === "POST");
   await page.getByRole("button", { name: "Save complete immutable odds book" }).click();
+  const oddsRequest = await oddsRequestPromise;
+  const capturedAt = new Date((oddsRequest.postDataJSON() as { capturedAt: string }).capturedAt);
+  expect(capturedAt.getTime()).toBeLessThan(kickoffUtc.getTime());
   const oddsStatus = page.getByRole("status").filter({ hasText: "Immutable odds snapshot" });
   await expect(oddsStatus).toBeVisible();
   const oddsId = (await oddsStatus.textContent())?.match(/snapshot ([a-f0-9-]+) saved/i)?.[1];
   expect(oddsId).toBeTruthy();
+
+  const forecastDatabase = createPrismaClient(state.databaseUrl);
+  try {
+    const forecastEvidence = await forecastDatabase.forecastSnapshot.findFirstOrThrow({ where: { id: forecastId } });
+    expect(forecastEvidence.cutoff.getTime()).toBeLessThan(kickoffUtc.getTime());
+  } finally {
+    await forecastDatabase.$disconnect();
+  }
 
   const valueResponsePromise = page.waitForResponse((response) => response.url().includes(`/internal-api/fixtures/${fixtureId}/value`) && response.request().method() === "POST");
   await page.getByRole("button", { name: "Compare exact snapshots" }).click();
@@ -46,13 +58,18 @@ test("D-15 crosses fixture, forecast, manual odds, value, result, settlement and
     await database.fixture.update({ where: { id: fixtureId }, data: { status: "FINISHED" } });
     const observationId = `release-result-observation-${testInfo.project.name}`;
     const previousResult = await database.resultVersion.findFirst({ where: { fixtureId }, orderBy: { revision: "desc" } });
-    await database.sourceObservation.create({ data: { id: observationId, provider: "release-acceptance", endpointFamily: "RESULTS", externalIdentity: fixtureId, observedAt: new Date("2026-09-21T17:00:00.000Z"), payloadHash: `sha256:${observationId}`, rawPayload: { home: 2, away: 1 }, payloadBytes: 19 } });
-    await database.resultVersion.create({ data: { id: resultId, fixtureId, observationId, effectiveAt: new Date("2026-09-21T15:00:00.000Z"), observedAt: new Date("2026-09-21T17:00:00.000Z"), homeGoals: 2, awayGoals: 1, status: "FINISHED", revision: (previousResult?.revision ?? 0) + 1, supersedesResultVersionId: previousResult?.id } });
+    const effectiveAt = new Date(kickoffUtc.getTime() + 2 * 60 * 60 * 1000);
+    const observedAt = new Date(kickoffUtc.getTime() + 4 * 60 * 60 * 1000);
+    expect(effectiveAt.getTime()).toBeGreaterThan(kickoffUtc.getTime());
+    expect(observedAt.getTime()).toBeGreaterThan(effectiveAt.getTime());
+    await database.sourceObservation.create({ data: { id: observationId, provider: "release-acceptance", endpointFamily: "RESULTS", externalIdentity: fixtureId, observedAt, payloadHash: `sha256:${observationId}`, rawPayload: { home: 2, away: 1 }, payloadBytes: 19 } });
+    await database.resultVersion.create({ data: { id: resultId, fixtureId, observationId, effectiveAt, observedAt, homeGoals: 2, awayGoals: 1, status: "FINISHED", revision: (previousResult?.revision ?? 0) + 1, supersedesResultVersionId: previousResult?.id } });
     const queue = createSettlementQueue({ redisUrl: state.redisUrl, prefix: state.workerPrefix });
     await queue.enqueue({ fixtureId, resultVersionId: resultId, forecastSnapshotId: forecastId, policyVersion: "settlement-policy-v1", policyHash: SETTLEMENT_PIPELINE_POLICY_HASH, correlationId: "release-journey" });
     await queue.close();
     await expect.poll(async () => database.settlementReceipt.count({ where: { resultVersionId: resultId, forecastSnapshotId: forecastId } }), { timeout: 30_000 }).toBe(1);
     const settlement = await database.settlementReceipt.findFirstOrThrow({ where: { resultVersionId: resultId, forecastSnapshotId: forecastId } });
+    expect(settlement.settledAt.getTime()).toBeGreaterThan(kickoffUtc.getTime());
     await expect.poll(async () => database.forecastScore.count({ where: { settlementReceiptId: settlement.id } }), { timeout: 30_000 }).toBe(3);
     const score = await database.forecastScore.findFirstOrThrow({ where: { settlementReceiptId: settlement.id } });
     expect(score.fixtureId).toBe(fixtureId);

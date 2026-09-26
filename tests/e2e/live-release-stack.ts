@@ -48,17 +48,21 @@ export async function assertNoReleaseCanary(page: Page, canary: string): Promise
   }
 }
 
-export async function prepareReleaseFixture(fixtureId: string): Promise<void> {
+export async function prepareReleaseFixture(fixtureId: string): Promise<Date> {
   const state = readLiveReleaseState();
+  // Keep browser-submitted manual odds strictly pre-kickoff even when the
+  // release suite runs days after its original fixture seed was authored.
+  const kickoffUtc = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const database = createPrismaClient(state.databaseUrl);
   try {
     await database.fixture.update({
       where: { id: fixtureId },
-      data: { status: "SCHEDULED", kickoffUtc: new Date("2026-09-24T15:00:00.000Z") },
+      data: { status: "SCHEDULED", kickoffUtc },
     });
   } finally {
     await database.$disconnect();
   }
+  return kickoffUtc;
 }
 
 async function teardown(): Promise<void> {

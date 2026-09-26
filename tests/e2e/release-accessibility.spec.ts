@@ -100,7 +100,7 @@ test("chart alternative exposes the complete reliability evidence", async ({ pag
 });
 
 test("manual odds workflow is keyboard operable without losing evidence", async ({ page }, testInfo) => {
-  await prepareReleaseFixture(LIVE_FIXTURES.comparison);
+  const kickoffUtc = await prepareReleaseFixture(LIVE_FIXTURES.comparison);
   await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
   await page.getByLabel("Bookmaker or source label").focus();
   await page.keyboard.type(`Keyboard source ${testInfo.project.name}`);
@@ -111,7 +111,11 @@ test("manual odds workflow is keyboard operable without losing evidence", async 
   await page.keyboard.press("Tab");
   await page.keyboard.type("2");
   await page.keyboard.press("Tab");
+  const oddsRequestPromise = page.waitForRequest((request) => request.url().includes(`/internal-api/fixtures/${LIVE_FIXTURES.comparison}/odds`) && request.method() === "POST");
   await page.keyboard.press("Enter");
+  const oddsRequest = await oddsRequestPromise;
+  const capturedAt = new Date((oddsRequest.postDataJSON() as { capturedAt: string }).capturedAt);
+  expect(capturedAt.getTime()).toBeLessThan(kickoffUtc.getTime());
   await expect(page.getByRole("status").filter({ hasText: "Immutable odds snapshot" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Frozen forecast" })).toBeVisible();
 });

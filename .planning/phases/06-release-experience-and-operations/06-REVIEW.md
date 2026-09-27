@@ -1,159 +1,134 @@
 ---
 phase: 06-release-experience-and-operations
-reviewed: 2026-09-24T08:48:03Z
+reviewed: 2026-09-27T10:23:09Z
 depth: standard
-files_reviewed: 51
+files_reviewed: 42
 files_reviewed_list:
-  - apps/api/src/app.module.ts
-  - apps/api/src/modules/operations/operations.controller.ts
-  - apps/api/src/modules/operations/operations.module.ts
   - apps/api/src/modules/operations/operations.service.ts
-  - apps/api/src/modules/privacy/privacy.controller.ts
-  - apps/api/src/modules/privacy/privacy.module.ts
   - apps/api/src/modules/privacy/privacy.service.ts
-  - apps/api/src/modules/replay/replay.service.ts
-  - apps/web/app/fixtures/[fixtureId]/forecast-workbench.tsx
-  - apps/web/app/globals.css
-  - apps/web/app/internal-api/operations/[[...path]]/route.ts
+  - apps/web/app/internal-api/privacy/[[...path]]/route.test.ts
   - apps/web/app/internal-api/privacy/[[...path]]/route.ts
-  - apps/web/app/internal/operations/page.tsx
-  - apps/web/app/internal/pipeline/replay/page.tsx
-  - apps/web/app/layout.tsx
-  - apps/web/app/methodology/page.tsx
-  - apps/web/app/privacy/page.tsx
-  - apps/web/app/scorecards/scorecard-dashboard.tsx
-  - apps/web/components/contextual-methodology-warning.tsx
-  - apps/web/components/local-data-block.tsx
-  - apps/web/components/release-navigation.tsx
-  - apps/web/components/responsive-evidence.tsx
+  - apps/web/package.json
+  - apps/web/vitest.config.ts
   - package.json
-  - packages/config/src/index.ts
-  - packages/database/prisma/migrations/20260920_privacy_retention/migration.sql
+  - packages/database/prisma/migrations/20260924_retained_view_bounds/migration.sql
+  - packages/database/prisma/migrations/20260924_retention_purge_audit/migration.sql
   - packages/database/prisma/schema.prisma
-  - packages/domain/src/index.ts
-  - packages/domain/src/methodology/model-card.ts
-  - packages/domain/src/privacy/retention.ts
-  - playwright.phase06.config.ts
   - scripts/verify-release-integration.mjs
   - tests/e2e/live-provider-stack.ts
   - tests/e2e/live-release-stack.ts
-  - tests/e2e/methodology.spec.ts
-  - tests/e2e/operator-overview.spec.ts
-  - tests/e2e/operator-recovery.spec.ts
   - tests/e2e/privacy-retention.spec.ts
   - tests/e2e/release-accessibility.spec.ts
   - tests/e2e/release-degradation.spec.ts
   - tests/e2e/release-journey.spec.ts
-  - tests/integration/forecast-api.test.ts
-  - tests/integration/live-provider-harness-smoke.test.ts
+  - tests/integration/backtest-production.test.ts
+  - tests/integration/evidence-publication.test.ts
+  - tests/integration/forecast-scoring.test.ts
+  - tests/integration/migration-empty.test.ts
   - tests/integration/operator-overview.test.ts
-  - tests/integration/phase-01-security.test.ts
-  - tests/integration/phase-03-security.test.ts
+  - tests/integration/phase-04-security.test.ts
   - tests/integration/privacy-retention.test.ts
-  - tests/integration/provider-policy-approval.test.ts
-  - tests/integration/replay-boundary.test.ts
+  - tests/integration/provider-capability.test.ts
+  - tests/integration/provider-fallback-identity.test.ts
+  - tests/integration/provider-routing.test.ts
+  - tests/integration/replay-crash-recovery.test.ts
+  - tests/integration/replay-lease-upgrade.test.ts
   - tests/integration/replay.test.ts
-  - tests/integration/value-receipt.test.ts
+  - tests/integration/review.test.ts
+  - tests/integration/settlement-pipeline.test.ts
+  - tests/integration/settlement.test.ts
+  - tests/integration/temporal-provenance.test.ts
+  - tests/integration/value-settlement.test.ts
+  - tests/unit/privacy-consent-retry.test.ts
+  - tests/unit/privacy-proxy-assertion.test.ts
+  - tests/unit/privacy-retained-view-input.test.ts
   - tests/unit/release-db-lifecycle.test.ts
+  - tests/unit/retention-purge-scheduler.test.ts
+  - workers/data-sync/src/jobs/retention-purge.ts
+  - workers/data-sync/src/main.ts
 findings:
-  critical: 0
-  warning: 0
+  critical: 3
+  warning: 5
   info: 0
-  total: 0
-status: clean
+  total: 8
+status: issues_found
 ---
 
 # Phase 06: Code Review Report
 
-**Reviewed:** 2026-09-24T08:48:03Z
+**Reviewed:** 2026-09-27T10:23:09Z
 **Depth:** standard
-**Files Reviewed:** 51
+**Files Reviewed:** 42
 **Status:** issues_found
 
 ## Summary
 
-Phase 06 must not ship in its current form. The review found six blocker-class correctness, security, privacy, and release-gate defects. Most importantly, the privacy credential is reusable across endpoints, consent is not bound to the current policy version, expired personal history has no deletion path, and the advertised D-16/lifecycle release guarantees are not actually exercised or supervised end-to-end. Three additional robustness issues affect database ownership, serializable consent writes, and retained-history input bounds.
+Проверены девять summary Phase 06, исходники и тесты, изменённые после предыдущего review от 2026-09-24, и текущие изменения release integration gate. Planning-документы, логи и сгенерированный apps/web/next-env.d.ts исключены. Найдены 3 BLOCKER и 5 WARNING: три риска в сроках и удалении retention-данных и пять пробелов в проверках release/security gate. Исходники не изменялись; тесты не запускались.
 
-Generated Prisma client output and the lockfile were excluded as generated artifacts; their source schema and migration were reviewed.
+## Narrative Findings (AI reviewer)
 
-## Critical Issues
+### Critical Issues
 
-### CR-01: Privacy signatures can be replayed across read, consent, retention, and destructive withdrawal endpoints
+#### CR-01: Длительный retention timer запускает purge почти каждую миллисекунду
 
-**Resolution:** Fixed in `220df05`. The trusted Next proxy now creates a strict assertion bound to subject, timestamp, nonce, method, normalized path, and body digest; Redis atomically consumes each nonce once. Replay and cross-endpoint unit oracles: 2/2 passed; API/web typechecks passed.
+**Classification:** BLOCKER
+**File:** workers/data-sync/src/jobs/retention-purge.ts:52-53
+**Issue:** delay напрямую равен разнице между expiresAt и текущим временем. Для стандартного 30-дневного срока retention эта задержка превышает лимит Node.js setTimeout (2 147 483 647 мс); Node.js преобразует большее значение в 1 мс. Callback сразу выполняет purge, затем arm() снова выставляет тот же дальний срок и снова получает 1 мс. В итоге scheduler генерирует непрерывные запросы к БД и записи RetentionPurgeAudit задолго до истечения срока, создавая риск исчерпания БД. См. [документацию Node.js timers](https://nodejs.org/download/release/v24.1.0/docs/api/timers.html).
+**Fix:** Ограничивать один таймер максимальной поддерживаемой задержкой и после его срабатывания пересчитывать остаток срока; вызывать purge только когда срок действительно наступил.
 
-**File:** `apps/api/src/modules/privacy/privacy.service.ts:106-120`; `apps/web/app/internal-api/privacy/[[...path]]/route.ts:4-12`
-**Issue:** The HMAC covers only `subjectId` and `timestamp`. It does not bind the request method, path, body digest, or a one-time nonce. The Next proxy forwards the same client-supplied credential to every privacy route. Consequently, any valid assertion captured for harmless `GET /privacy/status` remains valid for `POST /privacy/withdrawal`, `POST /privacy/consent`, or an arbitrary retained-view body during the five-minute acceptance window. This is a confused-deputy/replay vulnerability on a destructive privacy boundary.
-**Fix:** Canonicalize and sign at least subject, timestamp, HTTP method, normalized route, and body digest; enforce strict signature syntax and a bounded one-time nonce stored server-side. Prefer deriving the subject from an authenticated server session and generating the upstream assertion inside the trusted proxy so browsers never supply the provider assertion directly.
+#### CR-02: Ошибка первого запроса scheduler оставляет retention purge навсегда выключенным
 
-### CR-02: Superseded-policy consent continues to authorize personal-history retention
+**Classification:** BLOCKER
+**File:** workers/data-sync/src/jobs/retention-purge.ts:46-53,65; workers/data-sync/src/main.ts:61
+**Issue:** Стартовый arm() запущен как void arm().catch(input.onError). Если запрос минимального expiresAt не проходит при старте из-за временной недоступности БД, onError только пишет лог, таймер не создаётся, а следующий запрос больше не планируется. Recovery-таймер есть только в run() (строки 59-62), который до первого успешного arm() вызван не будет; просроченные персональные записи поэтому могут сохраняться бессрочно.
+**Fix:** Переводить и стартовую ошибку arm() в тот же ограниченный retry-механизм, что и ошибку во время run(), с повторным запросом БД после retryMs.
 
-**Resolution:** Fixed in `db18139`. Status and retained writes now require the exact current policy tuple; PostgreSQL integration oracle: `tests/integration/privacy-retention.test.ts` (23/23 passed).
+#### CR-03: Миграционный quarantine бессрочно сохраняет идентифицируемую privacy-историю
 
-**File:** `apps/api/src/modules/privacy/privacy.service.ts:60-68`; `apps/api/src/modules/privacy/privacy.service.ts:133-139`
-**Issue:** Both status and retained-view writes accept any unrevoked, unexpired consent. Neither query requires `policyVersion`, `policyEffectiveAt`, or duration to match the currently resolved policy. After a policy change, the UI therefore reports `ON` under the new displayed version and writes new personal history using an old consent the subject never granted for that policy. This violates the versioned explicit-consent contract.
-**Fix:** Resolve the current policy before status and every retained write, then require an exact consent tuple match (`policyVersion`, canonical `policyEffectiveAt`, and approved duration). Return `OFF` and deny retention until the subject explicitly grants the current policy. Add a migration/transition test proving an old consent cannot authorize writes after a policy version change.
+**Classification:** BLOCKER
+**File:** packages/database/prisma/migrations/20260924_retained_view_bounds/migration.sql:5-23
+**Issue:** Для неканонической записи миграция копирует в RetentionMigrationQuarantine.payload subjectId, consentId, resourceId и временные поля, затем удаляет её из RetainedViewHistory. Quarantine-таблица не описана в Prisma schema и не обрабатывается ни withdrawal в apps/api/src/modules/privacy/privacy.service.ts:117-120, ни expiry purge в workers/data-sync/src/jobs/retention-purge.ts:11-20; значит, связанные с субъектом данные остаются без срока удаления и переживают отзыв согласия.
+**Fix:** Не сохранять в quarantine прямые идентификаторы и содержимое связанной истории: оставить только обезличенные сведения для аудита. Если строковая трассировка необходима, добавить явный короткий срок хранения и удаление по субъекту при withdrawal/purge.
 
-### CR-03: Expired personal history is retained indefinitely
+### Warnings
 
-**Resolution:** Fixed in `0b37f6d`. The owned data-sync runtime performs an idempotent purge on startup and every 24 hours, atomically recording deleted odds/view counts in `RetentionPurgeAudit`. PostgreSQL 18 oracle: 24/24 passed.
+#### WR-01: Проверка recovery сравнивает данные сразу после постановки задания в очередь
 
-**File:** `apps/api/src/modules/privacy/privacy.service.ts:52-72`; `packages/database/prisma/migrations/20260920_privacy_retention/migration.sql:63-72`
-**Issue:** `expiresAt` prevents future inserts after consent expiry, but no application job, worker, database procedure, or cascade removes already-retained odds/view rows when their retention period ends. The only deletion path is explicit withdrawal. The indexes merely make a purge possible; they do not perform one. Personal betting-related history can therefore remain forever despite the configured retention duration.
-**Fix:** Add an idempotent scheduled purge that deletes `RetainedOddsHistory` and `RetainedViewHistory` at or before `expiresAt`, with durable audit counts and tests against PostgreSQL time boundaries. If operational scheduling is unavailable, enforce deletion via a database-owned scheduled mechanism and document its deployment requirement.
+**Classification:** WARNING
+**File:** tests/e2e/release-degradation.spec.ts:89-105
+**Issue:** После ответа queue endpoint тест немедленно сравнивает immutable() с исходным значением; он не ждёт терминального состояния replay-плана. BullMQ обрабатывает работу асинхронно, поэтому проверка может пройти до её выполнения и не заметить последующую мутацию. К тому же snapshot включает только ForecastSnapshot и ValueReceipt, хотя preview обещает неизменность observations, issued forecasts, results, value receipts и settlements.
+**Fix:** Опросить план до терминального состояния, затем сравнить все типы данных, указанные в immutableGuarantees.
 
-### CR-04: The D-16 release matrix can pass without exercising the production failure boundaries it claims to verify
+#### WR-02: Тест quota/open circuit не проходит через production admission и не проверяет видимость
 
-**Resolution:** Fixed in `cd9a825`. D-16 now drives the production circuit/provider parser, API replay preview-confirm boundary, and owned BullMQ replay worker; immutable hashes/counts and dead-letter attempts are asserted. Chromium production-boundary replay oracle: 2/2 passed; remaining matrix scenarios: 5/5 passed in the same owned stack.
+**Classification:** WARNING
+**File:** tests/e2e/release-degradation.spec.ts:33-40
+**Issue:** Несмотря на название про исчерпание quota, тест вызывает только executeProviderCall с локальным circuitState: OPEN и не передаёт reserve; quota guard и production provider-admission путь не исполняются. После этого открывается страница, но не проверяется отображение circuit/quota-состояния. Gate останется зелёным даже при нарушении production admission или неверной UI-деградации.
+**Fix:** Проверять реальный ingestion/admission boundary с сохранёнными circuit/quota состояниями: подтвердить блокировку внешнего вызова, отсутствие расхода бюджета и видимый безопасный статус.
 
-**File:** `tests/e2e/release-degradation.spec.ts:29-55`; `tests/e2e/release-degradation.spec.ts:66-85`
-**Issue:** The open-circuit/quota case directly upserts circuit state and never proves provider construction/call denial; the quarantine case directly inserts a `SourceObservation` and only compares fixture counts without invoking envelope validation/admission; the dead-letter case directly inserts failed ledger rows rather than exhausting a real BullMQ job; and the “safe replay” case never previews, confirms, queues, or checks immutable counts/hashes. These tests verify rendering of seeded database rows, not the locked D-16 production paths. `pnpm verify:release` can be green while admission, retry, dead-letter, or replay behavior is broken.
-**Fix:** Drive each scenario through its actual production adapter/service/worker and assert both the attempted side effect and durable invariants. Add provider factory call counters for circuit/quota denial, submit an invalid envelope through ingestion, exhaust a real owned BullMQ job into dead-letter state, and execute preview-confirm replay while comparing immutable row counts and hashes before/after.
+#### WR-03: Проверка invalid envelope не доказывает quarantine на ingestion boundary
 
-### CR-05: Post-readiness API/web failures are swallowed by the Playwright global owner
+**Classification:** WARNING
+**File:** tests/e2e/release-degradation.spec.ts:42-53
+**Issue:** Тест вызывает ApiFootballClient.fetchFixtures() напрямую, ожидает ошибку classification: quarantine и сверяет только число fixtures. Он не запускает ingestion runner/admission и не проверяет состояние quarantine/attempt в БД, поэтому не обнаружит ошибку, при которой production-путь публикует или неверно классифицирует отвергнутый ответ.
+**Fix:** Провести malformed envelope через production ingestion flow и проверить durable quarantine/attempt outcome, неизменность canonical facts и отсутствие утечки сырого payload.
 
-**Resolution:** Fixed in `733400f`. Playwright global ownership arms fatal lifetime supervision after readiness; child exit kills its sibling and surfaces bounded stderr. Lifecycle/child-kill oracle: 5/5 passed; workspace typecheck passed.
+#### WR-04: Live release journey перестанет находить свой fixture после 2026-12-24
 
-**File:** `tests/e2e/live-provider-stack.ts:61-64`; `tests/e2e/live-release-stack.ts:72-93`
-**Issue:** After initial web readiness, `startLiveProviderStack` explicitly attaches a catch that discards `supervision.failure`. The Phase 06 global setup receives the supervision object but never races the Playwright owner against it. The new `runSupervisedLiveOwner` helper is only exercised by a focused smoke test and unit tests, not by the release browser gate. An API/web process can exit after readiness and before/during teardown without its failure becoming the release owner's result, contradicting the lifecycle fix and potentially allowing a false-green or diagnostically opaque run.
-**Fix:** Make the global owner await/race the entire Playwright lifetime against supervision, or expose a reporter/fixture-level failure channel that deterministically fails the run on child exit. Remove the swallowing catch and add an acceptance test that kills API after readiness during a browser run and asserts nonzero release exit with the bounded diagnostic.
+**Classification:** WARNING
+**File:** tests/e2e/release-journey.spec.ts:80-84; tests/e2e/live-release-stack.ts:51-65
+**Issue:** Fixture перед тестом получает kickoff Date.now() + 7 дней, но scorecard query всегда заканчивается 2027-01-01T00:00:00Z. Начиная с 2026-12-25 kickoff окажется за пределом запроса, fixture выпадет из scorecard и ожидаемый denominator fixtureCount: 1 сломает release gate.
+**Fix:** Строить конец диапазона от возвращённого kickoffUtc с запасом либо использовать скользящее окно, которое гарантированно включает тестовый fixture.
 
-### CR-06: Startup failure before ownership publication leaks workers and child processes
+#### WR-05: После удаления теста HMAC assertion не осталось проверки binding и защиты от replay
 
-**Resolution:** Fixed in `ed49cb3`. Ownership is published incrementally before worker/API/web readiness can fail, so every catch path closes allocated children/workers before removing owned containers. Lifecycle oracle: 4/4 passed; workspace typecheck passed.
-
-**File:** `tests/e2e/live-provider-stack.ts:50-65`
-**Issue:** The replay worker, API, and web processes are created in local variables, but `owned` is assigned only after every readiness step succeeds. If worker readiness, API readiness, web build, or web readiness throws, the catch calls `stopLiveProviderStack({pg, redis})`; because `owned` is still null, that function removes only containers and cannot stop the already-created worker/API/web children. This leaves processes holding ports and Redis/PostgreSQL connections, contaminating later release runs.
-**Fix:** Publish an incrementally populated ownership record before the first fallible allocation, or keep a local resource stack and explicitly close each allocated worker/process in the catch/finally path. Add failure-injection tests at worker-ready, API-ready, web-build, and web-ready checkpoints and assert exact cleanup.
-
-## Warnings
-
-### WR-01: OperationsService leaks its internally created Prisma client
-
-**Resolution:** Fixed in `f72d504`. The service tracks only its internally created client and disconnects it on module destruction without closing injected application-owned clients; focused oracle 6/6 passed.
-
-**File:** `apps/api/src/modules/operations/operations.service.ts:108-115`
-**Issue:** When no client is injected, the service creates a Prisma client but does not retain ownership separately and does not implement `OnModuleDestroy`. Application shutdown/reload can leave the pool alive, which is particularly damaging in the process-lifecycle scenarios Phase 06 is intended to harden.
-**Fix:** Store the owned client, implement `OnModuleDestroy`, and disconnect only when the service created the client. Prefer injecting a singleton database provider managed by the application module.
-
-### WR-02: Serializable consent grants are not retried or mapped to a stable failure contract
-
-**Resolution:** Fixed in `7e6a213`. Consent now retries bounded serialization/deadlock conflicts three times and maps exhaustion to `CONSENT_CONFLICT` with a correlation ID; unit oracle 2/2 and privacy integration 23/23 passed.
-
-**File:** `apps/api/src/modules/privacy/privacy.service.ts:28-49`; `apps/api/src/modules/privacy/privacy.service.ts:142-149`
-**Issue:** Withdrawal retries Prisma `P2034`/serialization conflicts, but consent uses the same serializable subject-row transaction without equivalent retry handling. Concurrent consent/withdrawal or duplicate consent requests can surface an unhandled 500 and leave callers without the privacy API's stable correlation-safe error contract.
-**Fix:** Apply the same narrowly scoped bounded retry policy to consent, preserve the one-way blocked-subject rule, and map terminal conflicts to a documented safe response with a support correlation ID.
-
-### WR-03: Retained-view identifiers are arbitrary and unbounded
-
-**Resolution:** Fixed in `7ef872b`. API and Prisma share the closed `RESULT` vocabulary, canonical 128-character identifier grammar, and a forward PostgreSQL enum/constraint migration. Unit oracle: 4/4 passed; Prisma validation and API typecheck passed.
-
-**File:** `apps/api/src/modules/privacy/privacy.service.ts:159-167`; `packages/database/prisma/migrations/20260920_privacy_retention/migration.sql:47-58`
-**Issue:** Validation only requires two non-empty strings; PostgreSQL stores both as unbounded `TEXT`. Authenticated callers can persist oversized or unexpected resource categories/identifiers, undermining the declared two-category inventory and creating avoidable storage/operational risk.
-**Fix:** Use an allowlisted resource-type enum and bounded canonical identifier syntax/length in both API validation and database constraints. Add rejection tests for unknown types, control characters, and oversized values.
+**Classification:** WARNING
+**File:** apps/web/app/internal-api/privacy/[[...path]]/route.test.ts:1-32; tests/e2e/privacy-retention.spec.ts:74-93
+**Issue:** Новый unit suite проверяет выдачу и валидацию privacy-session cookie и соответствие субъектов, а E2E — retired/cross-subject session. Удалённый tests/unit/privacy-proxy-assertion.test.ts проверял подпись assertion с привязкой к method/path/body и однократное использование nonce; эти критичные случаи в новом наборе не воспроизведены, поэтому регрессия подписи или replay-защиты может пройти gate.
+**Fix:** Восстановить unit-регрессии для tampered method/path/body, canonical body и повторного nonce, проверяя отказ backend до обработки запроса.
 
 ---
 
-_Reviewed: 2026-09-24T08:48:03Z_
+_Reviewed: 2026-09-27T10:23:09Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_

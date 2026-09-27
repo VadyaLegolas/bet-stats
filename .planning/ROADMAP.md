@@ -295,7 +295,7 @@ Plans:
 
 ### Phase 6: Release Experience and Operations
 
-**Goal**: Users and operators can safely understand, operate, and verify the complete fixture-to-evaluation experience across supported devices and failure states.
+**Goal**: As a football analytics user or operator, I want to safely understand and verify the fixture-to-evaluation experience on supported devices and through failure states, so that I can trust results and operate the MVP responsibly.
 **Mode:** mvp
 **Depends on**: Phase 5
 **Requirements**: UX-01, UX-02, OPS-01, OPS-02, OPS-03, PRIV-01

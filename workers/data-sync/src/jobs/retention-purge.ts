@@ -23,6 +23,8 @@ export async function purgeExpiredRetention(database: PrismaClient, cutoff = new
   return { auditId, cutoff: cutoff.toISOString(), oddsDeleted: row.oddsDeleted, viewsDeleted: row.viewsDeleted };
 }
 
+const MAX_TIMER_DELAY = 2 ** 31 - 1;
+
 export type RetentionPurgeScheduler = Readonly<{ close(): void; refresh(): Promise<void> }>;
 
 /** Arms each purge at the earliest persisted expiry and recomputes after it. */
@@ -40,18 +42,29 @@ export function scheduleRetentionPurge(input: {
   const clearTimer = input.clearTimeout ?? clearTimeout;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let closed = false;
+
   const arm = async (): Promise<void> => {
     if (closed) return;
     if (timer) clearTimer(timer);
-    const [row] = await input.database.$queryRaw<Array<{ expiresAt: Date | null }>>`
-      SELECT min("expiresAt") AS "expiresAt" FROM (
-        SELECT "expiresAt" FROM "RetainedOddsHistory"
-        UNION ALL SELECT "expiresAt" FROM "RetainedViewHistory"
-      ) expiries
-    `;
-    const delay = row?.expiresAt ? Math.max(0, row.expiresAt.getTime() - now().getTime()) : (input.idlePollMs ?? 1_000);
-    timer = setTimer(() => { void run().catch(input.onError); }, delay);
+    try {
+      const [row] = await input.database.$queryRaw<Array<{ expiresAt: Date | null }>>`
+        SELECT min("expiresAt") AS "expiresAt" FROM (
+          SELECT "expiresAt" FROM "RetainedOddsHistory"
+          UNION ALL SELECT "expiresAt" FROM "RetainedViewHistory"
+        ) expiries
+      `;
+      if (closed) return;
+      const rawDelay = row?.expiresAt ? Math.max(0, row.expiresAt.getTime() - now().getTime()) : (input.idlePollMs ?? 1_000);
+      const delay = Math.min(MAX_TIMER_DELAY, rawDelay);
+      timer = setTimer(() => { void run().catch(input.onError); }, delay);
+    } catch (error) {
+      input.onError?.(error);
+      if (!closed) {
+        timer = setTimer(() => { void arm(); }, input.retryMs ?? 1_000);
+      }
+    }
   };
+
   const run = async (): Promise<void> => {
     if (closed) return;
     try {
@@ -62,6 +75,14 @@ export function scheduleRetentionPurge(input: {
       if (!closed) timer = setTimer(() => { void run().catch(input.onError); }, input.retryMs ?? 1_000);
     }
   };
-  void arm().catch(input.onError);
-  return { close: () => { closed = true; if (timer) clearTimer(timer); }, refresh: arm };
+
+  void arm();
+  return {
+    close: () => {
+      closed = true;
+      if (timer) clearTimer(timer);
+    },
+    refresh: arm,
+  };
 }
+

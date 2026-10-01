@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -100,7 +102,7 @@ function waitForPostgres(targetContainer = containerName): void {
   let lastError: unknown;
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
-      docker("exec", targetContainer, "pg_isready", "-U", "postgres", "-d", "bet_stats");
+      docker("exec", targetContainer, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "bet_stats");
       return;
     } catch (error) {
       lastError = error;
@@ -110,21 +112,56 @@ function waitForPostgres(targetContainer = containerName): void {
   throw lastError;
 }
 
-describe("retained-view bounds migration", () => {
-  it("quarantines legacy values accepted by the preceding PostgreSQL schema before narrowing", () => {
-    const legacyContainer = `bet-stats-privacy-legacy-${process.pid}`;
+describe("PostgreSQL startup readiness", () => {
+  it("waits for the TCP listener when the entrypoint temporary server is socket-only", () => {
+    const readinessContainer = `bet-stats-privacy-readiness-${randomUUID()}`;
+    const ownerLabel = "gsd.phase06-readiness-owner";
+    const initDirectory = mkdtempSync(join(tmpdir(), "bet-stats-privacy-init-"));
+    writeFileSync(join(initDirectory, "hold-temp-server.sql"), "SELECT pg_sleep(8);\n");
+    let containerStarted = false;
+
     try {
-      docker("run", "--detach", "--name", legacyContainer, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "postgres:18-alpine");
+      docker(
+        "run", "--detach", "--label", `${ownerLabel}=${readinessContainer}`, "--name", readinessContainer,
+        "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats",
+        "--mount", `type=bind,source=${initDirectory},target=/docker-entrypoint-initdb.d,readonly`, "postgres:18-alpine",
+      );
+      containerStarted = true;
+      waitForPostgres(readinessContainer);
+
+      expect(() => docker("exec", readinessContainer, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "bet_stats")).not.toThrow();
+    } finally {
+      if (containerStarted) {
+        try {
+          const owner = docker("inspect", "--format", `{{index .Config.Labels "${ownerLabel}"}}`, readinessContainer);
+          if (owner === readinessContainer) docker("rm", "--force", readinessContainer);
+        } catch { /* Remove only when the exact diagnostic ownership label is verifiable. */ }
+      }
+      rmSync(initDirectory, { recursive: true, force: true });
+    }
+  }, 20_000);
+});
+
+describe("retained-view bounds migration", () => {
+  it("quarantines legacy values accepted by the preceding PostgreSQL schema and erases them under the corrective migration", async () => {
+    const legacyContainer = `bet-stats-privacy-legacy-${process.pid}`;
+    let legacyDb: PrismaClient | undefined;
+    try {
+      docker("run", "--detach", "--name", legacyContainer, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "--publish", "127.0.0.1::5432", "postgres:18-alpine");
       waitForPostgres(legacyContainer);
+      const port = docker("port", legacyContainer, "5432/tcp").split(":").at(-1);
+      if (!port) throw new Error("Docker did not publish the PostgreSQL port for legacy container");
+      const legacyDbUrl = `postgresql://postgres:postgres@127.0.0.1:${port}/bet_stats`;
+
       const migrationsRoot = resolve(databaseRoot, "prisma/migrations");
-      for (const name of readdirSync(migrationsRoot).filter((entry) => entry < "20260924_retained_view_bounds").sort()) {
+      for (const name of readdirSync(migrationsRoot).filter((entry) => !entry.endsWith(".toml") && entry < "20260924_retained_view_bounds").sort()) {
         const source = resolve(migrationsRoot, name, "migration.sql");
         execFileSync("docker", ["cp", source, `${legacyContainer}:/tmp/migration.sql`], { stdio: "pipe" });
         docker("exec", legacyContainer, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats", "-c", "BEGIN", "-f", "/tmp/migration.sql", "-c", "COMMIT");
       }
       const legacySql = `
         INSERT INTO "RetentionSubject" (id, "providerMode", "subjectKey", "approvedAt", "createdAt") VALUES ('legacy-subject', 'SIGNED', 'legacy-key', now(), now());
-        INSERT INTO "RetentionConsent" (id, "subjectId", "policyVersion", "policyEffectiveAt", "durationDays", "grantedAt", "expiresAt", "createdAt") VALUES ('legacy-consent', 'legacy-subject', 'legacy', now() - interval '1 day', 30, now(), now() + interval '1 day', now());
+        INSERT INTO "RetentionConsent" (id, "subjectId", "policyVersion", "policyEffectiveAt", "durationDays", "grantedAt", "expiresAt", "createdAt") VALUES ('legacy-consent', 'legacy-subject', 'legacy', now() - interval '1 day', 30, now(), now() + interval '30 days', now());
         INSERT INTO "RetainedViewHistory" (id, "subjectId", "consentId", "resourceType", "resourceId", "viewedAt", "expiresAt", "createdAt") VALUES ('legacy-invalid', 'legacy-subject', 'legacy-consent', 'LEGACY_RESOURCE', repeat('x', 129), now(), now() + interval '1 day', now());
       `;
       docker("exec", "-i", legacyContainer, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats", "-c", legacySql);
@@ -133,7 +170,51 @@ describe("retained-view bounds migration", () => {
       docker("exec", legacyContainer, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats", "-f", "/tmp/bounds.sql");
       const output = docker("exec", legacyContainer, "psql", "-At", "-U", "postgres", "-d", "bet_stats", "-c", `SELECT (SELECT count(*) FROM "RetainedViewHistory") || ':' || (SELECT count(*) FROM "RetentionMigrationQuarantine" WHERE id='legacy-invalid');`);
       expect(output).toBe("0:1");
+
+      // Apply the remaining migrations including 20260927_retention_quarantine_erasure
+      for (const name of readdirSync(migrationsRoot).filter((entry) => !entry.endsWith(".toml") && entry > "20260924_retained_view_bounds").sort()) {
+        const source = resolve(migrationsRoot, name, "migration.sql");
+        execFileSync("docker", ["cp", source, `${legacyContainer}:/tmp/migration.sql`], { stdio: "pipe" });
+        docker("exec", legacyContainer, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats", "-f", "/tmp/migration.sql");
+      }
+
+      // Assert quarantine table is absent after corrective migration
+      const quarantineTableCheck = docker("exec", legacyContainer, "psql", "-At", "-U", "postgres", "-d", "bet_stats", "-c", `SELECT to_regclass('public."RetentionMigrationQuarantine"');`);
+      expect(quarantineTableCheck).toBe("");
+
+      legacyDb = createPrismaClient(legacyDbUrl);
+
+      // Seed reference data needed for manual odds and views
+      docker("exec", "-i", legacyContainer, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bet_stats", "-c", `
+        INSERT INTO "League" (id, name, "countryCode", "createdAt", "updatedAt") VALUES ('legacy-league', 'Legacy League', 'LL', now(), now());
+        INSERT INTO "Season" (id, "leagueId", label, "startsOn", "endsOn", "createdAt", "updatedAt") VALUES ('legacy-season', 'legacy-league', '2026', '2026-01-01', '2026-12-31', now(), now());
+        INSERT INTO "Team" (id, name, "normalizedName", "countryCode", "createdAt", "updatedAt") VALUES
+          ('legacy-home', 'Home', 'home', 'LL', now(), now()), ('legacy-away', 'Away', 'away', 'LL', now(), now());
+        INSERT INTO "Fixture" (id, "leagueId", "seasonId", "homeTeamId", "awayTeamId", "kickoffUtc", status, "createdAt", "updatedAt") VALUES
+          ('legacy-fixture', 'legacy-league', 'legacy-season', 'legacy-home', 'legacy-away', now() + interval '1 day', 'SCHEDULED', now(), now());
+        INSERT INTO "ManualOddsSnapshot" (id, "fixtureId", market, "inputHash", source, receipt, "submittedAt", "createdAt") VALUES
+          ('legacy-odds', 'legacy-fixture', 'ONE_X_TWO', 'legacy-input-hash', 'manual', '{}'::jsonb, now(), now());
+        INSERT INTO "RetainedOddsHistory" (id, "subjectId", "consentId", "oddsSnapshotId", "retainedAt", "expiresAt", "createdAt") VALUES
+          ('legacy-odds-hist', 'legacy-subject', 'legacy-consent', 'legacy-odds', now(), now() + interval '29 days', now());
+        INSERT INTO "RetainedViewHistory" (id, "subjectId", "consentId", "resourceType", "resourceId", "viewedAt", "expiresAt", "createdAt") VALUES
+          ('legacy-view-hist', 'legacy-subject', 'legacy-consent', 'RESULT', 'legacy-fixture', now(), now() + interval '29 days', now());
+      `);
+
+      const oddsBefore = await legacyDb.manualOddsSnapshot.findUniqueOrThrow({ where: { id: "legacy-odds" }, select: { id: true, inputHash: true } });
+      expect(await legacyDb.retainedOddsHistory.count({ where: { subjectId: "legacy-subject" } })).toBe(1);
+      expect(await legacyDb.retainedViewHistory.count({ where: { subjectId: "legacy-subject" } })).toBe(1);
+
+      await withdrawRetentionConsent(legacyDb, "legacy-subject", { invalidate: async () => undefined }, new Date());
+
+      expect(await legacyDb.retainedOddsHistory.count({ where: { subjectId: "legacy-subject" } })).toBe(0);
+      expect(await legacyDb.retainedViewHistory.count({ where: { subjectId: "legacy-subject" } })).toBe(0);
+
+      const oddsAfter = await legacyDb.manualOddsSnapshot.findUniqueOrThrow({ where: { id: "legacy-odds" }, select: { id: true, inputHash: true } });
+      expect(oddsAfter).toEqual(oddsBefore);
     } finally {
+      if (legacyDb) {
+        await legacyDb.$disconnect().catch(() => undefined);
+      }
       try { docker("rm", "--force", legacyContainer); } catch { /* owned container cleanup */ }
     }
   }, 180_000);
@@ -278,13 +359,22 @@ describe("privacy retention persistence", () => {
       now: new Date("2026-09-20T12:00:00.000Z"),
     });
     await retainViewedResult(database, { subjectId: "purge-subject", resourceType: "RESULT", resourceId: "privacy-fixture", policy: { version: "purge-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 }, now: new Date("2026-09-20T12:01:00.000Z") });
+    sql(`INSERT INTO "RetainedOddsHistory" (id, "subjectId", "consentId", "oddsSnapshotId", "retainedAt", "expiresAt", "createdAt")
+         VALUES ('purge-odds-hist', 'purge-subject', (SELECT id FROM "RetentionConsent" WHERE "subjectId"='purge-subject' LIMIT 1), 'privacy-odds', now(), now() + interval '5 seconds', now());`);
 
+    const oddsBefore = await database.manualOddsSnapshot.findUniqueOrThrow({ where: { id: "privacy-odds" }, select: { id: true, inputHash: true } });
     const result = await purgeExpiredRetention(database, new Date("2026-10-21T12:00:00.000Z"));
 
     expect(result.viewsDeleted).toBeGreaterThanOrEqual(1);
+    expect(result.oddsDeleted).toBeGreaterThanOrEqual(1);
     expect(await database.retainedViewHistory.count({ where: { subjectId: "purge-subject" } })).toBe(0);
+    expect(await database.retainedOddsHistory.count({ where: { subjectId: "purge-subject" } })).toBe(0);
+
     const audit = await database.$queryRaw<Array<{ oddsDeleted: number; viewsDeleted: number }>>`SELECT "oddsDeleted", "viewsDeleted" FROM "RetentionPurgeAudit" WHERE id = ${result.auditId}`;
     expect(audit).toEqual([{ oddsDeleted: result.oddsDeleted, viewsDeleted: result.viewsDeleted }]);
+
+    const oddsAfter = await database.manualOddsSnapshot.findUniqueOrThrow({ where: { id: "privacy-odds" }, select: { id: true, inputHash: true } });
+    expect(oddsAfter).toEqual(oddsBefore);
   });
 
   it("deletes a personal association at its exact PostgreSQL expiresAt boundary", async () => {

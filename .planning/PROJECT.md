@@ -15,19 +15,23 @@ Produce honest, reproducible probability estimates whose quality can be measured
 - ✓ Shared Node/TypeScript workspace with healthy web, API, worker, PostgreSQL, and Redis foundations — Phase 1
 - ✓ Canonical Premier League fixture discovery with provenance, freshness, honest data states, and auditable reconciliation — Phase 1
 - ✓ Fail-closed eligibility policy and persistent responsible-gambling disclosure for protected analytics — Phase 1
+- ✓ Replayable chronological football pipeline, weighted form, Elo, and atomic budget reservations — Phase 2
+- ✓ Immutable Poisson + Elo prediction snapshots, manual decimal odds normalization, edge, and value receipts — Phase 3
+- ✓ Settlement pipeline, Brier Score, Log Loss, calibration curves, ROI/Yield accounting, and rolling-origin backtests — Phase 4
+- ✓ Multi-provider fallback (football-data.org / API-Football), UEL/UECL coverage, and provider-aware degradation — Phase 5
+- ✓ Responsive desktop & mobile Chromium UI, public methodology card, secret-safe operations center, and fail-closed privacy retention — Phase 6
 
-### Active
+### Current State (Shipped: v1.0 MVP)
 
-- [ ] Collect, reconcile, and persist fixtures, results, teams, players, standings, lineups, and available contextual data from explicitly bounded free data sources.
-- [ ] Calculate weighted recent form, home/away strength, Elo ratings, low-weight H2H signals, and only those secondary features supported by available data.
-- [ ] Generate immutable prediction snapshots using Poisson, Elo, recent form, and data-quality inputs.
-- [ ] Produce calibrated probabilities for 1X2, double chance, goal totals, BTTS, and team totals.
-- [ ] Accept manual decimal odds as the primary MVP odds input and calculate normalized market probability, edge, and expected value.
-- [ ] Show upcoming fixtures, match analysis, predictions, confidence components, value candidates, model performance, and backtest results in a responsive web interface.
-- [ ] Resolve completed fixtures, score previous predictions without data leakage, and report Brier Score, Log Loss, calibration, ROI, Yield, and CLV when odds history exists.
-- [ ] Enforce provider-specific request budgets, coverage checks, caching, retries, idempotency, circuit breaking, and visible limited-data states.
-- [ ] Reconcile canonical entities across providers without creating duplicate teams, players, leagues, or fixtures, with ambiguous matches routed to manual review.
-- [ ] Present predictions as probabilistic analytics, include persistent responsible-gambling disclaimers, and never claim guaranteed profit.
+All 6 phases (88 plans) of the v1.0 MVP milestone have shipped and passed all end-to-end integration and verification gates. The platform is ready for production staging and live usage.
+
+### Next Milestone Goals (v2.0)
+
+- User accounts and explicit consent preferences for saving followed teams/analysis (ACCT-01, ACCT-02).
+- Python/ML challenger model evaluation against the frozen V1 baseline (MODEL-01).
+- Advanced overround normalization (Shin, power methods) and licensed closing-line feeds (MODEL-02, MODEL-03).
+- Expanded markets (double-chance, team totals, player statistics) and additional leagues (MODEL-04, DATA-09).
+- Responsible gambling user self-exclusion and activity limits (SAFE-01, SAFE-02).
 
 ### Out of Scope
 

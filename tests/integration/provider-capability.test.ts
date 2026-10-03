@@ -23,7 +23,7 @@ function docker(...args: string[]): string {
 function waitForPostgres(): void {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
-      docker("exec", containerName, "pg_isready", "-U", "postgres", "-d", "bet_stats");
+      docker("exec", containerName, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "bet_stats");
       return;
     } catch {
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);

@@ -65,7 +65,7 @@ it("proves optimistic append-only review against PostgreSQL 18", async () => {
   const docker = (...args: string[]) => execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
   docker("run", "--detach", "--name", name, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "--publish", "127.0.0.1::5432", "postgres:18-alpine");
   try {
-    for (let attempt = 0; attempt < 60; attempt += 1) { try { docker("exec", name, "pg_isready", "-U", "postgres", "-d", "bet_stats"); break; } catch { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500); } }
+    for (let attempt = 0; attempt < 60; attempt += 1) { try { docker("exec", name, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "bet_stats"); break; } catch { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500); } }
     const port = docker("port", name, "5432/tcp").split(":").at(-1)!; const url = `postgresql://postgres:postgres@127.0.0.1:${port}/bet_stats`;
     execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], { cwd: databaseRoot, env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" });
     const db = createPrismaClient(url);

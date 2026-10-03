@@ -13,3 +13,4 @@ artifacts/provider-probes/
 
 *.log
 *.tsbuildinfo
+.turbo/

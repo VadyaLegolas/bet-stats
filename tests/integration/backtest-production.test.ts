@@ -88,7 +88,7 @@ describe("production rolling-origin backtests", () => {
   beforeAll(async () => {
     docker("run", "--detach", "--name", postgresName, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "--publish", "127.0.0.1::5432", "postgres:18-alpine");
     docker("run", "--detach", "--name", redisName, "--publish", "127.0.0.1::6379", "redis:8-alpine");
-    waitFor(postgresName, ["pg_isready", "-U", "postgres", "-d", "bet_stats"]);
+    waitFor(postgresName, ["pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "bet_stats"]);
     waitFor(redisName, ["redis-cli", "ping"]);
     const postgresPort = docker("port", postgresName, "5432/tcp").split(":").at(-1)!;
     const redisPort = docker("port", redisName, "6379/tcp").split(":").at(-1)!;

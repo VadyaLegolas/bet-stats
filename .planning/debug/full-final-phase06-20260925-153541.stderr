@@ -1,0 +1,102 @@
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+┌─────────────────────────────────────────────────────────┐
+│  Update available 7.10.0 -> 8.0.0-rc.17                 │
+│                                                         │
+│  This is a major update - please follow the guide at    │
+│  https://pris.ly/d/major-version-upgrade                │
+│                                                         │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+[api] 
+> @bet-stats/api@0.0.0 dev D:\Documents\Atom\bet-stats\apps\api
+> node --enable-source-maps dist/main.js
+
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [NestFactory] Starting Nest application...
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [InstanceLoader] PrivacyModule dependencies initialized +1ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [InstanceLoader] EvaluationModule dependencies initialized +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [InstanceLoader] ForecastsModule dependencies initialized +1ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [InstanceLoader] MediaModule dependencies initialized +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [InstanceLoader] OddsModule dependencies initialized +1ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [InstanceLoader] OperationsModule dependencies initialized +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [InstanceLoader] ProvidersModule dependencies initialized +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [InstanceLoader] ValueModule dependencies initialized +1ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [InstanceLoader] AppModule dependencies initialized +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] EligibilityController {/eligibility}: +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/eligibility/check, POST} route +1ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] EvidenceController {/teams}: +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/teams/:teamId/evidence, GET} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] FixturesController {/fixtures}: +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/fixtures, GET} route +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/fixtures/:fixtureId, GET} route +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] HealthController {/health}: +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/health/live, GET} route +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/health/ready, GET} route +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] ReconciliationController {/internal/reconciliation}: +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/internal/reconciliation, GET} route +1ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/internal/reconciliation/:caseId, GET} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/internal/reconciliation/:caseId/suggestions, GET} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/internal/reconciliation/:caseId/:kind, POST} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] ReplayController {/internal/pipeline/replay}: +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/internal/pipeline/replay/preview, POST} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/internal/pipeline/replay/queue, POST} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/internal/pipeline/replay/:id, GET} route +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] EvaluationController {/evaluation}: +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/evaluation/scorecard, GET} route +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/evaluation/value-candidates, GET} route +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] ForecastsController {/fixtures/:fixtureId/forecasts}: +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/fixtures/:fixtureId/forecasts/compare, GET} route +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/fixtures/:fixtureId/forecasts/availability, GET} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/fixtures/:fixtureId/forecasts, POST} route +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/fixtures/:fixtureId/forecasts, GET} route +1ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] ProviderLogoController {/internal/media/provider-logo}: +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/internal/media/provider-logo/:reference, GET} route +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] OddsController {/fixtures/:fixtureId/odds}: +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/fixtures/:fixtureId/odds, POST} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/fixtures/:fixtureId/odds/:oddsSnapshotId, GET} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] OperationsController {/internal/operations}: +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/internal/operations/overview, GET} route +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] PrivacyController {/privacy}: +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/privacy/status, GET} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/privacy/consent, POST} route +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/privacy/withdrawal, POST} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/privacy/history/view, POST} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] ProviderPolicyController {/internal/providers/policy}: +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/internal/providers/policy/approve, POST} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RoutesResolver] ValueController {/value-receipts}: +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/value-receipts, POST} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/value-receipts/:receiptId, GET} route +0ms
+[Nest] 8364  - 25.09.2026, 15:37:52     LOG [RouterExplorer] Mapped {/value-receipts/:receiptId/download, GET} route +0ms
+[api] [Nest] 8364  - 25.09.2026, 15:37:52     LOG [NestApplication] Nest application successfully started +1ms
+[web] ▲ Next.js 16.3.3
+[web] - Local:         http://127.0.0.1:3240
+[web] - Network:       http://127.0.0.1:3240
+[web] ✓ Ready in 521ms
+[web] ✓ Running next.config.ts took 107ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |integration| tests/integration/forecast-scoring.test.ts > immutable forecast scoring facts
+Error: Command failed: C:\Program Files\nodejs\node.exe D:\Documents\Atom\bet-stats\packages\database\node_modules\prisma\build\index.js migrate deploy
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+Error: Schema engine error:
+
+
+ ❯ tests/integration/forecast-scoring.test.ts:57:5
+     55|     const port = docker("port", container, "5432/tcp").split(":").at(-…
+     56|     const url = `postgresql://postgres:postgres@127.0.0.1:${port}/bet_…
+     57|     execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], {…
+       |     ^
+     58|     prisma = createPrismaClient(url);
+     59|     await prisma.$executeRawUnsafe(`
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

@@ -29,7 +29,7 @@ describe("replay execution process crash recovery", () => {
   beforeAll(() => {
     docker("run", "-d", "--name", pgName, "-e", "POSTGRES_PASSWORD=postgres", "-e", "POSTGRES_DB=bet_stats", "-p", "127.0.0.1::5432", "postgres:18-alpine");
     docker("run", "-d", "--name", redisName, "-p", "127.0.0.1::6379", "redis:8-alpine");
-    wait(pgName, ["pg_isready", "-U", "postgres", "-d", "bet_stats"]); wait(redisName, ["redis-cli", "ping"]);
+    wait(pgName, ["pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "bet_stats"]); wait(redisName, ["redis-cli", "ping"]);
     databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${docker("port", pgName, "5432/tcp").split(":").at(-1)}/bet_stats`;
     redisUrl = `redis://127.0.0.1:${docker("port", redisName, "6379/tcp").split(":").at(-1)}`;
     execFileSync(process.execPath, [resolve(root, "packages/database/node_modules/prisma/build/index.js"), "migrate", "deploy"], { cwd: resolve(root, "packages/database"), env: { ...process.env, DATABASE_URL: databaseUrl }, stdio: "pipe" });

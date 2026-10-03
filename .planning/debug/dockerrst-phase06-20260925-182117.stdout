@@ -1,0 +1,240 @@
+
+> football-prediction-platform@0.0.0 verify:release D:\Documents\Atom\bet-stats
+> pnpm verify:release:prerequisites && pnpm install --frozen-lockfile && pnpm verify:release:schema && pnpm typecheck && pnpm test && node scripts/verify-release-integration.mjs && pnpm build && playwright test -c playwright.phase06.config.ts tests/e2e/release-journey.spec.ts tests/e2e/release-degradation.spec.ts tests/e2e/release-accessibility.spec.ts tests/e2e/methodology.spec.ts tests/e2e/operator-overview.spec.ts tests/e2e/operator-recovery.spec.ts tests/e2e/privacy-retention.spec.ts
+
+
+> football-prediction-platform@0.0.0 verify:release:prerequisites D:\Documents\Atom\bet-stats
+> node -e "if (process.versions.node.split('.')[0] !== '24') { console.error('RELEASE_NODE_VERSION_REQUIRED: Node 24.x is mandatory'); process.exit(1) }" && docker version --format "{{.Server.Version}}"
+
+29.8.0
+Scope: all 8 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: @prisma/engines@7.10.0, msgpackr-extract@3.0.4,     │
+│   prisma@7.10.0, unrs-resolver@1.12.2.                                       │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 8.8s using pnpm v10.34.5
+
+> football-prediction-platform@0.0.0 verify:release:schema D:\Documents\Atom\bet-stats
+> node -e "process.env.DATABASE_URL='postgresql://release_validate:release_validate@127.0.0.1:5432/release_validate'; const {spawnSync}=require('node:child_process'); const result=spawnSync(process.execPath,[process.env.npm_execpath,'--filter','@bet-stats/database','exec','prisma','validate'],{stdio:'inherit',env:process.env}); process.exit(result.status??1)"
+
+The schema at prisma\schema.prisma is valid 🚀
+
+> football-prediction-platform@0.0.0 typecheck D:\Documents\Atom\bet-stats
+> turbo run typecheck
+
+
+   • Packages in scope: @bet-stats/api, @bet-stats/config, @bet-stats/data-sync, @bet-stats/database, @bet-stats/domain, @bet-stats/football-data, @bet-stats/web
+   • Running typecheck in 7 packages
+   • Remote caching disabled
+
+@bet-stats/domain:typecheck: cache hit, replaying logs 1cf48e964e276ebb
+@bet-stats/config:typecheck: cache hit, replaying logs cc9f7230214e3051
+@bet-stats/football-data:typecheck: cache hit, replaying logs 4f39af6a461641b9
+@bet-stats/domain:typecheck: 
+@bet-stats/football-data:typecheck: 
+@bet-stats/domain:typecheck: > @bet-stats/domain@0.0.0 typecheck D:\Documents\Atom\bet-stats\packages\domain
+@bet-stats/domain:typecheck: > tsc -p tsconfig.json --noEmit
+@bet-stats/domain:typecheck: 
+@bet-stats/config:typecheck: 
+@bet-stats/config:typecheck: > @bet-stats/config@0.0.0 typecheck D:\Documents\Atom\bet-stats\packages\config
+@bet-stats/config:typecheck: > tsc -p tsconfig.json --noEmit
+@bet-stats/config:typecheck: 
+@bet-stats/football-data:typecheck: > @bet-stats/football-data@0.0.0 typecheck D:\Documents\Atom\bet-stats\packages\football-data
+@bet-stats/football-data:typecheck: > tsc -p tsconfig.json --noEmit
+@bet-stats/football-data:typecheck: 
+@bet-stats/web:typecheck: cache hit, replaying logs 2168bc9f1ce18d89
+@bet-stats/database:typecheck: cache hit, replaying logs cb99ed1f51ecd801
+@bet-stats/database:typecheck: 
+@bet-stats/web:typecheck: 
+@bet-stats/database:typecheck: > @bet-stats/database@0.0.0 typecheck D:\Documents\Atom\bet-stats\packages\database
+@bet-stats/web:typecheck: > @bet-stats/web@0.0.0 typecheck D:\Documents\Atom\bet-stats\apps\web
+@bet-stats/database:typecheck: > tsc -p tsconfig.json --noEmit
+@bet-stats/database:typecheck: 
+@bet-stats/web:typecheck: > tsc --noEmit
+@bet-stats/web:typecheck: 
+@bet-stats/data-sync:typecheck: cache hit, replaying logs 5910b9d107e60058
+@bet-stats/data-sync:typecheck: 
+@bet-stats/data-sync:typecheck: > @bet-stats/data-sync@0.0.0 typecheck D:\Documents\Atom\bet-stats\workers\data-sync
+@bet-stats/data-sync:typecheck: > tsc -p tsconfig.json --noEmit
+@bet-stats/data-sync:typecheck: 
+@bet-stats/api:typecheck: cache hit, replaying logs d6c0060d0b621670
+@bet-stats/api:typecheck: 
+@bet-stats/api:typecheck: > @bet-stats/api@0.0.0 typecheck D:\Documents\Atom\bet-stats\apps\api
+@bet-stats/api:typecheck: > tsc -p tsconfig.json --noEmit
+@bet-stats/api:typecheck: 
+
+ Tasks:    7 successful, 7 total
+Cached:    7 cached, 7 total
+  Time:    311ms >>> FULL TURBO
+
+
+> football-prediction-platform@0.0.0 test D:\Documents\Atom\bet-stats
+> vitest run --project unit && pnpm --filter @bet-stats/web test
+
+
+ RUN  v4.1.11 D:/Documents/Atom/bet-stats
+
+
+ Test Files  28 passed (28)
+      Tests  245 passed (245)
+   Start at  18:21:54
+   Duration  47.43s (transform 7.16s, setup 0ms, import 103.91s, tests 1.21s, environment 7ms)
+
+
+> @bet-stats/web@0.0.0 test D:\Documents\Atom\bet-stats\apps\web
+> vitest run -c vitest.config.ts
+
+
+ RUN  v4.1.11 D:/Documents/Atom/bet-stats/apps/web
+
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  18:22:47
+   Duration  2.16s (transform 81ms, setup 0ms, import 1.64s, tests 25ms, environment 0ms)
+
+Datasource "db": PostgreSQL database "bet_stats", schema "public" at "127.0.0.1:64810"
+
+24 migrations found in prisma/migrations
+
+Applying migration `20260828061500_canonical_identity_and_reconciliation`
+Applying migration `20260828124000_provider_capability_and_request_reservations`
+Applying migration `20260829_historical_evidence`
+Applying migration `20260830_phase02_replay_preview`
+Applying migration `20260830_phase02_temporal_repair`
+Applying migration `20260831_phase02_replay_delivery`
+Applying migration `20260831_phase02_replay_lifecycle`
+Applying migration `20260904_phase02_sync_run_execution_lease`
+Applying migration `20260905_phase03_forecast_value_snapshots`
+Applying migration `20260908_phase03_forecast_identity_gap`
+Applying migration `20260908_phase03_value_identity_gap`
+Applying migration `20260908_phase03_value_receipt_guard_path`
+Applying migration `20260908_phase04_backtest_receipts`
+Applying migration `20260908_phase04_settlement_receipts`
+Applying migration `20260908_phase04_value_settlements`
+Applying migration `20260908_phase04_z_score_facts`
+Applying migration `20260909_phase04_scored_backtest_receipts`
+Applying migration `20260909_phase05_provider_routing`
+Applying migration `20260913_phase05_season_external_ref_scope`
+Applying migration `20260913_phase05_terminal_route_attempt`
+Applying migration `20260919_phase05_enrichment_decision_receipt`
+Applying migration `20260920_privacy_retention`
+Applying migration `20260924_retained_view_bounds`
+Applying migration `20260924_retention_purge_audit`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20260828061500_canonical_identity_and_reconciliation/
+    └─ migration.sql
+  └─ 20260828124000_provider_capability_and_request_reservations/
+    └─ migration.sql
+  └─ 20260829_historical_evidence/
+    └─ migration.sql
+  └─ 20260830_phase02_replay_preview/
+    └─ migration.sql
+  └─ 20260830_phase02_temporal_repair/
+    └─ migration.sql
+  └─ 20260831_phase02_replay_delivery/
+    └─ migration.sql
+  └─ 20260831_phase02_replay_lifecycle/
+    └─ migration.sql
+  └─ 20260904_phase02_sync_run_execution_lease/
+    └─ migration.sql
+  └─ 20260905_phase03_forecast_value_snapshots/
+    └─ migration.sql
+  └─ 20260908_phase03_forecast_identity_gap/
+    └─ migration.sql
+  └─ 20260908_phase03_value_identity_gap/
+    └─ migration.sql
+  └─ 20260908_phase03_value_receipt_guard_path/
+    └─ migration.sql
+  └─ 20260908_phase04_backtest_receipts/
+    └─ migration.sql
+  └─ 20260908_phase04_settlement_receipts/
+    └─ migration.sql
+  └─ 20260908_phase04_value_settlements/
+    └─ migration.sql
+  └─ 20260908_phase04_z_score_facts/
+    └─ migration.sql
+  └─ 20260909_phase04_scored_backtest_receipts/
+    └─ migration.sql
+  └─ 20260909_phase05_provider_routing/
+    └─ migration.sql
+  └─ 20260913_phase05_season_external_ref_scope/
+    └─ migration.sql
+  └─ 20260913_phase05_terminal_route_attempt/
+    └─ migration.sql
+  └─ 20260919_phase05_enrichment_decision_receipt/
+    └─ migration.sql
+  └─ 20260920_privacy_retention/
+    └─ migration.sql
+  └─ 20260924_retained_view_bounds/
+    └─ migration.sql
+  └─ 20260924_retention_purge_audit/
+    └─ migration.sql
+
+All migrations have been successfully applied.
+
+ RUN  v4.1.11 D:/Documents/Atom/bet-stats
+
+ ❯ |integration| tests/integration/privacy-retention.test.ts (26 tests | 1 failed) 21036ms
+     × quarantines legacy values accepted by the preceding PostgreSQL schema before narrowing 6204ms
+ ❯ |integration| tests/integration/phase-04-security.test.ts (4 tests | 4 skipped) 19614ms
+ ❯ |integration| tests/integration/evidence-publication.test.ts (4 tests | 4 skipped) 18680ms
+ ❯ |integration| tests/integration/review.test.ts (0 test)
+ ❯ |integration| tests/integration/provider-policy-approval.test.ts (0 test)
+ ❯ |integration| tests/integration/forecast-snapshots.test.ts (4 tests | 4 skipped) 295ms
+ ❯ |integration| tests/integration/value-receipt.test.ts (10 tests | 10 skipped) 278ms
+ ❯ |integration| tests/integration/phase-03-security.test.ts (13 tests | 13 skipped) 226ms
+ ❯ |integration| tests/integration/manual-odds.test.ts (3 tests | 3 skipped) 213ms
+stdout | tests/integration/live-provider-harness-smoke.test.ts
+{"event":"worker.initialized","readiness":{"ready":false,"dependencies":{"postgres":"unavailable","redis":"unavailable"}}}
+
+ ❯ |integration| tests/integration/live-provider-harness-smoke.test.ts (3 tests | 1 failed) 656ms
+     × migrates, executes production routing, enrichment and forecasts, and reaches PostgreSQL Redis API web and worker 646ms
+ ❯ |integration| tests/integration/replay-boundary.test.ts (0 test)
+ ❯ |integration| tests/integration/value-settlement.test.ts (0 test)
+ ❯ |integration| tests/integration/operator-gateway.test.ts (0 test)
+ ❯ |integration| tests/integration/provider-budget-order.test.ts (0 test)
+ ❯ |integration| tests/integration/forecast-publication.test.ts (0 test)
+ ❯ |integration| tests/integration/manual-odds-api.test.ts (0 test)
+ ❯ |integration| tests/integration/quota-priority.test.ts (0 test)
+ ❯ |integration| tests/integration/evidence-api.test.ts (0 test)
+ ❯ |integration| tests/integration/value-api.test.ts (0 test)
+ ❯ |integration| tests/integration/provider-logo-http.test.ts (0 test)
+ ❯ |integration| tests/integration/pipeline-jobs.test.ts (0 test)
+ ❯ |integration| tests/integration/forecast-api.test.ts (0 test)
+ ❯ |integration| tests/integration/provider-resilience.test.ts (0 test)
+ ❯ |integration| tests/integration/forecast-comparison-api.test.ts (0 test)
+ ❯ |integration| tests/integration/backtest-origin.test.ts (0 test)
+ ❯ |integration| tests/integration/evaluation-api.test.ts (0 test)
+ ❯ |integration| tests/integration/enrichment-runtime.test.ts (0 test)
+ ❯ |integration| tests/integration/operator-overview.test.ts (0 test)
+ ❯ |integration| tests/integration/provider-worker-routing.test.ts (0 test)
+ ❯ |integration| tests/integration/enrichment-admission.test.ts (0 test)
+ ❯ |integration| tests/integration/phase-01-security.test.ts (0 test)
+ ❯ |integration| tests/integration/eligibility.test.ts (0 test)
+ ❯ |integration| tests/integration/reconciliation.test.ts (0 test)
+ ❯ |integration| tests/integration/phase-03-database-availability.test.ts (0 test)
+ ❯ |integration| tests/integration/reliability-aggregation.test.ts (0 test)
+ ❯ |integration| tests/integration/evidence-browser-contract.test.ts (0 test)
+ ❯ |integration| tests/integration/provider-route-runtime.test.ts (0 test)
+ ❯ |integration| tests/integration/provider-state-api.test.ts (0 test)
+ ❯ |integration| tests/integration/health.test.ts (0 test)
+
+ Test Files  39 failed | 16 passed (55)
+      Tests  2 failed | 160 passed | 38 skipped (200)
+   Start at  18:23:55
+   Duration  377.45s (transform 5.26s, setup 0ms, import 54.97s, tests 285.15s, environment 9ms)
+
+ ELIFECYCLE  Command failed with exit code 1.
+
+@@@ PHASE06_RELEASE_GATE_COMPLETE exit=1 node=v24.14.0 ci=true @@@

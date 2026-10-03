@@ -17,7 +17,7 @@ function docker(...args: string[]): string { return execFileSync("docker", args,
 describe("provider fallback canonical identity", () => {
   beforeAll(() => {
     docker("run", "-d", "--name", container, "-e", "POSTGRES_PASSWORD=postgres", "-e", "POSTGRES_DB=bet_stats", "-p", "127.0.0.1::5432", "postgres:18-alpine");
-    for (let i = 0; i < 60; i += 1) { try { docker("exec", container, "pg_isready", "-U", "postgres", "-d", "bet_stats"); break; } catch { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250); } }
+    for (let i = 0; i < 60; i += 1) { try { docker("exec", container, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "bet_stats"); break; } catch { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250); } }
     const port = docker("port", container, "5432/tcp").split(":").at(-1)!;
     const url = `postgresql://postgres:postgres@127.0.0.1:${port}/bet_stats`;
     execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], { cwd: databaseRoot, env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" });

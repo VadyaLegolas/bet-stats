@@ -11,7 +11,7 @@ function sql(statement: string) { return docker(["exec", "-i", container, "psql"
 describe("populated replay lease upgrade", () => {
   beforeAll(() => {
     docker(["run", "-d", "--name", container, "-e", "POSTGRES_PASSWORD=postgres", "-e", "POSTGRES_DB=bet_stats", "postgres:18-alpine"]);
-    for (let i = 0; i < 60; i += 1) { try { docker(["exec", container, "pg_isready", "-U", "postgres", "-d", "bet_stats"]); break; } catch { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250); } }
+    for (let i = 0; i < 60; i += 1) { try { docker(["exec", container, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "bet_stats"]); break; } catch { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250); } }
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2_000);
     for (const directory of readdirSync(migrations).sort().filter((name) => name < "20260904_phase02_sync_run_execution_lease")) {
       sql(readFileSync(resolve(migrations, directory, "migration.sql"), "utf8"));

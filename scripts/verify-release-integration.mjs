@@ -36,7 +36,7 @@ export async function startOwnedReleaseDependencies() {
   try {
     docker("run", "--detach", "--name", postgres, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "--publish", "127.0.0.1::5432", "postgres:18-alpine");
     docker("run", "--detach", "--name", redis, "--publish", "127.0.0.1::6379", "redis:8-alpine");
-    await waitFor(postgres, ["pg_isready", "-U", "postgres", "-d", "bet_stats"], 500);
+    await waitFor(postgres, ["pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "bet_stats"], 500);
     await waitFor(redis, ["redis-cli", "ping"], 250);
     const postgresPort = docker("port", postgres, "5432/tcp").split(":").at(-1);
     const redisPort = docker("port", redis, "6379/tcp").split(":").at(-1);

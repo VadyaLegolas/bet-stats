@@ -1,0 +1,210 @@
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 37 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  |integration| tests/integration/backtest-origin.test.ts [ tests/integration/backtest-origin.test.ts ]
+ FAIL  |integration| tests/integration/eligibility.test.ts [ tests/integration/eligibility.test.ts ]
+ FAIL  |integration| tests/integration/enrichment-admission.test.ts [ tests/integration/enrichment-admission.test.ts ]
+ FAIL  |integration| tests/integration/enrichment-runtime.test.ts [ tests/integration/enrichment-runtime.test.ts ]
+ FAIL  |integration| tests/integration/evaluation-api.test.ts [ tests/integration/evaluation-api.test.ts ]
+ FAIL  |integration| tests/integration/evidence-api.test.ts [ tests/integration/evidence-api.test.ts ]
+ FAIL  |integration| tests/integration/evidence-browser-contract.test.ts [ tests/integration/evidence-browser-contract.test.ts ]
+ FAIL  |integration| tests/integration/forecast-api.test.ts [ tests/integration/forecast-api.test.ts ]
+ FAIL  |integration| tests/integration/forecast-comparison-api.test.ts [ tests/integration/forecast-comparison-api.test.ts ]
+ FAIL  |integration| tests/integration/forecast-publication.test.ts [ tests/integration/forecast-publication.test.ts ]
+ FAIL  |integration| tests/integration/health.test.ts [ tests/integration/health.test.ts ]
+ FAIL  |integration| tests/integration/manual-odds-api.test.ts [ tests/integration/manual-odds-api.test.ts ]
+ FAIL  |integration| tests/integration/operator-gateway.test.ts [ tests/integration/operator-gateway.test.ts ]
+ FAIL  |integration| tests/integration/operator-overview.test.ts [ tests/integration/operator-overview.test.ts ]
+ FAIL  |integration| tests/integration/phase-01-security.test.ts [ tests/integration/phase-01-security.test.ts ]
+ FAIL  |integration| tests/integration/phase-03-database-availability.test.ts [ tests/integration/phase-03-database-availability.test.ts ]
+ FAIL  |integration| tests/integration/pipeline-jobs.test.ts [ tests/integration/pipeline-jobs.test.ts ]
+ FAIL  |integration| tests/integration/provider-budget-order.test.ts [ tests/integration/provider-budget-order.test.ts ]
+ FAIL  |integration| tests/integration/provider-logo-http.test.ts [ tests/integration/provider-logo-http.test.ts ]
+ FAIL  |integration| tests/integration/provider-policy-approval.test.ts [ tests/integration/provider-policy-approval.test.ts ]
+ FAIL  |integration| tests/integration/provider-resilience.test.ts [ tests/integration/provider-resilience.test.ts ]
+ FAIL  |integration| tests/integration/provider-route-runtime.test.ts [ tests/integration/provider-route-runtime.test.ts ]
+ FAIL  |integration| tests/integration/provider-state-api.test.ts [ tests/integration/provider-state-api.test.ts ]
+ FAIL  |integration| tests/integration/provider-worker-routing.test.ts [ tests/integration/provider-worker-routing.test.ts ]
+ FAIL  |integration| tests/integration/quota-priority.test.ts [ tests/integration/quota-priority.test.ts ]
+ FAIL  |integration| tests/integration/reconciliation.test.ts [ tests/integration/reconciliation.test.ts ]
+ FAIL  |integration| tests/integration/reliability-aggregation.test.ts [ tests/integration/reliability-aggregation.test.ts ]
+ FAIL  |integration| tests/integration/review.test.ts [ tests/integration/review.test.ts ]
+ FAIL  |integration| tests/integration/value-api.test.ts [ tests/integration/value-api.test.ts ]
+ FAIL  |integration| tests/integration/value-settlement.test.ts [ tests/integration/value-settlement.test.ts ]
+Error: ENOSPC: no space left on device, write
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/39]⎯
+
+ FAIL  |integration| tests/integration/evidence-publication.test.ts > real PostgreSQL evidence publication boundary
+Error: Command failed: C:\Program Files\nodejs\node.exe D:\Documents\Atom\bet-stats\packages\database\node_modules\prisma\build\index.js migrate deploy
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+Error: P1017
+
+Server has closed the connection.
+
+
+ ❯ tests/integration/evidence-publication.test.ts:47:5
+     45|     if (!port) throw new Error("Docker did not publish PostgreSQL port…
+     46|     databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${port}/be…
+     47|     execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], {…
+       |     ^
+     48|     prisma = createPrismaClient(databaseUrl);
+     49|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/39]⎯
+
+ FAIL  |integration| tests/integration/forecast-snapshots.test.ts > append-only forecast snapshots
+PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42501`. Message: `could not open file "base/16384/2601": Read-only file system`
+ ❯ vn.handleRequestError node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/RequestHandler.ts:238:12
+ ❯ vn.handleAndLogRequestError node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/RequestHandler.ts:184:11
+ ❯ vn.request node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/RequestHandler.ts:153:11
+ ❯ a node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:1014:23
+ ❯ seedFixture tests/integration/forecast-snapshots.test.ts:14:3
+     12|
+     13| async function seedFixture(): Promise<void> {
+     14|   await prisma.$executeRawUnsafe(`
+       |   ^
+     15|     INSERT INTO "League" (id,name,"countryCode","updatedAt") VALUES ('…
+     16|     INSERT INTO "Season" (id,"leagueId",label,"startsOn","endsOn","upd…
+ ❯ tests/integration/forecast-snapshots.test.ts:27:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/39]⎯
+
+ FAIL  |integration| tests/integration/manual-odds.test.ts > append-only manual odds books
+PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42501`. Message: `could not open file "base/16384/2601": Read-only file system`
+ ❯ vn.handleRequestError node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/RequestHandler.ts:238:12
+ ❯ vn.handleAndLogRequestError node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/RequestHandler.ts:184:11
+ ❯ vn.request node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/RequestHandler.ts:153:11
+ ❯ a node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:1014:23
+ ❯ tests/integration/manual-odds.test.ts:14:5
+     12|   beforeAll(async () => {
+     13|     prisma = createPrismaClient(databaseUrl);
+     14|     await prisma.$executeRawUnsafe(`
+       |     ^
+     15|       INSERT INTO "League" (id,name,"countryCode","updatedAt") VALUES …
+     16|       INSERT INTO "Season" (id,"leagueId",label,"startsOn","endsOn","u…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/39]⎯
+
+ FAIL  |integration| tests/integration/phase-03-security.test.ts > Phase 3 trust boundaries
+PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42501`. Message: `could not open file "base/16384/2601": Read-only file system`
+ ❯ vn.handleRequestError node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/RequestHandler.ts:238:12
+ ❯ vn.handleAndLogRequestError node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/RequestHandler.ts:184:11
+ ❯ vn.request node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/RequestHandler.ts:153:11
+ ❯ a node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:1014:23
+ ❯ tests/integration/phase-03-security.test.ts:74:5
+     72|   beforeAll(async () => {
+     73|     prisma = createPrismaClient(databaseUrl);
+     74|     await prisma.$executeRawUnsafe(`
+       |     ^
+     75|       INSERT INTO "League" (id,name,"countryCode","updatedAt") VALUES …
+     76|       INSERT INTO "Season" (id,"leagueId",label,"startsOn","endsOn","u…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/39]⎯
+
+ FAIL  |integration| tests/integration/phase-04-security.test.ts > Phase 04 migrated PostgreSQL security matrix
+Error: Command failed: C:\Program Files\nodejs\node.exe D:\Documents\Atom\bet-stats\packages\database\node_modules\prisma\build\index.js migrate deploy
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+Error: Schema engine error:
+
+
+ ❯ tests/integration/phase-04-security.test.ts:50:5
+     48|     if (!port) throw new Error("PostgreSQL port was not published");
+     49|     const databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${po…
+     50|     execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], {…
+       |     ^
+     51|     prisma = createPrismaClient(databaseUrl);
+     52|     await seedCanonicalSources();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/39]⎯
+
+ FAIL  |integration| tests/integration/replay-boundary.test.ts [ tests/integration/replay-boundary.test.ts ]
+Error: ENOSPC: no space left on device, write
+ ❯ node_modules/.pnpm/bullmq@6.3.2_ioredis@5.11.1_pg@8.23.0/node_modules/bullmq/dist/esm/classes/redis-connection.js:6:1
+      4| import { version as packageVersion } from '../version';
+      5| import * as scripts from '../scripts';
+      6| import { createIORedisClient, isIRedisClient } from './ioredis-client';
+       | ^
+      7| import { createNodeRedisClient } from './node-redis-client';
+      8| import { createBunRedisClient } from './bun-redis-client';
+ ❯ node_modules/.pnpm/bullmq@6.3.2_ioredis@5.11.1_pg@8.23.0/node_modules/bullmq/dist/esm/utils/create-backend.js:2:1
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/39]⎯
+
+ FAIL  |integration| tests/integration/value-receipt.test.ts > selection-aware value receipts
+PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42501`. Message: `could not open file "base/16384/2601": Read-only file system`
+ ❯ vn.handleRequestError node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/RequestHandler.ts:238:12
+ ❯ vn.handleAndLogRequestError node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/RequestHandler.ts:184:11
+ ❯ vn.request node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/RequestHandler.ts:153:11
+ ❯ a node_modules/.pnpm/@prisma+client@7.10.0_prism_cce07eb90da4be2a30a38e203f56ad16/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:1014:23
+ ❯ tests/integration/value-receipt.test.ts:33:5
+     31|   beforeAll(async () => {
+     32|     prisma = createPrismaClient(databaseUrl);
+     33|     await prisma.$executeRawUnsafe(`
+       |     ^
+     34|       INSERT INTO "League" (id,name,"countryCode","updatedAt") VALUES …
+     35|       INSERT INTO "Season" (id,"leagueId",label,"startsOn","endsOn","u…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/39]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |integration| tests/integration/live-provider-harness-smoke.test.ts > owned live provider stack > migrates, executes production routing, enrichment and forecasts, and reaches PostgreSQL Redis API web and worker
+Error: Command failed: docker run -d --name bet-stats-p5-pg-19740-1790353782429 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=bet_stats -p 127.0.0.1::5432 postgres:18-alpine
+docker: Error response from daemon: write /var/lib/desktop-containerd/daemon/io.containerd.metadata.v1.bolt/meta.db: read-only file system
+
+Run 'docker run --help' for more information
+
+ ❯ docker tests/e2e/live-provider-stack.ts:24:39
+     22|   comparison: "live-comparison-fixture",
+     23| } as const;
+     24| const docker = (...args: string[]) => execFileSync("docker", args, { e…
+       |                                       ^
+     25| async function waitForPostgres(container: string) {
+     26|   let lastError: unknown;
+ ❯ startLiveProviderStack tests/e2e/live-provider-stack.ts:70:5
+ ❯ tests/integration/live-provider-harness-smoke.test.ts:14:209
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/39]⎯
+
+ FAIL  |integration| tests/integration/privacy-retention.test.ts > retained-view bounds migration > quarantines legacy values accepted by the preceding PostgreSQL schema before narrowing
+Error: Command failed: docker exec bet-stats-privacy-legacy-14916 psql -v ON_ERROR_STOP=1 -U postgres -d bet_stats -c BEGIN -f /tmp/migration.sql -c COMMIT
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  the database system is shutting down
+
+ ❯ docker tests/integration/privacy-retention.test.ts:91:10
+     89|
+     90| function docker(...args: string[]): string {
+     91|   return execFileSync("docker", args, { encoding: "utf8", stdio: ["ign…
+       |          ^
+     92| }
+     93|
+ ❯ tests/integration/privacy-retention.test.ts:123:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/39]⎯
+

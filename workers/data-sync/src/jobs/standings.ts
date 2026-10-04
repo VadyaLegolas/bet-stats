@@ -2,12 +2,14 @@ import { createHash, randomUUID } from "node:crypto";
 
 import type { PrismaClient, ReplayProviderPolicyRepository } from "@bet-stats/database";
 import { reservePriorityRequest } from "@bet-stats/domain";
-import type { NormalizedStandingSnapshot, StandingsProvider, StandingsRequestCoverage } from "@bet-stats/football-data";
+import { classifyProviderFailure, createProviderRoute, providerRouteJobId, type NormalizedStandingSnapshot, type StandingsProvider, type StandingsRequestCoverage } from "@bet-stats/football-data";
 
 import { runGatedIngestion, type CircuitProbeRegistry, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
 import type { ReplayJobData } from "../queues/index.js";
 import type { ReplayExecutionContext } from "../queues/replay-execution.js";
 import { readReplayWorkerProviderPolicy } from "../resilience/provider-policy.js";
+import { callMappedStandingsProvider, createMappedProviderCandidates, executeDurableMappedRoute, resolveEndpointCandidateMappings, type LiveProviderFactories } from "../ingestion/provider-route-runtime.js";
+import { resolveCandidateExternalMapping } from "./fixtures.js";
 
 export interface StandingsSyncInput {
   provider: string;
@@ -31,6 +33,11 @@ export interface StandingsSyncInput {
   now?: Date;
   beforeDispatch?: () => Promise<void>;
   publish?: (snapshot: NormalizedStandingSnapshot) => Promise<void>;
+}
+
+export function createStandingsJobRoute(scope: { competition: string; season: string }) {
+  const route = createProviderRoute({ ...scope, endpoint: "STANDINGS" });
+  return { jobId: providerRouteJobId(route), route };
 }
 
 export function runStandingsSync(input: StandingsSyncInput): Promise<GatedIngestionResult<NormalizedStandingSnapshot>> {
@@ -76,6 +83,8 @@ export function runStandingsSync(input: StandingsSyncInput): Promise<GatedIngest
 export async function runReplayStandingsJob(input: ReplayJobData, dependencies: {
   database: PrismaClient;
   providerFactory: StandingsSyncInput["providerFactory"];
+  providerFactories?: LiveProviderFactories;
+  providerRoutingRepository?: any;
   providerPolicyRepository: ReplayProviderPolicyRepository;
   circuitRegistry: CircuitProbeRegistry;
 }, context: ReplayExecutionContext): Promise<void> {
@@ -87,8 +96,16 @@ export async function runReplayStandingsJob(input: ReplayJobData, dependencies: 
     endpointFamily: "STANDINGS",
   });
   const snapshot = policy.snapshot;
-  const refs = await dependencies.database.$queryRawUnsafe<Array<{ leagueId: string; seasonId: string }>>(`SELECT l."leagueId",s."seasonId" FROM "LeagueExternalRef" l JOIN "SeasonExternalRef" s ON s.provider=l.provider JOIN "Season" season ON season.id=s."seasonId" AND season."leagueId"=l."leagueId" WHERE l.provider=$1 AND l."externalId"=$2 AND s."externalId"=$3 LIMIT 1`, input.input.provider, input.input.competitionId, input.input.seasonId);
-  const ref = refs[0]; if (!ref) throw Object.assign(new Error("IDENTITY_UNRESOLVED"), { code: "IDENTITY_UNRESOLVED" });
+  const refs = await dependencies.database.$queryRawUnsafe<Array<{ leagueId: string; seasonId: string }>>(`SELECT l."leagueId",s."seasonId" FROM "LeagueExternalRef" l JOIN "SeasonExternalRef" s ON s.provider=l.provider AND s."leagueId"=l."leagueId" JOIN "Season" season ON season.id=s."seasonId" AND season."leagueId"=s."leagueId" WHERE l.provider=$1 AND l."externalId"=$2 AND s."externalId"=$3 LIMIT 2`, input.input.provider, input.input.competitionId, input.input.seasonId);
+  const ref = refs[0]; if (refs.length !== 1 || !ref) throw Object.assign(new Error(refs.length ? "IDENTITY_AMBIGUOUS" : "IDENTITY_UNRESOLVED"), { code: refs.length ? "IDENTITY_AMBIGUOUS" : "IDENTITY_UNRESOLVED" });
+  const mapped = await resolveEndpointCandidateMappings({ competition: input.input.competitionId, season: input.input.seasonId, endpoint: "STANDINGS", leagueId: ref.leagueId, seasonId: ref.seasonId, resolveMapping: (leagueId, seasonId, provider) => resolveCandidateExternalMapping(dependencies.database, leagueId, seasonId, provider) });
+  if (dependencies.providerFactories && dependencies.providerRoutingRepository) {
+    const coverage = { competitionCode: input.input.competitionId as StandingsRequestCoverage["competitionCode"] };
+    const routed = await executeDurableMappedRoute<NormalizedStandingSnapshot>({ database: dependencies.database, repository: dependencies.providerRoutingRepository, context, route: mapped.route, candidates: createMappedProviderCandidates(mapped.route, mapped.mappings, dependencies.providerFactories), leagueId: ref.leagueId, seasonId: ref.seasonId, correlationId: `${input.logicalId}:${input.revision}:STANDINGS`, attemptKey: `${input.logicalId}:${input.revision}:STANDINGS`, allowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, lane: snapshot.lane!, call: (dispatch) => callMappedStandingsProvider(dispatch, coverage) as Promise<NormalizedStandingSnapshot> });
+    if (routed.status === "limited") throw Object.assign(new Error(routed.reason), { code: routed.reason });
+    await context.publish((transaction) => persistStandingSnapshot(transaction as unknown as PrismaClient, ref.leagueId, ref.seasonId, routed.value, true), completionManifest(input));
+    return;
+  }
   const jobKey = `${input.logicalId}:${input.revision}:${context.attemptNumber}:request:1`;
   const result = await runStandingsSync({ provider: input.input.provider, endpoint: "STANDINGS", capability: "SUPPORTED", circuit: snapshot.circuit.state!, circuitRegistry: dependencies.circuitRegistry, lane: snapshot.lane!, allowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, resetTimezone: snapshot.resetTimezone, resetDate: snapshot.resetDate!, jobKey, coverage: { competitionCode: input.input.competitionId as StandingsRequestCoverage["competitionCode"] }, providerFactory: dependencies.providerFactory, database: dependencies.database, leagueId: ref.leagueId, seasonId: ref.seasonId, reserve: () => context.admitRequest((transaction) => reservePriorityRequest({ database: transaction as unknown as PrismaClient, provider: input.input.provider, resetDate: snapshot.resetDate!, resetTimezone: snapshot.resetTimezone, endpointFamily: "STANDINGS", lane: snapshot.lane!, configuredAllowance: snapshot.configuredAllowance!, criticalHeadroom: snapshot.criticalHeadroom!, jobKey })), beforeDispatch: context.assertOwner, publish: (standing) => context.publish((transaction) => persistStandingSnapshot(transaction as unknown as PrismaClient, ref.leagueId, ref.seasonId, standing, true), completionManifest(input)) });
   if (result.status !== "completed") {

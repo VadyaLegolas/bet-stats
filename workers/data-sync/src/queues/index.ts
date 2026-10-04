@@ -1,6 +1,7 @@
-import { Queue, Worker, UnrecoverableError, type Job, type JobsOptions, type Processor } from "bullmq";
+import { DelayedError, Queue, Worker, UnrecoverableError, type Job, type JobsOptions, type Processor } from "bullmq";
 import type { PrismaClient } from "@bet-stats/database";
 import { claimReplayExecution, type ReplayExecutionContext, type ReplayExecutionLeaseOptions } from "./replay-execution.js";
+import type { BacktestPlanReceipt } from "../jobs/backtests.js";
 
 export type SyncLane = "critical" | "standard" | "optional";
 export type CriticalJobName = "fixtures" | "results";
@@ -10,6 +11,109 @@ export const standardQueue = (prefix = "bet-stats") => `${prefix}-sync-standard`
 export const optionalQueue = (prefix = "bet-stats") => `${prefix}-sync-optional`;
 
 export const SYNC_MAX_ATTEMPTS = 3;
+export const SETTLEMENT_MAX_ATTEMPTS = 3;
+export const BACKTEST_MAX_ATTEMPTS = 3;
+export const ENRICHMENT_MAX_ATTEMPTS = 2;
+
+export type EnrichmentEndpoint = "LINEUPS" | "INJURIES" | "ODDS" | "STATISTICS";
+export interface EnrichmentJobData { fixtureId: string; endpoint: EnrichmentEndpoint; cutoff: string; runAt: string; policyVersion: string }
+
+export function createEnrichmentJobId(data: EnrichmentJobData): string {
+  return `${data.policyVersion}:${data.fixtureId}:${data.endpoint}:${data.runAt}`;
+}
+
+export function createEnrichmentSchedule(input: { fixtureId: string; kickoffUtc: string; policyVersion: string }): EnrichmentJobData[] {
+  const kickoff = new Date(input.kickoffUtc);
+  if (Number.isNaN(kickoff.getTime())) throw new Error("INVALID_ENRICHMENT_KICKOFF");
+  const cutoff = new Date(kickoff.getTime() - 60 * 60_000).toISOString();
+  return (["LINEUPS", "INJURIES", "ODDS", "STATISTICS"] as const).map((endpoint) => ({ fixtureId: input.fixtureId, endpoint, cutoff, runAt: cutoff, policyVersion: input.policyVersion }));
+}
+
+export function createEnrichmentQueue(input: { redisUrl: string; prefix?: string; queueFactory?: typeof Queue; now?: () => Date }) {
+  const QueueFactory = input.queueFactory ?? Queue;
+  const queue = new QueueFactory(optionalQueue(input.prefix), { connection: redisConnection(input.redisUrl) }) as Queue<EnrichmentJobData>;
+  return {
+    enqueue: (data: EnrichmentJobData) => queue.add(data.endpoint.toLowerCase(), data, { attempts: ENRICHMENT_MAX_ATTEMPTS, backoff: { type: "exponential", delay: 1_000, jitter: 0.25 }, delay: Math.max(0, Date.parse(data.runAt) - (input.now?.() ?? new Date()).getTime()), removeOnComplete: { age: 86_400, count: 1_000 }, removeOnFail: { age: 604_800, count: 5_000 }, jobId: createEnrichmentJobId(data).replaceAll(":", "-") }),
+    close: () => queue.close(),
+  };
+}
+
+export function createEnrichmentWorker(input: { redisUrl: string; prefix?: string; execute: (data: EnrichmentJobData) => Promise<unknown>; workerFactory?: typeof Worker }) {
+  const WorkerFactory = input.workerFactory ?? Worker;
+  return new WorkerFactory<EnrichmentJobData>(optionalQueue(input.prefix), async (job: Job<EnrichmentJobData>) => {
+    const result = await input.execute(job.data);
+    if (isEnrichmentReschedule(result)) {
+      await job.moveToDelayed(Date.parse(result.runAt), job.token);
+      throw new DelayedError();
+    }
+    return result;
+  }, { connection: redisConnection(input.redisUrl), concurrency: 1, maxStalledCount: 2, lockDuration: 30_000 });
+}
+
+function isEnrichmentReschedule(value: unknown): value is { status: "reschedule"; runAt: string } {
+  return typeof value === "object" && value !== null && (value as { status?: unknown }).status === "reschedule" && typeof (value as { runAt?: unknown }).runAt === "string";
+}
+
+export interface BacktestJobData { planId: string; planHash: string; correlationId: string }
+export function backtestQueue(prefix = "bet-stats"): string {
+  if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) throw new Error("Queue prefix contains unsupported characters");
+  return `${prefix}-backtest`;
+}
+export function createBacktestQueue(input: { redisUrl: string; prefix?: string }) {
+  const queue = new Queue<BacktestJobData>(backtestQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
+  return {
+    enqueue: (data: BacktestJobData) => queue.add("rolling-origin", data, { attempts: BACKTEST_MAX_ATTEMPTS, backoff: { type: "exponential", delay: 1_000, jitter: 0.25 }, removeOnComplete: { age: 86_400, count: 1_000 }, removeOnFail: { age: 604_800, count: 5_000 }, jobId: `backtest-${data.planId}-${data.planHash}` }),
+    close: () => queue.close(),
+  };
+}
+export function createBacktestWorker(input: { redisUrl: string; prefix?: string; loadPlan: (id: string) => Promise<BacktestPlanReceipt | null>; execute: (plan: BacktestPlanReceipt, data: BacktestJobData) => Promise<unknown> }) {
+  return new Worker<BacktestJobData>(backtestQueue(input.prefix), async (job) => {
+    const data = job.data;
+    if (!data || typeof data.planId !== "string" || typeof data.planHash !== "string" || typeof data.correlationId !== "string") throw new UnrecoverableError("INVALID_BACKTEST_JOB");
+    const plan = await input.loadPlan(data.planId);
+    if (!plan) throw new UnrecoverableError("BACKTEST_PLAN_NOT_FOUND");
+    if (plan.planHash !== data.planHash) throw new UnrecoverableError("BACKTEST_PLAN_HASH_MISMATCH");
+    return input.execute(plan, data);
+  }, { connection: redisConnection(input.redisUrl), concurrency: 1, maxStalledCount: 2, lockDuration: 60_000 });
+}
+
+export interface SettlementJobData {
+  fixtureId: string;
+  resultVersionId: string;
+  forecastSnapshotId: string;
+  policyVersion: string;
+  policyHash: string;
+  correlationId: string;
+}
+
+export function settlementQueue(prefix = "bet-stats"): string {
+  if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) throw new Error("Queue prefix contains unsupported characters");
+  return `${prefix}-settlement`;
+}
+
+export function createSettlementJobId(data: SettlementJobData): string {
+  return `settlement:${data.resultVersionId}:${data.policyHash}:${data.forecastSnapshotId}`;
+}
+
+export function createSettlementQueue(input: { redisUrl: string; prefix?: string }) {
+  const queue = new Queue<SettlementJobData>(settlementQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
+  return {
+    enqueue: (data: SettlementJobData) => queue.add("settlement", data, {
+      attempts: SETTLEMENT_MAX_ATTEMPTS,
+      backoff: { type: "exponential", delay: 1_000, jitter: 0.25 },
+      removeOnComplete: { age: 86_400, count: 1_000 },
+      removeOnFail: { age: 604_800, count: 5_000 },
+      jobId: createSettlementJobId(data).replaceAll(":", "-"),
+    }),
+    close: () => queue.close(),
+  };
+}
+
+export function createSettlementWorker(input: { redisUrl: string; prefix?: string; execute: (data: SettlementJobData) => Promise<unknown> }) {
+  return new Worker<SettlementJobData>(settlementQueue(input.prefix), (job) => input.execute(job.data), {
+    connection: redisConnection(input.redisUrl), concurrency: 2, maxStalledCount: 2, lockDuration: 30_000,
+  });
+}
 
 export function createSyncJobOptions(_name: CriticalJobName): JobsOptions {
   return {

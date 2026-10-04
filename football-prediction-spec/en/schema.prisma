@@ -1,0 +1,371 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum FixtureStatus {
+  SCHEDULED
+  LIVE
+  FINISHED
+  POSTPONED
+  CANCELLED
+}
+
+enum SnapshotType {
+  INITIAL
+  PRE_MATCH
+  LINEUP_CONFIRMED
+  FINAL
+}
+
+enum AvailabilityStatus {
+  INJURED
+  SUSPENDED
+  DOUBTFUL
+  UNAVAILABLE
+}
+
+enum BetStatus {
+  OPEN
+  WON
+  LOST
+  VOID
+}
+
+enum ApiEndpointType {
+  FIXTURES
+  RESULTS
+  LINEUPS
+  INJURIES
+  ODDS
+  STATISTICS
+  MISC
+}
+
+// --- Canonical entities + external provider mapping ---
+// Team/Player no longer store provider+externalId directly: the same
+// team/player may come from multiple providers, and without this split
+// switching to the fallback source creates duplicate records (see SPEC.md section 14).
+
+model League {
+  id          String    @id @default(cuid())
+  name        String
+  country     String?
+  isEnabled   Boolean   @default(true)
+  seasons     Season[]
+  fixtures    Fixture[]
+  externalRefs LeagueExternalRef[]
+}
+
+model LeagueExternalRef {
+  id         String @id @default(cuid())
+  leagueId   String
+  provider   String
+  externalId String
+  league     League @relation(fields: [leagueId], references: [id])
+
+  @@unique([provider, externalId])
+}
+
+model Season {
+  id        String    @id @default(cuid())
+  leagueId  String
+  year      Int
+  league    League    @relation(fields: [leagueId], references: [id])
+  fixtures  Fixture[]
+
+  @@unique([leagueId, year])
+}
+
+model Team {
+  id             String            @id @default(cuid())
+  name           String
+  country        String?
+  logoUrl        String?
+  homeFixtures   Fixture[]         @relation("HomeTeam")
+  awayFixtures   Fixture[]         @relation("AwayTeam")
+  teamStats      TeamMatchStats[]
+  eloHistory     TeamElo[]
+  players        Player[]
+  externalRefs   TeamExternalRef[]
+}
+
+model TeamExternalRef {
+  id             String   @id @default(cuid())
+  teamId         String
+  provider       String
+  externalId     String
+  rawName        String   // team name as returned by this provider — needed for fuzzy matching
+  matchedBy      String   // "exact_id" | "fuzzy_name" | "manual_admin"
+  matchedAt      DateTime @default(now())
+  team           Team     @relation(fields: [teamId], references: [id])
+
+  @@unique([provider, externalId])
+}
+
+model Player {
+  id           String              @id @default(cuid())
+  teamId       String?
+  name         String
+  position     String?
+  team         Team?               @relation(fields: [teamId], references: [id])
+  injuries     Injury[]
+  lineups      LineupPlayer[]
+  externalRefs PlayerExternalRef[]
+}
+
+model PlayerExternalRef {
+  id         String   @id @default(cuid())
+  playerId   String
+  provider   String
+  externalId String
+  rawName    String
+  matchedBy  String
+  matchedAt  DateTime @default(now())
+  player     Player   @relation(fields: [playerId], references: [id])
+
+  @@unique([provider, externalId])
+}
+
+model Fixture {
+  id             String        @id @default(cuid())
+  leagueId       String
+  seasonId       String
+  homeTeamId     String
+  awayTeamId     String
+  kickoff        DateTime
+  status         FixtureStatus @default(SCHEDULED)
+  homeScore      Int?
+  awayScore      Int?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  league         League               @relation(fields: [leagueId], references: [id])
+  season         Season               @relation(fields: [seasonId], references: [id])
+  homeTeam       Team                 @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam       Team                 @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  teamStats      TeamMatchStats[]
+  injuries       Injury[]
+  lineups        Lineup[]
+  odds           Odds[]
+  predictions    PredictionSnapshot[]
+  betCandidates  BetCandidate[]
+  externalRefs   FixtureExternalRef[]
+
+  // Cross-provider fixture reconciliation: the same real-world match
+  // must not create two Fixture rows. Uniqueness is enforced by
+  // (homeTeamId, awayTeamId, kickoff) with day-level rounding of kickoff,
+  // applied in the lookup logic before a new row is created.
+  @@index([kickoff])
+  @@index([homeTeamId, awayTeamId, kickoff])
+}
+
+model FixtureExternalRef {
+  id         String   @id @default(cuid())
+  fixtureId  String
+  provider   String
+  externalId String
+  matchedBy  String   // "exact_id" | "team_pair_and_date" | "manual_admin"
+  matchedAt  DateTime @default(now())
+  fixture    Fixture  @relation(fields: [fixtureId], references: [id])
+
+  @@unique([provider, externalId])
+}
+
+model TeamMatchStats {
+  id             String   @id @default(cuid())
+  fixtureId      String
+  teamId         String
+  isHome         Boolean
+  goals          Int?
+  shots          Int?
+  shotsOnTarget  Int?
+  possession     Float?
+  corners        Int?
+  yellowCards    Int?
+  redCards       Int?
+  capturedAt     DateTime @default(now())
+  fixture        Fixture  @relation(fields: [fixtureId], references: [id])
+  team           Team     @relation(fields: [teamId], references: [id])
+
+  @@unique([fixtureId, teamId])
+}
+
+model Injury {
+  id          String             @id @default(cuid())
+  fixtureId   String
+  playerId    String
+  status      AvailabilityStatus
+  reason      String?
+  source      String             // "provider:<name>" | "manual_admin" | "manual_user"
+  capturedAt  DateTime           @default(now())
+  fixture     Fixture            @relation(fields: [fixtureId], references: [id])
+  player      Player             @relation(fields: [playerId], references: [id])
+
+  @@index([fixtureId, capturedAt])
+}
+
+model Lineup {
+  id          String         @id @default(cuid())
+  fixtureId   String
+  teamId      String
+  confirmed   Boolean        @default(false)
+  formation   String?
+  capturedAt  DateTime       @default(now())
+  fixture     Fixture        @relation(fields: [fixtureId], references: [id])
+  players     LineupPlayer[]
+
+  @@index([fixtureId, capturedAt])
+}
+
+model LineupPlayer {
+  id        String  @id @default(cuid())
+  lineupId  String
+  playerId  String
+  isStarter Boolean @default(false)
+  position  String?
+  lineup    Lineup  @relation(fields: [lineupId], references: [id])
+  player    Player  @relation(fields: [playerId], references: [id])
+
+  @@unique([lineupId, playerId])
+}
+
+model TeamElo {
+  id          String   @id @default(cuid())
+  teamId      String
+  rating      Float
+  fixtureId   String?
+  capturedAt  DateTime @default(now())
+  team        Team     @relation(fields: [teamId], references: [id])
+
+  @@index([teamId, capturedAt])
+}
+
+model Odds {
+  id          String   @id @default(cuid())
+  fixtureId   String
+  bookmaker   String
+  market      String
+  selection   String
+  odds        Float
+  source      String   // "provider:<name>" | "manual_user"
+  capturedAt  DateTime @default(now())
+  fixture     Fixture  @relation(fields: [fixtureId], references: [id])
+
+  @@index([fixtureId, market, capturedAt])
+}
+
+model ModelVersion {
+  id            String   @id @default(cuid())
+  name          String
+  version       String
+  description   String?
+  createdAt     DateTime @default(now())
+  predictions   PredictionSnapshot[]
+
+  @@unique([name, version])
+}
+
+model PredictionSnapshot {
+  id                     String       @id @default(cuid())
+  fixtureId              String
+  modelVersionId         String
+  type                   SnapshotType
+  homeProbability        Float
+  drawProbability        Float
+  awayProbability        Float
+  over15Probability      Float?
+  over25Probability      Float?
+  over35Probability      Float?
+  bttsYesProbability     Float?
+  expectedHomeGoals      Float?
+  expectedAwayGoals      Float?
+
+  // Confidence Score and its components (see SPEC.md section 10.1) —
+  // stored separately so the formula can be recalculated/recalibrated
+  // retroactively without losing the underlying inputs.
+  confidence             Float?
+  dataCompletenessScore  Float?
+  lineupConfirmedScore   Float?
+  dataFreshnessScore     Float?
+  sourceReliabilityScore Float?
+  modelStabilityScore    Float?
+
+  capturedAt             DateTime     @default(now())
+  fixture                Fixture      @relation(fields: [fixtureId], references: [id])
+  modelVersion           ModelVersion @relation(fields: [modelVersionId], references: [id])
+
+  @@index([fixtureId, capturedAt])
+}
+
+model BetCandidate {
+  id                  String    @id @default(cuid())
+  fixtureId           String
+  market              String
+  selection           String
+  modelProbability    Float
+  marketProbability   Float
+  odds                Float
+  edge                Float
+  expectedValue       Float
+  confidence          Float?
+  status              BetStatus @default(OPEN)
+  profitUnits         Float?
+  createdAt           DateTime  @default(now())
+  resolvedAt          DateTime?
+  fixture             Fixture   @relation(fields: [fixtureId], references: [id])
+
+  @@index([fixtureId, createdAt])
+}
+
+model BacktestResult {
+  id            String   @id @default(cuid())
+  modelName     String
+  modelVersion  String
+  market        String
+  sampleSize    Int
+  brierScore    Float?
+  logLoss       Float?
+  accuracy      Float?
+  roi           Float?
+  yield         Float?
+  clv           Float?
+  periodStart   DateTime
+  periodEnd     DateTime
+  createdAt     DateTime @default(now())
+}
+
+// Budget is now tracked per provider + date + endpoint type instead of a
+// single number — otherwise the CRITICAL/HIGH/MEDIUM/LOW prioritization
+// from ARCHITECTURE.md has nothing to enforce it at the data level.
+model DailyApiBudget {
+  id           String          @id @default(cuid())
+  provider     String
+  date         DateTime
+  endpointType ApiEndpointType
+  usedRequests Int             @default(0)
+  maxRequests  Int             @default(100)
+  priority     Int             @default(3) // 1=CRITICAL, 2=HIGH, 3=MEDIUM, 4=LOW
+
+  @@unique([provider, date, endpointType])
+}
+
+// Used for sourceReliabilityScore in the Confidence Score and for
+// surfacing a "data quality" indicator to the user per match/league.
+model DataQualityLog {
+  id                String   @id @default(cuid())
+  provider          String
+  leagueId          String?
+  endpointType      ApiEndpointType
+  requestedAt       DateTime @default(now())
+  succeeded         Boolean
+  httpStatus        Int?
+  errorMessage      String?
+  completenessRatio Float?   // share of expected fields actually present in the response
+
+  @@index([provider, endpointType, requestedAt])
+}

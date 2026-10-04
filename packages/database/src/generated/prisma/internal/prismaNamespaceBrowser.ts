@@ -58,6 +58,9 @@ export const ModelName = {
   Team: 'Team',
   Player: 'Player',
   Fixture: 'Fixture',
+  BacktestPlan: 'BacktestPlan',
+  BacktestWindow: 'BacktestWindow',
+  BacktestEvaluation: 'BacktestEvaluation',
   SourceObservation: 'SourceObservation',
   StandingSnapshot: 'StandingSnapshot',
   StandingSnapshotRow: 'StandingSnapshotRow',
@@ -67,9 +70,28 @@ export const ModelName = {
   ReplayDelivery: 'ReplayDelivery',
   SyncAttempt: 'SyncAttempt',
   ProviderCircuitState: 'ProviderCircuitState',
+  ProviderRouteReceipt: 'ProviderRouteReceipt',
+  ProviderRouteAttempt: 'ProviderRouteAttempt',
+  EnrichmentDecisionReceipt: 'EnrichmentDecisionReceipt',
+  ProviderQuotaObservation: 'ProviderQuotaObservation',
+  ProviderThrottleReservation: 'ProviderThrottleReservation',
   EvidenceBuild: 'EvidenceBuild',
   EvidenceComponent: 'EvidenceComponent',
+  LineupObservation: 'LineupObservation',
+  ForecastSnapshot: 'ForecastSnapshot',
+  ForecastMarket: 'ForecastMarket',
+  ManualOddsSnapshot: 'ManualOddsSnapshot',
+  RetentionSubject: 'RetentionSubject',
+  RetentionConsent: 'RetentionConsent',
+  RetainedOddsHistory: 'RetainedOddsHistory',
+  RetainedViewHistory: 'RetainedViewHistory',
+  ManualOddsSelection: 'ManualOddsSelection',
+  ValueReceipt: 'ValueReceipt',
   ResultVersion: 'ResultVersion',
+  SettlementReceipt: 'SettlementReceipt',
+  ForecastScore: 'ForecastScore',
+  ClosingOddsObservation: 'ClosingOddsObservation',
+  ValueSettlement: 'ValueSettlement',
   LeagueExternalRef: 'LeagueExternalRef',
   SeasonExternalRef: 'SeasonExternalRef',
   TeamExternalRef: 'TeamExternalRef',
@@ -187,6 +209,67 @@ export const FixtureScalarFieldEnum = {
 } as const
 
 export type FixtureScalarFieldEnum = (typeof FixtureScalarFieldEnum)[keyof typeof FixtureScalarFieldEnum]
+
+
+export const BacktestPlanScalarFieldEnum = {
+  id: 'id',
+  version: 'version',
+  planHash: 'planHash',
+  modelVersion: 'modelVersion',
+  configHash: 'configHash',
+  rangeFrom: 'rangeFrom',
+  rangeTo: 'rangeTo',
+  concurrency: 'concurrency',
+  state: 'state',
+  correlationId: 'correlationId',
+  receipt: 'receipt',
+  createdAt: 'createdAt',
+  completedAt: 'completedAt',
+  deliveryState: 'deliveryState',
+  deliveryAttempts: 'deliveryAttempts',
+  enqueuedAt: 'enqueuedAt'
+} as const
+
+export type BacktestPlanScalarFieldEnum = (typeof BacktestPlanScalarFieldEnum)[keyof typeof BacktestPlanScalarFieldEnum]
+
+
+export const BacktestWindowScalarFieldEnum = {
+  id: 'id',
+  planId: 'planId',
+  fixtureId: 'fixtureId',
+  ordinal: 'ordinal',
+  trainingEndsAt: 'trainingEndsAt',
+  forecastCutoff: 'forecastCutoff',
+  evaluationAsOf: 'evaluationAsOf',
+  state: 'state',
+  evidenceBuildIds: 'evidenceBuildIds',
+  forecastSnapshotId: 'forecastSnapshotId',
+  scoreIds: 'scoreIds',
+  failureCode: 'failureCode',
+  correlationId: 'correlationId',
+  receipt: 'receipt',
+  createdAt: 'createdAt',
+  completedAt: 'completedAt'
+} as const
+
+export type BacktestWindowScalarFieldEnum = (typeof BacktestWindowScalarFieldEnum)[keyof typeof BacktestWindowScalarFieldEnum]
+
+
+export const BacktestEvaluationScalarFieldEnum = {
+  id: 'id',
+  windowId: 'windowId',
+  evaluationAsOf: 'evaluationAsOf',
+  resultVersionId: 'resultVersionId',
+  settlementReceiptId: 'settlementReceiptId',
+  scoreIds: 'scoreIds',
+  revision: 'revision',
+  supersedesEvaluationId: 'supersedesEvaluationId',
+  isCurrent: 'isCurrent',
+  receipt: 'receipt',
+  createdAt: 'createdAt'
+} as const
+
+export type BacktestEvaluationScalarFieldEnum = (typeof BacktestEvaluationScalarFieldEnum)[keyof typeof BacktestEvaluationScalarFieldEnum]
 
 
 export const SourceObservationScalarFieldEnum = {
@@ -350,6 +433,86 @@ export const ProviderCircuitStateScalarFieldEnum = {
 export type ProviderCircuitStateScalarFieldEnum = (typeof ProviderCircuitStateScalarFieldEnum)[keyof typeof ProviderCircuitStateScalarFieldEnum]
 
 
+export const ProviderRouteReceiptScalarFieldEnum = {
+  id: 'id',
+  contentHash: 'contentHash',
+  policyVersion: 'policyVersion',
+  policyHash: 'policyHash',
+  competitionId: 'competitionId',
+  seasonId: 'seasonId',
+  endpointFamily: 'endpointFamily',
+  candidates: 'candidates',
+  selectedProvider: 'selectedProvider',
+  trigger: 'trigger',
+  outcome: 'outcome',
+  capabilitySnapshot: 'capabilitySnapshot',
+  budgetSnapshot: 'budgetSnapshot',
+  circuitSnapshot: 'circuitSnapshot',
+  correlationId: 'correlationId',
+  createdAt: 'createdAt'
+} as const
+
+export type ProviderRouteReceiptScalarFieldEnum = (typeof ProviderRouteReceiptScalarFieldEnum)[keyof typeof ProviderRouteReceiptScalarFieldEnum]
+
+
+export const ProviderRouteAttemptScalarFieldEnum = {
+  id: 'id',
+  routeReceiptId: 'routeReceiptId',
+  attemptKey: 'attemptKey',
+  provider: 'provider',
+  state: 'state',
+  reason: 'reason',
+  observationId: 'observationId',
+  admitted: 'admitted',
+  createdAt: 'createdAt'
+} as const
+
+export type ProviderRouteAttemptScalarFieldEnum = (typeof ProviderRouteAttemptScalarFieldEnum)[keyof typeof ProviderRouteAttemptScalarFieldEnum]
+
+
+export const EnrichmentDecisionReceiptScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  provider: 'provider',
+  endpoint: 'endpoint',
+  policyVersion: 'policyVersion',
+  cutoff: 'cutoff',
+  outcome: 'outcome',
+  reason: 'reason',
+  createdAt: 'createdAt'
+} as const
+
+export type EnrichmentDecisionReceiptScalarFieldEnum = (typeof EnrichmentDecisionReceiptScalarFieldEnum)[keyof typeof EnrichmentDecisionReceiptScalarFieldEnum]
+
+
+export const ProviderQuotaObservationScalarFieldEnum = {
+  id: 'id',
+  routeAttemptId: 'routeAttemptId',
+  provider: 'provider',
+  endpointFamily: 'endpointFamily',
+  observedLimit: 'observedLimit',
+  observedRemaining: 'observedRemaining',
+  resetAt: 'resetAt',
+  observedAt: 'observedAt'
+} as const
+
+export type ProviderQuotaObservationScalarFieldEnum = (typeof ProviderQuotaObservationScalarFieldEnum)[keyof typeof ProviderQuotaObservationScalarFieldEnum]
+
+
+export const ProviderThrottleReservationScalarFieldEnum = {
+  id: 'id',
+  routeAttemptId: 'routeAttemptId',
+  provider: 'provider',
+  endpointFamily: 'endpointFamily',
+  reservationKey: 'reservationKey',
+  windowStart: 'windowStart',
+  windowEnd: 'windowEnd',
+  reservedAt: 'reservedAt'
+} as const
+
+export type ProviderThrottleReservationScalarFieldEnum = (typeof ProviderThrottleReservationScalarFieldEnum)[keyof typeof ProviderThrottleReservationScalarFieldEnum]
+
+
 export const EvidenceBuildScalarFieldEnum = {
   id: 'id',
   teamId: 'teamId',
@@ -379,6 +542,157 @@ export const EvidenceComponentScalarFieldEnum = {
 export type EvidenceComponentScalarFieldEnum = (typeof EvidenceComponentScalarFieldEnum)[keyof typeof EvidenceComponentScalarFieldEnum]
 
 
+export const LineupObservationScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  observationId: 'observationId',
+  status: 'status',
+  confirmedAt: 'confirmedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type LineupObservationScalarFieldEnum = (typeof LineupObservationScalarFieldEnum)[keyof typeof LineupObservationScalarFieldEnum]
+
+
+export const ForecastSnapshotScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  kind: 'kind',
+  state: 'state',
+  revision: 'revision',
+  supersedesForecastId: 'supersedesForecastId',
+  officialLineupObservationId: 'officialLineupObservationId',
+  cutoff: 'cutoff',
+  modelVersion: 'modelVersion',
+  modelHash: 'modelHash',
+  configVersion: 'configVersion',
+  configHash: 'configHash',
+  inputHash: 'inputHash',
+  evidenceFingerprint: 'evidenceFingerprint',
+  sourceRefs: 'sourceRefs',
+  probabilities: 'probabilities',
+  confidence: 'confidence',
+  assumptions: 'assumptions',
+  receipt: 'receipt',
+  issuedAt: 'issuedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ForecastSnapshotScalarFieldEnum = (typeof ForecastSnapshotScalarFieldEnum)[keyof typeof ForecastSnapshotScalarFieldEnum]
+
+
+export const ForecastMarketScalarFieldEnum = {
+  id: 'id',
+  forecastSnapshotId: 'forecastSnapshotId',
+  market: 'market',
+  probabilities: 'probabilities',
+  createdAt: 'createdAt'
+} as const
+
+export type ForecastMarketScalarFieldEnum = (typeof ForecastMarketScalarFieldEnum)[keyof typeof ForecastMarketScalarFieldEnum]
+
+
+export const ManualOddsSnapshotScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  market: 'market',
+  inputHash: 'inputHash',
+  source: 'source',
+  replacesOddsId: 'replacesOddsId',
+  receipt: 'receipt',
+  submittedAt: 'submittedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ManualOddsSnapshotScalarFieldEnum = (typeof ManualOddsSnapshotScalarFieldEnum)[keyof typeof ManualOddsSnapshotScalarFieldEnum]
+
+
+export const RetentionSubjectScalarFieldEnum = {
+  id: 'id',
+  providerMode: 'providerMode',
+  subjectKey: 'subjectKey',
+  approvedAt: 'approvedAt',
+  retentionBlockedAt: 'retentionBlockedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RetentionSubjectScalarFieldEnum = (typeof RetentionSubjectScalarFieldEnum)[keyof typeof RetentionSubjectScalarFieldEnum]
+
+
+export const RetentionConsentScalarFieldEnum = {
+  id: 'id',
+  subjectId: 'subjectId',
+  policyVersion: 'policyVersion',
+  policyEffectiveAt: 'policyEffectiveAt',
+  durationDays: 'durationDays',
+  grantedAt: 'grantedAt',
+  expiresAt: 'expiresAt',
+  revokedAt: 'revokedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RetentionConsentScalarFieldEnum = (typeof RetentionConsentScalarFieldEnum)[keyof typeof RetentionConsentScalarFieldEnum]
+
+
+export const RetainedOddsHistoryScalarFieldEnum = {
+  id: 'id',
+  subjectId: 'subjectId',
+  consentId: 'consentId',
+  oddsSnapshotId: 'oddsSnapshotId',
+  retainedAt: 'retainedAt',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RetainedOddsHistoryScalarFieldEnum = (typeof RetainedOddsHistoryScalarFieldEnum)[keyof typeof RetainedOddsHistoryScalarFieldEnum]
+
+
+export const RetainedViewHistoryScalarFieldEnum = {
+  id: 'id',
+  subjectId: 'subjectId',
+  consentId: 'consentId',
+  resourceType: 'resourceType',
+  resourceId: 'resourceId',
+  viewedAt: 'viewedAt',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RetainedViewHistoryScalarFieldEnum = (typeof RetainedViewHistoryScalarFieldEnum)[keyof typeof RetainedViewHistoryScalarFieldEnum]
+
+
+export const ManualOddsSelectionScalarFieldEnum = {
+  id: 'id',
+  oddsSnapshotId: 'oddsSnapshotId',
+  selection: 'selection',
+  decimalOdds: 'decimalOdds',
+  createdAt: 'createdAt'
+} as const
+
+export type ManualOddsSelectionScalarFieldEnum = (typeof ManualOddsSelectionScalarFieldEnum)[keyof typeof ManualOddsSelectionScalarFieldEnum]
+
+
+export const ValueReceiptScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  market: 'market',
+  forecastSnapshotId: 'forecastSnapshotId',
+  oddsSnapshotId: 'oddsSnapshotId',
+  outcome: 'outcome',
+  selection: 'selection',
+  modelProbability: 'modelProbability',
+  noVigProbability: 'noVigProbability',
+  fairOdds: 'fairOdds',
+  edge: 'edge',
+  expectedValue: 'expectedValue',
+  supersedesValueReceiptId: 'supersedesValueReceiptId',
+  receipt: 'receipt',
+  createdAt: 'createdAt'
+} as const
+
+export type ValueReceiptScalarFieldEnum = (typeof ValueReceiptScalarFieldEnum)[keyof typeof ValueReceiptScalarFieldEnum]
+
+
 export const ResultVersionScalarFieldEnum = {
   id: 'id',
   fixtureId: 'fixtureId',
@@ -396,6 +710,103 @@ export const ResultVersionScalarFieldEnum = {
 export type ResultVersionScalarFieldEnum = (typeof ResultVersionScalarFieldEnum)[keyof typeof ResultVersionScalarFieldEnum]
 
 
+export const SettlementReceiptScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  resultVersionId: 'resultVersionId',
+  forecastSnapshotId: 'forecastSnapshotId',
+  revision: 'revision',
+  supersedesSettlementReceiptId: 'supersedesSettlementReceiptId',
+  policyVersion: 'policyVersion',
+  policyHash: 'policyHash',
+  lifecycle: 'lifecycle',
+  scoreability: 'scoreability',
+  financialEligibility: 'financialEligibility',
+  classOutcome: 'classOutcome',
+  reason: 'reason',
+  receipt: 'receipt',
+  resultObservedAt: 'resultObservedAt',
+  forecastCutoff: 'forecastCutoff',
+  settledAt: 'settledAt',
+  createdAt: 'createdAt'
+} as const
+
+export type SettlementReceiptScalarFieldEnum = (typeof SettlementReceiptScalarFieldEnum)[keyof typeof SettlementReceiptScalarFieldEnum]
+
+
+export const ForecastScoreScalarFieldEnum = {
+  id: 'id',
+  settlementReceiptId: 'settlementReceiptId',
+  forecastSnapshotId: 'forecastSnapshotId',
+  fixtureId: 'fixtureId',
+  leagueId: 'leagueId',
+  market: 'market',
+  modelVersion: 'modelVersion',
+  kickoffUtc: 'kickoffUtc',
+  outcome: 'outcome',
+  probabilities: 'probabilities',
+  classOrder: 'classOrder',
+  rawChosenProbability: 'rawChosenProbability',
+  clippedChosenProbability: 'clippedChosenProbability',
+  brierScore: 'brierScore',
+  logLoss: 'logLoss',
+  eventCount: 'eventCount',
+  formulaVersion: 'formulaVersion',
+  formulaHash: 'formulaHash',
+  supersedesForecastScoreId: 'supersedesForecastScoreId',
+  receipt: 'receipt',
+  createdAt: 'createdAt'
+} as const
+
+export type ForecastScoreScalarFieldEnum = (typeof ForecastScoreScalarFieldEnum)[keyof typeof ForecastScoreScalarFieldEnum]
+
+
+export const ClosingOddsObservationScalarFieldEnum = {
+  id: 'id',
+  fixtureId: 'fixtureId',
+  market: 'market',
+  selection: 'selection',
+  decimalOdds: 'decimalOdds',
+  oddsFormat: 'oddsFormat',
+  sourceConvention: 'sourceConvention',
+  observationKind: 'observationKind',
+  observedAt: 'observedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type ClosingOddsObservationScalarFieldEnum = (typeof ClosingOddsObservationScalarFieldEnum)[keyof typeof ClosingOddsObservationScalarFieldEnum]
+
+
+export const ValueSettlementScalarFieldEnum = {
+  id: 'id',
+  settlementReceiptId: 'settlementReceiptId',
+  valueReceiptId: 'valueReceiptId',
+  oddsSelectionId: 'oddsSelectionId',
+  closingOddsObservationId: 'closingOddsObservationId',
+  fixtureId: 'fixtureId',
+  market: 'market',
+  selection: 'selection',
+  result: 'result',
+  stakeUnits: 'stakeUnits',
+  returnUnits: 'returnUnits',
+  profitUnits: 'profitUnits',
+  policyVersion: 'policyVersion',
+  clvStatus: 'clvStatus',
+  clvReason: 'clvReason',
+  candidateOdds: 'candidateOdds',
+  candidateObservedAt: 'candidateObservedAt',
+  closingOdds: 'closingOdds',
+  closingObservedAt: 'closingObservedAt',
+  clv: 'clv',
+  clvPolicyVersion: 'clvPolicyVersion',
+  supersedesValueSettlementId: 'supersedesValueSettlementId',
+  receipt: 'receipt',
+  createdAt: 'createdAt'
+} as const
+
+export type ValueSettlementScalarFieldEnum = (typeof ValueSettlementScalarFieldEnum)[keyof typeof ValueSettlementScalarFieldEnum]
+
+
 export const LeagueExternalRefScalarFieldEnum = {
   id: 'id',
   leagueId: 'leagueId',
@@ -410,6 +821,7 @@ export type LeagueExternalRefScalarFieldEnum = (typeof LeagueExternalRefScalarFi
 export const SeasonExternalRefScalarFieldEnum = {
   id: 'id',
   seasonId: 'seasonId',
+  leagueId: 'leagueId',
   provider: 'provider',
   externalId: 'externalId',
   createdAt: 'createdAt'

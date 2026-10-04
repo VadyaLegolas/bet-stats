@@ -1,135 +1,317 @@
 # Football Prediction & Value Betting Platform
 
-Прозрачная платформа футбольной аналитики: предстоящие матчи, воспроизводимые вероятности событий и сравнение с введёнными пользователем коэффициентами. Проект не выдаёт гарантированных прогнозов и не выполняет ставки автоматически.
+Прозрачная платформа футбольной аналитики: предстоящие матчи, воспроизводимые вероятности событий и сравнение с введёнными пользователем коэффициентами. Проект **не выдаёт гарантированных прогнозов** и **не выполняет ставки автоматически**.
 
 > **Ответственное использование.** Только для совершеннолетних пользователей там, где это разрешено законом. Аналитика не является финансовой рекомендацией и не гарантирует результат. Ставки несут риск потери денег; не ставьте больше, чем можете позволить себе потерять.
 
-## Для пользователей
+---
 
-- Канонические команды и матчи с указанием источника, свежести и ограничений данных.
-- Хронологическая история команд и формы без утечки будущих данных.
-- Вероятностные прогнозы, ручной ввод коэффициентов и расчёт value только при прохождении всех проверок.
-- Прозрачные состояния «данных недостаточно», устаревших или неподдерживаемых данных.
+## 📋 Что умеет приложение (MVP)
 
-## Статус и ограничения MVP
+### Для пользователей
+- **Канонические команды и матчи** с указанием источника данных, свежести и ограничений
+- **История команд и формы** без утечки будущих данных (хронологически чистые признаки)
+- **Вероятностные прогнозы** на исходы матчей (победа 1, ничья, победа 2, тоталы, обе забивают)
+- **Ручной ввод коэффициентов** букмекеров и расчёт value (ценности) ставки
+- **Прозрачные состояния**: «данных недостаточно», «устаревшие данные», «неподдерживаемое соревнование»
 
-Завершены фазы 1–2 из 6: надёжное обнаружение матчей и исторический evidence pipeline. Фазы прогнозов/value, settlement, расширения провайдеров и release experience находятся в roadmap. MVP использует бесплатные тарифы и ручные коэффициенты; автоматические ставки, гарантии и скрытое управление риском отсутствуют.
-
-## Технологический стек
-
-Node.js 24, TypeScript 5.9, pnpm 10, Turborepo 2, Next.js 16/React 19, Tailwind CSS, NestJS 11, PostgreSQL 18, Prisma 7, Redis 8, BullMQ 6, Vitest и Playwright.
-
-## Структура monorepo
-
-```text
-apps/web/              Next.js веб-приложение
-apps/api/              NestJS REST API
-workers/data-sync/     фоновые jobs синхронизации
-packages/              общие domain, config, database и provider-пакеты
-infra/docker-compose.yml  локальные PostgreSQL и Redis
-.planning/             roadmap, планы и артефакты GSD
-```
-
-## Требования и локальный запуск
-
-Нужны Node.js `>=24 <25`, pnpm `10.34.5` и Docker с Compose.
-
-```bash
-pnpm install --frozen-lockfile
-Copy-Item .env.example .env
-docker compose -f infra/docker-compose.yml up -d
-pnpm build
-pnpm dev
-```
-
-Переменные окружения находятся в `.env.example`. Заполните только значения для своего окружения; секреты не коммитьте. Docker Compose поднимает PostgreSQL и Redis, а веб, API и worker запускаются командами monorepo.
-
-## Команды разработчика
-
-```bash
-pnpm build
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm test:integration
-pnpm test:e2e
-```
-
-## Roadmap
-
-1. Trustworthy Fixture Discovery — завершено.
-2. Historical Evidence Pipeline — завершено.
-3. Forecast and Manual Value Workbench — прогнозы и ручные коэффициенты.
-4. Settlement and Evidence Scorecard — измерение качества и финансового результата.
-5. Provider-Aware Coverage and Enrichment — дополнительные соревнования и evidence.
-6. Release Experience and Operations — мобильный UX, методология и операционный контроль.
+### Статус MVP
+- ✅ **Фаза 1**: Надёжное обнаружение матчей (fixture discovery) — завершено
+- ✅ **Фаза 2**: Исторический evidence pipeline — завершено
+- 🚧 **Фаза 3**: Прогнозы и ручной value workbench — в разработке
+- 📋 **Фазы 4–6**: Settlement, расширение провайдеров, release experience — в roadmap
 
 ---
 
-# Football Prediction & Value Betting Platform (English)
+## 🛠 Технологический стек
 
-A transparent football analytics platform for upcoming fixtures, reproducible event probabilities, and comparison with user-entered bookmaker odds. It does not provide guaranteed tips or place bets automatically.
+| Компонент | Версия |
+|-----------|--------|
+| Node.js | 24 LTS |
+| TypeScript | 5.9 |
+| pnpm | 10.34.5 |
+| Turborepo | 2.x |
+| Next.js | 16.3 (App Router, React 19) |
+| NestJS | 11.x |
+| PostgreSQL | 18.6 |
+| Prisma ORM | 7.9 LTS |
+| Redis | 8.2 |
+| BullMQ | 6.x |
+| Tailwind CSS | 4.1 |
+| TanStack Query | 5.x |
+| Recharts | 3.8 |
+| Vitest / Playwright | latest |
 
-> **Responsible use.** For adults only and only where lawful. Analytics are not financial advice and do not guarantee outcomes. Betting involves the risk of losing money; never stake more than you can afford to lose.
+---
 
-## For users
+## 📁 Структура монорепозитория
 
-- Canonical teams and fixtures with source, freshness, and data limitations.
-- Chronological team history and form features without future-data leakage.
-- Probabilistic forecasts, manual odds entry, and value calculations only when all gates pass.
-- Explicit insufficient, stale, or unsupported-data states.
-
-## Status and MVP limits
-
-Phases 1–2 of 6 are complete: trustworthy fixture discovery and the historical evidence pipeline. Forecast/value, settlement, provider breadth, and release-experience phases remain on the roadmap. The MVP uses free tiers and manual odds; automatic wagering, certainty claims, and hidden risk controls are out of scope.
-
-## Technology stack
-
-Node.js 24, TypeScript 5.9, pnpm 10, Turborepo 2, Next.js 16/React 19, Tailwind CSS, NestJS 11, PostgreSQL 18, Prisma 7, Redis 8, BullMQ 6, Vitest, and Playwright.
-
-## Monorepo structure
-
-```text
-apps/web/                 Next.js web application
-apps/api/                 NestJS REST API
-workers/data-sync/        background synchronization jobs
-packages/                 shared domain, config, database, and provider packages
-infra/docker-compose.yml  local PostgreSQL and Redis
-.planning/                roadmap, plans, and GSD artifacts
+```
+apps/web/                 Next.js веб-приложение (порт 3000)
+apps/api/                 NestJS REST API (порт 4000)
+workers/data-sync/        Фоновые jobs синхронизации данных
+packages/
+  ├── domain/             Чистая доменная логика (чистые функции, типы)
+  ├── database/           Prisma клиент и миграции
+  ├── config/             Общая конфигурация (Zod-схемы env)
+  └── providers/          Адаптеры внешних API (API-Football, Football-Data.org)
+infra/docker-compose.yml  Локальные PostgreSQL и Redis
+.planning/                Roadmap, планы и артефакты GSD
 ```
 
-## Requirements and local setup
+---
 
-You need Node.js `>=24 <25`, pnpm `10.34.5`, and Docker Compose.
+## 🚀 Быстрый старт (локальная разработка)
+
+### Требования
+- **Node.js** `>=24.0.0 <25` (LTS)
+- **pnpm** `10.34.5` (управляется через Corepack)
+- **Docker** с Compose v2
+
+### Установка
 
 ```bash
+# 1. Клонирование и установка зависимостей
+cd bet-stats
 pnpm install --frozen-lockfile
-Copy-Item .env.example .env
+
+# 2. Настройка переменных окружения
+Copy-Item .env.example .env          # PowerShell
+# cp .env.example .env                # Bash/Linux/macOS
+
+# Отредактируйте .env — заполните секреты для вашего окружения
+# (POSTGRES_PASSWORD, OPERATOR_*, FOOTBALL_DATA_API_TOKEN при необходимости)
+
+# 3. Запуск инфраструктуры
 docker compose -f infra/docker-compose.yml up -d
+
+# 4. Применение миграций БД (при первом запуске)
+pnpm --filter @bet-stats/database exec prisma migrate dev
+
+# 5. Сборка и запуск в dev-режиме
 pnpm build
 pnpm dev
 ```
 
-Environment variables are documented in `.env.example`. Set only values for your environment and never commit secrets. Docker Compose starts PostgreSQL and Redis; the web app, API, and worker run through the monorepo commands.
+После запуска:
+- **Веб-приложение**: http://localhost:3000
+- **API**: http://localhost:4000
+- **Swagger/OpenAPI**: http://localhost:4000/api
 
-## Developer commands
+---
+
+## ⚙️ Переменные окружения (`.env`)
+
+| Переменная | Описание | Обязательная |
+|------------|----------|--------------|
+| `DATABASE_URL` | Строка подключения к PostgreSQL | Да |
+| `REDIS_URL` | Строка подключения к Redis | Да |
+| `POSTGRES_PASSWORD` | Пароль БД (для docker-compose) | Да |
+| `OPERATOR_BASIC_USERNAME` | Логин операторского доступа | Да |
+| `OPERATOR_BASIC_PASSWORD` | Пароль операторского доступа | Да |
+| `OPERATOR_SUBJECT` | Subject для JWT токенов оператора | Да |
+| `OPERATOR_PROXY_SIGNING_SECRET` | Секрет подписи прокси-токенов (min 32 символа) | Да |
+| `OPERATOR_AUTHORIZED_SUBJECTS` | Разрешённые subjects (через запятую) | Да |
+| `OPERATOR_CREDENTIAL` | Отдельный секрет для оператора | Да |
+| `FOOTBALL_DATA_API_TOKEN` | Токен Football-Data.org (опционально, для live-провайдера) | Нет |
+
+> ⚠️ **Никогда не коммитьте `.env` с реальными секретами!** Используйте `.env.example` как шаблон.
+
+---
+
+## 🖥 Основные команды разработчика
 
 ```bash
+# Сборка всего монорепо
 pnpm build
+
+# Запуск в dev-режиме (web + api + worker)
+pnpm dev
+
+# Только веб (Next.js)
+pnpm --filter @bet-stats/web dev
+
+# Только API (NestJS)
+pnpm --filter @bet-stats/api dev
+
+# Только worker (data-sync)
+pnpm --filter @bet-stats/data-sync dev
+
+# Линтинг
 pnpm lint
+
+# Проверка типов
 pnpm typecheck
+
+# Unit-тесты
 pnpm test
+
+# Интеграционные тесты (требуют запущенные БД/Redis)
 pnpm test:integration
+
+# E2E тесты (Playwright)
+pnpm test:e2e
+
+# Генерация Prisma Client после изменения схемы
+pnpm --filter @bet-stats/database exec prisma generate
+
+# Создание миграции
+pnpm --filter @bet-stats/database exec prisma migrate dev --name <name>
+
+# Открытие Prisma Studio
+pnpm --filter @bet-stats/database exec prisma studio
+```
+
+---
+
+## 🌐 Основные маршруты веб-приложения
+
+| Маршрут | Описание |
+|---------|----------|
+| `/` | Главная: список предстоящих матчей с фильтрами по лигам/датам |
+| `/fixtures/[id]` | Детальная страница матча: составы, история, прогнозы, ввод коэффициентов |
+| `/teams/[id]` | Профиль команды: форма, H2H, статистика |
+| `/scorecards` | Карточки оценки качества прогнозов (brier score, calibration, ROI) |
+| `/methodology` | Документация по методам расчёта вероятностей и value |
+| `/privacy` | Политика конфиденциальности и удаления данных |
+
+---
+
+## 🔌 Основные эндпоинты API
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `GET` | `/fixtures` | Список предстоящих матчей (фильтры: league, date, status) |
+| `GET` | `/fixtures/:id` | Детали матча + снимки прогнозов |
+| `GET` | `/teams/:id` | Профиль команды + исторические метрики |
+| `POST` | `/fixtures/:id/odds` | Ввод ручных коэффициентов (требует авторизации оператора) |
+| `GET` | `/fixtures/:id/value` | Расчёт value на основе введённых коэффициентов |
+| `GET` | `/forecasts/:id` | Версии прогнозов для матча |
+| `GET` | `/evaluation/scorecards` | Агрегированные метрики качества (Brier, LogLoss, калибровка) |
+| `GET` | `/health` | Health-check (PostgreSQL, Redis, провайдеры) |
+| `GET` | `/api` | Swagger UI |
+
+> **Авторизация оператора**: Basic Auth (`OPERATOR_BASIC_USERNAME` / `OPERATOR_BASIC_PASSWORD`) для мутирующих эндпоинтов (ввод коэффициентов, триггеры синхронизации).
+
+---
+
+## 🔄 Фоновые задачи (Worker: data-sync)
+
+Worker запускается как отдельный процесс и выполняет:
+
+1. **Синхронизация фикстур** — ежедневно, загружает матчи на 7–14 дней вперёд
+2. **Проверка составов** — за 60–90 мин до матча (если провайдер поддерживает)
+3. **Резолвинг результатов** — после завершения матча (фулл-тайм, xG, статистика)
+4. **Генерация прогнозов** — после появления составов / за 24ч до матча
+5. **Оценка качества** — после резолвинга результата (Brier, калибровка, ROI)
+
+> Все джобы идемпотентны, с повторными попытками (exponential backoff) и circuit breaker'ами.
+
+---
+
+## 📊 Как пользоваться для анализа
+
+### 1. Просмотр предстоящих матчей
+Откройте `/` — увидите таблицу матчей с фильтрами:
+- Лига (Топ-5 + УЕФА)
+- Дата (сегодня / завтра / неделя)
+- Статус (не начато / в прямом эфире / завершён)
+
+### 2. Анализ конкретного матча
+Кликните по матчу → `/fixtures/[id]`:
+- **Вкладка «Обзор»**: базовая инфа, статус данных, свежесть
+- **Вкладка «История»**: H2H, последние 5–10 матчей команд, форма
+- **Вкладка «Прогноз»**: вероятности (1/X/2, тоталы, БТТС) + версия модели
+- **Вкладка «Value»**: ввод коэффициентов букмекера → расчёт EV, Kelly, рекомендация
+
+### 3. Ввод коэффициентов (требует доступа оператора)
+На вкладке «Value» нажмите «Добавить коэффициенты»:
+- Выберите исход (1 / X / 2 / Over 2.5 / Under 2.5 / BTTS Yes / No)
+- Введите десятичный коэффициент (например, `2.10`)
+- Укажите букмекера (опционально)
+- Система посчитает **Edge = (Prob × Odds) - 1** и покажет рекомендацию только если:
+  - Edge > порога (настраиваемо, по умолчанию 2%)
+  - Overround букмекера в разумных пределах
+  - Данные не устарели (> 24ч для составов)
+
+### 4. Оценка качества прогнозов
+`/scorecards` — агрегированные метрики за период:
+- **Brier Score** — среднеквадратичная ошибка вероятностей
+- **Log Loss** — логарифмические потери
+- **Калибровка** — график reliability diagram
+- **ROI / Yield** — финансовый результат при слепой ставке на все value-рекомендации
+
+---
+
+## 🧪 Тестирование
+
+```bash
+# Unit-тесты доменной логики (быстрые, без БД)
+pnpm test
+
+# Интеграционные тесты (Testcontainers: реальные PostgreSQL + Redis)
+pnpm test:integration
+
+# E2E тесты (Playwright: веб + API + операторские флоу)
 pnpm test:e2e
 ```
 
-## Roadmap
+---
 
-1. Trustworthy Fixture Discovery — complete.
-2. Historical Evidence Pipeline — complete.
-3. Forecast and Manual Value Workbench — forecasts and manual odds.
-4. Settlement and Evidence Scorecard — quality and financial-outcome measurement.
-5. Provider-Aware Coverage and Enrichment — broader competitions and evidence.
-6. Release Experience and Operations — mobile UX, methodology, and operational controls.
+## 🐳 Docker (production-like локально)
 
-This repository currently has no declared license file. Contributions and usage remain subject to the repository owner’s policies.
+```bash
+# Собрать образы
+docker compose -f infra/docker-compose.yml build
+
+# Запуск в фоне
+docker compose -f infra/docker-compose.yml up -d
+
+# Логи
+docker compose -f infra/docker-compose.yml logs -f
+
+# Остановка с удалением томов (очистка БД)
+docker compose -f infra/docker-compose.yml down -v
+```
+
+---
+
+## 📚 Дополнительная документация
+
+| Файл | Описание |
+|------|----------|
+| `AGENTS.md` | Инструкции для AI-агентов (контекст проекта) |
+| `ARCHITECTURE.md` | Архитектурные решения |
+| `SPEC.md` | Функциональная спецификация |
+| `MONOREPO_STRUCTURE.md` | Детальная структура пакетов |
+| `.planning/` | Roadmap, планы фаз, артефакты GSD |
+| `docs/` | Дополнительные технические документы |
+
+---
+
+## ⚠️ Важные ограничения MVP
+
+1. **Только бесплатные тарифы API** — API-Football (100 req/day), Football-Data.org (10 req/min)
+2. **Ручной ввод коэффициентов** — автоматического скрапинга нет
+3. **Нет автоматических ставок** — только аналитика и рекомендации
+4. **Ограниченный набор лиг** — Топ-5 Европы + ЛЧ/ЛЕ/КЧ (расширяемо через провайдеров)
+5. **Модели v1** — простые Пуассон + Эло, без ML (Python-сервис планируется в фазе 5+)
+
+---
+
+## 📄 Лицензия
+
+В репозитории пока нет объявленного файла лицензии. Использование и вклад подлежат политике владельца репозитория.
+
+---
+
+## 🆘 Поддержка и вопросы
+
+- Проверьте `/health` и логи worker'а при проблемах с данными
+- Swagger UI (`/api`) для интерактивного изучения API
+- `pnpm typecheck` и `pnpm lint` перед коммитами
+- Issues/PR — через GitHub (если настроено)
+
+---
+
+**Приятного анализа и ответственного использования! ⚽📊**

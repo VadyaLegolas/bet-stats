@@ -77,6 +77,21 @@ export type Player = Prisma.PlayerModel
  */
 export type Fixture = Prisma.FixtureModel
 /**
+ * Model BacktestPlan
+ * 
+ */
+export type BacktestPlan = Prisma.BacktestPlanModel
+/**
+ * Model BacktestWindow
+ * 
+ */
+export type BacktestWindow = Prisma.BacktestWindowModel
+/**
+ * Model BacktestEvaluation
+ * Append-only evaluation of one immutable rolling-origin forecast at an explicit result boundary.
+ */
+export type BacktestEvaluation = Prisma.BacktestEvaluationModel
+/**
  * Model SourceObservation
  * 
  */
@@ -125,6 +140,31 @@ export type SyncAttempt = Prisma.SyncAttemptModel
  */
 export type ProviderCircuitState = Prisma.ProviderCircuitStateModel
 /**
+ * Model ProviderRouteReceipt
+ * Immutable decision over a versioned provider routing policy.
+ */
+export type ProviderRouteReceipt = Prisma.ProviderRouteReceiptModel
+/**
+ * Model ProviderRouteAttempt
+ * One immutable admitted, denied, failed or completed provider attempt.
+ */
+export type ProviderRouteAttempt = Prisma.ProviderRouteAttemptModel
+/**
+ * Model EnrichmentDecisionReceipt
+ * Immutable admission outcome for one optional enrichment attempt and cutoff.
+ */
+export type EnrichmentDecisionReceipt = Prisma.EnrichmentDecisionReceiptModel
+/**
+ * Model ProviderQuotaObservation
+ * 
+ */
+export type ProviderQuotaObservation = Prisma.ProviderQuotaObservationModel
+/**
+ * Model ProviderThrottleReservation
+ * 
+ */
+export type ProviderThrottleReservation = Prisma.ProviderThrottleReservationModel
+/**
  * Model EvidenceBuild
  * 
  */
@@ -135,10 +175,80 @@ export type EvidenceBuild = Prisma.EvidenceBuildModel
  */
 export type EvidenceComponent = Prisma.EvidenceComponentModel
 /**
+ * Model LineupObservation
+ * Durable provider evidence that an official starting lineup was confirmed.
+ */
+export type LineupObservation = Prisma.LineupObservationModel
+/**
+ * Model ForecastSnapshot
+ * Issued forecasts are immutable; corrections append a linked revision.
+ */
+export type ForecastSnapshot = Prisma.ForecastSnapshotModel
+/**
+ * Model ForecastMarket
+ * 
+ */
+export type ForecastMarket = Prisma.ForecastMarketModel
+/**
+ * Model ManualOddsSnapshot
+ * A complete manually submitted bookmaker book; replacements never mutate it.
+ */
+export type ManualOddsSnapshot = Prisma.ManualOddsSnapshotModel
+/**
+ * Model RetentionSubject
+ * Signed-provider subject boundary. No analytical fact points back to this row.
+ */
+export type RetentionSubject = Prisma.RetentionSubjectModel
+/**
+ * Model RetentionConsent
+ * Versioned proof of explicit durable-history consent.
+ */
+export type RetentionConsent = Prisma.RetentionConsentModel
+/**
+ * Model RetainedOddsHistory
+ * Deletable personal association to an immutable manual-odds fact.
+ */
+export type RetainedOddsHistory = Prisma.RetainedOddsHistoryModel
+/**
+ * Model RetainedViewHistory
+ * Deletable viewed-result history; resource identity exists only on this side.
+ */
+export type RetainedViewHistory = Prisma.RetainedViewHistoryModel
+/**
+ * Model ManualOddsSelection
+ * 
+ */
+export type ManualOddsSelection = Prisma.ManualOddsSelectionModel
+/**
+ * Model ValueReceipt
+ * Exact forecast/odds pairing is checked by PostgreSQL before insertion.
+ */
+export type ValueReceipt = Prisma.ValueReceiptModel
+/**
  * Model ResultVersion
  * 
  */
 export type ResultVersion = Prisma.ResultVersionModel
+/**
+ * Model SettlementReceipt
+ * Immutable evaluation fact bound to one exact result revision and frozen forecast.
+ */
+export type SettlementReceipt = Prisma.SettlementReceiptModel
+/**
+ * Model ForecastScore
+ * Append-only proper-score evidence derived from one exact scoreable settlement.
+ */
+export type ForecastScore = Prisma.ForecastScoreModel
+/**
+ * Model ClosingOddsObservation
+ * A timestamped price explicitly classified as a market-close observation.
+ */
+export type ClosingOddsObservation = Prisma.ClosingOddsObservationModel
+/**
+ * Model ValueSettlement
+ * Append-only flat-unit evidence for one exact frozen value candidate.
+ */
+export type ValueSettlement = Prisma.ValueSettlementModel
 /**
  * Model LeagueExternalRef
  * 

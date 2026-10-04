@@ -1,0 +1,21 @@
+import { defineConfig, devices } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "./tests/e2e",
+  globalSetup: "./tests/e2e/live-release-stack.ts",
+  timeout: 300_000,
+  fullyParallel: false,
+  forbidOnly: true,
+  retries: 0,
+  workers: 1,
+  reporter: [["list"]],
+  use: {
+    baseURL: "http://127.0.0.1:3240",
+    screenshot: "only-on-failure",
+    trace: "retain-on-failure",
+  },
+  projects: [
+    { name: "desktop-chromium", use: { ...devices["Desktop Chrome"], timezoneId: "Europe/Warsaw" } },
+    { name: "mobile-chromium", use: { ...devices["Pixel 5"], timezoneId: "Europe/Warsaw" } },
+  ],
+});

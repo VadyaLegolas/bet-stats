@@ -95,3 +95,28 @@ export const EvidenceBuildState = {
 } as const
 
 export type EvidenceBuildState = (typeof EvidenceBuildState)[keyof typeof EvidenceBuildState]
+
+
+export const ForecastKind = {
+  INITIAL: 'INITIAL',
+  PRE_MATCH: 'PRE_MATCH',
+  LINEUP_CONFIRMED: 'LINEUP_CONFIRMED'
+} as const
+
+export type ForecastKind = (typeof ForecastKind)[keyof typeof ForecastKind]
+
+
+export const ForecastSnapshotState = {
+  BUILDING: 'BUILDING',
+  ISSUED: 'ISSUED',
+  FAILED: 'FAILED'
+} as const
+
+export type ForecastSnapshotState = (typeof ForecastSnapshotState)[keyof typeof ForecastSnapshotState]
+
+
+export const RetentionSubjectProviderMode = {
+  SIGNED: 'SIGNED'
+} as const
+
+export type RetentionSubjectProviderMode = (typeof RetentionSubjectProviderMode)[keyof typeof RetentionSubjectProviderMode]

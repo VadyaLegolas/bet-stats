@@ -22,7 +22,7 @@ import { createDurableProviderCircuitRegistry } from "../../workers/data-sync/sr
 import { NestFactory } from "../../apps/api/node_modules/@nestjs/core/index.js";
 import { AppModule } from "../../apps/api/src/app.module.js";
 
-const request = { provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-01T00:00:00.000Z", to: "2026-08-03T00:00:00.000Z" };
+const request = { recoveryType: "INGESTION" as const, reason: "Recover the exact bounded result window after an audited provider interruption.", provider: "football-data.org", competitionId: "PL", seasonId: "2026", endpointFamily: "RESULTS", from: "2026-08-01T00:00:00.000Z", to: "2026-08-03T00:00:00.000Z" };
 const databaseRoot = resolve(import.meta.dirname, "../../packages/database");
 const prismaCli = resolve(databaseRoot, "node_modules/prisma/build/index.js");
 const containerName = `bet-stats-replay-${process.pid}`;
@@ -55,7 +55,7 @@ function replayJobData(input: { syncRunId: string; replayPlanId: string; logical
 describe("durable bounded replay", () => {
   beforeAll(async () => {
     docker("run", "--detach", "--name", containerName, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "--publish", "127.0.0.1::5432", "postgres:18-alpine");
-    for (let attempt = 0; attempt < 60; attempt += 1) { try { docker("exec", containerName, "pg_isready", "-U", "postgres", "-d", "bet_stats"); break; } catch (error) { if (attempt === 59) throw error; Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500); } }
+    for (let attempt = 0; attempt < 60; attempt += 1) { try { docker("exec", containerName, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "bet_stats"); break; } catch (error) { if (attempt === 59) throw error; Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500); } }
     const port = docker("port", containerName, "5432/tcp").split(":").at(-1); if (!port) throw new Error("PostgreSQL port missing");
     databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${port}/bet_stats`;
     execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], { cwd: databaseRoot, env: { ...process.env, DATABASE_URL: databaseUrl }, stdio: "pipe" });

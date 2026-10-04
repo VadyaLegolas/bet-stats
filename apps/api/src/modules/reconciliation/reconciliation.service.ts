@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { ConflictException, Injectable, NotFoundException, Optional, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { TheSportsDbSuggestionClient } from "@bet-stats/football-data";
+import { ProviderLogoService } from "../media/provider-logo.service.js";
 
 type DecisionKind = "approve" | "manual-link" | "reject-create" | "correction";
 type Command = { caseId: string; expectedVersion: number; idempotencyKey: string; note: string; candidateId?: string; canonicalEntityId?: string; canonicalName?: string; countryCode?: string; supersedesDecisionId?: string };
@@ -16,9 +18,13 @@ function projection(row: any): any {
 export class ReconciliationService implements OnModuleDestroy {
   private readonly ownsDatabase: boolean;
   private readonly database: PrismaClient | null;
-  constructor(@Optional() database?: PrismaClient) {
+  private readonly suggestions: TheSportsDbSuggestionClient;
+  private readonly logos: ProviderLogoService;
+  constructor(@Optional() database?: PrismaClient, @Optional() suggestions?: TheSportsDbSuggestionClient, @Optional() logos?: ProviderLogoService) {
     this.database = database ?? (process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null);
     this.ownsDatabase = database === undefined && this.database !== null;
+    this.suggestions = suggestions ?? new TheSportsDbSuggestionClient();
+    this.logos = logos ?? new ProviderLogoService();
   }
   async onModuleDestroy(): Promise<void> { if (this.ownsDatabase) await this.database?.$disconnect(); }
 
@@ -34,6 +40,14 @@ export class ReconciliationService implements OnModuleDestroy {
     const row = await this.db().reconciliationCase.findUnique({ where: { id: caseId }, include: { candidates: { orderBy: [{ confidence: "desc" }, { id: "asc" }] }, decisions: { orderBy: [{ decidedAt: "asc" }, { id: "asc" }] } } });
     if (!row) throw new NotFoundException("Not found");
     return projection(row);
+  }
+
+  async getSuggestions(caseId: string) {
+    const reviewCase = await this.get(caseId);
+    if (reviewCase.entityType !== "TEAM") return { items: [] };
+    const incoming = reviewCase.incomingSnapshot as Record<string, unknown> | null;
+    const query = incoming && typeof incoming.name === "string" ? incoming.name : reviewCase.externalId;
+    return { items: (await this.suggestions.searchTeams(query)).map(({ logoCandidate, ...item }) => ({ ...item, logoRef: logoCandidate ? this.logos.issueReference(logoCandidate) : null })) };
   }
 
   async decide(kind: DecisionKind, command: Command, actor: string) {

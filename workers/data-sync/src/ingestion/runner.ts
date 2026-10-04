@@ -53,6 +53,44 @@ export type GatedIngestionResult<TValue> =
   | { status: "cached"; value: TValue | undefined }
   | { status: "completed"; value: TValue; reservationReused: boolean };
 
+export interface RouteExecutionCandidate<TProvider> {
+  readonly provider: string;
+  readonly factory: () => TProvider;
+}
+
+export type RouteExecutionResult<TValue> =
+  | { status: "completed"; provider: string; value: TValue }
+  | { status: "limited"; reason: "NO_FALLBACK"; lastValidAt: string | null; lastValidValue: TValue | null };
+
+export { executeProviderRoute } from "./provider-route-runtime.js";
+
+/** Persists selection and each classified attempt before provider I/O; fallback is bounded by the closed candidate list. */
+export async function runProviderRoute<TProvider, TValue>(input: {
+  candidates: readonly RouteExecutionCandidate<TProvider>[];
+  persistRoute: () => Promise<void>;
+  persistAttempt: (attempt: { provider: string; ordinal: number; trigger: string }) => Promise<void>;
+  call: (provider: TProvider) => Promise<TValue>;
+  classifyFailure: (error: unknown) => { eligible: boolean; trigger?: string };
+  lastValid?: { at: string; value: TValue } | null;
+}): Promise<RouteExecutionResult<TValue>> {
+  if (input.candidates.length === 0 || input.candidates.length > 2) throw new Error("INVALID_PROVIDER_CANDIDATE_LIST");
+  await input.persistRoute();
+  for (let ordinal = 0; ordinal < input.candidates.length; ordinal += 1) {
+    const candidate = input.candidates[ordinal]!;
+    const trigger = ordinal === 0 ? "PRIMARY" : "ELIGIBLE_FALLBACK";
+    await input.persistAttempt({ provider: candidate.provider, ordinal, trigger });
+    try {
+      return { status: "completed", provider: candidate.provider, value: await input.call(candidate.factory()) };
+    } catch (error) {
+      const failure = input.classifyFailure(error);
+      if (!failure.eligible || ordinal + 1 >= input.candidates.length) {
+        return { status: "limited", reason: "NO_FALLBACK", lastValidAt: input.lastValid?.at ?? null, lastValidValue: input.lastValid?.value ?? null };
+      }
+    }
+  }
+  return { status: "limited", reason: "NO_FALLBACK", lastValidAt: input.lastValid?.at ?? null, lastValidValue: input.lastValid?.value ?? null };
+}
+
 export async function runGatedIngestion<TProvider, TValue>(
   input: GatedIngestionInput<TProvider, TValue>,
 ): Promise<GatedIngestionResult<TValue>> {

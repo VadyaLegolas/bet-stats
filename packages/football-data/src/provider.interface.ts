@@ -1,7 +1,16 @@
+import { z } from "zod";
+
+export const productionProviders = ["football-data.org", "api-football"] as const;
+export type ProductionProvider = (typeof productionProviders)[number];
+
+export class ProviderPayloadError extends Error {
+  override readonly name: string = "ProviderPayloadError";
+}
+
 export type CanonicalFixtureStatus = "SCHEDULED" | "IN_PLAY" | "PAUSED" | "FINISHED" | "POSTPONED" | "CANCELLED";
 
 export interface NormalizedFixture {
-  provider: "football-data.org";
+  provider: ProductionProvider;
   externalId: string;
   competitionExternalId: string;
   seasonExternalId: string;
@@ -36,7 +45,7 @@ export interface ReturnedMatchCoverage {
 }
 
 export interface NormalizedResult {
-  provider: "football-data.org";
+  provider: ProductionProvider;
   externalId: string;
   competitionExternalId: string;
   seasonExternalId: string;
@@ -82,7 +91,7 @@ export interface NormalizedStandingRow {
 }
 
 export interface NormalizedStandingSnapshot {
-  provider: "football-data.org";
+  provider: ProductionProvider;
   competitionExternalId: string;
   seasonExternalId: string;
   capturedAt: string;
@@ -98,4 +107,56 @@ export type NormalizedStandingsSnapshot = NormalizedStandingSnapshot;
 export interface StandingsProvider {
   fetchCompetitionStandings(coverage: StandingsRequestCoverage): Promise<NormalizedStandingSnapshot>;
   fetchStandings(coverage: StandingsRequestCoverage): Promise<NormalizedStandingsSnapshot>;
+}
+
+export interface NormalizedTeamObservation {
+  provider: ProductionProvider;
+  externalId: string;
+  name: string;
+  competitionExternalId: string;
+  seasonExternalId: string;
+  capturedAt: string;
+  sourceUpdatedAt: string | null;
+  raw: Readonly<Record<string, unknown>>;
+}
+
+const fixtureStatusSchema = z.enum(["SCHEDULED", "IN_PLAY", "PAUSED", "FINISHED", "POSTPONED", "CANCELLED"]);
+const providerSchema = z.enum(productionProviders);
+const normalizedFixtureSchema = z.object({
+  provider: providerSchema,
+  externalId: z.string().min(1),
+  competitionExternalId: z.string().min(1),
+  seasonExternalId: z.string().min(1),
+  homeTeamExternalId: z.string().min(1),
+  homeTeamName: z.string().trim().min(1),
+  awayTeamExternalId: z.string().min(1),
+  awayTeamName: z.string().trim().min(1),
+  kickoffUtc: z.string().datetime({ offset: true }),
+  status: fixtureStatusSchema,
+  capturedAt: z.string().datetime({ offset: true }),
+  sourceUpdatedAt: z.string().datetime({ offset: true }).nullable(),
+  raw: z.record(z.string(), z.unknown()),
+}).strict();
+
+export interface ObservationRequestBinding {
+  provider?: ProductionProvider;
+  competitionExternalId?: string;
+  seasonExternalId?: string;
+}
+
+export function parseNormalizedFixture(value: unknown, expected: ObservationRequestBinding = {}): NormalizedFixture {
+  const parsed = normalizedFixtureSchema.safeParse(value);
+  if (!parsed.success) throw new ProviderPayloadError("Invalid normalized fixture observation");
+  if ((expected.provider && parsed.data.provider !== expected.provider)
+    || (expected.competitionExternalId && parsed.data.competitionExternalId !== expected.competitionExternalId)
+    || (expected.seasonExternalId && parsed.data.seasonExternalId !== expected.seasonExternalId)) {
+    throw new ProviderPayloadError("Normalized fixture does not match request");
+  }
+  return parsed.data;
+}
+
+/** Candidate key only: canonical identity resolution still belongs to audited persistence. */
+export function canonicalFixtureKey(fixture: Pick<NormalizedFixture, "homeTeamName" | "awayTeamName" | "kickoffUtc">): string {
+  const normalize = (value: string) => value.normalize("NFKC").trim().toLocaleLowerCase("en-US").replace(/\s+/g, " ");
+  return `${normalize(fixture.homeTeamName)}|${normalize(fixture.awayTeamName)}|${new Date(fixture.kickoffUtc).toISOString()}`;
 }

@@ -1,9 +1,5 @@
-import type { CanonicalFixtureStatus, NormalizedFixture, NormalizedResult, NormalizedStandingSnapshot, RequestedDateWindow, ReturnedMatchCoverage, StandingsRequestCoverage } from "../../provider.interface.js";
+import { ProviderPayloadError, type CanonicalFixtureStatus, type NormalizedFixture, type NormalizedResult, type NormalizedStandingSnapshot, type RequestedDateWindow, type ReturnedMatchCoverage, type StandingsRequestCoverage } from "../../provider.interface.js";
 import { competitionMatchesSchema, competitionResultsSchema, competitionStandingsSchema } from "./schema.js";
-
-export class ProviderPayloadError extends Error {
-  override readonly name = "ProviderPayloadError";
-}
 
 function normalizeStatus(status: string): CanonicalFixtureStatus {
   switch (status) {

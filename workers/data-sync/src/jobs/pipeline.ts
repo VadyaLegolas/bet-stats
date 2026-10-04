@@ -20,3 +20,8 @@ export function createPipelineQueueName(prefix: string): string {
   if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) throw new Error("Queue prefix contains unsupported characters");
   return `${prefix}-historical-pipeline`;
 }
+
+export function createForecastQueueName(prefix: string): string {
+  if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) throw new Error("Queue prefix contains unsupported characters");
+  return `${prefix}-forecast-publication`;
+}

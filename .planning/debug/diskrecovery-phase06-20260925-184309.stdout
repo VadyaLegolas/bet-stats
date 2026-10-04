@@ -1,0 +1,13 @@
+ WARN  Unsupported engine: wanted: {"node":">=24.0.0 <25"} (current: {"node":"v25.2.1","pnpm":"10.34.5"})
+
+> football-prediction-platform@0.0.0 verify:release D:\Documents\Atom\bet-stats
+> pnpm verify:release:prerequisites && pnpm install --frozen-lockfile && pnpm verify:release:schema && pnpm typecheck && pnpm test && node scripts/verify-release-integration.mjs && pnpm build && playwright test -c playwright.phase06.config.ts tests/e2e/release-journey.spec.ts tests/e2e/release-degradation.spec.ts tests/e2e/release-accessibility.spec.ts tests/e2e/methodology.spec.ts tests/e2e/operator-overview.spec.ts tests/e2e/operator-recovery.spec.ts tests/e2e/privacy-retention.spec.ts
+
+ WARN  Unsupported engine: wanted: {"node":">=24.0.0 <25"} (current: {"node":"v25.2.1","pnpm":"10.34.5"})
+ WARN  Unsupported engine: wanted: {"node":">=24.0.0 <25"} (current: {"node":"v25.2.1","pnpm":"10.34.5"})
+
+> football-prediction-platform@0.0.0 verify:release:prerequisites D:\Documents\Atom\bet-stats
+> node -e "if (process.versions.node.split('.')[0] !== '24') { console.error('RELEASE_NODE_VERSION_REQUIRED: Node 24.x is mandatory'); process.exit(1) }" && docker version --format "{{.Server.Version}}"
+
+ ELIFECYCLE  Command failed with exit code 1.
+ ELIFECYCLE  Command failed with exit code 1.

@@ -1,0 +1,124 @@
+import { createHash } from "node:crypto";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
+import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { normalizeOddsBook, validateOddsCaptureChronology, type NormalizedOddsBook, type OddsBookInput } from "@bet-stats/domain";
+
+export interface ManualOddsSubmission extends OddsBookInput {
+  readonly replacementOfOddsSnapshotId?: string;
+}
+
+export interface ManualOddsSnapshotDto extends NormalizedOddsBook {
+  readonly replacementOfOddsSnapshotId: string | null;
+  readonly submittedAt: string;
+}
+
+export interface ManualOddsRepository {
+  findFixture(fixtureId: string): Promise<{ kickoffUtc: string } | null>;
+  find?(id: string): Promise<{ fixtureId: string; market: string } | null>;
+  get?(fixtureId: string, id: string): Promise<ManualOddsSnapshotDto | null>;
+  append(book: ManualOddsSnapshotDto & { inputHash: string }): Promise<ManualOddsSnapshotDto>;
+}
+
+function failure(code: string, field?: string): Error & { code: string } {
+  const exception = code === "ODDS_REPLACEMENT_MISMATCH"
+    ? new ConflictException({ code, ...(field ? { field } : {}) })
+    : new BadRequestException({ code, ...(field ? { field } : {}) });
+  return Object.assign(exception, { code });
+}
+
+function splitSubmission(raw: unknown): { book: OddsBookInput; replacementOfOddsSnapshotId: string | null } {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw failure("INVALID_ODDS_BOOK_KEYS");
+  const candidate = raw as Record<string, unknown>;
+  const allowed = new Set(["fixtureId", "oddsSnapshotId", "market", "sourceLabel", "capturedAt", "selections", "replacementOfOddsSnapshotId"]);
+  if (Object.keys(candidate).some((key) => !allowed.has(key))) throw failure("INVALID_ODDS_BOOK_KEYS");
+  const replacement = candidate.replacementOfOddsSnapshotId;
+  if (replacement !== undefined && (typeof replacement !== "string" || replacement.trim() === "")) throw failure("INVALID_ODDS_REPLACEMENT_ID", "replacementOfOddsSnapshotId");
+  const { replacementOfOddsSnapshotId: _replacement, ...book } = candidate;
+  return { book: book as unknown as OddsBookInput, replacementOfOddsSnapshotId: replacement as string | undefined ?? null };
+}
+
+function canonicalIdentity(book: ManualOddsSnapshotDto): string {
+  return JSON.stringify({ fixtureId: book.fixtureId, market: book.market, sourceLabel: book.sourceLabel, capturedAt: book.capturedAt, replacementOfOddsSnapshotId: book.replacementOfOddsSnapshotId, schemaVersion: book.schemaVersion, normalizationVersion: book.normalizationVersion, selections: book.selections.map(({ selection, decimalOdds }) => ({ selection, decimalOdds })) });
+}
+
+export async function submitManualOdds(raw: unknown, repository: ManualOddsRepository, serverNow = new Date()): Promise<ManualOddsSnapshotDto> {
+  let normalized: NormalizedOddsBook;
+  let replacementOfOddsSnapshotId: string | null;
+  try {
+    const parsed = splitSubmission(raw);
+    replacementOfOddsSnapshotId = parsed.replacementOfOddsSnapshotId;
+    normalized = normalizeOddsBook(parsed.book);
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error) throw error;
+    const code = error instanceof Error ? error.message : "INVALID_ODDS_BOOK";
+    throw failure(code, code === "INVALID_DECIMAL_ODDS" ? "selections.decimalOdds" : code.includes("SELECTION") || code === "INCOMPLETE_ODDS_BOOK" ? "selections" : undefined);
+  }
+  const fixture = await repository.findFixture(normalized.fixtureId);
+  if (!fixture) throw failure("ODDS_FIXTURE_NOT_FOUND", "fixtureId");
+  try { validateOddsCaptureChronology(normalized.capturedAt, fixture.kickoffUtc, serverNow); }
+  catch (error) { throw failure(error instanceof Error ? error.message : "INVALID_ODDS_CAPTURED_AT", "capturedAt"); }
+  if (replacementOfOddsSnapshotId) {
+    const prior = await repository.find?.(replacementOfOddsSnapshotId) ?? null;
+    if (!prior || prior.fixtureId !== normalized.fixtureId || prior.market !== normalized.market) throw failure("ODDS_REPLACEMENT_MISMATCH", "replacementOfOddsSnapshotId");
+  }
+  const submittedAt = new Date().toISOString();
+  const snapshot: ManualOddsSnapshotDto = { ...normalized, sourceLabel: normalized.sourceLabel.trim(), replacementOfOddsSnapshotId, submittedAt };
+  const inputHash = createHash("sha256").update(canonicalIdentity(snapshot)).digest("hex");
+  return repository.append({ ...snapshot, inputHash });
+}
+
+function toDto(row: { id: string; fixtureId: string; market: string; source: string; replacesOddsId: string | null; receipt: unknown; submittedAt: Date }): ManualOddsSnapshotDto {
+  const receipt = row.receipt as NormalizedOddsBook;
+  return { ...receipt, oddsSnapshotId: row.id, fixtureId: row.fixtureId, market: row.market as NormalizedOddsBook["market"], sourceLabel: row.source, replacementOfOddsSnapshotId: row.replacesOddsId, submittedAt: row.submittedAt.toISOString() };
+}
+
+export async function getManualOddsSnapshot(fixtureId: string, id: string, repository: Pick<ManualOddsRepository, "get">): Promise<ManualOddsSnapshotDto> {
+  const value = await repository.get?.(fixtureId, id) ?? null;
+  if (!value) throw new NotFoundException({ code: "ODDS_SNAPSHOT_NOT_FOUND" });
+  return value;
+}
+
+export function createPrismaManualOddsRepository(client: PrismaClient): ManualOddsRepository & { get(fixtureId: string, id: string): Promise<ManualOddsSnapshotDto | null> } {
+  return {
+    findFixture: async (fixtureId) => {
+      const fixture = await client.fixture.findUnique({ where: { id: fixtureId }, select: { kickoffUtc: true } });
+      return fixture ? { kickoffUtc: fixture.kickoffUtc.toISOString() } : null;
+    },
+    find: (id) => client.manualOddsSnapshot.findUnique({ where: { id }, select: { fixtureId: true, market: true } }),
+    get: async (fixtureId, id) => {
+      const row = await client.manualOddsSnapshot.findFirst({ where: { id, fixtureId } });
+      return row ? toDto(row) : null;
+    },
+    append: async (book) => client.$transaction(async (tx) => {
+      const existing = await tx.manualOddsSnapshot.findUnique({ where: { id: book.oddsSnapshotId } });
+      if (existing) {
+        const dto = toDto(existing);
+        if (existing.inputHash !== book.inputHash || canonicalIdentity(dto) !== canonicalIdentity(book)) throw failure("ODDS_SNAPSHOT_ID_CONFLICT");
+        return dto;
+      }
+      const row = await tx.manualOddsSnapshot.create({ data: {
+        id: book.oddsSnapshotId, fixtureId: book.fixtureId, market: book.market, inputHash: book.inputHash, source: book.sourceLabel,
+        replacesOddsId: book.replacementOfOddsSnapshotId, receipt: book as never, submittedAt: new Date(book.submittedAt),
+        selections: { create: book.selections.map(({ selection, decimalOdds }) => ({ selection, decimalOdds })) },
+      } });
+      return toDto(row);
+    }).catch(async (error) => {
+      const collision = await client.manualOddsSnapshot.findUnique({ where: { id: book.oddsSnapshotId } });
+      if (collision?.inputHash === book.inputHash) {
+        const dto = toDto(collision);
+        if (canonicalIdentity(dto) === canonicalIdentity(book)) return dto;
+      }
+      throw error;
+    }),
+  };
+}
+
+@Injectable()
+export class OddsService implements OnModuleDestroy {
+  private readonly client: PrismaClient | null = process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null;
+  private readonly repository = this.client ? createPrismaManualOddsRepository(this.client) : null;
+  private db() { if (!this.repository) throw Object.assign(new ServiceUnavailableException({ code: "DATABASE_UNAVAILABLE" }), { code: "DATABASE_UNAVAILABLE" }); return this.repository; }
+  submit(input: unknown): Promise<ManualOddsSnapshotDto> { return submitManualOdds(input, this.db()); }
+  async get(fixtureId: string, id: string): Promise<ManualOddsSnapshotDto> { return getManualOddsSnapshot(fixtureId, id, this.db()); }
+  async onModuleDestroy(): Promise<void> { await this.client?.$disconnect(); }
+}

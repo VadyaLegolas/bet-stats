@@ -5,6 +5,7 @@ dist/
 coverage/
 playwright-report/
 test-results/
+artifacts/provider-probes/
 
 .env
 .env.local
@@ -12,3 +13,4 @@ test-results/
 
 *.log
 *.tsbuildinfo
+.turbo/

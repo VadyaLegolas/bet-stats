@@ -16,7 +16,7 @@ export default defineConfig({
         test: {
           name: "unit",
           environment: "node",
-          include: ["packages/**/*.test.ts", "tests/unit/**/*.test.ts"],
+          include: ["packages/**/*.test.ts", "tests/unit/**/*.test.{ts,tsx}"],
           sequence: { concurrent: false },
         },
       }),

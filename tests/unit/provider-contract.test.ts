@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { FootballDataOrgClient, ProviderPayloadError } from "../../packages/football-data/src/index.js";
+import { FootballDataOrgClient, ProviderPayloadError, canonicalFixtureKey, parseNormalizedFixture } from "../../packages/football-data/src/index.js";
 import { normalizeCompetitionMatches, normalizeCompetitionResults, normalizeCompetitionStandings } from "../../packages/football-data/src/index.js";
 
 const validPayload = {
@@ -51,6 +51,35 @@ const standingsPayload = {
 const competitionCodes = ["PL", "PD", "BL1", "SA", "FL1", "CL", "EL"] as const;
 
 describe("football-data.org provider contract", () => {
+  it("round-trips both production providers through one strict canonical observation", () => {
+    const shared = {
+      competitionExternalId: "39",
+      seasonExternalId: "2026",
+      homeTeamExternalId: "42",
+      homeTeamName: "Arsenal FC",
+      awayTeamExternalId: "49",
+      awayTeamName: "Chelsea FC",
+      kickoffUtc: "2026-08-29T14:00:00Z",
+      status: "SCHEDULED" as const,
+      capturedAt: "2026-08-28T12:00:00.000Z",
+      sourceUpdatedAt: null,
+    };
+    const footballData = parseNormalizedFixture({ ...shared, provider: "football-data.org", externalId: "497410", raw: { id: 497410 } });
+    const apiFootball = parseNormalizedFixture({ ...shared, provider: "api-football", externalId: "1379123", raw: { fixture: { id: 1379123 } } });
+
+    expect(parseNormalizedFixture(JSON.parse(JSON.stringify(footballData)))).toEqual(footballData);
+    expect(parseNormalizedFixture(JSON.parse(JSON.stringify(apiFootball)))).toEqual(apiFootball);
+    expect(canonicalFixtureKey(footballData)).toBe(canonicalFixtureKey(apiFootball));
+    expect(canonicalFixtureKey(footballData)).not.toContain("497410");
+    expect(canonicalFixtureKey(apiFootball)).not.toContain("1379123");
+  });
+
+  it("fails closed for unknown providers, unexpected canonical fields and request mismatches", () => {
+    const fixture = normalizeCompetitionMatches(validPayload, new Date("2026-08-28T12:00:00Z"))[0]!;
+    expect(() => parseNormalizedFixture({ ...fixture, provider: "unknown" })).toThrow(ProviderPayloadError);
+    expect(() => parseNormalizedFixture({ ...fixture, canonicalFixtureId: fixture.externalId })).toThrow(ProviderPayloadError);
+    expect(() => parseNormalizedFixture(fixture, { provider: "api-football" })).toThrow(ProviderPayloadError);
+  });
   it("validates and normalizes nullable fixture data with provenance", () => {
     const capturedAt = new Date("2026-08-28T12:00:00Z");
     expect(normalizeCompetitionMatches(validPayload, capturedAt)).toEqual([expect.objectContaining({

@@ -10,10 +10,11 @@ export class OperatorGuard implements CanActivate {
   private readonly credential: string | undefined;
   constructor(@Optional() @Inject("OPERATOR_CREDENTIAL") credential?: string) { this.credential = credential ?? process.env.OPERATOR_CREDENTIAL; }
 
-  authorize(presented: string | undefined): void {
+  authorize(presented: string | undefined): { actor: "operator" } {
     if (!this.credential || !presented || !timingSafeEqual(digest(this.credential), digest(presented))) {
       throw new NotFoundException("Not found");
     }
+    return { actor: "operator" };
   }
 
   canActivate(context: ExecutionContext): boolean {

@@ -27,6 +27,7 @@ export type AggregateSeasonExternalRef = {
 export type SeasonExternalRefMinAggregateOutputType = {
   id: string | null
   seasonId: string | null
+  leagueId: string | null
   provider: string | null
   externalId: string | null
   createdAt: Date | null
@@ -35,6 +36,7 @@ export type SeasonExternalRefMinAggregateOutputType = {
 export type SeasonExternalRefMaxAggregateOutputType = {
   id: string | null
   seasonId: string | null
+  leagueId: string | null
   provider: string | null
   externalId: string | null
   createdAt: Date | null
@@ -43,6 +45,7 @@ export type SeasonExternalRefMaxAggregateOutputType = {
 export type SeasonExternalRefCountAggregateOutputType = {
   id: number
   seasonId: number
+  leagueId: number
   provider: number
   externalId: number
   createdAt: number
@@ -53,6 +56,7 @@ export type SeasonExternalRefCountAggregateOutputType = {
 export type SeasonExternalRefMinAggregateInputType = {
   id?: true
   seasonId?: true
+  leagueId?: true
   provider?: true
   externalId?: true
   createdAt?: true
@@ -61,6 +65,7 @@ export type SeasonExternalRefMinAggregateInputType = {
 export type SeasonExternalRefMaxAggregateInputType = {
   id?: true
   seasonId?: true
+  leagueId?: true
   provider?: true
   externalId?: true
   createdAt?: true
@@ -69,6 +74,7 @@ export type SeasonExternalRefMaxAggregateInputType = {
 export type SeasonExternalRefCountAggregateInputType = {
   id?: true
   seasonId?: true
+  leagueId?: true
   provider?: true
   externalId?: true
   createdAt?: true
@@ -150,6 +156,7 @@ export type SeasonExternalRefGroupByArgs<ExtArgs extends runtime.Types.Extension
 export type SeasonExternalRefGroupByOutputType = {
   id: string
   seasonId: string
+  leagueId: string
   provider: string
   externalId: string
   createdAt: Date
@@ -179,6 +186,7 @@ export type SeasonExternalRefWhereInput = {
   NOT?: Prisma.SeasonExternalRefWhereInput | Prisma.SeasonExternalRefWhereInput[]
   id?: Prisma.StringFilter<"SeasonExternalRef"> | string
   seasonId?: Prisma.StringFilter<"SeasonExternalRef"> | string
+  leagueId?: Prisma.StringFilter<"SeasonExternalRef"> | string
   provider?: Prisma.StringFilter<"SeasonExternalRef"> | string
   externalId?: Prisma.StringFilter<"SeasonExternalRef"> | string
   createdAt?: Prisma.DateTimeFilter<"SeasonExternalRef"> | Date | string
@@ -188,6 +196,7 @@ export type SeasonExternalRefWhereInput = {
 export type SeasonExternalRefOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   seasonId?: Prisma.SortOrder
+  leagueId?: Prisma.SortOrder
   provider?: Prisma.SortOrder
   externalId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -196,20 +205,23 @@ export type SeasonExternalRefOrderByWithRelationInput = {
 
 export type SeasonExternalRefWhereUniqueInput = Prisma.AtLeast<{
   id?: string
-  provider_externalId?: Prisma.SeasonExternalRefProviderExternalIdCompoundUniqueInput
+  provider_leagueId_externalId?: Prisma.SeasonExternalRefProviderLeagueIdExternalIdCompoundUniqueInput
+  provider_seasonId?: Prisma.SeasonExternalRefProviderSeasonIdCompoundUniqueInput
   AND?: Prisma.SeasonExternalRefWhereInput | Prisma.SeasonExternalRefWhereInput[]
   OR?: Prisma.SeasonExternalRefWhereInput[]
   NOT?: Prisma.SeasonExternalRefWhereInput | Prisma.SeasonExternalRefWhereInput[]
   seasonId?: Prisma.StringFilter<"SeasonExternalRef"> | string
+  leagueId?: Prisma.StringFilter<"SeasonExternalRef"> | string
   provider?: Prisma.StringFilter<"SeasonExternalRef"> | string
   externalId?: Prisma.StringFilter<"SeasonExternalRef"> | string
   createdAt?: Prisma.DateTimeFilter<"SeasonExternalRef"> | Date | string
   season?: Prisma.XOR<Prisma.SeasonScalarRelationFilter, Prisma.SeasonWhereInput>
-}, "id" | "provider_externalId">
+}, "id" | "provider_leagueId_externalId" | "provider_seasonId">
 
 export type SeasonExternalRefOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   seasonId?: Prisma.SortOrder
+  leagueId?: Prisma.SortOrder
   provider?: Prisma.SortOrder
   externalId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -224,6 +236,7 @@ export type SeasonExternalRefScalarWhereWithAggregatesInput = {
   NOT?: Prisma.SeasonExternalRefScalarWhereWithAggregatesInput | Prisma.SeasonExternalRefScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"SeasonExternalRef"> | string
   seasonId?: Prisma.StringWithAggregatesFilter<"SeasonExternalRef"> | string
+  leagueId?: Prisma.StringWithAggregatesFilter<"SeasonExternalRef"> | string
   provider?: Prisma.StringWithAggregatesFilter<"SeasonExternalRef"> | string
   externalId?: Prisma.StringWithAggregatesFilter<"SeasonExternalRef"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"SeasonExternalRef"> | Date | string
@@ -240,6 +253,7 @@ export type SeasonExternalRefCreateInput = {
 export type SeasonExternalRefUncheckedCreateInput = {
   id?: string
   seasonId: string
+  leagueId: string
   provider: string
   externalId: string
   createdAt?: Date | string
@@ -256,6 +270,7 @@ export type SeasonExternalRefUpdateInput = {
 export type SeasonExternalRefUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   seasonId?: Prisma.StringFieldUpdateOperationsInput | string
+  leagueId?: Prisma.StringFieldUpdateOperationsInput | string
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   externalId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -264,6 +279,7 @@ export type SeasonExternalRefUncheckedUpdateInput = {
 export type SeasonExternalRefCreateManyInput = {
   id?: string
   seasonId: string
+  leagueId: string
   provider: string
   externalId: string
   createdAt?: Date | string
@@ -279,6 +295,7 @@ export type SeasonExternalRefUpdateManyMutationInput = {
 export type SeasonExternalRefUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   seasonId?: Prisma.StringFieldUpdateOperationsInput | string
+  leagueId?: Prisma.StringFieldUpdateOperationsInput | string
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   externalId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -294,14 +311,21 @@ export type SeasonExternalRefOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
-export type SeasonExternalRefProviderExternalIdCompoundUniqueInput = {
+export type SeasonExternalRefProviderLeagueIdExternalIdCompoundUniqueInput = {
   provider: string
+  leagueId: string
   externalId: string
+}
+
+export type SeasonExternalRefProviderSeasonIdCompoundUniqueInput = {
+  provider: string
+  seasonId: string
 }
 
 export type SeasonExternalRefCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   seasonId?: Prisma.SortOrder
+  leagueId?: Prisma.SortOrder
   provider?: Prisma.SortOrder
   externalId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -310,6 +334,7 @@ export type SeasonExternalRefCountOrderByAggregateInput = {
 export type SeasonExternalRefMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   seasonId?: Prisma.SortOrder
+  leagueId?: Prisma.SortOrder
   provider?: Prisma.SortOrder
   externalId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -318,6 +343,7 @@ export type SeasonExternalRefMaxOrderByAggregateInput = {
 export type SeasonExternalRefMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   seasonId?: Prisma.SortOrder
+  leagueId?: Prisma.SortOrder
   provider?: Prisma.SortOrder
   externalId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -411,6 +437,7 @@ export type SeasonExternalRefScalarWhereInput = {
   NOT?: Prisma.SeasonExternalRefScalarWhereInput | Prisma.SeasonExternalRefScalarWhereInput[]
   id?: Prisma.StringFilter<"SeasonExternalRef"> | string
   seasonId?: Prisma.StringFilter<"SeasonExternalRef"> | string
+  leagueId?: Prisma.StringFilter<"SeasonExternalRef"> | string
   provider?: Prisma.StringFilter<"SeasonExternalRef"> | string
   externalId?: Prisma.StringFilter<"SeasonExternalRef"> | string
   createdAt?: Prisma.DateTimeFilter<"SeasonExternalRef"> | Date | string
@@ -449,6 +476,7 @@ export type SeasonExternalRefUncheckedUpdateManyWithoutSeasonInput = {
 export type SeasonExternalRefSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   seasonId?: boolean
+  leagueId?: boolean
   provider?: boolean
   externalId?: boolean
   createdAt?: boolean
@@ -458,6 +486,7 @@ export type SeasonExternalRefSelect<ExtArgs extends runtime.Types.Extensions.Int
 export type SeasonExternalRefSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   seasonId?: boolean
+  leagueId?: boolean
   provider?: boolean
   externalId?: boolean
   createdAt?: boolean
@@ -467,6 +496,7 @@ export type SeasonExternalRefSelectCreateManyAndReturn<ExtArgs extends runtime.T
 export type SeasonExternalRefSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   seasonId?: boolean
+  leagueId?: boolean
   provider?: boolean
   externalId?: boolean
   createdAt?: boolean
@@ -476,12 +506,13 @@ export type SeasonExternalRefSelectUpdateManyAndReturn<ExtArgs extends runtime.T
 export type SeasonExternalRefSelectScalar = {
   id?: boolean
   seasonId?: boolean
+  leagueId?: boolean
   provider?: boolean
   externalId?: boolean
   createdAt?: boolean
 }
 
-export type SeasonExternalRefOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "seasonId" | "provider" | "externalId" | "createdAt", ExtArgs["result"]["seasonExternalRef"]>
+export type SeasonExternalRefOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "seasonId" | "leagueId" | "provider" | "externalId" | "createdAt", ExtArgs["result"]["seasonExternalRef"]>
 export type SeasonExternalRefInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   season?: boolean | Prisma.SeasonDefaultArgs<ExtArgs>
 }
@@ -500,6 +531,7 @@ export type $SeasonExternalRefPayload<ExtArgs extends runtime.Types.Extensions.I
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     seasonId: string
+    leagueId: string
     provider: string
     externalId: string
     createdAt: Date
@@ -929,6 +961,7 @@ export interface Prisma__SeasonExternalRefClient<T, Null = never, ExtArgs extend
 export interface SeasonExternalRefFieldRefs {
   readonly id: Prisma.FieldRef<"SeasonExternalRef", 'String'>
   readonly seasonId: Prisma.FieldRef<"SeasonExternalRef", 'String'>
+  readonly leagueId: Prisma.FieldRef<"SeasonExternalRef", 'String'>
   readonly provider: Prisma.FieldRef<"SeasonExternalRef", 'String'>
   readonly externalId: Prisma.FieldRef<"SeasonExternalRef", 'String'>
   readonly createdAt: Prisma.FieldRef<"SeasonExternalRef", 'DateTime'>

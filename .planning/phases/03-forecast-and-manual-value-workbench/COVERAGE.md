@@ -1,0 +1,1 @@
+No external API integration: Phase 3 uses only internal NestJS/Next.js application endpoints and persisted provider-derived data; it does not add or expand any external API, SDK, webhook, or service surface.

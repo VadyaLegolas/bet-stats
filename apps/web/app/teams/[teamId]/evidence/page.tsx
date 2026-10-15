@@ -32,7 +32,7 @@ type Evidence = {
   receipt?: { configVersion?: string; buildId?: string; inputIds?: string[]; inputs?: Trace[] } | null;
 };
 
-const panel = { border: "1px solid #CBD5E1", borderRadius: 8, background: "#FFFFFF", padding: 20, minWidth: 0 } as const;
+const panel = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, minWidth: 0 } as const;
 
 export type EvidenceDisplayField = Readonly<{ label: string; value: string }>;
 

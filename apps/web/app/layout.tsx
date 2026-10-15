@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { ReleaseNavigation } from "../components/release-navigation";
 
+import { plexSans, sourceSerif } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${sourceSerif.variable} ${plexSans.variable}`}>
       <body>
         <a className="skip-link" href="#main-content">Skip to main content</a>
         <header className="release-header">

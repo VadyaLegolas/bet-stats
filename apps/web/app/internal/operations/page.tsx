@@ -11,7 +11,7 @@ type Overview = {
   incidents: Array<{ id: string; status: string; impact: string; summary: string; startedAt: string; lastUpdatedAt: string; correlationId: string | null }>;
 };
 
-const card = { border: "1px solid #CBD5E1", borderRadius: 8, background: "#FFFFFF", padding: 20, overflowWrap: "anywhere" } as const;
+const card = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, overflowWrap: "anywhere" } as const;
 const grid = { display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 18rem), 1fr))" } as const;
 const button = { minHeight: 44, padding: "8px 14px" } as const;
 

@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 
 import { RiskDisclosure } from "../../components/risk-disclosure";
 
-const panel = { border: "1px solid #CBD5E1", borderRadius: 10, padding: 20, marginBlock: 18 } as const;
-const technical = { marginBlockStart: 16, padding: 16, background: "#F8FAFC", borderRadius: 8 } as const;
+const panel = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, marginBlock: 18 } as const;
+const technical = { marginBlockStart: 16, padding: 16, background: "var(--color-surface-subtle)", borderRadius: 4 } as const;
 
 function TechnicalDetails({ id, children }: { id: string; children: ReactNode }) {
   return <details id={id} style={technical}><summary>Technical details</summary>{children}</details>;
@@ -90,7 +90,7 @@ export default function MethodologyPage() {
 
     <section id="change-history" style={panel}>
       <h2>Change history</h2>
-      {card.changeHistory.map((change) => <article key={change.version} style={{ borderBlockStart: "1px solid #CBD5E1", paddingBlock: 14 }}>
+      {card.changeHistory.map((change) => <article key={change.version} style={{ borderBlockStart: "1px solid var(--color-border)", paddingBlock: 14 }}>
         <h3>{change.version}</h3>
         <p><strong>Effective:</strong> <time dateTime={change.effectiveDate}>{change.effectiveDate}</time></p>
         <p>{change.summary}</p>

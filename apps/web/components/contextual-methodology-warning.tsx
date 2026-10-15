@@ -12,7 +12,7 @@ export function ContextualMethodologyWarning({ context }: { context: Methodology
   return <aside
     aria-label={`${context} methodology warning`}
     data-methodology-context={context}
-    style={{ borderInlineStart: "4px solid #A16207", background: "#FEFCE8", padding: 14, marginBlock: 14 }}
+    style={{ border: "1px solid var(--color-border)", borderInlineStart: "4px solid var(--color-signal)", borderRadius: 4, background: "var(--color-signal-subtle)", padding: 14, marginBlock: 14 }}
   >
     <p style={{ marginBlockStart: 0 }}>{METHODOLOGY_WARNINGS[context]}</p>
     <Link href="/methodology#limitations">Methodology and limitations</Link>

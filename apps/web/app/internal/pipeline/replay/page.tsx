@@ -9,7 +9,7 @@ type Queued = { replayPlanId?: string; planId?: string; correlationId?: string; 
 
 const field = { display: "grid", gap: 6 } as const;
 const button = { minHeight: 48, padding: "8px 16px" } as const;
-const card = { border: "1px solid #CBD5E1", borderRadius: 8, background: "#FFFFFF", padding: 20, overflowWrap: "anywhere" } as const;
+const card = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, overflowWrap: "anywhere" } as const;
 
 function titleCase(value: string | undefined) { return value ? value.charAt(0).toUpperCase() + value.slice(1).toLowerCase() : "Not available"; }
 function safeNumber(value: number | null | undefined) { return value === null || value === undefined ? "Not available" : String(value); }

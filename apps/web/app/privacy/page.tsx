@@ -3,7 +3,7 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 type PrivacyStatus = { status: "OFF" | "ON" | "UNAVAILABLE"; reason?: string; policyVersion?: string; effectiveAt?: string; categories?: readonly string[] };
-const panel = { border: "1px solid var(--border, #CBD5E1)", borderRadius: 10, background: "#FFFFFF", padding: 24, display: "grid", gap: 16 } as const;
+const panel = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 24, display: "grid", gap: 16 } as const;
 const control = { minHeight: 48, padding: "8px 16px" } as const;
 
 export default function PrivacyPage() {

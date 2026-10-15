@@ -23,7 +23,7 @@ export function canonicalScorecardQuery(identity: ScorecardViewModel["cohortIden
   return query.toString();
 }
 
-const panel = { border: "1px solid #CBD5E1", borderRadius: 10, padding: 20, marginBlock: 18 } as const;
+const panel = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, marginBlock: 18 } as const;
 
 export function ScorecardDashboard({ scorecard, candidates, cursor }: { scorecard: ScorecardViewModel; candidates: CandidatePage; cursor?: string }) {
   const identityQuery = canonicalScorecardQuery(scorecard.cohortIdentity);

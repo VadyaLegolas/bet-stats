@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-status: "Phases 03-06 shipped — PR #3"
-stopped_at: Phase 06 shipped
-last_updated: "2026-10-03T09:00:00.000Z"
-last_activity: 2026-10-03
-last_activity_desc: Phase 06 shipped — PR #3 updated with Phase 06 details
+status: "Quick task: Matchday Programme UI redesign"
+stopped_at: Quick task 20261015-matchday-programme-design
+last_updated: "2026-10-15T07:13:53.000Z"
+last_activity: 2026-10-15
+last_activity_desc: Matchday Programme redesign of apps/web — implemented, verification in progress
 state_head: 3c6384e8e49b7746fd04ca665d22a5f48ff877b2
 progress:
   total_phases: 6
@@ -24,16 +24,16 @@ current_plan: 11
 See: .planning/PROJECT.md (updated 2026-09-08)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Phase 06 — Release Experience and Operations
+**Current focus:** Quick task — Matchday Programme redesign of apps/web
 
 ## Current Position
 
 Milestone: v1.0 — ARCHIVED
 All Phases: Complete (6/6)
 All Plans: Complete (88/88)
-Status: Phases 03-06 shipped — PR #3
-Last activity: 2026-10-03
-Last Activity Description: Milestone v1.0 audit passed, roadmap and requirements archived
+Status: Quick task 20261015-matchday-programme-design — Matchday Programme redesign, verification in progress
+Last activity: 2026-10-15
+Last Activity Description: Matchday Programme redesign of apps/web implemented; typecheck, unit and deterministic e2e green
 
 Progress: [██████████] 100%
 
@@ -243,6 +243,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-01T21:22:00.000Z
-Stopped at: v1.0 milestone archived
-Resume file: None
+Last session: 2026-10-15T07:13:53.000Z
+Stopped at: Quick task 20261015-matchday-programme-design — verification of live-stack e2e, then atomic commit
+Resume file: .planning/quick/20261015-matchday-programme-design/PLAN.md

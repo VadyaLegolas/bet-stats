@@ -58,7 +58,18 @@ export function projectProviderState(route: RouteRow | null, lastValidAt: string
 function project(row: FixtureRow, providerState: ProviderStateProjection): FixtureProjection {
   const source = row.provenance[0];
   const capturedAt = source?.observedAt ?? row.updatedAt;
-  return { id: row.id, competition: { id: row.league.id, name: row.league.name, season: row.season.label }, teams: { home: row.homeTeam, away: row.awayTeam }, kickoff: row.kickoffUtc.toISOString(), status: row.status, dataState: classifyFreshness({ state: source ? "AVAILABLE" : "LIMITED", reason: source ? "PROVIDER_OBSERVATION_RECORDED" : "PROVENANCE_NOT_AVAILABLE", provider: source?.provider ?? "unknown", capturedAt: capturedAt.toISOString(), sourceUpdatedAt: source?.sourceUpdatedAt?.toISOString() ?? null, value: null }, readFreshnessThresholds().fixture, capturedAt), providerState };
+  const threshold = readFreshnessThresholds().fixture;
+  const base = classifyFreshness({ state: source ? "AVAILABLE" : "LIMITED", reason: source ? "PROVIDER_OBSERVATION_RECORDED" : "PROVENANCE_NOT_AVAILABLE", provider: source?.provider ?? "unknown", capturedAt: capturedAt.toISOString(), sourceUpdatedAt: source?.sourceUpdatedAt?.toISOString() ?? null, value: null }, threshold, capturedAt);
+  // A scheduled fixture's provider record is only touched when the schedule changes, so
+  // record age alone is not staleness. Freshness = how recently WE confirmed the fixture
+  // with the provider; the payload keeps the provider's truthful update time.
+  const observationStale = Date.now() - capturedAt.getTime() > threshold;
+  const dataState = base.state === "STALE" && !observationStale
+    ? { ...base, state: "AVAILABLE" as const, reason: "PROVIDER_OBSERVATION_RECORDED" }
+    : base.state === "AVAILABLE" && observationStale
+      ? { ...base, state: "STALE" as const, reason: "FRESHNESS_THRESHOLD_EXCEEDED" }
+      : base;
+  return { id: row.id, competition: { id: row.league.id, name: row.league.name, season: row.season.label }, teams: { home: row.homeTeam, away: row.awayTeam }, kickoff: row.kickoffUtc.toISOString(), status: row.status, dataState, providerState };
 }
 
 @Injectable()
@@ -67,10 +78,16 @@ export class FixturesService implements OnModuleDestroy {
   private readonly database: PrismaClient | null = this.config.DATABASE_URL ? createPrismaClient(this.config.DATABASE_URL) : null;
   async onModuleDestroy(): Promise<void> { await this.database?.$disconnect(); }
 
+  async leagues(): Promise<{ items: readonly string[] }> {
+    if (!this.database) return { items: [deterministicRow.league.name] };
+    const leagues = await this.database.league.findMany({ where: { externalRefs: { some: { provider: "football-data.org" } } }, orderBy: { name: "asc" }, select: { name: true } });
+    return { items: leagues.map((league) => league.name) };
+  }
+
   async list(filters: { from?: string; to?: string; competition?: string }): Promise<{ items: readonly FixtureProjection[]; range: { from: string; to: string } }> {
     const { from, to } = parseRange(filters.from, filters.to);
     if (filters.competition !== undefined && (filters.competition.trim() === "" || filters.competition.length > 100)) throw new BadRequestException("competition must be between 1 and 100 characters");
-    const rows: FixtureRow[] = this.database ? await this.database.fixture.findMany({ where: { kickoffUtc: { gte: from, lt: to }, ...(filters.competition ? { league: { name: filters.competition } } : {}) }, include: { league: true, season: true, homeTeam: true, awayTeam: true, provenance: { orderBy: { observedAt: "desc" }, take: 1 } }, orderBy: [{ kickoffUtc: "asc" }, { id: "asc" }] }) : [deterministicFixtureRow(new Date())].filter((row) => row.kickoffUtc >= from && row.kickoffUtc < to && (!filters.competition || row.league.name === filters.competition));
+    const rows: FixtureRow[] = this.database ? await this.database.fixture.findMany({ where: { kickoffUtc: { gte: from, lt: to }, ...(filters.competition ? { league: { name: filters.competition } } : { league: { externalRefs: { some: { provider: "football-data.org" } } } }) }, include: { league: true, season: true, homeTeam: true, awayTeam: true, provenance: { orderBy: { observedAt: "desc" }, take: 1 } }, orderBy: [{ kickoffUtc: "asc" }, { id: "asc" }] }) : [deterministicFixtureRow(new Date())].filter((row) => row.kickoffUtc >= from && row.kickoffUtc < to && (!filters.competition || row.league.name === filters.competition));
     const items = await Promise.all(rows.map(async (row) => project(row, await this.providerState(row))));
     return { items, range: { from: from.toISOString(), to: to.toISOString() } };
   }

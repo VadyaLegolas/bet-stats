@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-status: "Quick task: Date picker in the fixtures filter"
-stopped_at: Quick task 20261015-date-filter
-last_updated: "2026-10-15T16:20:00.000Z"
+status: "Quick task: Live upcoming fixtures — all leagues, manual refresh, auto-load"
+stopped_at: Quick task 20261015-live-fixtures
+last_updated: "2026-10-15T18:20:00.000Z"
 last_activity: 2026-10-15
-last_activity_desc: Calendar date inputs + preset chips on /fixtures - verification green
+last_activity_desc: Live fixture sync + league select/refresh/auto-load - all gates green, committing
 state_head: 3c6384e8e49b7746fd04ca665d22a5f48ff877b2
 progress:
   total_phases: 6
@@ -24,16 +24,16 @@ current_plan: 11
 See: .planning/PROJECT.md (updated 2026-09-08)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Quick task - beautiful date picker in the fixtures filter
+**Current focus:** Quick task - live upcoming fixtures with league select, manual refresh, auto-load
 
 ## Current Position
 
 Milestone: v1.0 — ARCHIVED
 All Phases: Complete (6/6)
 All Plans: Complete (88/88)
-Status: Quick task 20261015-date-filter - native UTC calendar inputs + preset period chips on /fixtures; project conventions now require Russian responses and UI copy
+Status: Quick task 20261015-live-fixtures - FixturesSyncService (POST /internal/fixtures/sync, OperatorGuard, mutex, transactional upserts, 3s provider spacing), GET /fixtures/leagues, web league select + "Обновить матчи" + auto-sync, configured-league list filter, observation-age freshness
 Last activity: 2026-10-15
-Last Activity Description: Client DateRangeFilter (calendar inputs, 5 preset chips, aria-pressed state, day-bound instant conversion) wired into /fixtures; load() accepts date-only from/to; typecheck web green, deterministic e2e 21/21, phase06 accessibility+journey 22/22, browser sanity green
+Last Activity Description: Live smoke green - 6/7 leagues loaded (67 fixtures, all AVAILABLE; EL = PROVIDER_ACCESS_RESTRICTED on football-data.org free tier), browser QA clean (zero console errors); gates: typecheck, unit 248+5, deterministic e2e 21/21, forecast-workbench 3/3, phase06 22/22
 
 Progress: [██████████] 100%
 
@@ -230,6 +230,10 @@ None yet.
 - [Phase 1]: Launch jurisdiction and age-policy details require a concrete product/legal decision during planning.
 - [Phase 4]: Settlement taxonomy and minimum calibration/sample gates need explicit thresholds.
 - [Phase 5]: Live provider coverage and quota/reset semantics must be reverified with current credentials.
+- [Phase 5 2026-10-15]: Verified with real credentials: football-data.org free tier excludes UEFA
+  Europa League (403 restricted) and API-Football free plan blocks the current season 2026
+  entirely ("access to seasons 2022-2024"). UEL shows a honest restricted state in the UI; an
+  api-football fetch path was not built because it cannot deliver upcoming fixtures either.
 
 ### Roadmap Evolution
 
@@ -243,6 +247,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-15T16:20:00.000Z
-Stopped at: Quick task 20261015-date-filter - atomic commit
-Resume file: .planning/quick/20261015-date-filter/PLAN.md
+Last session: 2026-10-15T18:20:00.000Z
+Stopped at: Quick task 20261015-live-fixtures - atomic commit + push to origin/main
+Resume file: .planning/quick/20261015-live-fixtures/PLAN.md

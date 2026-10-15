@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86_400_000;
@@ -33,17 +33,75 @@ const PRESETS: readonly Preset[] = [
   { label: "Ближайшая неделя", range: () => ({ from: utcDay(0), to: utcDay(6) }) },
 ];
 
-export function DateRangeFilter({ from, to, competition }: { from?: string | undefined; to?: string | undefined; competition: string }) {
+type SyncResult = { league: string; status: string; fixtures: number; reason?: string };
+
+const plural = (count: number, one: string, few: string, many: string): string => {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
+};
+
+const formatSyncResults = (results: readonly SyncResult[]): string =>
+  results.map((result) => {
+    if (result.status === "synced") return `${result.league}: загружено ${result.fixtures} ${plural(result.fixtures, "матч", "матча", "матчей")}`;
+    if (result.status === "skipped") return `${result.league}: уже загружено недавно`;
+    if (result.status === "failed" && result.reason === "PROVIDER_ACCESS_RESTRICTED") return `${result.league}: лига недоступна на тарифе провайдера`;
+    if (result.status === "failed") return `${result.league}: сбой запроса к провайдеру`;
+    return `${result.league}: отказ (${result.reason ?? "UNKNOWN"})`;
+  }).join(" · ");
+
+const describeSyncFailure = (status: number, reason: string | undefined): string => {
+  if (status === 503 && reason === "DETERMINISTIC_MODE") return "Синхронизация недоступна в демонстрационном режиме без базы данных.";
+  if (status === 503 && reason === "DATABASE_NOT_CONFIGURED") return "Синхронизация недоступна: не настроена база данных (DATABASE_URL).";
+  if (status === 503 && reason === "PROVIDER_TOKEN_NOT_CONFIGURED") return "Синхронизация недоступна: не настроен токен футбольного провайдера.";
+  if (status === 404) return "Синхронизация недоступна: нет учётных данных оператора.";
+  return "Не удалось запустить обновление.";
+};
+
+export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { from?: string | undefined; to?: string | undefined; competition?: string | undefined; readonly leagues: readonly string[]; autoSync?: boolean | undefined }) {
   const router = useRouter();
   const [dayFrom, setDayFrom] = useState(() => toDateInput(from, false));
   const [dayTo, setDayTo] = useState(() => toDateInput(to, true));
+  const [selectedLeague, setSelectedLeague] = useState(() => leagues.includes(competition ?? "") ? competition ?? "" : leagues.length === 1 ? leagues[0] ?? "" : "");
+  const [syncState, setSyncState] = useState<{ pending: boolean; message?: string; error?: boolean }>({ pending: false });
 
   const navigate = (next: { from?: string | undefined; to?: string | undefined }) => {
-    const query = new URLSearchParams({ competition });
+    const query = new URLSearchParams();
+    if (selectedLeague) query.set("competition", selectedLeague);
     if (next.from) query.set("from", next.from);
     if (next.to) query.set("to", next.to);
-    router.push(`/fixtures?${query}`);
+    router.push(`/fixtures${query.size ? `?${query}` : ""}`);
   };
+
+  const runSync = async (force: boolean) => {
+    setSyncState({ pending: true });
+    try {
+      const response = await fetch("/internal-api/fixtures/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...(selectedLeague ? { competitions: [selectedLeague] } : {}), force }),
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const detail = await response.json().catch(() => null) as { reason?: string } | null;
+        setSyncState({ pending: false, message: describeSyncFailure(response.status, detail?.reason), error: true });
+        return;
+      }
+      const { results } = await response.json() as { results: readonly SyncResult[] };
+      setSyncState({ pending: false, message: formatSyncResults(results), error: false });
+      if (results.some((result) => result.status === "synced")) router.refresh();
+    } catch {
+      setSyncState({ pending: false, message: "Сервер данных недоступен — обновление не выполнено.", error: true });
+    }
+  };
+
+  useEffect(() => {
+    if (autoSync) void runSync(false);
+    // Sync once when the page mounts; subsequent refreshes come from the manual button.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const applyPreset = (preset: Preset) => {
     const target = preset.range();
@@ -103,17 +161,36 @@ export function DateRangeFilter({ from, to, competition }: { from?: string | und
         </label>
         <label style={fieldLabel}>
           <span>Соревнование</span>
-          <select defaultValue={competition} style={{ minHeight: 44, maxWidth: "100%" }}>
-            <option>Premier League</option>
+          <select
+            value={selectedLeague}
+            onChange={(event) => setSelectedLeague(event.target.value)}
+            style={{ minHeight: 44, maxWidth: "100%" }}
+          >
+            {leagues.length > 1 ? <option value="">Все лиги</option> : null}
+            {leagues.map((league) => <option key={league}>{league}</option>)}
           </select>
         </label>
         <button type="submit" className="btn-primary" style={{ minHeight: 44, padding: "8px 20px" }}>
           Применить даты
         </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ minHeight: 44, padding: "8px 20px" }}
+          disabled={syncState.pending}
+          onClick={() => void runSync(true)}
+        >
+          {syncState.pending ? "Обновляю…" : "Обновить матчи"}
+        </button>
       </div>
+      {syncState.message ? (
+        <p role="status" aria-live="polite" className="filter-hint" style={syncState.error ? { color: "var(--color-danger)" } : undefined}>
+          {syncState.message}
+        </p>
+      ) : null}
       <p className="filter-hint">
         Даты выбираются календарём и трактуются по UTC: выбранный день «По» включается целиком.
-        Пустые даты означают ближайшие 48 часов.
+        Пустые даты означают ближайшие 48 часов. «Обновить матчи» загружает расписание у футбольного провайдера.
       </p>
     </form>
   );

@@ -7,10 +7,23 @@ type Fixture = { id: string; competition: { id: string; name: string; season: st
 type Result = { items: readonly Fixture[]; range: { from: string; to: string } }; type Search = Record<string, string | string[] | undefined>;
 const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
 
-function Filters({ search, retry = false }: { search: Search; retry?: boolean }) {
+function Filters({ search, leagues, autoSync, retry = false }: { search: Search; leagues: readonly string[]; autoSync: boolean; retry?: boolean }) {
   return (
-    <DateRangeFilter from={first(search.from)} to={first(search.to)} competition={first(search.competition) ?? "Premier League"} />
+    <DateRangeFilter from={first(search.from)} to={first(search.to)} competition={first(search.competition)} leagues={leagues} autoSync={autoSync} />
   );
+}
+
+/** Configured leagues for the competition select; the single-league fallback keeps the
+ * deterministic demo mode (and its e2e contract) intact when the catalogue is unreachable. */
+async function loadLeagues(): Promise<readonly string[]> {
+  try {
+    const response = await fetch(`${process.env.API_ORIGIN ?? "http://127.0.0.1:3001"}/fixtures/leagues`, { cache: "no-store" });
+    if (!response.ok) throw new Error("leagues unavailable");
+    const body = await response.json() as { items?: unknown };
+    return Array.isArray(body.items) && body.items.length > 0 ? body.items.filter((item): item is string => typeof item === "string") : ["Premier League"];
+  } catch {
+    return ["Premier League"];
+  }
 }
 
 const DAY_ONLY = /^\d{4}-\d{2}-\d{2}$/;
@@ -28,8 +41,6 @@ async function load(search: Search): Promise<Result> {
     const value = first(search[key]);
     if (value) query.set(key, key === "competition" ? value : toApiInstant(key, value));
   }
-  // The catalogue only offers Premier League, so an unfiltered URL must never leak other leagues.
-  if (!query.has("competition")) query.set("competition", "Premier League");
   const response = await fetch(`${process.env.API_ORIGIN ?? "http://127.0.0.1:3001"}/fixtures?${query}`, { cache: "no-store" });
   if (!response.ok) throw new Error("load failed");
   return response.json() as Promise<Result>;
@@ -38,6 +49,7 @@ async function load(search: Search): Promise<Result> {
 export default async function FixturesPage({ searchParams }: { searchParams: Promise<Search> }) {
   const search = await searchParams;
   const timeZone = process.env.DISPLAY_TIME_ZONE ?? "UTC";
+  const [leagues, autoSync] = await Promise.all([loadLeagues(), Promise.resolve(process.env.FIXTURES_AUTO_SYNC === "true")]);
   let result: Result;
   try {
     result = await load(search);
@@ -48,7 +60,7 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
         <p role="alert" style={{ color: "var(--color-danger)", background: "var(--color-danger-subtle)", padding: 16, borderRadius: "var(--radius-control)" }}>
           Не удалось загрузить матчи. Ваша фильтрация сохранена. Выберите «Повторить загрузку матчей».
         </p>
-        <Filters search={search} retry />
+        <Filters search={search} leagues={leagues} autoSync={autoSync} retry />
       </section>
     );
   }
@@ -78,7 +90,7 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
         </p>
       </div>
 
-      <Filters search={search} />
+      <Filters search={search} leagues={leagues} autoSync={autoSync} />
 
       {result.items.length === 0 ? (
         <div className="fixture-empty-state">

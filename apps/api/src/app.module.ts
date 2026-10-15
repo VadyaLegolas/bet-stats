@@ -2,8 +2,9 @@ import { Module } from "@nestjs/common";
 
 import { EvidenceController } from "./modules/evidence/evidence.controller.js";
 import { EvidenceService } from "./modules/evidence/evidence.service.js";
-import { FixturesController } from "./modules/fixtures/fixtures.controller.js";
+import { FixturesController, FixturesInternalController } from "./modules/fixtures/fixtures.controller.js";
 import { FixturesService } from "./modules/fixtures/fixtures.service.js";
+import { FixturesSyncService } from "./modules/fixtures/fixtures-sync.service.js";
 import { ForecastsModule } from "./modules/forecasts/forecasts.module.js";
 import { OddsModule } from "./modules/odds/odds.module.js";
 import { ValueModule } from "./modules/value/value.module.js";
@@ -23,7 +24,7 @@ import { PrivacyModule } from "./modules/privacy/privacy.module.js";
 
 @Module({
   imports: [EvaluationModule, ForecastsModule, MediaModule, OddsModule, OperationsModule, PrivacyModule, ProvidersModule, ValueModule],
-  controllers: [EligibilityController, EvidenceController, FixturesController, HealthController, ReconciliationController, ReplayController],
-  providers: [EligibilityGuard, EvidenceService, FixturesService, OperatorGuard, ReconciliationService, ReplayService],
+  controllers: [EligibilityController, EvidenceController, FixturesController, FixturesInternalController, HealthController, ReconciliationController, ReplayController],
+  providers: [EligibilityGuard, EvidenceService, FixturesService, FixturesSyncService, OperatorGuard, ReconciliationService, ReplayService],
 })
 export class AppModule {}

@@ -41,6 +41,13 @@ export class FootballDataOrgClient implements FixtureProvider, ResultProvider, S
       return normalizeCompetitionMatches(payload, this.#now());
     } catch (error) {
       if (error instanceof ProviderPayloadError) throw error;
+      if (error instanceof Error && error.message.startsWith("HTTP ")) {
+        // Keep the public message stable but expose the HTTP status so callers can tell
+        // permanent subscription/permission rejections (401/403) from transient failures.
+        const failure = new Error("football-data.org request failed") as Error & { statusCode?: number };
+        failure.statusCode = Number(error.message.slice(5));
+        throw failure;
+      }
       // Provider/network errors may echo request headers; do not retain them on the public error.
       throw new Error("football-data.org request failed");
     }

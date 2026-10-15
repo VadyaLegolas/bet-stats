@@ -1,7 +1,9 @@
 import { z } from "zod";
 
 export const DEFAULT_FRESHNESS_THRESHOLDS_MS = Object.freeze({
-  fixture: 30 * 60 * 1_000,
+  // Fixture schedules are only confirmed by the manual/auto sync (6h throttle), so our
+  // observation of a fixture stays fresh a little longer than that cadence.
+  fixture: 6 * 60 * 60 * 1_000 + 30 * 60 * 1_000,
   fixtureStatus: 15 * 60 * 1_000,
   result: 6 * 60 * 60 * 1_000,
   lineup: 60 * 60 * 1_000,

@@ -1,11 +1,11 @@
 export type FixtureDataState = { state: "AVAILABLE" | "LIMITED" | "STALE" | "UNSUPPORTED" | "UNRESOLVED"; reason: string; provider: string; capturedAt: string; sourceUpdatedAt: string | null; freshnessThresholdMs: number; value: null };
 
 const labels: Record<FixtureDataState["state"], string> = {
-  AVAILABLE: "Available",
-  LIMITED: "Limited data",
-  STALE: "Stale data",
-  UNSUPPORTED: "Unsupported",
-  UNRESOLVED: "Unresolved identity",
+  AVAILABLE: "Доступно",
+  LIMITED: "Неполные данные",
+  STALE: "Устаревшие данные",
+  UNSUPPORTED: "Не поддерживается",
+  UNRESOLVED: "Неоднозначная идентичность",
 };
 
 const badgeStyles: Record<FixtureDataState["state"], { bg: string; color: string; border: string; dot: string }> = {
@@ -22,7 +22,7 @@ export function DataStateNotice({ data, compact = false }: { data: FixtureDataSt
   if (compact) {
     return (
       <span
-        aria-label={`Data quality: ${labels[data.state] ?? "Data unavailable"}`}
+        aria-label={`Качество данных: ${labels[data.state] ?? "Данные недоступны"}`}
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -38,14 +38,14 @@ export function DataStateNotice({ data, compact = false }: { data: FixtureDataSt
         }}
       >
         <span style={{ width: 6, height: 6, borderRadius: "50%", background: style.dot, display: "inline-block" }} />
-        {labels[data.state] ?? "Data unavailable"}
+        {labels[data.state] ?? "Данные недоступны"}
       </span>
     );
   }
 
   return (
     <aside
-      aria-label="Data quality"
+      aria-label="Качество данных"
       style={{
         borderLeft: `4px solid ${style.dot}`,
         background: "var(--color-surface)",
@@ -58,20 +58,20 @@ export function DataStateNotice({ data, compact = false }: { data: FixtureDataSt
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: style.dot, display: "inline-block" }} />
-        <strong style={{ color: style.color }}>{labels[data.state] ?? "Data unavailable"}</strong>
+        <strong style={{ color: style.color }}>{labels[data.state] ?? "Данные недоступны"}</strong>
       </div>
       <p style={{ margin: "4px 0", fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
         {data.reason.replaceAll("_", " ").toLowerCase()}.
       </p>
       <div style={{ fontSize: "0.8rem", color: "var(--color-muted)", display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
-        <span>Source: <strong style={{ color: "var(--color-text-secondary)" }}>{data.provider}</strong></span>
-        <span>Captured: <time dateTime={data.capturedAt}>{data.capturedAt}</time></span>
+        <span>Источник: <strong style={{ color: "var(--color-text-secondary)" }}>{data.provider}</strong></span>
+        <span>Захвачено: <time dateTime={data.capturedAt}>{data.capturedAt}</time></span>
         <span>
-          Source updated:{" "}
+          Обновление источника:{" "}
           {data.sourceUpdatedAt ? (
             <time dateTime={data.sourceUpdatedAt}>{data.sourceUpdatedAt}</time>
           ) : (
-            <span>Not available</span>
+            <span>Недоступно</span>
           )}
         </span>
       </div>

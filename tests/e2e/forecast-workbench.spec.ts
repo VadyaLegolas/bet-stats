@@ -10,9 +10,9 @@ const run = `${process.pid}-${Date.now()}`;
 const fixtureId = `live-workbench-fixture-${run}`;
 const homeTeamId = `live-workbench-home-${run}`;
 const awayTeamId = `live-workbench-away-${run}`;
-const kickoff = "2026-09-12T18:00:00.000Z";
-const initialCutoff = "2026-09-11T17:43:21.123Z";
-const preMatchCutoff = "2026-09-12T12:00:00.000Z";
+const kickoff = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+const initialCutoff = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+const preMatchCutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
 let issuedForecast: ForecastResponseDto;
 
 function eligibilityHeaders() {
@@ -100,17 +100,17 @@ async function publishForecast(request: APIRequestContext): Promise<void> {
 }
 
 async function submitBook(page: Page, market: OddsMarket, odds: readonly string[], sourceLabel = `Live source ${market}`): Promise<string> {
-  await page.getByLabel("Market").selectOption(market);
-  await page.getByLabel("Bookmaker or source label").fill(sourceLabel);
+  await page.getByLabel("Рынок").selectOption(market);
+  await page.getByLabel("Метка букмекера или источника").fill(sourceLabel);
   const selections: Readonly<Record<OddsMarket, readonly OddsSelection[]>> = {
     ONE_X_TWO: ["HOME", "DRAW", "AWAY"], OVER_UNDER_2_5: ["OVER_2_5", "UNDER_2_5"], BTTS: ["YES", "NO"],
   };
-  const labels: Record<OddsSelection, string> = { HOME: "Home", DRAW: "Draw", AWAY: "Away", OVER_2_5: "Over 2.5", UNDER_2_5: "Under 2.5", YES: "Yes", NO: "No" };
-  for (const [index, selection] of selections[market].entries()) await page.getByLabel(`${labels[selection]} decimal odds`).fill(odds[index]!);
-  await page.getByRole("button", { name: "Save complete immutable odds book" }).click();
-  const status = page.getByRole("status").filter({ hasText: "Immutable odds snapshot" });
-  await expect(status).toBeVisible();
-  const match = (await status.textContent())?.match(/snapshot ([a-f0-9-]+) saved/i);
+  const labels: Record<OddsSelection, string> = { HOME: "Десятичный коэффициент на хозяев", DRAW: "Десятичный коэффициент на ничью", AWAY: "Десятичный коэффициент на гостей", OVER_2_5: "Десятичный коэффициент: Тотал больше 2.5", UNDER_2_5: "Десятичный коэффициент: Тотал меньше 2.5", YES: "Десятичный коэффициент: Да", NO: "Десятичный коэффициент: Нет" };
+  for (const [index, selection] of selections[market].entries()) await page.getByLabel(labels[selection]).fill(odds[index]!);
+  await page.getByRole("button", { name: "Сохранить полную неизменяемую книгу коэффициентов" }).click();
+  const status = page.getByRole("status").filter({ hasText: "Неизменяемый снимок коэффициентов" });
+  await expect(status).toBeVisible({ timeout: 30_000 });
+  const match = (await status.textContent())?.match(/снимок коэффициентов ([a-f0-9-]+) сохранён/i);
   if (!match?.[1]) throw new Error("Saved odds snapshot identity was not rendered");
   return match[1];
 }
@@ -125,54 +125,54 @@ test.describe("forecast and manual value workbench", () => {
     let analysisRequests = 0;
     page.on("request", (request) => { if (request.url().includes("/value")) analysisRequests += 1; });
     await page.goto(`/fixtures/${fixtureId}`);
-    await expect(page.getByText("Local draft restored. Draft values stay on this device and cannot be analyzed.")).toBeVisible();
-    await expect(page.getByLabel("Home decimal odds")).toHaveValue("2.2");
+    await expect(page.getByText("Локальный черновик восстановлен. Значения черновика хранятся на этом устройстве и не могут быть проанализированы.")).toBeVisible();
+    await expect(page.getByLabel("Десятичный коэффициент на хозяев")).toHaveValue("2.2");
     expect(analysisRequests).toBe(0);
   });
 
   test("matches production JSON to the DOM, clipboard, and fixed-name download for the exact pair", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://127.0.0.1:3000" });
     await page.goto(`/fixtures/${fixtureId}`);
-    await expect(page.getByLabel("Forecast snapshot").locator("option").filter({ hasText: initialCutoff })).toHaveCount(1);
-    await page.getByLabel("Forecast snapshot").selectOption(`limited-forecast-${run}`);
-    await page.getByText("Evidence, model, and limitations").click();
+    await expect(page.getByLabel("Снимок прогноза").locator("option").filter({ hasText: initialCutoff })).toHaveCount(1);
+    await page.getByLabel("Снимок прогноза").selectOption(`limited-forecast-${run}`);
+    await page.getByText("Доказательства, модель и ограничения").click();
     await expect(page.getByText("limited history", { exact: false })).toBeVisible();
     await expect(page.getByText("lineup not confirmed", { exact: false })).toBeVisible();
     const insufficientOddsId = await submitBook(page, "ONE_X_TWO", ["4", "2", "2"]);
-    await page.getByRole("button", { name: "Compare exact snapshots" }).click();
-    await expect(page.getByRole("heading", { level: 3, name: "Insufficient evidence" })).toBeVisible();
+    await page.getByRole("button", { name: "Сравнить точные снимки" }).click();
+    await expect(page.getByRole("heading", { level: 3, name: "Недостаточно доказательств" })).toBeVisible();
 
-    await page.getByLabel("Forecast snapshot").selectOption(issuedForecast.id);
+    await page.getByLabel("Снимок прогноза").selectOption(issuedForecast.id);
     const noValueOddsId = await submitBook(page, "ONE_X_TWO", ["1.6", "5", "5"]);
-    await page.getByLabel("Odds snapshot").selectOption(noValueOddsId);
-    await page.getByRole("button", { name: "Compare exact snapshots" }).click();
-    await expect(page.getByRole("heading", { level: 3, name: "No value" })).toBeVisible();
+    await page.getByLabel("Снимок коэффициентов").selectOption(noValueOddsId);
+    await page.getByRole("button", { name: "Сравнить точные снимки" }).click();
+    await expect(page.getByRole("heading", { level: 3, name: "Нет value" })).toBeVisible();
 
     const originalOddsId = await submitBook(page, "ONE_X_TWO", ["3.8", "2.1", "2.2"], "Live source original");
     const candidateOddsId = await submitBook(page, "ONE_X_TWO", ["4", "2", "2"], "Live source replacement");
-    await page.getByLabel("Odds snapshot").selectOption(candidateOddsId);
+    await page.getByLabel("Снимок коэффициентов").selectOption(candidateOddsId);
     const responsePromise = page.waitForResponse((response) => response.url().includes(`/internal-api/fixtures/${fixtureId}/value`) && response.request().method() === "POST");
-    await page.getByRole("button", { name: "Compare exact snapshots" }).click();
+    await page.getByRole("button", { name: "Сравнить точные снимки" }).click();
     const comparisonResponse = await responsePromise;
     expect(comparisonResponse.ok()).toBeTruthy();
     const receipt = await comparisonResponse.json() as { id: string; forecastSnapshotId: string; oddsSnapshotId: string; outcome: string };
-    await expect(page.getByRole("heading", { level: 3, name: "Value candidate" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: "Кандидат value" })).toBeVisible();
     expect(receipt).toMatchObject({ forecastSnapshotId: issuedForecast.id, oddsSnapshotId: candidateOddsId, outcome: "VALUE_CANDIDATE" });
-    await page.getByText("Exact immutable decision receipt").click();
+    await page.getByText("Точная неизменяемая квитанция решения").click();
     await expect(page.locator("pre").filter({ hasText: `"id": "${receipt.id}"` })).toHaveText(JSON.stringify(receipt, null, 2));
-    await page.getByRole("button", { name: "Copy exact receipt JSON" }).click();
+    await page.getByRole("button", { name: "Скопировать JSON точной квитанции" }).click();
     expect(JSON.parse(await page.evaluate(() => navigator.clipboard.readText()))).toEqual(receipt);
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("link", { name: "Download exact receipt JSON" }).click();
+    await page.getByRole("link", { name: "Скачать JSON точной квитанции" }).click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe(`value-receipt-${receipt.id}.json`);
     const stream = await download.createReadStream();
     const chunks: Buffer[] = [];
     for await (const chunk of stream) chunks.push(Buffer.from(chunk));
     expect(JSON.parse(Buffer.concat(chunks).toString("utf8"))).toEqual(receipt);
-    await page.getByLabel("Selection to evaluate").selectOption("DRAW");
+    await page.getByLabel("Выбор для оценки").selectOption("DRAW");
     const drawResponsePromise = page.waitForResponse((response) => response.url().includes(`/internal-api/fixtures/${fixtureId}/value`) && response.request().method() === "POST");
-    await page.getByRole("button", { name: "Compare exact snapshots" }).click();
+    await page.getByRole("button", { name: "Сравнить точные снимки" }).click();
     const drawResponse = await drawResponsePromise;
     expect(drawResponse.ok()).toBeTruthy();
     const drawReceipt = await drawResponse.json() as typeof receipt & { selection: string; modelProbability: string; expectedValue: string };
@@ -181,10 +181,10 @@ test.describe("forecast and manual value workbench", () => {
     expect(drawReceipt.modelProbability).not.toBe((receipt as typeof drawReceipt).modelProbability);
     expect(drawReceipt.expectedValue).not.toBe((receipt as typeof drawReceipt).expectedValue);
     await expect(page.locator("pre").filter({ hasText: `"id": "${drawReceipt.id}"` })).toHaveText(JSON.stringify(drawReceipt, null, 2));
-    await page.getByRole("button", { name: "Copy exact receipt JSON" }).click();
+    await page.getByRole("button", { name: "Скопировать JSON точной квитанции" }).click();
     expect(JSON.parse(await page.evaluate(() => navigator.clipboard.readText()))).toEqual(drawReceipt);
     const drawDownloadPromise = page.waitForEvent("download");
-    await page.getByRole("link", { name: "Download exact receipt JSON" }).click();
+    await page.getByRole("link", { name: "Скачать JSON точной квитанции" }).click();
     const drawDownload = await drawDownloadPromise;
     expect(drawDownload.suggestedFilename()).toBe(`value-receipt-${drawReceipt.id}.json`);
     const drawStream = await drawDownload.createReadStream();
@@ -202,11 +202,11 @@ test.describe("forecast and manual value workbench", () => {
     expect(denied.status()).toBe(403);
     await page.setViewportSize({ width: 360, height: 900 });
     await page.goto(`/fixtures/${fixtureId}`);
-    await page.getByText("Confidence components", { exact: false }).click();
+    await page.getByText("Компоненты уверенности", { exact: false }).click();
     for (const component of ["completeness", "lineup availability", "freshness", "source reliability", "model stability"]) await expect(page.getByText(component, { exact: false })).toBeVisible();
-    await expect(page.getByText("Confidence qualifies probability evidence; it is not a probability of the result.")).toBeVisible();
+    await expect(page.getByText("Уверенность характеризует доказательства вероятности; это не вероятность результата.")).toBeVisible();
     await page.evaluate(() => { document.body.style.fontSize = "200%"; });
-    await expect(page.getByRole("heading", { level: 2, name: "Forecast and manual value workbench" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Прогнозы и ручной поиск value" })).toBeVisible();
     const overflow = await page.evaluate(() => ({
       documentWidth: document.documentElement.scrollWidth,
       viewportWidth: document.documentElement.clientWidth,

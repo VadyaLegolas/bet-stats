@@ -18,12 +18,12 @@ const model: ScorecardViewModel = {
 describe("scorecard dashboard", () => {
   it("renders cohort health and denominators before metrics with an accessible reliability table", () => {
     const markup = renderToStaticMarkup(createElement(ScorecardDashboard, { scorecard: model, candidates: { items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" } } }));
-    expect(markup.indexOf("Limited evidence")).toBeLessThan(markup.indexOf("Brier score"));
-    expect(markup).toContain("8 fixtures");
-    expect(markup).toContain("Reliability evidence table");
-    expect(markup).toContain("Closing-line evidence is unavailable");
+    expect(markup.indexOf("Ограниченные доказательства")).toBeLessThan(markup.indexOf("Оценка Брайера"));
+    expect(markup).toContain("8 матчей");
+    expect(markup).toContain("Таблица доказательств надёжности");
+    expect(markup).toContain("Доказательства по закрытию линии недоступны");
     expect(markup).toContain("NO_COMPARABLE_CLOSE");
-    expect(markup).toContain("Formula and policy receipts");
+    expect(markup).toContain("Квитанции формул и политик");
     expect(markup).not.toMatch(/stake recommendation|guaranteed return/i);
   });
 
@@ -31,7 +31,7 @@ describe("scorecard dashboard", () => {
     expect(canonicalScorecardQuery(model.cohortIdentity)).toBe("modelVersion=model-v1&competitionId=premier-league&market=ONE_X_TWO&from=2026-01-01T00%3A00%3A00.000Z&to=2026-02-01T00%3A00%3A00.000Z");
     const unavailable = { ...model, health: { state: "UNAVAILABLE" as const, reasons: ["NO_SCOREABLE_FIXTURES"], performanceClaim: null }, metrics: null };
     const markup = renderToStaticMarkup(createElement(ScorecardDashboard, { scorecard: unavailable, candidates: { items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" } } }));
-    expect(markup).toContain("No scoreable evidence is available for this exact cohort");
+    expect(markup).toContain("Нет пригодных для оценки доказательств для этой точной когорты");
     expect(markup).toContain("model-v1");
     expect(markup).toContain("premier-league");
   });

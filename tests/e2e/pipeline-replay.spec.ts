@@ -50,8 +50,8 @@ test("serializes browser-local replay windows as exact UTC instants", async ({ p
     return route.fulfill({ json: { replayPlanId: "utc-plan", status: "QUEUED" } });
   });
   await page.goto("/internal/pipeline/replay", { timeout: 10_000 });
-  await page.getByLabel("From (local time)").fill("2026-08-01T12:34");
-  await page.getByLabel("To (local time)").fill("2026-08-01T13:45");
+  await page.getByLabel("С (местное время)").fill("2026-08-01T12:34");
+  await page.getByLabel("По (местное время)").fill("2026-08-01T13:45");
   const expected = await page.evaluate(() => ({
     from: new Date(2026, 7, 1, 12, 34).toISOString(),
     to: new Date(2026, 7, 1, 13, 45).toISOString(),
@@ -74,9 +74,9 @@ test("blocks DST-ambiguous local time without sending a preview request", async 
     return route.fulfill({ status: 500, json: {} });
   });
   await page.goto("/internal/pipeline/replay", { timeout: 10_000 });
-  await page.getByLabel("From (local time)").fill("2026-10-25T02:30");
+  await page.getByLabel("С (местное время)").fill("2026-10-25T02:30");
   await page.getByRole("button", { name: "Preview replay" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: /could not be interpreted/i })).toHaveText(/could not be interpreted/i);
+  await expect(page.getByRole("alert").filter({ hasText: /не удалось однозначно интерпретировать/i })).toHaveText(/не удалось однозначно интерпретировать/i);
   expect(previewRequests).toBe(0);
 });
 
@@ -124,14 +124,14 @@ test("provider uncertainty fails closed without widening configured allowance", 
   await page.goto("/internal/pipeline/replay", { timeout: 10_000 });
   await missing("unknown allowance and reset render Not available and cannot be called", async () => {
     await expect(page.getByText("Allowance: Not available", { exact: true })).toBeVisible();
-    await expect(page.getByText("Reset: Not available", { exact: true })).toBeVisible();
+    await expect(page.getByText("Сброс: Недоступно", { exact: true })).toBeVisible();
     await expect(page.getByText("Blocked before reservation", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /call provider|retry provider/i })).toHaveCount(0);
   });
   await missing("runtime quota observation cannot widen configured allowance", async () => {
-    await expect(page.getByText(/Configured allowance: 100/)).toBeVisible();
-    await expect(page.getByText(/Effective allowance: 100/)).toBeVisible();
-    await expect(page.getByText(/Effective allowance: 500/)).toHaveCount(0);
+    await expect(page.getByText(/Настроенная квота: 100/)).toBeVisible();
+    await expect(page.getByText(/Действующая квота: 100/)).toBeVisible();
+    await expect(page.getByText(/Действующая квота: 500/)).toHaveCount(0);
   });
   await missing("already-authorized critical work remains distinguishable", () =>
     expect(page.getByText("Already-authorized critical work: 3", { exact: true })).toBeVisible(),
@@ -141,8 +141,8 @@ test("provider uncertainty fails closed without widening configured allowance", 
 test("projects only classified safe status and never renders secrets or raw exceptions", async ({ page }) => {
   await page.goto("/internal/pipeline/replay", { timeout: 10_000 });
   await missing("safe provider and replay status projection", async () => {
-    await expect(page.getByText("Circuit: Open", { exact: true })).toBeVisible();
-    await expect(page.getByText("Endpoint: fixtures", { exact: true })).toBeVisible();
+    await expect(page.getByText("Предохранитель: Open", { exact: true })).toBeVisible();
+    await expect(page.getByText("Эндпоинт: fixtures", { exact: true })).toBeVisible();
     await expect(page.getByText(secret, { exact: false })).toHaveCount(0);
     await expect(page.getByText(rawException, { exact: false })).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText("provider.ts:42");

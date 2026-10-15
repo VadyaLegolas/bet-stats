@@ -39,21 +39,21 @@ test.describe("fixture discovery UI", () => {
 
   test("keeps filters in the URL and renders local-date groups", async ({ page }) => {
     await page.goto("/fixtures?from=2026-08-28T00%3A00%3A00.000Z&to=2026-08-31T00%3A00%3A00.000Z&competition=Premier%20League");
-    await expect(page.getByRole("heading", { level: 1, name: "Upcoming fixtures" })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2, name: "Saturday, 29 August 2026" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Arsenal vs Chelsea/ })).toBeVisible();
-    await expect(page.getByLabel("Competition")).toHaveValue("Premier League");
+    await expect(page.getByRole("heading", { level: 1, name: "Предстоящие матчи" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Суббота, 29 августа 2026" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Arsenal против Chelsea/ })).toBeVisible();
+    await expect(page.getByLabel("Соревнование")).toHaveValue("Premier League");
   });
 
   test("shows read-only canonical detail, provenance, freshness and limitations", async ({ page }) => {
     for (const width of [360, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/fixtures/fixture-premier-league-001?returnTo=%2Ffixtures%3Fcompetition%3DPremier%2520League");
-      await expect(page.getByRole("heading", { level: 1, name: "Arsenal vs Chelsea" })).toBeVisible();
-      await expect(page.getByText("Limited data", { exact: true })).toBeVisible();
-      await expect(page.getByText("Source: deterministic")).toBeVisible();
-      await expect(page.getByText("Not available", { exact: true })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Back to fixtures" })).toHaveAttribute("href", "/fixtures?competition=Premier%20League");
+      await expect(page.getByRole("heading", { level: 1, name: "Arsenal против Chelsea" })).toBeVisible();
+      await expect(page.getByText("Неполные данные", { exact: true })).toBeVisible();
+      await expect(page.getByText("Источник: deterministic")).toBeVisible();
+      await expect(page.getByText("Недоступно", { exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Назад к матчам" })).toHaveAttribute("href", "/fixtures?competition=Premier%20League");
       await expect(page.getByRole("button", { name: /prediction|odds|value|bet/i })).toHaveCount(0);
       expect((await page.screenshot()).byteLength).toBeGreaterThan(10_000);
     }
@@ -61,7 +61,7 @@ test.describe("fixture discovery UI", () => {
 
   test("renders a distinct missing-fixture state without deferred controls", async ({ page }) => {
     await page.goto("/fixtures/not-a-fixture");
-    await expect(page.getByRole("heading", { level: 1, name: "Fixture not found" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Матч не найден" })).toBeVisible();
     await expect(page.getByText(/prediction|odds|value|coming soon/i)).toHaveCount(0);
   });
 
@@ -71,8 +71,8 @@ test.describe("fixture discovery UI", () => {
       await page.emulateMedia({ colorScheme: "dark", forcedColors: "active", reducedMotion: "reduce" });
       await page.goto("/fixtures?from=2026-08-28T00%3A00%3A00.000Z&to=2026-08-31T00%3A00%3A00.000Z&competition=Premier%20League");
       await page.evaluate(() => { document.body.style.fontSize = "200%"; });
-      await expect(page.getByRole("heading", { level: 1, name: "Upcoming fixtures" })).toBeVisible();
-      await expect(page.getByText("Limited data", { exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Предстоящие матчи" })).toBeVisible();
+      await expect(page.getByText("Неполные данные", { exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
       expect((await page.screenshot()).byteLength).toBeGreaterThan(10_000);
     }
@@ -80,7 +80,7 @@ test.describe("fixture discovery UI", () => {
 
   test("renders honest zero and populated fixture states without betting surfaces", async ({ page }) => {
     await page.goto("/fixtures?from=2027-08-28T00%3A00%3A00.000Z&to=2027-08-30T00%3A00%3A00.000Z");
-    await expect(page.getByText("No fixtures are available for this range.")).toBeVisible();
+    await expect(page.getByText("В выбранном периоде нет матчей.")).toBeVisible();
     await expect(page.getByText(/prediction|odds|value|bet now|coming soon/i)).toHaveCount(0);
   });
 });

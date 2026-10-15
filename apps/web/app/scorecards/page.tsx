@@ -17,7 +17,7 @@ export default async function ScorecardsPage({ searchParams }: { searchParams: P
   const search = await searchParams;
   const scoreResponse = await fetchEvidence(search, "scorecard");
   if (scoreResponse.status === 308) permanentRedirect(scoreResponse.headers.get("location") ?? "/scorecards");
-  if (!scoreResponse.ok) return <section><h1>Forecast evidence scorecard</h1><p role="alert">Protected evaluation evidence could not be loaded. Exact filters remain unchanged.</p></section>;
+  if (!scoreResponse.ok) return <section><h1>Ведомость результатов прогнозов</h1><p role="alert">Защищённые доказательства оценки не удалось загрузить. Точные фильтры не изменены.</p></section>;
   const scorecard = await scoreResponse.json() as ScorecardViewModel;
   const candidateResponse = await fetchEvidence(search, "value-candidates");
   const candidates = candidateResponse.ok ? await candidateResponse.json() as Parameters<typeof ScorecardDashboard>[0]["candidates"] : { items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" } };

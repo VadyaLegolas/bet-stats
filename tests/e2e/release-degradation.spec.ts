@@ -22,11 +22,11 @@ function signedHeaders(pathname: string, search = "", method = "GET") {
 
 test("D-16 sole-source outage preserves canonical facts and last-valid timestamp", async ({ page }) => {
   await page.goto(`/fixtures/${LIVE_FIXTURES.limited}`);
-  const status = page.getByLabel("Provider status");
-  await expect(status.getByText("Limited data — no production fallback", { exact: true })).toBeVisible();
+  const status = page.getByLabel("Статус поставщика");
+  await expect(status.getByText("Неполные данные", { exact: true })).toBeVisible();
   await expect(status).toContainText("PROVIDER_UNAVAILABLE");
   await expect(status.locator("time")).toHaveCount(1);
-  await expect(page.getByRole("heading", { name: "Roma vs Ajax" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Roma против Ajax" })).toBeVisible();
   await assertNoReleaseCanary(page, CANARY);
 });
 
@@ -55,7 +55,7 @@ test("D-16 invalid envelope remains quarantined from canonical publication", asy
 
 test("D-16 stale and limited evidence never becomes zero", async ({ page }) => {
   await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
-  await expect(page.getByText("Probabilities are estimates, not guarantees.", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText("Вероятности — это оценки, а не гарантии.", { exact: false }).first()).toBeVisible();
   const values = await page.locator('[data-evidence-projection="forecast-one-x-two"] [data-evidence-field="probability"]').allTextContents();
   expect(values.length).toBeGreaterThan(0);
   expect(values.every((value) => value.trim() !== "0")).toBe(true);
@@ -108,8 +108,8 @@ test("D-16 recovery preview-confirm preserves immutable facts", async ({ request
 
 test("D-16 incomplete privacy policy fails closed while anonymous analysis remains available", async ({ page }) => {
   await page.goto("/privacy");
-  await expect(page.getByRole("heading", { name: "History retention is unavailable" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Хранение истории недоступно" })).toBeVisible();
   await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
-  await expect(page.getByRole("heading", { name: "Frozen forecast" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Замороженный прогноз" })).toBeVisible();
   await assertNoReleaseCanary(page, CANARY);
 });

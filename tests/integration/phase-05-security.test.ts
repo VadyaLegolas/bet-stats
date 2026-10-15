@@ -33,6 +33,6 @@ describe("Phase 05 held-out security boundaries", () => {
   it("keeps external candidate URLs out of browser markup", () => {
     const source = readFileSync("apps/web/app/internal/reconciliation/page.tsx", "utf8");
     expect(source).toContain("/internal-api/provider-logo/"); expect(source).not.toMatch(/<img[^>]+https?:\/\//);
-    expect(source).toMatch(/review aids only/i);
+    expect(source).toMatch(/только вспомогательные материалы для проверки/i);
   });
 });

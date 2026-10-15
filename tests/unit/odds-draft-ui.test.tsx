@@ -18,8 +18,8 @@ describe("manual odds workbench draft behavior", () => {
 
   it("requires every market selection and identifies invalid fields", () => {
     expect(validateOddsFields("ONE_X_TWO", { HOME: "2.10", DRAW: "", AWAY: "1" })).toEqual({
-      DRAW: "Enter decimal odds.",
-      AWAY: "Decimal odds must be greater than 1.00.",
+      DRAW: "Укажите десятичный коэффициент.",
+      AWAY: "Десятичный коэффициент должен быть больше 1.00.",
     });
     expect(validateOddsFields("BTTS", { YES: "1.91", NO: "2.05" })).toEqual({});
   });
@@ -62,8 +62,8 @@ describe("manual odds workbench draft behavior", () => {
 
   it("renders an honest empty state when discovery returns no issued snapshots", () => {
     const markup = renderToStaticMarkup(createElement(ForecastWorkbench, { fixtureId: "fixture-1", forecasts: [] }));
-    expect(markup).toContain("No comparable forecast pair yet");
-    expect(markup).toContain("This fixture does not have two issued forecast snapshots.");
+    expect(markup).toContain("Сопоставимая пара прогнозов пока недоступна");
+    expect(markup).toContain("Для этого матча нет двух выпущенных снимков прогноза.");
     expect(markup).not.toContain("fixture and cutoff");
   });
 });

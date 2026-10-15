@@ -18,7 +18,7 @@ type LocalDataBlockProps = Readonly<{
 }>;
 
 function visibleTime(value: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("ru-RU", {
     year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZoneName: "short",
   }).format(new Date(value));
 }
@@ -31,18 +31,18 @@ export function LocalDataBlock({ name, state, reason, lastValidAt, retryAllowed,
   const hasValidContent = retainContent || Boolean(lastValidAt) || state === "available" || state === "limited" || state === "stale";
 
   useEffect(() => {
-    if (announcement === "Updated" || announcement.endsWith("could not be loaded")) retryControl.current?.focus();
+    if (announcement === "Обновлено" || announcement.endsWith("не удалось загрузить")) retryControl.current?.focus();
   }, [announcement]);
 
   async function retry() {
     if (!retryAllowed || !onRetry || pending) return;
     setPending(true);
-    setAnnouncement(`Trying ${name.toLowerCase()} again…`);
+    setAnnouncement(`Повторная загрузка: ${name.toLowerCase()}…`);
     try {
       await onRetry();
-      setAnnouncement("Updated");
+      setAnnouncement("Обновлено");
     } catch {
-      setAnnouncement(`${name} could not be loaded`);
+      setAnnouncement(`Не удалось загрузить: ${name.toLowerCase()}`);
     } finally {
       setPending(false);
     }
@@ -53,15 +53,15 @@ export function LocalDataBlock({ name, state, reason, lastValidAt, retryAllowed,
   return (
     <section className="local-data-block" aria-busy={effectiveState === "loading" || effectiveState === "retrying"} data-local-state={effectiveState}>
       {(hasValidContent || effectiveState === "available") && children}
-      {effectiveState === "loading" && <p role="status">Loading {name.toLowerCase()}…</p>}
+      {effectiveState === "loading" && <p role="status">Загрузка: {name.toLowerCase()}…</p>}
       {degraded && (
         <div role={blocking ? "alert" : "status"} className="local-data-notice">
-          <strong>{effectiveState === "limited" ? `${name} is limited` : effectiveState === "stale" ? `${name} is not current` : `${name} could not be loaded`}</strong>
-          <p>{reason ?? "Valid information elsewhere on this page is unchanged."}</p>
-          <p>Last valid update: {lastValidAt ? <time dateTime={lastValidAt}>{visibleTime(lastValidAt)}</time> : "Not available"}. Missing values were not treated as zero.</p>
+          <strong>{effectiveState === "limited" ? `${name}: неполные данные` : effectiveState === "stale" ? `${name}: данные неактуальны` : `Не удалось загрузить: ${name.toLowerCase()}`}</strong>
+          <p>{reason ?? "Корректные данные в других частях этой страницы не изменились."}</p>
+          <p>Последнее корректное обновление: {lastValidAt ? <time dateTime={lastValidAt}>{visibleTime(lastValidAt)}</time> : "Недоступно"}. Отсутствующие значения не считались нулём.</p>
         </div>
       )}
-      {retryAllowed && onRetry && (degraded || effectiveState === "retrying") && <button ref={retryControl} type="button" disabled={pending} onClick={() => void retry()}>{pending ? "Trying again…" : "Try again"}</button>}
+      {retryAllowed && onRetry && (degraded || effectiveState === "retrying") && <button ref={retryControl} type="button" disabled={pending} onClick={() => void retry()}>{pending ? "Повторяем…" : "Повторить попытку"}</button>}
       {refreshLabel && retryAllowed && onRetry && effectiveState === "available" && <button ref={retryControl} type="button" onClick={() => void retry()}>{refreshLabel}</button>}
       <p className="local-data-status" role="status" aria-live="polite">{announcement}</p>
     </section>

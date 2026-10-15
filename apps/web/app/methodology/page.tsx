@@ -8,94 +8,94 @@ const panel = { border: "1px solid var(--color-border)", borderRadius: 4, backgr
 const technical = { marginBlockStart: 16, padding: 16, background: "var(--color-surface-subtle)", borderRadius: 4 } as const;
 
 function TechnicalDetails({ id, children }: { id: string; children: ReactNode }) {
-  return <details id={id} style={technical}><summary>Technical details</summary>{children}</details>;
+  return <details id={id} style={technical}><summary>Технические подробности</summary>{children}</details>;
 }
 
 export default function MethodologyPage() {
   const card = MODEL_CARD;
   const minimums = card.forecast.minimumSamples;
   return <article>
-    <h1>How forecasts work</h1>
-    <p>We estimate football match-event probabilities from historical goal rates and bounded evidence about team strength, recent form, venue, rest and optional head-to-head results. The output is a probability estimate with an immutable evidence receipt, not a prediction of certainty.</p>
-    <p>Manual bookmaker odds can be compared with the exact frozen forecast selected by the user. A result is called a value candidate only when identity, timing, data quality, confidence, edge and expected-value gates all pass.</p>
+    <h1>Как работают прогнозы</h1>
+    <p>Мы оцениваем вероятности событий футбольных матчей на основе исторических темпов забиваемых голов и ограниченных доказательств силы команд, недавней формы, поля, отдыха и необязательных личных встреч. Результат — оценка вероятности с неизменяемой квитанцией доказательств, а не прогноз с гарантией.</p>
+    <p>Ручные коэффициенты букмекеров можно сравнивать с точно выбранным замороженным прогнозом. Результат называется кандидатом value, только если пройдены все проверки: идентичность, время, качество данных, уверенность, край и ожидаемое value.</p>
 
-    <dl aria-label="Current model card metadata" style={panel}>
-      <dt>Model card version</dt><dd><strong>{card.version}</strong></dd>
-      <dt>Effective date</dt><dd><time dateTime={card.effectiveDate}>{card.effectiveDate}</time></dd>
-      <dt>Current model/config</dt><dd>{card.currentModel.modelVersion} / {card.currentModel.configVersion}</dd>
-      <dt>Current config hash</dt><dd><code>{card.currentModel.configHash}</code></dd>
+    <dl aria-label="Метаданные текущей карточки модели" style={panel}>
+      <dt>Версия карточки модели</dt><dd><strong>{card.version}</strong></dd>
+      <dt>Дата вступления в силу</dt><dd><time dateTime={card.effectiveDate}>{card.effectiveDate}</time></dd>
+      <dt>Текущая модель/конфиг</dt><dd>{card.currentModel.modelVersion} / {card.currentModel.configVersion}</dd>
+      <dt>Хеш текущего конфига</dt><dd><code>{card.currentModel.configHash}</code></dd>
     </dl>
     <RiskDisclosure />
 
     <section id="inputs" style={panel}>
-      <h2>Inputs</h2>
-      <p>The model uses time-bounded team goal rates, Elo strength, recent form, venue form and rest-day evidence. Head-to-head evidence is optional and tightly bounded. Every source must have been observed no later than the forecast cutoff.</p>
+      <h2>Входы</h2>
+      <p>Модель использует ограниченные по времени темпы забиваемых голов команд, силу Эло, недавнюю форму, результаты на своём поле и отдых. Доказательства личных встреч необязательны и строго ограничены. Каждый источник должен быть набран не позднее отсечки прогноза.</p>
       <TechnicalDetails id="inputs-technical">
         <p>{card.forecast.scoreGrid}</p>
-        <p><strong>Expected goals:</strong> {card.forecast.expectedGoals}</p>
-        <p>Minimum samples: goal rates {minimums.goalRates}; Elo {minimums.elo}; recent form {minimums.form5}; venue {minimums.venue}; rest days {minimums.restDays}; optional head-to-head {minimums.h2h}.</p>
-        <p><Link href="/fixtures#forecast-receipts">Forecast receipt details</Link> show exact cutoff, evidence build IDs and source observations.</p>
+        <p><strong>Ожидаемые голы:</strong> {card.forecast.expectedGoals}</p>
+        <p>Минимальные выборки: темпы голов {minimums.goalRates}; Эло {minimums.elo}; форма {minimums.form5}; поле {minimums.venue}; отдых {minimums.restDays}; личные встречи {minimums.h2h}.</p>
+        <p><Link href="/fixtures#forecast-receipts">Подробности квитанции прогноза</Link> показывают точную отсечку, ID сборок доказательств и наблюдения по источникам.</p>
       </TechnicalDetails>
     </section>
 
     <section id="what-is-excluded" style={panel}>
-      <h2>What is excluded</h2>
-      <p>The model does not use paid bookmaker feeds, wager-submission features, live/in-play signals, personalized staking, unofficial future information or evidence observed after the forecast cutoff.</p>
+      <h2>Что исключается</h2>
+      <p>Модель не использует платные ленты букмекеров, функции отправки ставок, сигналы live/в игре, персонализированное распределение банка, неофициальную информацию о будущем и доказательства, набранные после отсечки прогноза.</p>
       <TechnicalDetails id="what-is-excluded-technical">
-        <p>Leakage prevention requires every evidence source timestamp and evidence receipt boundary to be at or before the exact cutoff. Rolling-origin backtests keep training windows before forecast cutoffs and result knowledge at a later, separate evaluation time.</p>
-        <p>Backtest policy: <code>{card.policies.backtest}</code>.</p>
+        <p>Защита от утечки требует, чтобы каждая метка времени источника доказательств и граница квитанции были на отсечке или раньше. Тесты со скользящим началом держат окна обучения до отсечек прогноза, а знание результата — на более позднее отдельное время оценки.</p>
+        <p>Политика бэктестов: <code>{card.policies.backtest}</code>.</p>
       </TechnicalDetails>
     </section>
 
     <section id="confidence" style={panel}>
-      <h2>Confidence</h2>
-      <p>Confidence describes evidence completeness and quality. It is not the probability that a betting decision will win. Missing, stale or mismatched evidence makes the system abstain rather than fill gaps with invented values.</p>
+      <h2>Уверенность</h2>
+      <p>Уверенность описывает полноту и качество доказательств. Это не вероятность того, что решение о ставке выиграет. Отсутствующие, устаревшие или несогласованные доказательства заставляют систему воздерживаться, а не заполнять пробелы выдуманными значениями.</p>
       <TechnicalDetails id="confidence-technical">
-        <p>Goal rates require a minimum 5 matches; form and venue require {minimums.form5} and {minimums.venue}. The value gate requires confidence ≥ {card.forecast.valueThresholds.minimumConfidence}, edge ≥ {card.forecast.valueThresholds.minimumEdge}, and expected value ≥ {card.forecast.valueThresholds.minimumExpectedValue}.</p>
-        <p>Value policy: <code>{card.policies.value}</code>. Score-grid tail mass above {card.forecast.tailWarningThreshold} is disclosed.</p>
+        <p>Темпы голов требуют минимум 5 матчей; форма и поле требуют {minimums.form5} и {minimums.venue}. Проверка value требует уверенность ≥ {card.forecast.valueThresholds.minimumConfidence}, край ≥ {card.forecast.valueThresholds.minimumEdge} и ожидаемое value ≥ {card.forecast.valueThresholds.minimumExpectedValue}.</p>
+        <p>Политика value: <code>{card.policies.value}</code>. Масса хвоста сетки выше {card.forecast.tailWarningThreshold} раскрывается явно.</p>
       </TechnicalDetails>
     </section>
 
     <section id="limitations" style={panel}>
-      <h2>Limitations</h2>
-      <p>Football outcomes are uncertain. Small samples, stale evidence, injuries or lineups not represented before cutoff, provider outages, model misspecification and changing team behavior can all make estimates less reliable. A positive expected value remains an estimate, not a promise of profit.</p>
+      <h2>Ограничения</h2>
+      <p>Исходы футбола неопределённы. Малые выборки, устаревшие доказательства, травмы или составы, не отражённые до отсечки, сбои поставщиков, неверная спецификация модели и меняющееся поведение команд могут делать оценки менее надёжными. Положительное ожидаемое value остаётся оценкой, а не обещанием прибыли.</p>
       <TechnicalDetails id="limitations-technical">
-        <p>Known failure modes fail closed as insufficient evidence, unavailable provider data, cutoff mismatch, unresolved canonical identity or limited cohort evidence. Missing values are never treated as zero.</p>
+        <p>Известные режимы отказов выходят в отказоустойчивое состояние: недостаточно доказательств, недоступные данные поставщика, несовпадение отсечки, неопределённая каноническая идентичность или ограниченные доказательства когорты. Отсутствующие значения никогда не считаются нулём.</p>
         <p>{card.forecast.valueFormulas.join("; ")}.</p>
       </TechnicalDetails>
     </section>
 
     <section id="evaluation" style={panel}>
-      <h2>Evaluation</h2>
-      <p>Completed matches are scored against frozen pre-match probabilities. Proper scores, reliability buckets and exact denominators show probability quality; flat-one-unit and closing-line evidence are secondary descriptive views.</p>
+      <h2>Оценка</h2>
+      <p>Завершённые матчи оцениваются против замороженных прематч-вероятностей. Корректные очки, корзины надёжности и точные знаменатели показывают качество вероятностей; плоские единицы и сравнение с закрывающей линией — вторичные описательные виды.</p>
       <TechnicalDetails id="evaluation-technical">
-        <div role="region" aria-label="Proper score formulas" style={{ overflowWrap: "anywhere" }}>
+        <div role="region" aria-label="Формулы корректных очков" style={{ overflowWrap: "anywhere" }}>
           <p><code>{card.evaluation.brier}</code></p>
           <p><code>{card.evaluation.logLoss}</code></p>
         </div>
-        <p>Formula: <code>{card.policies.scoreFormula}</code> · <code>{card.policies.scoreFormulaHash}</code></p>
-        <p>Settlement: <code>{card.policies.settlement}</code>. Reliability: <code>{card.policies.reliability}</code>. Cohort health: <code>{card.policies.cohortHealth}</code>.</p>
-        <p>Qualified evidence needs at least {card.evaluation.cohortMinimums.fixtures} fixtures and {card.evaluation.cohortMinimums.populatedBucketEvents} events in every populated bucket. Empty buckets remain visible as insufficient.</p>
-        <p><Link href="/scorecards#formula-policy-receipts">Scorecard formula and policy receipts</Link> expose the exact cohort and formula identities.</p>
+        <p>Формула: <code>{card.policies.scoreFormula}</code> · <code>{card.policies.scoreFormulaHash}</code></p>
+        <p>Расчёт: <code>{card.policies.settlement}</code>. Надёжность: <code>{card.policies.reliability}</code>. Здоровье когорты: <code>{card.policies.cohortHealth}</code>.</p>
+        <p>Квалифицированные доказательства требуют минимум {card.evaluation.cohortMinimums.fixtures} матчей и {card.evaluation.cohortMinimums.populatedBucketEvents} событий в каждой заполненной корзине. Пустые корзины остаются видимыми как недостаточные.</p>
+        <p><Link href="/scorecards#formula-policy-receipts">Квитанции формул и политик ведомостей результатов</Link> раскрывают точные идентификаторы когорты и формул.</p>
       </TechnicalDetails>
     </section>
 
     <section id="responsible-use" style={panel}>
-      <h2>Responsible use</h2>
-      <p>Use these estimates as transparent analytical evidence only. Do not treat them as instructions, stake more than you can afford to lose, or bet where it is unlawful or inappropriate for your age.</p>
+      <h2>Ответственное использование</h2>
+      <p>Используйте эти оценки только как прозрачные аналитические доказательства. Не рассматривайте их как инструкции, не ставьте больше, чем можете позволить себе потерять, и не делайте ставки там, где это незаконно или не соответствует вашему возрасту.</p>
       <TechnicalDetails id="responsible-use-technical">
-        <p>The product never submits wagers and does not support personalized staking. Financial evidence uses <code>{card.policies.financial}</code> and defines ROI/Yield as <code>{card.evaluation.financialRate}</code>. Closing-line comparison uses <code>{card.policies.clv}</code>.</p>
+        <p>Продукт никогда не отправляет ставки и не поддерживает персонализированное распределение банка. Финансовые доказательства используют <code>{card.policies.financial}</code> и определяют ROI/Yield как <code>{card.evaluation.financialRate}</code>. Сравнение с закрывающей линией использует <code>{card.policies.clv}</code>.</p>
       </TechnicalDetails>
     </section>
 
     <section id="change-history" style={panel}>
-      <h2>Change history</h2>
+      <h2>История изменений</h2>
       {card.changeHistory.map((change) => <article key={change.version} style={{ borderBlockStart: "1px solid var(--color-border)", paddingBlock: 14 }}>
         <h3>{change.version}</h3>
-        <p><strong>Effective:</strong> <time dateTime={change.effectiveDate}>{change.effectiveDate}</time></p>
+        <p><strong>Вступил в силу:</strong> <time dateTime={change.effectiveDate}>{change.effectiveDate}</time></p>
         <p>{change.summary}</p>
-        <p><strong>Affected policies/models:</strong> {change.affected}</p>
-        <p><strong>Migration/interpretation:</strong> {change.interpretation}</p>
+        <p><strong>Затронутые политики/модели:</strong> {change.affected}</p>
+        <p><strong>Миграция/интерпретация:</strong> {change.interpretation}</p>
       </article>)}
     </section>
   </article>;

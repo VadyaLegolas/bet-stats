@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const DISCLOSURE = "Probabilities are estimates, not guarantees. You can lose money when betting.";
+const DISCLOSURE = "Вероятности — это оценки, а не гарантии. Вы можете потерять деньги при ставках.";
 
 const PROHIBITED_CLAIMS = {
   certainty: [/\bsure\b/iu, /\bsafe\s+bet\b/iu, /\bguaranteed(?:\s+(?:win|profit))?\b/iu],
@@ -69,7 +69,7 @@ describe("responsible user-facing copy", () => {
     expect(workbench).toContain("JSON.stringify(result, null, 2)");
     expect(workbench).toContain("navigator.clipboard.writeText(canonicalReceipt)");
     expect(workbench).toContain("?download=true");
-    expect(workbench).toContain("Receipt IDs and versions");
-    expect(workbench).toContain("Gate outcomes and thresholds");
+    expect(workbench).toContain("ID и версии квитанции");
+    expect(workbench).toContain("Результаты проверок и пороги");
   });
 });

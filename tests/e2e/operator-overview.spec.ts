@@ -32,13 +32,13 @@ for (const [name, viewport] of [["desktop", { width: 1280, height: 900 }], ["mob
     const search = "?page=1&pageSize=25&windowHours=24";
     await page.setExtraHTTPHeaders(signedHeaders("/internal-api/operations/overview", search));
     await page.goto(`/internal/operations${search}`);
-    await expect(page.getByRole("heading", { level: 1, name: "Operations center" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Центр операций" })).toBeVisible();
     const headings = await page.locator("main h2").allTextContents();
-    expect(headings).toEqual(["System readiness", "Provider health", "Quota consumption", "Failed and dead-lettered work", "Data-quality errors", "Recent incidents"]);
-    await expect(page.getByText(/Last checked/).first()).toBeVisible();
+    expect(headings).toEqual(["Готовность системы", "Состояние поставщиков", "Использование квот", "Неудачные задачи и мёртвые письма", "Ошибки качества данных", "Последние инциденты"]);
+    await expect(page.getByText(/Последняя проверка/).first()).toBeVisible();
     await expect(page.getByText("UPSTREAM_5XX").first()).toBeVisible();
-    await expect(page.getByRole("button", { name: "Copy correlation ID corr-operator-failure" }).first()).toBeVisible();
-    await expect(page.getByText(/Showing 1–\d+ of \d+/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Скопировать корреляционный ID corr-operator-failure" }).first()).toBeVisible();
+    await expect(page.getByText(/Показано 1–\d+ из \d+/)).toBeVisible();
     const body = (await page.locator("body").innerText()).toLowerCase();
     for (const canary of canaries) expect(body).not.toContain(canary);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);

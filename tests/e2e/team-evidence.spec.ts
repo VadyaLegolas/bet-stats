@@ -57,14 +57,17 @@ test.describe("fixture-to-cutoff team evidence contract", () => {
     await stubEvidence(page);
     await page.goto("/fixtures/fixture-premier-league-001");
     await missing("D-17 fixture team link passes kickoff as asOf", async () => {
-      const link = page.getByRole("link", { name: "View Arsenal evidence at kickoff" });
+      const link = page.getByRole("link", { name: "Доказательства Arsenal на момент начала" });
       await expect(link).toHaveAttribute("href", new RegExp(`asOf=${encodeURIComponent(kickoff)}`));
       await link.click();
     });
-    await missing("D-17 exact server-resolved UTC cutoff echo", () => expect(page.getByText(kickoff, { exact: true })).toBeVisible());
+    await missing("D-17 exact server-resolved UTC cutoff echo", async () => {
+      await expect(page.getByRole("heading", { name: "Arsenal: исторические доказательства" })).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByText(kickoff, { exact: true }).first()).toBeVisible();
+    });
     await missing("D-17 fixture-origin context and Back to fixture", async () => {
-      await expect(page.getByText("Evidence requested for Arsenal vs Chelsea kickoff")).toBeVisible();
-      await page.getByRole("link", { name: "Back to fixture" }).click();
+      await expect(page.getByText("Доказательства запрошены к началу матча Arsenal vs Chelsea")).toBeVisible({ timeout: 30_000 });
+      await page.getByRole("link", { name: "Назад к матчу" }).click();
       await expect(page).toHaveURL(/\/fixtures\/fixture-premier-league-001/);
     });
   });
@@ -77,14 +80,14 @@ test.describe("fixture-to-cutoff team evidence contract", () => {
       await expect(page.getByText("3/5", { exact: true })).toBeVisible();
     });
     await missing("D-19 null value renders Not available with adjacent reason", async () => {
-      await expect(page.getByText("Not available", { exact: true })).toBeVisible();
+      await expect(page.getByText("Недоступно", { exact: true })).toBeVisible();
       await expect(page.getByText("No eligible matches with complete provenance", { exact: true })).toBeVisible();
       await expect(page.getByText("0", { exact: true })).toHaveCount(0);
     });
     await missing("D-18 chronological trace and D-20 reproduction receipt", async () => {
-      await expect(page.getByRole("heading", { name: "Eligible match trace" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Трассировка подходящих матчей" })).toBeVisible();
       await expect(page.getByText("past-1", { exact: true })).toBeVisible();
-      await expect(page.getByText(/Reproduction receipt.*form-v1.*1 input/)).toBeVisible();
+      await expect(page.getByText(/Квитанция воспроизведения.*form-v1.*1 входное значение/)).toBeVisible();
     });
   });
 
@@ -99,15 +102,15 @@ test.describe("fixture-to-cutoff team evidence contract", () => {
     });
     await page.goto("/teams/team-arsenal/evidence?asOf=not-a-date");
     await missing("D-17 invalid cutoff never falls back to latest evidence", async () => {
-      await expect(page.getByText("This cutoff could not be used. Enter a valid supported date and time.")).toBeVisible();
-      await expect(page.getByText(/latest evidence/i)).toHaveCount(0);
+      await expect(page.getByText("Эта точка отсчёта не может быть использована. Введите поддерживаемые дату и время.")).toBeVisible();
+      await expect(page.getByText(/последние доказательства/i)).toHaveCount(0);
     });
     await missing("D-19 missing sourceUpdatedAt is explicit rather than zero", async () => {
       await expect(page.getByText("Source capture time is unavailable", { exact: true })).toBeVisible();
       await expect(page.getByText(/1 Jan 1970|1970-01-01/)).toHaveCount(0);
     });
     await missing("D-20 missing provenance blocks affected evidence", () =>
-      expect(page.getByText(/provenance.*unavailable|cannot be reproduced/i)).toBeVisible(),
+      expect(page.getByText(/происхождение.*недоступно|нельзя воспроизвести/i)).toBeVisible(),
     );
   });
 
@@ -115,24 +118,24 @@ test.describe("fixture-to-cutoff team evidence contract", () => {
     await stubEvidence(page);
     await page.goto(evidenceUrl);
     await missing("D-20 responsible historical-evidence copy", async () => {
-      await expect(page.getByText("What the system could know at the selected time.")).toBeVisible();
-      await expect(page.getByText(/forecast probability|odds|value bet|recommendation|confidence score|guaranteed|risk-free|bet now/i)).toHaveCount(0);
+      await expect(page.getByText("То, что система могла знать на выбранный момент.")).toBeVisible();
+      await expect(page.getByText(/прогнозируемая вероятность|коэффициенты|value-ставка|рекомендация|уверенность|гарантированно|без риска|ставьте сейчас/i)).toHaveCount(0);
     });
   });
 
   test("renders every shared component kind as named values with units", async ({ page }) => {
     await stubEvidence(page);
     await page.goto(evidenceUrl);
-    await page.locator("summary").filter({ hasText: /^Goal rates$/ }).click();
-    await expect(page.getByText("Goals for: 1.75 goals/match", { exact: true })).toBeVisible();
-    await expect(page.getByText("Goals against: 0.50 goals/match", { exact: true })).toBeVisible();
-    await page.locator("summary").filter({ hasText: /^Elo rating$/ }).click();
-    await expect(page.getByText("Elo rating: 1512.5 rating points", { exact: true })).toBeVisible();
-    await page.locator("summary").filter({ hasText: /^Rest days$/ }).click();
-    await expect(page.getByText("Rest: 6.50 days", { exact: true })).toBeVisible();
-    await page.locator("summary").filter({ hasText: /^Head-to-head evidence$/ }).click();
-    await expect(page.getByText("H2H points: 2.00 points/match", { exact: true })).toBeVisible();
-    await expect(page.getByText("H2H weight: 0.025", { exact: true })).toBeVisible();
+    await page.locator("summary").filter({ hasText: /^Голевые показатели$/ }).click();
+    await expect(page.getByText("Забитые голы: 1.75 голов/матч", { exact: true })).toBeVisible();
+    await expect(page.getByText("Пропущенные голы: 0.50 голов/матч", { exact: true })).toBeVisible();
+    await page.locator("summary").filter({ hasText: /^Рейтинг Elo$/ }).click();
+    await expect(page.getByText("Рейтинг Elo: 1512.5 очков рейтинга", { exact: true })).toBeVisible();
+    await page.locator("summary").filter({ hasText: /^Дни отдыха$/ }).click();
+    await expect(page.getByText("Отдых: 6.50 дней", { exact: true })).toBeVisible();
+    await page.locator("summary").filter({ hasText: /^Доказательства личных встреч$/ }).click();
+    await expect(page.getByText("Очки H2H: 2.00 очков/матч", { exact: true })).toBeVisible();
+    await expect(page.getByText("Вес H2H: 0.025", { exact: true })).toBeVisible();
     await expect(page.getByText("[object Object]", { exact: true })).toHaveCount(0);
   });
 

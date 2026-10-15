@@ -181,6 +181,7 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--color-text);
+  text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -351,6 +352,9 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 .btn-primary:hover {
   background: var(--color-accent-hover);
   border-color: var(--color-accent-hover);
+  /* `a:hover` (0,1,1) outranks `.btn-primary` (0,1,0); without this the label
+     would be painted the same color as the hover background and vanish. */
+  color: #ffffff;
 }
 .btn-secondary {
   display: inline-flex;
@@ -370,6 +374,7 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 .btn-secondary:hover {
   background: var(--color-surface-hover);
   border-color: var(--color-text-secondary);
+  color: var(--color-accent-hover);
 }
 
 /* Programme info box: the "fixtures ledger" panel on the home page */

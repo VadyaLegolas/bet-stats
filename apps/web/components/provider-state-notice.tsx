@@ -1,15 +1,15 @@
 export type ProviderState = { state: "PRIMARY" | "FALLBACK" | "PENDING" | "UNAVAILABLE" | "LIMITED" | "UNSUPPORTED" | "STALE_CAPABILITY" | "BUDGET_PROTECTED" | "CIRCUIT_DENIED"; provider: string; reason: string; capturedAt: string | null; lastValidAt: string | null; retryAllowed: boolean; receipt: { id: string; policyVersion: string; outcome: string; trigger: string } | null };
 
 const headings: Record<ProviderState["state"], string> = {
-  PRIMARY: "Primary source",
-  FALLBACK: "Fallback source used",
-  PENDING: "Coverage pending",
-  UNAVAILABLE: "Coverage unavailable",
-  LIMITED: "Limited data",
-  UNSUPPORTED: "Unsupported",
-  STALE_CAPABILITY: "Stale capability",
-  BUDGET_PROTECTED: "Budget protected",
-  CIRCUIT_DENIED: "Circuit denied",
+  PRIMARY: "Основной источник",
+  FALLBACK: "Использован резервный источник",
+  PENDING: "Покрытие ожидается",
+  UNAVAILABLE: "Покрытие недоступно",
+  LIMITED: "Неполные данные",
+  UNSUPPORTED: "Не поддерживается",
+  STALE_CAPABILITY: "Устаревшая возможность",
+  BUDGET_PROTECTED: "Защита бюджета",
+  CIRCUIT_DENIED: "Сработал предохранитель",
 };
 
 const providerBadgeStyles: Record<ProviderState["state"], { bg: string; color: string; border: string; dot: string }> = {
@@ -31,7 +31,7 @@ export function ProviderStateNotice({ state, compact = false }: { state: Provide
   if (compact) {
     return (
       <span
-        aria-label={`Provider status: ${headings[state.state]}`}
+        aria-label={`Статус поставщика: ${headings[state.state]}`}
         role={blocking ? "alert" : "status"}
         style={{
           display: "inline-flex",
@@ -55,7 +55,7 @@ export function ProviderStateNotice({ state, compact = false }: { state: Provide
 
   return (
     <aside
-      aria-label="Provider status"
+      aria-label="Статус поставщика"
       role={blocking ? "alert" : "status"}
       style={{
         borderLeft: `4px solid ${style.dot}`,
@@ -74,36 +74,36 @@ export function ProviderStateNotice({ state, compact = false }: { state: Provide
       </div>
       {state.state === "LIMITED" && (
         <p style={{ margin: "4px 0 8px", fontSize: "0.875rem", color: "var(--color-warning)" }}>
-          API-Football is the sole configured source for this competition and is unavailable. Last valid data remains labelled with its capture time; missing values are not treated as zero.
+          API-Football — единственный настроенный источник для этого соревнования, и он недоступен. Последние корректные данные остаются помечены временем захвата; отсутствующие значения не считаются нулём.
         </p>
       )}
       <p style={{ margin: "4px 0", fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
-        Source: <strong style={{ color: "var(--color-text)" }}>{state.provider}</strong>. Reason: {state.reason.replaceAll("_", " ").toLowerCase()}.
+        Источник: <strong style={{ color: "var(--color-text)" }}>{state.provider}</strong>. Причина: {state.reason.replaceAll("_", " ").toLowerCase()}.
       </p>
       <div style={{ fontSize: "0.8rem", color: "var(--color-muted)", display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
         {state.capturedAt && (
-          <span>Capture time: <time dateTime={state.capturedAt}>{state.capturedAt}</time></span>
+          <span>Время захвата: <time dateTime={state.capturedAt}>{state.capturedAt}</time></span>
         )}
         {state.lastValidAt && (
-          <span style={{ color: "var(--color-warning)" }}>Last valid capture: <time dateTime={state.lastValidAt}>{state.lastValidAt}</time></span>
+          <span style={{ color: "var(--color-warning)" }}>Последний корректный захват: <time dateTime={state.lastValidAt}>{state.lastValidAt}</time></span>
         )}
       </div>
       {state.retryAllowed && (
         <button type="button" className="btn-secondary" style={{ minHeight: 38, padding: "6px 14px", marginTop: 12, fontSize: "0.875rem" }}>
-          Check provider coverage again
+          Проверить покрытие заново
         </button>
       )}
       {state.receipt && (
         <details style={{ marginTop: 12, fontSize: "0.85rem", color: "var(--color-text-secondary)" }}>
-          <summary style={{ cursor: "pointer", color: "var(--color-accent-hover)" }}>Exact provider receipt</summary>
+          <summary style={{ cursor: "pointer", color: "var(--color-accent-hover)" }}>Точная квитанция поставщика</summary>
           <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", marginTop: 8 }}>
-            <dt style={{ color: "var(--color-muted)" }}>Receipt ID</dt>
+            <dt style={{ color: "var(--color-muted)" }}>ID квитанции</dt>
             <dd style={{ margin: 0 }}><code>{state.receipt.id}</code></dd>
-            <dt style={{ color: "var(--color-muted)" }}>Policy version</dt>
+            <dt style={{ color: "var(--color-muted)" }}>Версия политики</dt>
             <dd style={{ margin: 0 }}>{state.receipt.policyVersion}</dd>
-            <dt style={{ color: "var(--color-muted)" }}>Outcome</dt>
+            <dt style={{ color: "var(--color-muted)" }}>Исход</dt>
             <dd style={{ margin: 0 }}>{state.receipt.outcome}</dd>
-            <dt style={{ color: "var(--color-muted)" }}>Trigger</dt>
+            <dt style={{ color: "var(--color-muted)" }}>Триггер</dt>
             <dd style={{ margin: 0 }}>{state.receipt.trigger}</dd>
           </dl>
         </details>

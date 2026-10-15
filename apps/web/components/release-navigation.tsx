@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const DESTINATIONS = [
-  { label: "Fixtures", href: "/fixtures", current: (pathname: string) => pathname === "/fixtures" },
-  { label: "Analysis", href: "/fixtures#match-analysis", current: (pathname: string) => pathname.startsWith("/fixtures/") },
-  { label: "Results", href: "/scorecards", current: (pathname: string) => pathname.startsWith("/scorecards") },
-  { label: "Methodology", href: "/methodology", current: (pathname: string) => pathname.startsWith("/methodology") },
+  { label: "Матчи", href: "/fixtures", current: (pathname: string) => pathname === "/fixtures" },
+  { label: "Анализ", href: "/fixtures#match-analysis", current: (pathname: string) => pathname.startsWith("/fixtures/") },
+  { label: "Результаты", href: "/scorecards", current: (pathname: string) => pathname.startsWith("/scorecards") },
+  { label: "Методология", href: "/methodology", current: (pathname: string) => pathname.startsWith("/methodology") },
 ] as const;
 
 export function ReleaseNavigation() {
@@ -46,9 +46,9 @@ export function ReleaseNavigation() {
         aria-controls="release-primary-links"
         onClick={() => setOpen((value) => !value)}
       >
-        Menu
+        Меню
       </button>
-      <nav aria-label="Primary navigation" id="release-primary-links" data-open={open ? "true" : "false"}>
+      <nav aria-label="Основная навигация" id="release-primary-links" data-open={open ? "true" : "false"}>
         {DESTINATIONS.map((destination) => (
           <Link
             key={destination.label}

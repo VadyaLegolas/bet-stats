@@ -20,9 +20,9 @@ test("renders one normalized Premier League fixture through the production path"
   const to = new Date(Date.parse(FIXED_NOW) + 48 * 60 * 60 * 1_000).toISOString();
   await page.goto(`/fixtures?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&competition=${encodeURIComponent("Premier League")}`);
 
-  await expect(page.getByRole("heading", { level: 1, name: "Upcoming fixtures" })).toBeVisible();
-  await expect(page.getByLabel("Competition")).toHaveValue("Premier League");
-  await expect(page.getByRole("link", { name: "Arsenal vs Chelsea" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Предстоящие матчи" })).toBeVisible();
+  await expect(page.getByLabel("Соревнование")).toHaveValue("Premier League");
+  await expect(page.getByRole("link", { name: "Arsenal против Chelsea" })).toBeVisible();
   await expect(page.getByText("Europe/Warsaw")).toBeVisible();
   await expect(page.getByRole("button", { name: /prediction|odds|value|bet/i })).toHaveCount(0);
 });

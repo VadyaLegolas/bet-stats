@@ -6,14 +6,14 @@ type EvidenceStateNoticeProps = Readonly<{
 
 export function EvidenceStateNotice({ state, freshness, limitationReason }: EvidenceStateNoticeProps) {
   if (state === "PENDING") {
-    return <p role="status">Evidence is being rebuilt for this cutoff. Partial calculations are not published.</p>;
+    return <p role="status">Доказательства перестраиваются для этой точки отсчёта. Частичные вычисления не публикуются.</p>;
   }
   if (state === "UNAVAILABLE") {
-    return <p role="alert">Historical evidence could not be loaded for this cutoff. No newer data was substituted. Try again.</p>;
+    return <p role="alert">Исторические доказательства не удалось загрузить для этой точки отсчёта. Более новые данные не подставлялись. Попробуйте снова.</p>;
   }
   return (
-    <div aria-label="Evidence status">
-      {freshness === "STALE" && <p>Historical evidence is stale for this cutoff. Source times remain visible below.</p>}
+    <div aria-label="Статус доказательств">
+      {freshness === "STALE" && <p>Исторические доказательства неактуальны для этой точки отсчёта. Времена источников остаются видимыми ниже.</p>}
       {limitationReason && <p>{limitationReason}</p>}
     </div>
   );

@@ -1,28 +1,30 @@
 import Link from "next/link";
 import { DataStateNotice, type FixtureDataState } from "../../components/data-state-notice";
 import { ProviderStateNotice, type ProviderState } from "../../components/provider-state-notice";
+import { statusLabel } from "./status-labels";
 type Fixture = { id: string; competition: { id: string; name: string; season: string }; teams: { home: { id: string; name: string }; away: { id: string; name: string } }; kickoff: string; status: string; dataState: FixtureDataState; providerState: ProviderState };
 type Result = { items: readonly Fixture[]; range: { from: string; to: string } }; type Search = Record<string, string | string[] | undefined>;
 const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
+
 function Filters({ search, range, retry = false }: { search: Search; range?: Result["range"]; retry?: boolean }) {
   return (
     <form method="get" className="fixtures-filter-card" style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
       <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
-        <span>From (UTC)</span>
+        <span>С (UTC)</span>
         <input name="from" defaultValue={first(search.from) ?? range?.from ?? ""} style={{ minHeight: 44, width: 220, maxWidth: "100%" }} />
       </label>
       <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
-        <span>To (UTC)</span>
+        <span>По (UTC)</span>
         <input name="to" defaultValue={first(search.to) ?? range?.to ?? ""} style={{ minHeight: 44, width: 220, maxWidth: "100%" }} />
       </label>
       <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
-        <span>Competition</span>
+        <span>Соревнование</span>
         <select name="competition" defaultValue={first(search.competition) ?? "Premier League"} style={{ minHeight: 44, maxWidth: "100%" }}>
           <option>Premier League</option>
         </select>
       </label>
       <button type="submit" className="btn-primary" style={{ minHeight: 44, padding: "8px 20px" }}>
-        {retry ? "Try loading fixtures again" : "Apply filters"}
+        {retry ? "Повторить загрузку матчей" : "Применить фильтры"}
       </button>
     </form>
   );
@@ -48,9 +50,9 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
   } catch {
     return (
       <section style={{ maxWidth: 960, marginInline: "auto" }}>
-        <h1 className="page-title">Upcoming fixtures</h1>
+        <h1 className="page-title">Предстоящие матчи</h1>
         <p role="alert" style={{ color: "var(--color-danger)", background: "var(--color-danger-subtle)", padding: 16, borderRadius: "var(--radius-control)" }}>
-          Fixtures could not be loaded. Your filters were kept. Select Try loading fixtures again.
+          Не удалось загрузить матчи. Ваша фильтрация сохранена. Выберите «Повторить загрузку матчей».
         </p>
         <Filters search={search} retry />
       </section>
@@ -58,9 +60,15 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
   }
 
   const groups = new Map<string, Fixture[]>();
-  const dateFormat = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone });
+  const dateFormat = new Intl.DateTimeFormat("ru-RU", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone });
+  const groupLabel = (value: string): string => {
+    const parts = dateFormat.formatToParts(new Date(value));
+    const pick = (type: Intl.DateTimeFormatPartTypes) => parts.filter((part) => part.type === type).map((part) => part.value).join("");
+    const weekday = pick("weekday");
+    return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}, ${pick("day")} ${pick("month")} ${pick("year")}`;
+  };
   for (const fixture of result.items) {
-    const label = dateFormat.format(new Date(fixture.kickoff));
+    const label = groupLabel(fixture.kickoff);
     groups.set(label, [...(groups.get(label) ?? []), fixture]);
   }
 
@@ -70,9 +78,9 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
   return (
     <section style={{ maxWidth: 960, marginInline: "auto" }}>
       <div style={{ marginBottom: 24 }}>
-        <h1 className="page-title">Upcoming fixtures</h1>
+        <h1 className="page-title">Предстоящие матчи</h1>
         <p className="page-deck">
-          Times are grouped in {timeZone}. The default range is the next 48 hours.
+          Время указано в часовом поясе {timeZone}. По умолчанию показан ближайшие 48 часов.
         </p>
       </div>
 
@@ -81,7 +89,7 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
       {result.items.length === 0 ? (
         <div className="fixture-empty-state">
           <p>
-            No fixtures are available for this range. Change the competition or date range, then apply filters again.
+            В выбранном периоде нет матчей. Измените соревнование или диапазон дат и примените фильтры заново.
           </p>
         </div>
       ) : (
@@ -94,17 +102,17 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
                   <div className="fixture-header">
                     <h3 className="fixture-title">
                       <Link href={`/fixtures/${encodeURIComponent(fixture.id)}?returnTo=${encodeURIComponent(returnTo)}`}>
-                        {fixture.teams.home.name} <span style={{ color: "var(--color-text-secondary)", fontWeight: 400 }}>vs</span> {fixture.teams.away.name}
+                        {fixture.teams.home.name} <span style={{ color: "var(--color-text-secondary)", fontWeight: 400 }}>против</span> {fixture.teams.away.name}
                       </Link>
                     </h3>
                     <div className="fixture-meta">
                       <span className="fixture-time">
-                        {new Intl.DateTimeFormat("en-GB", { timeStyle: "short", timeZone }).format(new Date(fixture.kickoff))}
+                        {new Intl.DateTimeFormat("ru-RU", { timeStyle: "short", timeZone }).format(new Date(fixture.kickoff))}
                       </span>
                       <span>·</span>
                       <span>{fixture.competition.name}</span>
                       <span>·</span>
-                      <span style={{ textTransform: "capitalize" }}>{fixture.status.toLowerCase()}</span>
+                      <span>{statusLabel(fixture.status)}</span>
                     </div>
                   </div>
                   <div className="fixture-badges">

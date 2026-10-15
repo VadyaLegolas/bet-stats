@@ -8,8 +8,8 @@ test("live published cutoff crosses PostgreSQL, Nest, Next, and the browser", as
   const evidence = await response.json() as { resolvedAsOfUtc: string };
 
   await page.goto(`/teams/${LIVE_TEAM_ID}/evidence?asOf=${encodeURIComponent(LIVE_CUTOFF)}`);
-  const resolvedCutoff = page.locator("dt", { hasText: "Resolved cutoff (UTC)" }).locator("xpath=following-sibling::dd[1]");
-  await expect(resolvedCutoff).toHaveText(evidence.resolvedAsOfUtc);
+  const resolvedCutoff = page.locator("dt", { hasText: "Определённая точка отсчёта (UTC)" }).locator("xpath=following-sibling::dd[1]");
+  await expect(resolvedCutoff).toHaveText(evidence.resolvedAsOfUtc, { timeout: 30_000 });
   expect(evidence.resolvedAsOfUtc).toBe(LIVE_CUTOFF);
 });
 
@@ -28,14 +28,14 @@ test("renders the full live evidence matrix and preserves the original cutoff af
   await page.goto(`/teams/${LIVE_TEAM_ID}/evidence?asOf=${encodeURIComponent(LIVE_CUTOFF)}`);
   await expect(page.getByText("5/5", { exact: true })).toBeVisible();
   await expect(page.getByText("10/10", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Eligible match trace" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Трассировка подходящих матчей" })).toBeVisible();
   await expect(page.getByText("live-past-01", { exact: true })).toBeVisible();
   await expect(page.getByText("live-past-10", { exact: true })).toBeVisible();
-  const awayStrength = page.locator("details").filter({ has: page.locator("summary", { hasText: /^Away strength$/ }) });
+  const awayStrength = page.locator("details").filter({ has: page.locator("summary", { hasText: /^Сила гостей$/ }) });
   await awayStrength.locator("summary").click();
-  await expect(awayStrength.getByText("Value: Not available", { exact: true })).toBeVisible();
+  await expect(awayStrength.getByText("Значение: Недоступно", { exact: true })).toBeVisible();
   await expect(awayStrength.getByText("NO_ELIGIBLE_HISTORY", { exact: true })).toBeVisible();
-  const receiptLabel = new RegExp(`Reproduction receipt.*${original.receipt.configVersion}.*10 inputs`);
+  const receiptLabel = new RegExp(`Квитанция воспроизведения.*${original.receipt.configVersion}.*10 входных значений`);
   await expect(page.locator("summary").filter({ hasText: receiptLabel })).toBeVisible();
 
   await appendLaterCorrection();

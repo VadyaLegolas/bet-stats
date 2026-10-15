@@ -55,7 +55,7 @@ export function ResponsiveEvidence<Row>({
             {freshness && <p>{freshness(row)}</p>}
             {action?.(row)}
             <details>
-              <summary>Complete evidence</summary>
+              <summary>Полные доказательства</summary>
               <dl>{columns.map((column) => <div key={column.key} data-evidence-field={column.key}><dt>{column.label}</dt><dd>{column.value(row)}</dd></div>)}</dl>
             </details>
           </article>

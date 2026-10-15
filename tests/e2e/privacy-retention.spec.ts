@@ -36,31 +36,31 @@ test.beforeEach(async ({ page }, testInfo) => establishPrivacySession(page, proj
 
 test("retention starts off, requires explicit consent, and cancellation keeps consent", async ({ page }) => {
   await page.goto("/privacy");
-  await expect(page.getByRole("heading", { name: "Privacy and retained history" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "History retention is off", exact: true })).toBeVisible();
-  await expect(page.getByRole("checkbox", { name: /Allow retention/ })).not.toBeChecked();
-  await page.getByRole("checkbox", { name: /Allow retention/ }).click();
-  await expect(page.getByText("History retention is on")).toBeVisible();
-  await page.getByRole("button", { name: "Withdraw consent and delete history" }).click();
-  const dialog = page.getByRole("dialog", { name: "Delete retained betting history?" });
+  await expect(page.getByRole("heading", { name: "Конфиденциальность и сохранённая история" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Хранение истории отключено", exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /Разрешить хранение/ })).not.toBeChecked();
+  await page.getByRole("checkbox", { name: /Разрешить хранение/ }).click();
+  await expect(page.getByText("Хранение истории включено")).toBeVisible();
+  await page.getByRole("button", { name: "Отозвать согласие и удалить историю" }).click();
+  const dialog = page.getByRole("dialog", { name: "Удалить сохранённую историю ставок?" });
   await expect(dialog.getByRole("heading")).toBeFocused();
-  await dialog.getByRole("button", { name: "Keep consent" }).click();
+  await dialog.getByRole("button", { name: "Оставить согласие" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole("button", { name: "Withdraw consent and delete history" })).toBeFocused();
-  await expect(page.getByText("History retention is on")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Отозвать согласие и удалить историю" })).toBeFocused();
+  await expect(page.getByText("Хранение истории включено")).toBeVisible();
 });
 
 test("withdrawal reports success only after deletion and future retention is denied", async ({ page }, testInfo) => {
   const activeSubjectId = projectSubject(testInfo.project.name);
   await page.goto("/privacy");
-  if (await page.getByRole("heading", { name: "History retention is off", exact: true }).isVisible()) await page.getByRole("checkbox", { name: /Allow retention/ }).click();
+  if (await page.getByRole("heading", { name: "Хранение истории отключено", exact: true }).isVisible()) await page.getByRole("checkbox", { name: /Разрешить хранение/ }).click();
   expect(await page.evaluate(async () => (await fetch("/internal-api/privacy/history/view", {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ resourceType: "RESULT", resourceId: "live-comparison-fixture" }),
   })).status)).toBe(201);
-  await page.getByRole("button", { name: "Withdraw consent and delete history" }).click();
-  await page.getByRole("button", { name: "Delete history and withdraw consent" }).click();
-  await expect(page.getByRole("heading", { name: "Consent withdrawn" })).toBeFocused();
-  await expect(page.getByText("Consent withdrawn. Retained betting history was deleted and future retention is off.")).toBeVisible();
+  await page.getByRole("button", { name: "Отозвать согласие и удалить историю" }).click();
+  await page.getByRole("button", { name: "Удалить историю и отозвать согласие" }).click();
+  await expect(page.getByRole("heading", { name: "Согласие отозвано" })).toBeFocused();
+  await expect(page.getByText("Согласие отозвано. Сохранённая история ставок удалена, будущее хранение отключено.")).toBeVisible();
   const database = createPrismaClient(readLiveReleaseState().databaseUrl);
   try {
     expect(await database.retainedViewHistory.count({ where: { subjectId: activeSubjectId } })).toBe(0);
@@ -95,9 +95,9 @@ test("D-15 rejects retired direct and cross-subject privacy sessions", async ({ 
 test("missing subject assertion fails closed while ordinary analysis remains available", async ({ browser }, testInfo) => {
   const page = await browser.newPage();
   await page.goto("/privacy");
-  await expect(page.getByText("History retention is unavailable until the retention policy is complete")).toBeVisible();
-  await expect(page.getByRole("checkbox", { name: /Allow retention/ })).toBeDisabled();
-  if (testInfo.project.name === "mobile-chromium") await page.getByRole("button", { name: "Menu" }).click();
-  await expect(page.getByRole("link", { name: "Fixtures" })).toBeVisible();
+  await expect(page.getByText("Хранение истории недоступно, пока политика хранения не завершена")).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /Разрешить хранение/ })).toBeDisabled();
+  if (testInfo.project.name === "mobile-chromium") await page.getByRole("button", { name: "Меню" }).click();
+  await expect(page.getByRole("link", { name: "Матчи" })).toBeVisible();
   await page.close();
 });

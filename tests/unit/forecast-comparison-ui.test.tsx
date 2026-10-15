@@ -13,17 +13,17 @@ describe("forecast revision comparison UI", () => {
     expect(initializeComparisonPair(new URLSearchParams("left=kept-left&right=kept-right"), [...forecasts, snapshot("newest", "LINEUP_CONFIRMED", 0.55, [], 0.8, 1.5)])).toEqual({ leftId: "kept-left", rightId: "kept-right", initialized: false });
     expect(swapComparisonPair({ leftId: "left", rightId: "right" })).toEqual({ leftId: "right", rightId: "left" });
   });
-  it.each([["CAPABILITY_DENIED", "Provider capability is denied."], ["BUDGET_PROTECTED", "Provider budget is protected."], ["PROVIDER_UNAVAILABLE", "Provider is unavailable."], ["NO_CONFIRMED_LINEUP", "No official confirmed lineup was available before the cutoff."], ["INSUFFICIENT_EVIDENCE", "Evidence is insufficient for this snapshot."]])("renders server reason %s exactly", (reason, copy) => expect(availabilityReasonCopy(reason)).toBe(copy));
+  it.each([["CAPABILITY_DENIED", "Возможности поставщика запрещены."], ["BUDGET_PROTECTED", "Бюджет поставщика защищён."], ["PROVIDER_UNAVAILABLE", "Поставщик недоступен."], ["NO_CONFIRMED_LINEUP", "Официальный подтверждённый состав отсутствовал до отсечки."], ["INSUFFICIENT_EVIDENCE", "Доказательств недостаточно для этого снимка."]])("renders server reason %s exactly", (reason, copy) => expect(availabilityReasonCopy(reason)).toBe(copy));
 
   it("renders server semantic deltas with written direction and exact receipt IDs", () => {
     const comparison = compareForecastPair(snapshot("left", "INITIAL", 0.45, ["OLD"], 0.6, 1.2), snapshot("right", "PRE_MATCH", 0.5, ["NEW"], 0.7, 1.4));
     const markup = renderToStaticMarkup(createElement(ForecastComparisonPanel, { comparison }));
-    expect(markup).toContain("Material evidence, model, and limitation changes");
-    expect(markup).toContain("increased by");
+    expect(markup).toContain("Значимые изменения доказательств, модели и ограничений");
+    expect(markup).toContain("вырос на");
     expect(markup).toContain("+5.0%");
     expect(markup).toContain("left");
     expect(markup).toContain("right");
-    expect(markup).toContain("Probabilities are estimates, not guarantees. You can lose money when betting.");
+    expect(markup).toContain("Вероятности — это оценки, а не гарантии. Вы можете потерять деньги при ставках.");
   });
 
   it("renders composite evidence changes when fixture IDs are unchanged", () => {
@@ -34,13 +34,13 @@ describe("forecast revision comparison UI", () => {
     const markup = renderToStaticMarkup(createElement(ForecastComparisonPanel, { comparison: compareForecastPair(left, right) }));
     expect(markup).toContain("hash-before");
     expect(markup).toContain("hash-after");
-    expect(markup).not.toContain("No displayed model components changed");
+    expect(markup).not.toContain("Отображаемые компоненты модели не изменились");
   });
 
   it("renders documented one-snapshot and absent-lineup states with persistent risk disclosure", () => {
     const markup = renderToStaticMarkup(createElement(ForecastWorkbench, { fixtureId: "fixture-1", forecasts: [snapshot("only", "INITIAL", 0.45, [], 0.6, 1.2)] }));
-    expect(markup).toContain("No comparable forecast pair yet");
-    expect(markup).toContain("No LINEUP_CONFIRMED snapshot: no official confirmed lineup receipt was available before the cutoff.");
-    expect(markup).toContain("Probabilities are estimates, not guarantees. You can lose money when betting.");
+    expect(markup).toContain("Сопоставимая пара прогнозов пока недоступна");
+    expect(markup).toContain("Нет снимка LINEUP_CONFIRMED: до отсечки не было официальной квитанции подтверждённого состава.");
+    expect(markup).toContain("Вероятности — это оценки, а не гарантии. Вы можете потерять деньги при ставках.");
   });
 });

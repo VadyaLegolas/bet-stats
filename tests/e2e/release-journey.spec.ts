@@ -18,21 +18,21 @@ test("D-15 crosses fixture, forecast, manual odds, value, result, settlement and
   page.on("request", (request) => { if (request.isNavigationRequest() && request.url().startsWith("data:")) intercepted += 1; });
 
   await page.goto(`/fixtures/${fixtureId}`);
-  const forecastId = await page.getByLabel("Forecast snapshot").inputValue();
+  const forecastId = await page.getByLabel("Снимок прогноза").inputValue();
   expect(forecastId).toMatch(/^[a-f0-9]{64}$/);
-  await page.getByLabel("Market").selectOption("ONE_X_TWO");
-  await page.getByLabel("Bookmaker or source label").fill(`Release acceptance ${testInfo.project.name}`);
-  await page.getByLabel("Home decimal odds").fill("4");
-  await page.getByLabel("Draw decimal odds").fill("2");
-  await page.getByLabel("Away decimal odds").fill("2");
+  await page.getByLabel("Рынок").selectOption("ONE_X_TWO");
+  await page.getByLabel("Метка букмекера или источника").fill(`Release acceptance ${testInfo.project.name}`);
+  await page.getByLabel("Десятичный коэффициент на хозяев").fill("4");
+  await page.getByLabel("Десятичный коэффициент на ничью").fill("2");
+  await page.getByLabel("Десятичный коэффициент на гостей").fill("2");
   const oddsRequestPromise = page.waitForRequest((request) => request.url().includes(`/internal-api/fixtures/${fixtureId}/odds`) && request.method() === "POST");
-  await page.getByRole("button", { name: "Save complete immutable odds book" }).click();
+  await page.getByRole("button", { name: "Сохранить полную неизменяемую книгу коэффициентов" }).click();
   const oddsRequest = await oddsRequestPromise;
   const capturedAt = new Date((oddsRequest.postDataJSON() as { capturedAt: string }).capturedAt);
   expect(capturedAt.getTime()).toBeLessThan(kickoffUtc.getTime());
-  const oddsStatus = page.getByRole("status").filter({ hasText: "Immutable odds snapshot" });
+  const oddsStatus = page.getByRole("status").filter({ hasText: "Неизменяемый снимок коэффициентов" });
   await expect(oddsStatus).toBeVisible();
-  const oddsId = (await oddsStatus.textContent())?.match(/snapshot ([a-f0-9-]+) saved/i)?.[1];
+  const oddsId = (await oddsStatus.textContent())?.match(/снимок коэффициентов ([a-f0-9-]+) сохранён/i)?.[1];
   expect(oddsId).toBeTruthy();
 
   const forecastDatabase = createPrismaClient(state.databaseUrl);
@@ -44,12 +44,12 @@ test("D-15 crosses fixture, forecast, manual odds, value, result, settlement and
   }
 
   const valueResponsePromise = page.waitForResponse((response) => response.url().includes(`/internal-api/fixtures/${fixtureId}/value`) && response.request().method() === "POST");
-  await page.getByRole("button", { name: "Compare exact snapshots" }).click();
+  await page.getByRole("button", { name: "Сравнить точные снимки" }).click();
   const valueResponse = await valueResponsePromise;
   expect(valueResponse.ok()).toBeTruthy();
   const value = await valueResponse.json() as { id: string; forecastSnapshotId: string; oddsSnapshotId: string; outcome: string };
   expect(value).toMatchObject({ forecastSnapshotId: forecastId, oddsSnapshotId: oddsId, outcome: "INSUFFICIENT_EVIDENCE" });
-  await page.getByText("Exact immutable decision receipt").click();
+  await page.getByText("Точная неизменяемая квитанция решения").click();
   await expect(page.locator("pre").filter({ hasText: `\"id\": \"${value.id}\"` })).toBeVisible();
 
   const database = createPrismaClient(state.databaseUrl);
@@ -83,7 +83,7 @@ test("D-15 crosses fixture, forecast, manual odds, value, result, settlement and
   const scorecard = await scorecardResponse.json() as { denominators: { fixtureCount: number; forecastCount: number; eventCount: number; valueCount: number } };
   expect(scorecard.denominators).toEqual({ fixtureCount: 1, forecastCount: 1, eventCount: 3, valueCount: 0 });
   await page.goto(`/scorecards?${query}`);
-  await expect(page.getByRole("heading", { name: "Limited evidence" })).toBeVisible();
-  await expect(page.getByText("1 fixtures · 1 forecasts · 3 probability events · 0 value candidates")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ограниченные доказательства" })).toBeVisible();
+  await expect(page.getByText("1 матчей · 1 прогнозов · 3 вероятностных событий · 0 кандидатов value")).toBeVisible();
   expect(intercepted).toBe(0);
 });

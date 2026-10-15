@@ -4,19 +4,19 @@ import { expect, test } from "@playwright/test";
 import { LIVE_FIXTURES } from "./live-provider-stack.js";
 import { prepareReleaseFixture } from "./live-release-stack.js";
 
-const destinationNames = ["Fixtures", "Analysis", "Results", "Methodology"] as const;
+const destinationNames = ["Матчи", "Анализ", "Результаты", "Методология"] as const;
 
 test("navigation is equivalent on desktop and mobile", async ({ page }, testInfo) => {
   await page.goto("/fixtures");
 
-  const primary = page.getByRole("navigation", { name: "Primary navigation" });
-  if (testInfo.project.name === "mobile-chromium") await page.getByRole("button", { name: "Menu" }).click();
+  const primary = page.getByRole("navigation", { name: "Основная навигация" });
+  if (testInfo.project.name === "mobile-chromium") await page.getByRole("button", { name: "Меню" }).click();
   await expect(primary.getByRole("link")).toHaveText(destinationNames);
-  await expect(primary.getByRole("link", { name: "Fixtures" })).toHaveAttribute("aria-current", "page");
+  await expect(primary.getByRole("link", { name: "Матчи" })).toHaveAttribute("aria-current", "page");
   if (testInfo.project.name === "mobile-chromium") await page.keyboard.press("Escape");
 
   await page.setViewportSize({ width: 390, height: 844 });
-  const menu = page.getByRole("button", { name: "Menu" });
+  const menu = page.getByRole("button", { name: "Меню" });
   await expect(menu).toHaveAttribute("aria-expanded", "false");
   await menu.click();
   await expect(menu).toHaveAttribute("aria-expanded", "true");
@@ -26,9 +26,9 @@ test("navigation is equivalent on desktop and mobile", async ({ page }, testInfo
   await expect(menu).toHaveAttribute("aria-expanded", "false");
 
   await menu.click();
-  await primary.getByRole("link", { name: "Results" }).click();
+  await primary.getByRole("link", { name: "Результаты" }).click();
   await expect(page).toHaveURL(/\/scorecards/);
-  await expect(page.getByRole("button", { name: "Menu" })).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("button", { name: "Меню" })).toHaveAttribute("aria-expanded", "false");
 });
 
 test("declared release support is desktop and mobile Chromium", async ({}, testInfo) => {
@@ -42,7 +42,7 @@ test("reflow keeps the page inside 320 CSS pixels and respects user media", asyn
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
-  await expect(page.getByRole("contentinfo")).toContainText("Outcomes remain uncertain");
+  await expect(page.getByRole("contentinfo")).toContainText("Исходы остаются неопределёнными");
 
   const accessibility = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
   expect(accessibility.violations).toEqual([]);
@@ -52,18 +52,18 @@ test("200 percent text zoom keeps essential actions and content available", asyn
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
   await page.locator("html").evaluate((element) => { element.style.fontSize = "200%"; });
-  await expect(page.getByRole("heading", { name: "Frozen forecast" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save complete immutable odds book" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Замороженный прогноз" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Сохранить полную неизменяемую книгу коэффициентов" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 });
 
 test("methodology and fail-closed privacy expose accessible release facts", async ({ page }) => {
   await page.goto("/methodology");
-  await expect(page.getByRole("heading", { name: "How forecasts work" })).toBeVisible();
-  await expect(page.getByText(/Model card version/).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Как работают прогнозы" })).toBeVisible();
+  await expect(page.getByText(/Версия карточки модели/).first()).toBeVisible();
   await page.goto("/privacy");
-  await expect(page.getByRole("heading", { name: "History retention is unavailable" })).toBeVisible();
-  await expect(page.getByRole("checkbox", { name: /Allow retention/ })).toBeDisabled();
+  await expect(page.getByRole("heading", { name: "Хранение истории недоступно" })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /Разрешить хранение/ })).toBeDisabled();
   const accessibility = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
   expect(accessibility.violations).toEqual([]);
 });
@@ -71,7 +71,7 @@ test("methodology and fail-closed privacy expose accessible release facts", asyn
 test("keyboard users can skip navigation and retain visible focus", async ({ page }) => {
   await page.goto("/fixtures");
   await page.keyboard.press("Tab");
-  const skip = page.getByRole("link", { name: "Skip to main content" });
+  const skip = page.getByRole("link", { name: "Перейти к основному содержимому" });
   await expect(skip).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator("main")).toBeFocused();
@@ -92,17 +92,17 @@ test("evidence parity keeps one complete field inventory across layouts", async 
 test("chart alternative exposes the complete reliability evidence", async ({ page }) => {
   const query = new URLSearchParams({ modelVersion: "poisson-ensemble-v1", competitionId: "live-pl", market: "ONE_X_TWO", from: "2026-01-01T00:00:00.000Z", to: "2027-01-01T00:00:00.000Z" });
   await page.goto(`/scorecards?${query}`);
-  const reliability = page.getByRole("region", { name: "Reliability evidence" });
-  await expect(reliability.getByText(/Conclusion:/)).toBeVisible();
-  const alternative = reliability.locator('table[aria-label="Complete reliability data"]');
+  const reliability = page.getByRole("region", { name: "Доказательства надёжности" });
+  await expect(reliability.getByText(/Заключение:/)).toBeVisible();
+  const alternative = reliability.locator('table[aria-label="Полные данные надёжности"]');
   await expect(alternative).toBeAttached();
-  await expect(alternative.locator("th")).toContainText(["Range", "Mean forecast", "Observed", "Count", "Direction"]);
+  await expect(alternative.locator("th")).toContainText(["Диапазон", "Средний прогноз", "Наблюдаемое", "Количество", "Направление"]);
 });
 
 test("manual odds workflow is keyboard operable without losing evidence", async ({ page }, testInfo) => {
   const kickoffUtc = await prepareReleaseFixture(LIVE_FIXTURES.comparison);
   await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
-  await page.getByLabel("Bookmaker or source label").focus();
+  await page.getByLabel("Метка букмекера или источника").focus();
   await page.keyboard.type(`Keyboard source ${testInfo.project.name}`);
   await page.keyboard.press("Tab");
   await page.keyboard.type("4");
@@ -116,25 +116,25 @@ test("manual odds workflow is keyboard operable without losing evidence", async 
   const oddsRequest = await oddsRequestPromise;
   const capturedAt = new Date((oddsRequest.postDataJSON() as { capturedAt: string }).capturedAt);
   expect(capturedAt.getTime()).toBeLessThan(kickoffUtc.getTime());
-  await expect(page.getByRole("status").filter({ hasText: "Immutable odds snapshot" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Frozen forecast" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Неизменяемый снимок коэффициентов" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Замороженный прогноз" })).toBeVisible();
 });
 
 test("local failure and retrying preserve valid siblings", async ({ context, page }) => {
   await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
-  const snapshot = page.getByRole("heading", { name: "Exact snapshot comparison" }).locator("xpath=following-sibling::p").locator("code");
+  const snapshot = page.getByRole("heading", { name: "Сравнение точных снимков" }).locator("xpath=following-sibling::p").locator("code");
   const snapshotId = await snapshot.textContent();
-  await expect(page.getByRole("heading", { name: "Frozen forecast" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Замороженный прогноз" })).toBeVisible();
 
   await context.setOffline(true);
-  await page.getByRole("button", { name: "Refresh forecast availability" }).click();
-  await expect(page.locator('[data-local-state="stale"]')).toContainText("Forecast availability is not current");
+  await page.getByRole("button", { name: "Обновить доступность прогнозов" }).click();
+  await expect(page.locator('[data-local-state="stale"]')).toContainText("Доступность прогнозов: данные неактуальны");
   await expect(snapshot).toHaveText(snapshotId ?? "");
-  await expect(page.getByRole("heading", { name: "Frozen forecast" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Замороженный прогноз" })).toBeVisible();
 
   await context.setOffline(false);
-  await page.getByRole("button", { name: "Try again" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Updated" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Refresh forecast availability" })).toBeFocused();
+  await page.getByRole("button", { name: "Повторить попытку" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Обновлено" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Обновить доступность прогнозов" })).toBeFocused();
   await expect(snapshot).toHaveText(snapshotId ?? "");
 });

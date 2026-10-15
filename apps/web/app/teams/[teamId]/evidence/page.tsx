@@ -37,35 +37,35 @@ const panel = { border: "1px solid var(--color-border)", borderRadius: 4, backgr
 export type EvidenceDisplayField = Readonly<{ label: string; value: string }>;
 
 export function renderEvidenceComponentFields(component: EvidenceProjectionComponent): readonly EvidenceDisplayField[] {
-  if (component.value === null) return [{ label: "Value", value: "Not available" }];
+  if (component.value === null) return [{ label: "Значение", value: "Недоступно" }];
   switch (component.kind) {
-    case "form5": return [{ label: "5-match weighted form", value: `${component.value.toFixed(2)} points/match` }];
-    case "form10": return [{ label: "10-match weighted form", value: `${component.value.toFixed(2)} points/match` }];
-    case "elo": return [{ label: "Elo rating", value: `${component.value.toFixed(1)} rating points` }];
-    case "homeStrength": return [{ label: "Home strength", value: `${component.value.toFixed(2)} points/match` }];
-    case "awayStrength": return [{ label: "Away strength", value: `${component.value.toFixed(2)} points/match` }];
+    case "form5": return [{ label: "Взвешенная форма за 5 матчей", value: `${component.value.toFixed(2)} очков/матч` }];
+    case "form10": return [{ label: "Взвешенная форма за 10 матчей", value: `${component.value.toFixed(2)} очков/матч` }];
+    case "elo": return [{ label: "Рейтинг Elo", value: `${component.value.toFixed(1)} очков рейтинга` }];
+    case "homeStrength": return [{ label: "Сила дома", value: `${component.value.toFixed(2)} очков/матч` }];
+    case "awayStrength": return [{ label: "Сила гостей", value: `${component.value.toFixed(2)} очков/матч` }];
     case "goalRates": return [
-      { label: "Goals for", value: `${component.value.for.toFixed(2)} goals/match` },
-      { label: "Goals against", value: `${component.value.against.toFixed(2)} goals/match` },
+      { label: "Забитые голы", value: `${component.value.for.toFixed(2)} голов/матч` },
+      { label: "Пропущенные голы", value: `${component.value.against.toFixed(2)} голов/матч` },
     ];
-    case "restDays": return [{ label: "Rest", value: `${component.value.toFixed(2)} days` }];
+    case "restDays": return [{ label: "Отдых", value: `${component.value.toFixed(2)} дней` }];
     case "h2h": return [
-      { label: "H2H points", value: `${component.value.pointsPerMatch.toFixed(2)} points/match` },
-      { label: "H2H weight", value: component.value.weight.toFixed(3) },
+      { label: "Очки H2H", value: `${component.value.pointsPerMatch.toFixed(2)} очков/матч` },
+      { label: "Вес H2H", value: component.value.weight.toFixed(3) },
     ];
   }
 }
 
 function componentLabel(component: EvidenceProjectionComponent): string {
   switch (component.kind) {
-    case "form5": return "Five-match weighted form";
-    case "form10": return "Ten-match weighted form";
-    case "elo": return "Elo rating";
-    case "homeStrength": return "Home strength";
-    case "awayStrength": return "Away strength";
-    case "goalRates": return "Goal rates";
-    case "restDays": return "Rest days";
-    case "h2h": return "Head-to-head evidence";
+    case "form5": return "Взвешенная форма за 5 матчей";
+    case "form10": return "Взвешенная форма за 10 матчей";
+    case "elo": return "Рейтинг Elo";
+    case "homeStrength": return "Сила дома";
+    case "awayStrength": return "Сила гостей";
+    case "goalRates": return "Голевые показатели";
+    case "restDays": return "Дни отдыха";
+    case "h2h": return "Доказательства личных встреч";
   }
 }
 
@@ -81,7 +81,7 @@ function SummaryCard({ label, summary }: { label: string; summary: Summary }) {
   const sample = summary.sampleSize ?? 0;
   const target = summary.requestedSampleSize ?? Number(label);
   const available = summary.value !== null && summary.value !== undefined && sample > 0;
-  return <article style={panel}><h2>{label}-match summary</h2><p style={{ fontSize: 28, fontWeight: 700 }}>{available ? String(summary.value) : "Not available"}</p><p>Sample: <span>{sample}/{target}</span></p>{summary.sourceUpdatedAt && <p>Source updated: <time dateTime={summary.sourceUpdatedAt}>{summary.sourceUpdatedAt}</time></p>}{summary.limitationReason && <p>{summary.limitationReason}</p>}</article>;
+  return <article style={panel}><h2>Сводка за {label} матчей</h2><p style={{ fontSize: 28, fontWeight: 700 }}>{available ? String(summary.value) : "Недоступно"}</p><p>Выборка: <span>{sample}/{target}</span></p>{summary.sourceUpdatedAt && <p>Источник обновлён: <time dateTime={summary.sourceUpdatedAt}>{summary.sourceUpdatedAt}</time></p>}{summary.limitationReason && <p>{summary.limitationReason}</p>}</article>;
 }
 
 export default function TeamEvidencePage() {
@@ -109,8 +109,8 @@ export default function TeamEvidencePage() {
   }, [asOf, params.teamId]);
 
   const back = fixtureId ? `/fixtures/${encodeURIComponent(fixtureId)}` : "/fixtures";
-  if (failed) return <section><h1>Historical evidence unavailable</h1><p role="alert">Historical evidence could not be loaded for this cutoff. No newer data was substituted. Try again.</p><Link href={back}>{fixtureId ? "Back to fixture" : "Return to fixtures"}</Link></section>;
-  if (!data) return <section aria-busy="true"><h1>Historical evidence</h1><p role="status">Loading historical evidence for the selected cutoff</p></section>;
+  if (failed) return <section><h1>Исторические доказательства недоступны</h1><p role="alert">Исторические доказательства не удалось загрузить для этой точки отсчёта. Более новые данные не подставлялись. Попробуйте снова.</p><Link href={back}>{fixtureId ? "Назад к матчу" : "Назад к матчам"}</Link></section>;
+  if (!data) return <section aria-busy="true"><h1>Исторические доказательства</h1><p role="status">Загрузка исторических доказательств для выбранной точки отсчёта</p></section>;
 
   const resolved = data.resolvedAsOfUtc ?? data.resolvedAsOf;
   const invalid = !resolved;
@@ -118,14 +118,14 @@ export default function TeamEvidencePage() {
   const trace = data.trace ?? data.receipt?.inputs ?? [];
   const name = data.team?.name ?? data.teamId ?? params.teamId;
   return <section style={{ display: "grid", gap: 24, overflowWrap: "anywhere" }}>
-    <Link href={back} style={{ minHeight: 48, display: "inline-flex", alignItems: "center", width: "fit-content" }}>{fixtureId ? "Back to fixture" : "Return to fixtures"}</Link>
-    <header><h1>{name} historical evidence</h1><p>What the system could know at the selected time.</p>{data.fixture && <p>Evidence requested for {data.fixture.name} kickoff</p>}<dl><dt>Requested cutoff</dt><dd><time dateTime={data.requestedAsOf ?? asOf}>{data.requestedAsOf ?? asOf}</time></dd><dt>Resolved cutoff (UTC)</dt><dd>{resolved ? <time dateTime={resolved}>{resolved}</time> : "Not available"}</dd>{data.displayTimeZone && <><dt>Display timezone</dt><dd>{data.displayTimeZone}</dd></>}</dl></header>
-    {invalid && <p role="alert">This cutoff could not be used. Enter a valid supported date and time.</p>}
+    <Link href={back} style={{ minHeight: 48, display: "inline-flex", alignItems: "center", width: "fit-content" }}>{fixtureId ? "Назад к матчу" : "Назад к матчам"}</Link>
+    <header><h1>{name}: исторические доказательства</h1><p>То, что система могла знать на выбранный момент.</p>{data.fixture && <p>Доказательства запрошены к началу матча {data.fixture.name}</p>}<dl><dt>Запрошенная точка отсчёта</dt><dd><time dateTime={data.requestedAsOf ?? asOf}>{data.requestedAsOf ?? asOf}</time></dd><dt>Определённая точка отсчёта (UTC)</dt><dd>{resolved ? <time dateTime={resolved}>{resolved}</time> : "Недоступно"}</dd>{data.displayTimeZone && <><dt>Часовой пояс отображения</dt><dd>{data.displayTimeZone}</dd></>}</dl></header>
+    {invalid && <p role="alert">Эта точка отсчёта не может быть использована. Введите поддерживаемые дату и время.</p>}
     <EvidenceStateNotice state={data.state} freshness={data.freshness} limitationReason={data.limitationReason}/>
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}><SummaryCard label="5" summary={five}/><SummaryCard label="10" summary={ten}/></div>
-    <section aria-labelledby="components-heading"><h2 id="components-heading">Evidence components</h2>{Object.values(data.components ?? {}).map((component) => <details key={component.kind} style={panel}><summary>{componentLabel(component)}</summary><dl>{renderEvidenceComponentFields(component).map((field) => <div key={field.label}><dt>{field.label}</dt><dd>{field.label}: {field.value}</dd></div>)}</dl><p>Sample: {component.sampleSize}</p>{component.limitation && <p>{component.limitation}</p>}</details>)}</section>
-    <section aria-labelledby="trace-heading"><h2 id="trace-heading">Eligible match trace</h2>{trace.length === 0 ? <p>No matches qualify under the effective-time and capture-time cutoff.</p> : <div role="region" aria-label="Eligible matches" style={{ overflowX: "auto" }}><table><caption>Matches included in the historical evidence build</caption><thead><tr><th>Match</th><th>Venue</th><th>Result</th><th>Score</th><th>Effective time</th><th>Observed time</th><th>Source</th><th>Components</th></tr></thead><tbody>{trace.map((row) => <tr key={`${row.fixtureId}-${row.observedAt ?? ""}`}><td>{row.fixtureId}</td><td>{row.venue ?? "Unknown"}</td><td>{row.result ?? "Unknown"}</td><td>{row.score ?? "Unknown"}</td><td>{row.effectiveAt ? <time dateTime={row.effectiveAt}>{row.effectiveAt}</time> : "Unknown"}</td><td>{row.observedAt ? <time dateTime={row.observedAt}>{row.observedAt}</time> : "Unknown"}</td><td>{row.source ?? "Unknown"}</td><td>{row.components?.join(", ") ?? "Unknown"}</td></tr>)}</tbody></table></div>}</section>
-    {!data.receipt && <p role="alert">Provenance is unavailable; this evidence cannot be reproduced.</p>}
-    <details style={panel}><summary>Reproduction receipt{data.receipt?.configVersion ? ` — ${data.receipt.configVersion}` : ""}{data.receipt ? ` — ${(data.receipt.inputIds ?? data.receipt.inputs ?? []).length} input${(data.receipt.inputIds ?? data.receipt.inputs ?? []).length === 1 ? "" : "s"}` : ""}</summary>{data.receipt ? <pre aria-label="Reproduction receipt data" style={{ overflow: "auto", maxWidth: "100%" }}>{JSON.stringify(data.receipt, null, 2)}</pre> : <p>No receipt is available for this cutoff.</p>}</details>
+    <section aria-labelledby="components-heading"><h2 id="components-heading">Компоненты доказательств</h2>{Object.values(data.components ?? {}).map((component) => <details key={component.kind} style={panel}><summary>{componentLabel(component)}</summary><dl>{renderEvidenceComponentFields(component).map((field) => <div key={field.label}><dt>{field.label}</dt><dd>{field.label}: {field.value}</dd></div>)}</dl><p>Выборка: {component.sampleSize}</p>{component.limitation && <p>{component.limitation}</p>}</details>)}</section>
+    <section aria-labelledby="trace-heading"><h2 id="trace-heading">Трассировка подходящих матчей</h2>{trace.length === 0 ? <p>Нет матчей, подходящих под отсчёт по времени действия и времени захвата.</p> : <div role="region" aria-label="Подходящие матчи" style={{ overflowX: "auto" }}><table><caption>Матчи, включённые в сборку исторических доказательств</caption><thead><tr><th>Матч</th><th>Стадион</th><th>Исход</th><th>Счёт</th><th>Время действия</th><th>Время наблюдения</th><th>Источник</th><th>Компоненты</th></tr></thead><tbody>{trace.map((row) => <tr key={`${row.fixtureId}-${row.observedAt ?? ""}`}><td>{row.fixtureId}</td><td>{row.venue ?? "Неизвестно"}</td><td>{row.result ?? "Неизвестно"}</td><td>{row.score ?? "Неизвестно"}</td><td>{row.effectiveAt ? <time dateTime={row.effectiveAt}>{row.effectiveAt}</time> : "Неизвестно"}</td><td>{row.observedAt ? <time dateTime={row.observedAt}>{row.observedAt}</time> : "Неизвестно"}</td><td>{row.source ?? "Неизвестно"}</td><td>{row.components?.join(", ") ?? "Неизвестно"}</td></tr>)}</tbody></table></div>}</section>
+    {!data.receipt && <p role="alert">Происхождение данных недоступно; эти доказательства нельзя воспроизвести.</p>}
+    <details style={panel}><summary>Квитанция воспроизведения{data.receipt?.configVersion ? ` — ${data.receipt.configVersion}` : ""}{data.receipt ? ` — ${(data.receipt.inputIds ?? data.receipt.inputs ?? []).length} ${(data.receipt.inputIds ?? data.receipt.inputs ?? []).length === 1 ? "входное значение" : "входных значений"}` : ""}</summary>{data.receipt ? <pre aria-label="Данные квитанции воспроизведения" style={{ overflow: "auto", maxWidth: "100%" }}>{JSON.stringify(data.receipt, null, 2)}</pre> : <p>Квитанция для этой точки отсчёта недоступна.</p>}</details>
   </section>;
 }

@@ -3,8 +3,11 @@ import { readFreshnessThresholds, readServerConfig } from "@bet-stats/config";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import { classifyFreshness, type DataStateProjection } from "@bet-stats/domain";
 
+import { DAILY_ALLOWANCE, PROVIDER, PROVIDER_MINUTE_LIMIT, PROVIDER_MINUTE_WINDOW_SECONDS } from "./fixtures-budget.js";
+
 const UTC_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 const MAX_RANGE_MS = 31 * 86_400_000;
+export type SyncQuota = { provider: string; daily: { used: number; allowance: number; remaining: number; resetAt: string; resetTimezone: "UTC" }; minute: { used: number; limit: number; remaining: number; windowSeconds: number } };
 export type ProviderStateProjection = { state: "PRIMARY" | "FALLBACK" | "PENDING" | "UNAVAILABLE" | "LIMITED" | "UNSUPPORTED" | "STALE_CAPABILITY" | "BUDGET_PROTECTED" | "CIRCUIT_DENIED"; provider: string; reason: string; capturedAt: string | null; lastValidAt: string | null; retryAllowed: boolean; receipt: { id: string; policyVersion: string; outcome: string; trigger: string } | null };
 export type FixtureProjection = { id: string; competition: { id: string; name: string; season: string }; teams: { home: { id: string; name: string }; away: { id: string; name: string } }; kickoff: string; status: string; dataState: DataStateProjection<null>; providerState: ProviderStateProjection };
 type FixtureRow = { id: string; kickoffUtc: Date; status: string; updatedAt: Date; league: { id: string; name: string }; season: { id: string; label: string }; homeTeam: { id: string; name: string }; awayTeam: { id: string; name: string }; provenance: Array<{ provider: string; observedAt: Date; sourceUpdatedAt: Date | null }> };
@@ -82,6 +85,28 @@ export class FixturesService implements OnModuleDestroy {
     if (!this.database) return { items: [deterministicRow.league.name] };
     const leagues = await this.database.league.findMany({ where: { externalRefs: { some: { provider: "football-data.org" } } }, orderBy: { name: "asc" }, select: { name: true } });
     return { items: leagues.map((league) => league.name) };
+  }
+
+  /** Public quota read for the header counter: provider-wide reservations for the current
+   * UTC day (exactly the scope the budget enforcement counts) plus the rolling provider
+   * minute window observed from football-data.org response headers. The daily bucket rolls
+   * over at 00:00 UTC by construction, so a fresh read is always the reset state. */
+  async syncQuota(): Promise<SyncQuota> {
+    const now = new Date();
+    const resetAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    const minuteCutoff = new Date(now.getTime() - PROVIDER_MINUTE_WINDOW_SECONDS * 1000);
+    const countRows = async (sql: string, ...params: unknown[]): Promise<number> => {
+      if (!this.database) return 0;
+      const rows: Array<{ count: bigint }> = await this.database.$queryRawUnsafe(sql, ...params);
+      return Number(rows[0]?.count ?? 0);
+    };
+    const used = await countRows(`SELECT count(*) AS count FROM "ProviderRequestReservation" WHERE provider = $1 AND "requestDate" = $2::date`, PROVIDER, now.toISOString().slice(0, 10));
+    const minuteUsed = await countRows(`SELECT count(*) AS count FROM "ProviderRequestReservation" WHERE provider = $1 AND "reservedAt" >= $2`, PROVIDER, minuteCutoff);
+    return {
+      provider: PROVIDER,
+      daily: { used, allowance: DAILY_ALLOWANCE, remaining: Math.max(0, DAILY_ALLOWANCE - used), resetAt: resetAt.toISOString(), resetTimezone: "UTC" },
+      minute: { used: minuteUsed, limit: PROVIDER_MINUTE_LIMIT, remaining: Math.max(0, PROVIDER_MINUTE_LIMIT - minuteUsed), windowSeconds: PROVIDER_MINUTE_WINDOW_SECONDS },
+    };
   }
 
   async list(filters: { from?: string; to?: string; competition?: string }): Promise<{ items: readonly FixtureProjection[]; range: { from: string; to: string } }> {

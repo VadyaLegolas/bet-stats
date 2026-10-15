@@ -3,7 +3,7 @@ import { ArrayMaxSize, IsArray, IsBoolean, IsOptional, IsString } from "class-va
 
 import { OperatorGuard } from "../reconciliation/operator.guard.js";
 import { FixturesSyncService, type SyncLeagueResult } from "./fixtures-sync.service.js";
-import { FixturesService, type FixtureProjection } from "./fixtures.service.js";
+import { FixturesService, type FixtureProjection, type SyncQuota } from "./fixtures.service.js";
 
 class SyncFixturesDto {
   @IsOptional() @IsArray() @IsString({ each: true }) @ArrayMaxSize(20) competitions?: string[];
@@ -18,6 +18,12 @@ export class FixturesController {
   @Get("leagues")
   leagues(): Promise<{ items: readonly string[] }> {
     return this.fixtures.leagues();
+  }
+
+  /** Must also be declared before `:fixtureId` — same param-swallowing concern as "leagues". */
+  @Get("quota")
+  quota(): Promise<SyncQuota> {
+    return this.fixtures.syncQuota();
   }
 
   @Get()

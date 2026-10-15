@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { QuotaCounter } from "../components/quota-counter";
 import { ReleaseNavigation } from "../components/release-navigation";
 
 import { plexSans, sourceSerif } from "./fonts";
@@ -20,7 +21,10 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <header className="release-header">
           <div className="release-frame release-header-inner">
             <Link href="/" className="release-brand">Bet Stats</Link>
-            <ReleaseNavigation />
+            <div className="release-header-tools">
+              <QuotaCounter />
+              <ReleaseNavigation />
+            </div>
           </div>
         </header>
         <main id="main-content" className="release-frame release-main" tabIndex={-1}>{children}</main>

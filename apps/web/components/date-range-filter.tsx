@@ -91,6 +91,7 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
       }
       const { results } = await response.json() as { results: readonly SyncResult[] };
       setSyncState({ pending: false, message: formatSyncResults(results), error: false });
+      window.dispatchEvent(new CustomEvent("fixtures-quota-refresh"));
       if (results.some((result) => result.status === "synced")) router.refresh();
     } catch {
       setSyncState({ pending: false, message: "Сервер данных недоступен — обновление не выполнено.", error: true });

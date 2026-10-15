@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-status: "Quick task: Fix invisible hover label on fixtures filter chips"
-stopped_at: Quick task 261015-qj7-fix-invisible-hover-label
-last_updated: "2026-10-15T19:15:00.000Z"
+status: "Quick task: Header quota counter for fixture-sync request limits"
+stopped_at: Quick task 261015-r0i-add-a-beautiful-used-remaining-fixture-s
+last_updated: "2026-10-15T20:10:00.000Z"
 last_activity: 2026-10-15
-last_activity_desc: Hover label visibility fix on filter chips/secondary buttons - verified in browser, committing
+last_activity_desc: Beautiful used/remaining request-quota counter in site header with UTC-reset countdown - all gates green, committing
 state_head: 3c6384e8e49b7746fd04ca665d22a5f48ff877b2
 progress:
   total_phases: 6
@@ -24,16 +24,16 @@ current_plan: 11
 See: .planning/PROJECT.md (updated 2026-09-08)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Quick task - fix invisible hover label on fixtures filter chips
+**Current focus:** Quick task - header quota counter for fixture-sync request limits
 
 ## Current Position
 
 Milestone: v1.0 — ARCHIVED
 All Phases: Complete (6/6)
 All Plans: Complete (88/88)
-Status: Quick task 261015-qj7 - CSS specificity fix: `.filter-chip:hover:not(:disabled)`, `.filter-chip[aria-pressed=true]:hover:not(:disabled)`, `.btn-secondary:hover:not(:disabled)` now outrank the global `button:hover:not(:disabled)` rule that painted label and background the same accent-hover green
+Status: Quick task 261015-r0i - public `GET /fixtures/quota` (provider-wide UTC-day reservation count, exactly the enforcement scope, + rolling 60s provider minute window measured from football-data.org response headers) and header `QuotaCounter` pill: `used/allowance` as a single text node, progress meter with aria, live countdown to the 00:00 UTC reset with refetch on zero-crossing/60s poll/after each manual sync; shared budget constants moved to `fixtures-budget.ts`
 Last activity: 2026-10-15
-Last Activity Description: Hover states verified in the live browser (bg/text differ on chip, active chip and sync button; screenshot readable; zero console errors); web typecheck green, web unit tests 5/5
+Last Activity Description: Gates green - api+web typecheck, unit 248+13, deterministic e2e 21/21 (after fixing a D-19 contract collision: a bare `<strong>0</strong>` in the pill matched team-evidence's "no exact `0` text" assertion - figures now render as one `used/allowance` node; test contracts untouched), phase06 journey+accessibility 22/22 (axe, 320px reflow, mobile nav), live QA desktop/390/320 with zero console errors and no horizontal overflow
 
 Progress: [██████████] 100%
 
@@ -247,6 +247,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-15T19:15:00.000Z
-Stopped at: Quick task 261015-qj7-fix-invisible-hover-label - atomic commit + push to origin/main
-Resume file: .planning/quick/261015-qj7-fix-invisible-hover-label-on-fixtures-fi/PLAN.md
+Last session: 2026-10-15T20:10:00.000Z
+Stopped at: Quick task 261015-r0i-add-a-beautiful-used-remaining-fixture-s - atomic commit + push to origin/main
+Resume file: .planning/quick/261015-r0i-add-a-beautiful-used-remaining-fixture-s/PLAN.md

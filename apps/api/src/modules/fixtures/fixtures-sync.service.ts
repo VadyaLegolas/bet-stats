@@ -6,13 +6,11 @@ import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import { evaluateCapability, reservePriorityRequest } from "@bet-stats/domain";
 import { FootballDataOrgClient, isConfiguredCompetitionCode } from "@bet-stats/football-data";
 
-const PROVIDER = "football-data.org";
+import { CRITICAL_HEADROOM, DAILY_ALLOWANCE, PROVIDER } from "./fixtures-budget.js";
+
 const SYNC_WINDOW_DAYS = 7;
 /** Skip a league when its provenance is fresher than this unless the caller forces a sync. */
 const MIN_SYNC_INTERVAL_MS = 6 * 3_600_000;
-/** football-data.org free tier: 100 requests/day; headroom keeps critical ingestion viable. */
-const DAILY_ALLOWANCE = 100;
-const CRITICAL_HEADROOM = 20;
 /** Free tier allows 10 provider requests/minute; space consecutive fetches to stay under it. */
 const PROVIDER_MIN_SPACING_MS = 3_000;
 

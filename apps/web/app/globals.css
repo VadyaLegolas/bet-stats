@@ -371,7 +371,11 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   transition: background-color 0.14s ease, border-color 0.14s ease;
   min-height: 46px;
 }
-.btn-secondary:hover {
+/* `:not(:disabled)` raises this above the global `button:hover:not(:disabled)`
+   (0,2,1): without it a real <button> would get the accent-hover background with
+   the same accent-hover label color and the text would vanish. Anchors never
+   match :disabled, so <a class="btn-secondary"> keeps its current behavior. */
+.btn-secondary:hover:not(:disabled) {
   background: var(--color-surface-hover);
   border-color: var(--color-text-secondary);
   color: var(--color-accent-hover);
@@ -473,7 +477,10 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   cursor: pointer;
   transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
-.filter-chip:hover {
+.filter-chip:hover:not(:disabled) {
+  /* Must outrank the global `button:hover:not(:disabled)` (0,2,1): it paints the
+     background accent-hover green while this rule's label is also accent-hover —
+     same color on same color and the label would vanish. */
   background: var(--color-surface-hover);
   border-color: var(--color-text-secondary);
   color: var(--color-accent-hover);
@@ -481,6 +488,11 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 .filter-chip[aria-pressed="true"] {
   background: var(--color-accent);
   border-color: var(--color-accent);
+  color: #ffffff;
+}
+.filter-chip[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
   color: #ffffff;
 }
 .filter-fields { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }

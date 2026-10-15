@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-status: "Quick task: Live upcoming fixtures — all leagues, manual refresh, auto-load"
-stopped_at: Quick task 20261015-live-fixtures
-last_updated: "2026-10-15T18:20:00.000Z"
+status: "Quick task: Fix invisible hover label on fixtures filter chips"
+stopped_at: Quick task 261015-qj7-fix-invisible-hover-label
+last_updated: "2026-10-15T19:15:00.000Z"
 last_activity: 2026-10-15
-last_activity_desc: Live fixture sync + league select/refresh/auto-load - all gates green, committing
+last_activity_desc: Hover label visibility fix on filter chips/secondary buttons - verified in browser, committing
 state_head: 3c6384e8e49b7746fd04ca665d22a5f48ff877b2
 progress:
   total_phases: 6
@@ -24,16 +24,16 @@ current_plan: 11
 See: .planning/PROJECT.md (updated 2026-09-08)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Quick task - live upcoming fixtures with league select, manual refresh, auto-load
+**Current focus:** Quick task - fix invisible hover label on fixtures filter chips
 
 ## Current Position
 
 Milestone: v1.0 — ARCHIVED
 All Phases: Complete (6/6)
 All Plans: Complete (88/88)
-Status: Quick task 20261015-live-fixtures - FixturesSyncService (POST /internal/fixtures/sync, OperatorGuard, mutex, transactional upserts, 3s provider spacing), GET /fixtures/leagues, web league select + "Обновить матчи" + auto-sync, configured-league list filter, observation-age freshness
+Status: Quick task 261015-qj7 - CSS specificity fix: `.filter-chip:hover:not(:disabled)`, `.filter-chip[aria-pressed=true]:hover:not(:disabled)`, `.btn-secondary:hover:not(:disabled)` now outrank the global `button:hover:not(:disabled)` rule that painted label and background the same accent-hover green
 Last activity: 2026-10-15
-Last Activity Description: Live smoke green - 6/7 leagues loaded (67 fixtures, all AVAILABLE; EL = PROVIDER_ACCESS_RESTRICTED on football-data.org free tier), browser QA clean (zero console errors); gates: typecheck, unit 248+5, deterministic e2e 21/21, forecast-workbench 3/3, phase06 22/22
+Last Activity Description: Hover states verified in the live browser (bg/text differ on chip, active chip and sync button; screenshot readable; zero console errors); web typecheck green, web unit tests 5/5
 
 Progress: [██████████] 100%
 
@@ -247,6 +247,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-15T18:20:00.000Z
-Stopped at: Quick task 20261015-live-fixtures - atomic commit + push to origin/main
-Resume file: .planning/quick/20261015-live-fixtures/PLAN.md
+Last session: 2026-10-15T19:15:00.000Z
+Stopped at: Quick task 261015-qj7-fix-invisible-hover-label - atomic commit + push to origin/main
+Resume file: .planning/quick/261015-qj7-fix-invisible-hover-label-on-fixtures-fi/PLAN.md

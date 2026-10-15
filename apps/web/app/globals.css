@@ -459,6 +459,32 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   padding: var(--space-4);
   margin-block: var(--space-6);
 }
+/* Date-range filter: preset chips + calendar day inputs */
+.filter-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: var(--space-4); }
+.filter-chip {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 8px 16px;
+  min-height: 40px;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+.filter-chip:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-text-secondary);
+  color: var(--color-accent-hover);
+}
+.filter-chip[aria-pressed="true"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #ffffff;
+}
+.filter-fields { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+.filter-hint { margin: var(--space-3) 0 0; font-size: 0.85rem; color: var(--color-text-secondary); }
 .fixture-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);

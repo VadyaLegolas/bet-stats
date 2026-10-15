@@ -183,6 +183,8 @@ A web application for football analytics that collects upcoming fixtures for the
 
 ## Conventions
 
+- **Язык:** весь пользовательский текст интерфейса, комментарии в пользовательских компонентах и ответы агента — на русском языке; технические идентификаторы, код и коммит-сообщения остаются на английском. (Запрос пользователя, 2026-10-15)
+
 Conventions not yet established. Will populate as patterns emerge during development.
 <!-- GSD:conventions-end -->
 

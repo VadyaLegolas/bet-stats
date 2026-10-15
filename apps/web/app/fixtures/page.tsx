@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DateRangeFilter } from "../../components/date-range-filter";
 import { DataStateNotice, type FixtureDataState } from "../../components/data-state-notice";
 import { ProviderStateNotice, type ProviderState } from "../../components/provider-state-notice";
 import { statusLabel } from "./status-labels";
@@ -6,35 +7,26 @@ type Fixture = { id: string; competition: { id: string; name: string; season: st
 type Result = { items: readonly Fixture[]; range: { from: string; to: string } }; type Search = Record<string, string | string[] | undefined>;
 const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
 
-function Filters({ search, range, retry = false }: { search: Search; range?: Result["range"]; retry?: boolean }) {
+function Filters({ search, retry = false }: { search: Search; retry?: boolean }) {
   return (
-    <form method="get" className="fixtures-filter-card" style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
-      <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
-        <span>С (UTC)</span>
-        <input name="from" defaultValue={first(search.from) ?? range?.from ?? ""} style={{ minHeight: 44, width: 220, maxWidth: "100%" }} />
-      </label>
-      <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
-        <span>По (UTC)</span>
-        <input name="to" defaultValue={first(search.to) ?? range?.to ?? ""} style={{ minHeight: 44, width: 220, maxWidth: "100%" }} />
-      </label>
-      <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
-        <span>Соревнование</span>
-        <select name="competition" defaultValue={first(search.competition) ?? "Premier League"} style={{ minHeight: 44, maxWidth: "100%" }}>
-          <option>Premier League</option>
-        </select>
-      </label>
-      <button type="submit" className="btn-primary" style={{ minHeight: 44, padding: "8px 20px" }}>
-        {retry ? "Повторить загрузку матчей" : "Применить фильтры"}
-      </button>
-    </form>
+    <DateRangeFilter from={first(search.from)} to={first(search.to)} competition={first(search.competition) ?? "Premier League"} />
   );
 }
+
+const DAY_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+/** The date picker speaks whole UTC days; widen bare dates to the API's instant contract
+ * so hand-edited `?from=2026-10-15` links work too. Full instants pass through untouched. */
+const toApiInstant = (key: "from" | "to", value: string): string => {
+  if (!DAY_ONLY.test(value)) return value;
+  if (key === "from") return `${value}T00:00:00.000Z`;
+  return new Date(new Date(`${value}T00:00:00.000Z`).getTime() + 86_400_000).toISOString();
+};
 
 async function load(search: Search): Promise<Result> {
   const query = new URLSearchParams();
   for (const key of ["from", "to", "competition"] as const) {
     const value = first(search[key]);
-    if (value) query.set(key, value);
+    if (value) query.set(key, key === "competition" ? value : toApiInstant(key, value));
   }
   // The catalogue only offers Premier League, so an unfiltered URL must never leak other leagues.
   if (!query.has("competition")) query.set("competition", "Premier League");
@@ -86,7 +78,7 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
         </p>
       </div>
 
-      <Filters search={search} range={result.range} />
+      <Filters search={search} />
 
       {result.items.length === 0 ? (
         <div className="fixture-empty-state">

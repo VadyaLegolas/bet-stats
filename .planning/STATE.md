@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-status: "Quick task: Always-available fixtures, Premier League only"
-stopped_at: Quick task 20261015-always-available-fixtures
-last_updated: "2026-10-15T15:10:00.000Z"
+status: "Quick task: Date picker in the fixtures filter"
+stopped_at: Quick task 20261015-date-filter
+last_updated: "2026-10-15T16:20:00.000Z"
 last_activity: 2026-10-15
-last_activity_desc: Rolling fixture kickoff + Premier League default filter - verification green
+last_activity_desc: Calendar date inputs + preset chips on /fixtures - verification green
 state_head: 3c6384e8e49b7746fd04ca665d22a5f48ff877b2
 progress:
   total_phases: 6
@@ -24,16 +24,16 @@ current_plan: 11
 See: .planning/PROJECT.md (updated 2026-09-08)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Quick task - matches always visible, Premier League only
+**Current focus:** Quick task - beautiful date picker in the fixtures filter
 
 ## Current Position
 
 Milestone: v1.0 — ARCHIVED
 All Phases: Complete (6/6)
 All Plans: Complete (88/88)
-Status: Quick task 20261015-always-available-fixtures - deterministic fixture keeps a rolling kickoff (today/tomorrow 14:00 UTC) so bare /fixtures always lists it; the fixtures page defaults to competition=Premier League
+Status: Quick task 20261015-date-filter - native UTC calendar inputs + preset period chips on /fixtures; project conventions now require Russian responses and UI copy
 Last activity: 2026-10-15
-Last Activity Description: Rolling kickoff in deterministic fixture provider + Premier League default filter; typecheck api/web green, deterministic e2e 21/21, forecast-workbench 3/3, phase06 live e2e 74/74, browser sanity confirmed
+Last Activity Description: Client DateRangeFilter (calendar inputs, 5 preset chips, aria-pressed state, day-bound instant conversion) wired into /fixtures; load() accepts date-only from/to; typecheck web green, deterministic e2e 21/21, phase06 accessibility+journey 22/22, browser sanity green
 
 Progress: [██████████] 100%
 
@@ -243,6 +243,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-15T15:10:00.000Z
-Stopped at: Quick task 20261015-always-available-fixtures - atomic commit
-Resume file: .planning/quick/20261015-always-available-fixtures/PLAN.md
+Last session: 2026-10-15T16:20:00.000Z
+Stopped at: Quick task 20261015-date-filter - atomic commit
+Resume file: .planning/quick/20261015-date-filter/PLAN.md

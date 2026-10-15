@@ -57,8 +57,10 @@ test.describe("fixture-to-cutoff team evidence contract", () => {
     await stubEvidence(page);
     await page.goto("/fixtures/fixture-premier-league-001");
     await missing("D-17 fixture team link passes kickoff as asOf", async () => {
+      // The canonical row keeps a rolling kickoff, so the expected asOf comes from the API detail.
+      const detail = await (await page.request.get("http://127.0.0.1:3001/fixtures/fixture-premier-league-001")).json() as { kickoff: string };
       const link = page.getByRole("link", { name: "Доказательства Arsenal на момент начала" });
-      await expect(link).toHaveAttribute("href", new RegExp(`asOf=${encodeURIComponent(kickoff)}`));
+      await expect(link).toHaveAttribute("href", new RegExp(`asOf=${encodeURIComponent(detail.kickoff)}`));
       await link.click();
     });
     await missing("D-17 exact server-resolved UTC cutoff echo", async () => {

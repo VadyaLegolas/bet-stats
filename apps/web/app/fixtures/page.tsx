@@ -36,6 +36,8 @@ async function load(search: Search): Promise<Result> {
     const value = first(search[key]);
     if (value) query.set(key, value);
   }
+  // The catalogue only offers Premier League, so an unfiltered URL must never leak other leagues.
+  if (!query.has("competition")) query.set("competition", "Premier League");
   const response = await fetch(`${process.env.API_ORIGIN ?? "http://127.0.0.1:3001"}/fixtures?${query}`, { cache: "no-store" });
   if (!response.ok) throw new Error("load failed");
   return response.json() as Promise<Result>;

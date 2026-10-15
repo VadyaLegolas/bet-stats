@@ -1,23 +1,14 @@
 import { expect, test } from "@playwright/test";
 
-import { FIXED_NOW, FIXED_TIME_ZONE } from "../helpers/time.js";
+import { FIXED_TIME_ZONE } from "../helpers/time.js";
 
 test.use({ timezoneId: FIXED_TIME_ZONE });
 
 test("renders one normalized Premier League fixture through the production path", async ({ page }) => {
-  await page.addInitScript((now) => {
-    const NativeDate = Date;
-    class FixedDate extends NativeDate {
-      constructor(...args: ConstructorParameters<typeof Date>) {
-        super(...(args.length === 0 ? [now] : args));
-      }
-      static override now(): number { return new NativeDate(now).valueOf(); }
-    }
-    globalThis.Date = FixedDate as DateConstructor;
-  }, FIXED_NOW);
-
-  const from = FIXED_NOW;
-  const to = new Date(Date.parse(FIXED_NOW) + 48 * 60 * 60 * 1_000).toISOString();
+  // The deterministic fixture keeps a rolling kickoff (today/tomorrow 14:00 UTC), so the
+  // window always covering it is derived from the real clock: now-1h … now+48h.
+  const from = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const to = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
   await page.goto(`/fixtures?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&competition=${encodeURIComponent("Premier League")}`);
 
   await expect(page.getByRole("heading", { level: 1, name: "Предстоящие матчи" })).toBeVisible();

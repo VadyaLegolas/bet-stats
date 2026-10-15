@@ -2,9 +2,17 @@ import { expect, test } from "@playwright/test";
 
 const apiOrigin = "http://127.0.0.1:3001";
 
+/** The deterministic fixture keeps a rolling kickoff (today/tomorrow 14:00 UTC), so tests
+ * derive a window that always contains it: now-1h … now+48h. */
+const rollingRange = () => ({ from: new Date(Date.now() - 60 * 60 * 1000).toISOString(), to: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString() });
+const fixturesPath = () => { const { from, to } = rollingRange(); return `/fixtures?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&competition=Premier%20League`; };
+/** ru-RU long date group heading: «Четверг, 15 октября 2026». */
+const RU_DATE_GROUP = /^[А-ЯЁ][а-яё]+, \d{1,2} [а-яё]+ \d{4}$/;
+
 test.describe("fixture discovery API", () => {
   test("returns a bounded, stable canonical list with honest provenance", async ({ request }) => {
-    const response = await request.get(`${apiOrigin}/fixtures?from=2026-08-28T00:00:00.000Z&to=2026-08-31T00:00:00.000Z&competition=Premier%20League`);
+    const range = rollingRange();
+    const response = await request.get(`${apiOrigin}/fixtures?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}&competition=Premier%20League`);
     expect(response.ok()).toBeTruthy();
     const body = await response.json();
     expect(body.items[0]).toMatchObject({
@@ -13,7 +21,7 @@ test.describe("fixture discovery API", () => {
       teams: { home: { name: "Arsenal" }, away: { name: "Chelsea" } },
       dataState: { state: "LIMITED", provider: "deterministic" },
     });
-    expect(body.range).toEqual({ from: "2026-08-28T00:00:00.000Z", to: "2026-08-31T00:00:00.000Z" });
+    expect(body.range).toEqual(range);
   });
 
   test("rejects invalid and excessive UTC ranges", async ({ request }) => {
@@ -38,9 +46,9 @@ test.describe("fixture discovery UI", () => {
   test.use({ timezoneId: "Europe/Warsaw" });
 
   test("keeps filters in the URL and renders local-date groups", async ({ page }) => {
-    await page.goto("/fixtures?from=2026-08-28T00%3A00%3A00.000Z&to=2026-08-31T00%3A00%3A00.000Z&competition=Premier%20League");
+    await page.goto(fixturesPath());
     await expect(page.getByRole("heading", { level: 1, name: "Предстоящие матчи" })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2, name: "Суббота, 29 августа 2026" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: RU_DATE_GROUP })).toBeVisible();
     await expect(page.getByRole("link", { name: /Arsenal против Chelsea/ })).toBeVisible();
     await expect(page.getByLabel("Соревнование")).toHaveValue("Premier League");
   });
@@ -69,7 +77,7 @@ test.describe("fixture discovery UI", () => {
     for (const width of [360, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       await page.emulateMedia({ colorScheme: "dark", forcedColors: "active", reducedMotion: "reduce" });
-      await page.goto("/fixtures?from=2026-08-28T00%3A00%3A00.000Z&to=2026-08-31T00%3A00%3A00.000Z&competition=Premier%20League");
+      await page.goto(fixturesPath());
       await page.evaluate(() => { document.body.style.fontSize = "200%"; });
       await expect(page.getByRole("heading", { level: 1, name: "Предстоящие матчи" })).toBeVisible();
       await expect(page.getByText("Неполные данные", { exact: true })).toBeVisible();

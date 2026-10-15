@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-status: "Quick task: Russian localization + hover fix + home link"
-stopped_at: Quick task 20261015-russian-localization
-last_updated: "2026-10-15T13:20:00.000Z"
+status: "Quick task: Always-available fixtures, Premier League only"
+stopped_at: Quick task 20261015-always-available-fixtures
+last_updated: "2026-10-15T15:10:00.000Z"
 last_activity: 2026-10-15
-last_activity_desc: Full Russian localization of apps/web - implemented, verification green
+last_activity_desc: Rolling fixture kickoff + Premier League default filter - verification green
 state_head: 3c6384e8e49b7746fd04ca665d22a5f48ff877b2
 progress:
   total_phases: 6
@@ -24,16 +24,16 @@ current_plan: 11
 See: .planning/PROJECT.md (updated 2026-09-08)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Quick task - Russian localization of apps/web
+**Current focus:** Quick task - matches always visible, Premier League only
 
 ## Current Position
 
 Milestone: v1.0 — ARCHIVED
 All Phases: Complete (6/6)
 All Plans: Complete (88/88)
-Status: Quick task 20261015-russian-localization - Russian localization of apps/web, verification green
+Status: Quick task 20261015-always-available-fixtures - deterministic fixture keeps a rolling kickoff (today/tomorrow 14:00 UTC) so bare /fixtures always lists it; the fixtures page defaults to competition=Premier League
 Last activity: 2026-10-15
-Last Activity Description: Russian localization of apps/web implemented; typecheck, unit, deterministic e2e and phase06 live e2e green (pipeline-replay predates the redesign and stays red)
+Last Activity Description: Rolling kickoff in deterministic fixture provider + Premier League default filter; typecheck api/web green, deterministic e2e 21/21, forecast-workbench 3/3, phase06 live e2e 74/74, browser sanity confirmed
 
 Progress: [██████████] 100%
 
@@ -243,6 +243,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-15T07:13:53.000Z
-Stopped at: Quick task 20261015-russian-localization - atomic commit
-Resume file: .planning/quick/20261015-russian-localization/PLAN.md
+Last session: 2026-10-15T15:10:00.000Z
+Stopped at: Quick task 20261015-always-available-fixtures - atomic commit
+Resume file: .planning/quick/20261015-always-available-fixtures/PLAN.md

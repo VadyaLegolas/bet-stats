@@ -11,6 +11,15 @@ type FixtureRow = { id: string; kickoffUtc: Date; status: string; updatedAt: Dat
 
 const deterministicRow: FixtureRow = { id: "fixture-premier-league-001", kickoffUtc: new Date("2026-08-29T14:00:00.000Z"), status: "SCHEDULED", updatedAt: new Date("2026-08-28T18:45:00.000Z"), league: { id: "league-premier-league", name: "Premier League" }, season: { id: "season-2026", label: "2026/27" }, homeTeam: { id: "team-arsenal", name: "Arsenal" }, awayTeam: { id: "team-chelsea", name: "Chelsea" }, provenance: [{ provider: "deterministic", observedAt: new Date("2026-08-28T18:45:00.000Z"), sourceUpdatedAt: null }] };
 
+/** Keeps the deterministic row permanently inside the default 48-hour window: its kickoff is
+ * today's 14:00 UTC while that is still ahead, otherwise tomorrow's 14:00 UTC. Stable within
+ * a calendar day, so list and detail always agree. Provenance (and therefore LIMITED state,
+ * which depends only on `sourceUpdatedAt: null`) is left untouched. */
+function deterministicFixtureRow(now: Date): FixtureRow {
+  const slot = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 14, 0, 0, 0));
+  return { ...deterministicRow, kickoffUtc: slot.getTime() > now.getTime() ? slot : new Date(slot.getTime() + 86_400_000) };
+}
+
 function parseUtc(value: string, name: string): Date {
   if (!UTC_INSTANT.test(value)) throw new BadRequestException(`${name} must be an ISO 8601 UTC instant`);
   const parsed = new Date(value);
@@ -61,12 +70,12 @@ export class FixturesService implements OnModuleDestroy {
   async list(filters: { from?: string; to?: string; competition?: string }): Promise<{ items: readonly FixtureProjection[]; range: { from: string; to: string } }> {
     const { from, to } = parseRange(filters.from, filters.to);
     if (filters.competition !== undefined && (filters.competition.trim() === "" || filters.competition.length > 100)) throw new BadRequestException("competition must be between 1 and 100 characters");
-    const rows: FixtureRow[] = this.database ? await this.database.fixture.findMany({ where: { kickoffUtc: { gte: from, lt: to }, ...(filters.competition ? { league: { name: filters.competition } } : {}) }, include: { league: true, season: true, homeTeam: true, awayTeam: true, provenance: { orderBy: { observedAt: "desc" }, take: 1 } }, orderBy: [{ kickoffUtc: "asc" }, { id: "asc" }] }) : [deterministicRow].filter((row) => row.kickoffUtc >= from && row.kickoffUtc < to && (!filters.competition || row.league.name === filters.competition));
+    const rows: FixtureRow[] = this.database ? await this.database.fixture.findMany({ where: { kickoffUtc: { gte: from, lt: to }, ...(filters.competition ? { league: { name: filters.competition } } : {}) }, include: { league: true, season: true, homeTeam: true, awayTeam: true, provenance: { orderBy: { observedAt: "desc" }, take: 1 } }, orderBy: [{ kickoffUtc: "asc" }, { id: "asc" }] }) : [deterministicFixtureRow(new Date())].filter((row) => row.kickoffUtc >= from && row.kickoffUtc < to && (!filters.competition || row.league.name === filters.competition));
     const items = await Promise.all(rows.map(async (row) => project(row, await this.providerState(row))));
     return { items, range: { from: from.toISOString(), to: to.toISOString() } };
   }
   async detail(id: string): Promise<FixtureProjection> {
-    const row: FixtureRow | null = this.database ? await this.database.fixture.findUnique({ where: { id }, include: { league: true, season: true, homeTeam: true, awayTeam: true, provenance: { orderBy: { observedAt: "desc" }, take: 1 } } }) : deterministicRow.id === id ? deterministicRow : null;
+    const row: FixtureRow | null = this.database ? await this.database.fixture.findUnique({ where: { id }, include: { league: true, season: true, homeTeam: true, awayTeam: true, provenance: { orderBy: { observedAt: "desc" }, take: 1 } } }) : deterministicRow.id === id ? deterministicFixtureRow(new Date()) : null;
     if (!row) throw new NotFoundException("Fixture not found");
     return project(row, await this.providerState(row));
   }

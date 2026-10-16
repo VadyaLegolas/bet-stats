@@ -1,5 +1,6 @@
 import { permanentRedirect } from "next/navigation";
 
+import { resolveCohortBounds } from "./cohort-bounds";
 import { ScorecardDashboard, type ScorecardViewModel } from "./scorecard-dashboard";
 
 type Search = Record<string, string | string[] | undefined>;
@@ -8,7 +9,10 @@ const eligibilityHeaders = () => ({ "x-eligibility-region": process.env.ELIGIBIL
 
 async function fetchEvidence(search: Search, view: "scorecard" | "value-candidates") {
   const query = new URLSearchParams();
-  for (const key of ["modelVersion", "competitionId", "market", "from", "to"] as const) { const value = first(search[key]); if (value) query.set(key, value); }
+  for (const key of ["modelVersion", "competitionId", "market"] as const) { const value = first(search[key]); if (value) query.set(key, value); }
+  const bounds = resolveCohortBounds(search);
+  query.set("from", bounds.from);
+  query.set("to", bounds.to);
   if (view === "value-candidates") { const cursor = first(search.cursor); if (cursor) query.set("cursor", cursor); query.set("limit", "25"); }
   return fetch(`${process.env.API_ORIGIN ?? "http://127.0.0.1:3001"}/evaluation/${view}?${query}`, { headers: { accept: "application/json", ...eligibilityHeaders() }, cache: "no-store", redirect: "manual" });
 }

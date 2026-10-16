@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
-import { computeDueKinds, computeInitialCutoff, EVIDENCE_CONFIG_HASH } from "../../workers/data-sync/src/jobs/forecast-sweep.js";
+import { computeDueKinds, computeInitialCutoff, EVIDENCE_CONFIG_HASH, runForecastPublicationSweep } from "../../workers/data-sync/src/jobs/forecast-sweep.js";
 
 const kickoff = "2026-11-08T18:00:00.000Z";
 // kickoff minus 24h = 2026-11-07T18:00:00.000Z; kickoff minus 6h = 2026-11-08T12:00:00.000Z
@@ -61,5 +61,36 @@ describe("evidence config hash", () => {
   it("is the sha256 hex digest of the evidence-v1 config literal", () => {
     expect(EVIDENCE_CONFIG_HASH).toBe(createHash("sha256").update("evidence-v1", "utf8").digest("hex"));
     expect(EVIDENCE_CONFIG_HASH).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe("forecast sweep DB-only contract", () => {
+  it("completes one full tick with zero fixture_failed when the deps supply no enqueue function at all", async () => {
+    const nowDate = new Date("2026-11-01T00:00:00.000Z");
+    const events: Array<Record<string, unknown>> = [];
+    const database = {
+      fixture: {
+        findMany: async () => [
+          {
+            id: "3f2a1b7c-0000-4000-8000-000000000001",
+            kickoffUtc: new Date("2026-11-11T00:00:00.000Z"),
+            homeTeamId: "3f2a1b7c-0000-4000-8000-0000000000a1",
+            awayTeamId: "3f2a1b7c-0000-4000-8000-0000000000a2",
+          },
+        ],
+      },
+      forecastSnapshot: { findMany: async () => [] },
+    };
+    const deps = {
+      database,
+      now: () => nowDate,
+      logger: (event: Record<string, unknown>) => { events.push(event); },
+    } as unknown as Parameters<typeof runForecastPublicationSweep>[0];
+
+    const result = await runForecastPublicationSweep(deps);
+
+    expect(result).toEqual({ fixtures: 1, issued: 0, skipped: 0 });
+    expect(events.some((event) => event.event === "forecast.sweep.completed")).toBe(true);
+    expect(events.filter((event) => event.event === "forecast.sweep.fixture_failed")).toEqual([]);
   });
 });

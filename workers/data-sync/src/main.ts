@@ -77,7 +77,7 @@ export function startReplayWorker(input: { databaseUrl: string; redisUrl: string
   let forecastSweepInterval: NodeJS.Timeout | undefined;
   let forecastSweepInFlight = false;
   if (input.forecastSweep) {
-    const sweepDeps = { database, forecastRepository, enrichmentEnqueue: (job: EnrichmentJobData) => enrichmentQueueHandle.enqueue(job) };
+    const sweepDeps = { database, forecastRepository };
     const tick = () => {
       if (forecastSweepInFlight) return;
       forecastSweepInFlight = true;

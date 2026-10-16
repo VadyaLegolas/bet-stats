@@ -19,7 +19,6 @@ if (Test-Path .env) {
 if (-not $env:DATABASE_URL) { throw "DATABASE_URL is missing from .env" }
 if (-not $env:REDIS_URL) { $env:REDIS_URL = "redis://127.0.0.1:6379" }
 $env:DATA_PROVIDER_MODE = "live"
-$env:FIXTURES_AUTO_SYNC = "true"
 $env:DISPLAY_TIME_ZONE = if ($env:DISPLAY_TIME_ZONE) { $env:DISPLAY_TIME_ZONE } else { "Europe/Warsaw" }
 
 # 2. Infrastructure.

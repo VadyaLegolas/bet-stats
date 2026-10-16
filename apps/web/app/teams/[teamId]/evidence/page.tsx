@@ -16,9 +16,9 @@ import { EvidenceStateNotice } from "../../../../components/evidence-state-notic
 type Summary = { value?: unknown; sampleSize?: number; requestedSampleSize?: number; sourceUpdatedAt?: string | null | undefined; limitationReason?: string | null | undefined; limitation?: string | null | undefined };
 type Trace = { fixtureId: string; effectiveAt?: string; observedAt?: string; venue?: string; result?: string; score?: string; source?: string; components?: string[] };
 type Evidence = {
-  team?: { id: string; name: string };
+  team?: { id: string; name: string } | null;
   teamId?: string;
-  fixture?: { id: string; name: string; kickoff: string };
+  fixture?: { id: string; name: string; kickoff: string } | null;
   requestedAsOf?: string;
   resolvedAsOf?: string | null;
   resolvedAsOfUtc?: string | null;
@@ -84,6 +84,11 @@ function SummaryCard({ label, summary }: { label: string; summary: Summary }) {
   return <article style={panel}><h2>Сводка за {label} матчей</h2><p style={{ fontSize: 28, fontWeight: 700 }}>{available ? String(summary.value) : "Недоступно"}</p><p>Выборка: <span>{sample}/{target}</span></p>{summary.sourceUpdatedAt && <p>Источник обновлён: <time dateTime={summary.sourceUpdatedAt}>{summary.sourceUpdatedAt}</time></p>}{summary.limitationReason && <p>{summary.limitationReason}</p>}</article>;
 }
 
+export function evidenceHeading(teamName: string | null | undefined): string {
+  const trimmed = typeof teamName === "string" ? teamName.trim() : "";
+  return trimmed === "" ? "Исторические доказательства" : `${trimmed}: исторические доказательства`;
+}
+
 export default function TeamEvidencePage() {
   const params = useParams<{ teamId: string }>();
   const search = useSearchParams();
@@ -96,7 +101,8 @@ export default function TeamEvidencePage() {
     const controller = new AbortController();
     void Promise.resolve().then(() => {
       setData(null); setFailed(false);
-      return fetch(`/internal-api/teams/${encodeURIComponent(params.teamId)}/evidence?asOf=${encodeURIComponent(asOf)}`, { cache: "no-store", signal: controller.signal });
+      const fixtureQuery = typeof fixtureId === "string" && fixtureId !== "" ? `&fixtureId=${encodeURIComponent(fixtureId)}` : "";
+      return fetch(`/internal-api/teams/${encodeURIComponent(params.teamId)}/evidence?asOf=${encodeURIComponent(asOf)}${fixtureQuery}`, { cache: "no-store", signal: controller.signal });
     })
       .then(async (response) => {
         if (!response.ok) throw new Error("evidence unavailable");
@@ -106,7 +112,7 @@ export default function TeamEvidencePage() {
       })
       .then(setData, (error: unknown) => { if ((error as { name?: string }).name !== "AbortError") setFailed(true); });
     return () => controller.abort();
-  }, [asOf, params.teamId]);
+  }, [asOf, fixtureId, params.teamId]);
 
   const back = fixtureId ? `/fixtures/${encodeURIComponent(fixtureId)}` : "/fixtures";
   if (failed) return <section><h1>Исторические доказательства недоступны</h1><p role="alert">Исторические доказательства не удалось загрузить для этой точки отсчёта. Более новые данные не подставлялись. Попробуйте снова.</p><Link href={back}>{fixtureId ? "Назад к матчу" : "Назад к матчам"}</Link></section>;
@@ -116,10 +122,9 @@ export default function TeamEvidencePage() {
   const invalid = !resolved;
   const five = summaryFrom(data, "five"); const ten = summaryFrom(data, "ten");
   const trace = data.trace ?? data.receipt?.inputs ?? [];
-  const name = data.team?.name ?? data.teamId ?? params.teamId;
   return <section style={{ display: "grid", gap: 24, overflowWrap: "anywhere" }}>
     <Link href={back} style={{ minHeight: 48, display: "inline-flex", alignItems: "center", width: "fit-content" }}>{fixtureId ? "Назад к матчу" : "Назад к матчам"}</Link>
-    <header><h1>{name}: исторические доказательства</h1><p>То, что система могла знать на выбранный момент.</p>{data.fixture && <p>Доказательства запрошены к началу матча {data.fixture.name}</p>}<dl><dt>Запрошенная точка отсчёта</dt><dd><time dateTime={data.requestedAsOf ?? asOf}>{data.requestedAsOf ?? asOf}</time></dd><dt>Определённая точка отсчёта (UTC)</dt><dd>{resolved ? <time dateTime={resolved}>{resolved}</time> : "Недоступно"}</dd>{data.displayTimeZone && <><dt>Часовой пояс отображения</dt><dd>{data.displayTimeZone}</dd></>}</dl></header>
+    <header><h1>{evidenceHeading(data.team?.name)}</h1><p>То, что система могла знать на выбранный момент.</p>{data.fixture && <p>Доказательства запрошены к началу матча {data.fixture.name}</p>}<dl><dt>Запрошенная точка отсчёта</dt><dd><time dateTime={data.requestedAsOf ?? asOf}>{data.requestedAsOf ?? asOf}</time></dd><dt>Определённая точка отсчёта (UTC)</dt><dd>{resolved ? <time dateTime={resolved}>{resolved}</time> : "Недоступно"}</dd>{data.displayTimeZone && <><dt>Часовой пояс отображения</dt><dd>{data.displayTimeZone}</dd></>}</dl></header>
     {invalid && <p role="alert">Эта точка отсчёта не может быть использована. Введите поддерживаемые дату и время.</p>}
     <EvidenceStateNotice state={data.state} freshness={data.freshness} limitationReason={data.limitationReason}/>
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}><SummaryCard label="5" summary={five}/><SummaryCard label="10" summary={ten}/></div>

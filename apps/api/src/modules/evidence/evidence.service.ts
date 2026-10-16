@@ -113,6 +113,65 @@ export async function resolveTeamEvidence(input: { teamId?: unknown; asOf?: unkn
   return parseEvidenceProjection({ teamId: input.teamId, requestedAsOf: cutoff.requested, resolvedAsOfUtc: cutoff.utc, cutoffBoundary: { observedAt: cutoff.utc }, state: limited ? "LIMITED" : "COMPLETE", freshness, buildId: build.id, publishedAt, receipt, coverage: receipt?.sourceWindow ?? null, components });
 }
 
+export interface EvidenceDisplayTeam {
+  id: string;
+  name: string;
+}
+
+export interface EvidenceDisplayFixture {
+  id: string;
+  name: string;
+  kickoff: string;
+}
+
+export interface EvidenceDisplayFixtureRow {
+  id: string;
+  kickoffUtc: Date;
+  homeTeam: { name: string };
+  awayTeam: { name: string };
+}
+
+export interface EvidenceDisplay {
+  team: EvidenceDisplayTeam | null;
+  fixture: EvidenceDisplayFixture | null;
+}
+
+export type EvidenceResponse = EvidenceProjection & { team: EvidenceDisplayTeam | null; fixture: EvidenceDisplayFixture | null };
+
+export interface EvidenceDisplayLookup {
+  findTeam(teamId: string): Promise<EvidenceDisplayTeam | null>;
+  findFixture(fixtureId: string): Promise<EvidenceDisplayFixtureRow | null>;
+}
+
+export function attachEvidenceDisplay(projection: EvidenceProjection, team: EvidenceDisplayTeam | null, fixture: EvidenceDisplayFixture | null): EvidenceResponse {
+  return { ...projection, team, fixture };
+}
+
+export function composeFixtureDisplay(row: EvidenceDisplayFixtureRow): EvidenceDisplayFixture {
+  return { id: row.id, name: `${row.homeTeam.name} против ${row.awayTeam.name}`, kickoff: row.kickoffUtc.toISOString() };
+}
+
+export async function loadEvidenceDisplay(lookup: EvidenceDisplayLookup | null, teamId: string, fixtureId?: string): Promise<EvidenceDisplay> {
+  if (!lookup) return { team: null, fixture: null };
+  let team: EvidenceDisplayTeam | null = null;
+  try {
+    team = await lookup.findTeam(teamId);
+  } catch {
+    team = null;
+  }
+  let fixture: EvidenceDisplayFixture | null = null;
+  const normalizedFixtureId = fixtureId?.trim() || undefined;
+  if (normalizedFixtureId !== undefined) {
+    try {
+      const row = await lookup.findFixture(normalizedFixtureId);
+      fixture = row === null ? null : composeFixtureDisplay(row);
+    } catch {
+      fixture = null;
+    }
+  }
+  return { team, fixture };
+}
+
 @Injectable()
 export class EvidenceService implements OnModuleDestroy {
   private readonly database: PrismaClient | null = process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null;
@@ -123,5 +182,20 @@ export class EvidenceService implements OnModuleDestroy {
     },
   };
   async onModuleDestroy(): Promise<void> { await this.database?.$disconnect(); }
-  get(teamId: string, asOf?: string): Promise<EvidenceProjection> { return resolveTeamEvidence({ teamId, asOf }, this.repository); }
+  private displayLookup(): EvidenceDisplayLookup | null {
+    const database = this.database;
+    if (!database) return null;
+    return {
+      findTeam: (teamId) => database.team.findUnique({ where: { id: teamId }, select: { id: true, name: true } }),
+      findFixture: (fixtureId) => database.fixture.findUnique({
+        where: { id: fixtureId },
+        select: { id: true, kickoffUtc: true, homeTeam: { select: { name: true } }, awayTeam: { select: { name: true } } },
+      }),
+    };
+  }
+  async get(teamId: string, asOf?: string, fixtureId?: string): Promise<EvidenceResponse> {
+    const projection = await resolveTeamEvidence({ teamId, asOf }, this.repository);
+    const display = await loadEvidenceDisplay(this.displayLookup(), teamId, fixtureId);
+    return attachEvidenceDisplay(projection, display.team, display.fixture);
+  }
 }

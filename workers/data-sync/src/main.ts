@@ -1,3 +1,6 @@
+import { realpathSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
 import { dependencyReadiness, readServerConfig } from "@bet-stats/config";
 import { createPrismaBacktestReceiptRepository, createPrismaClient, createPrismaForecastRepository, createProviderRoutingRepository, createReplayProviderPolicyRepository, createSettlementPipelineService, DEFAULT_REPLAY_PROVIDER_POLICIES } from "@bet-stats/database";
 import { currentForecastConfigHash, ForecastOrchestrator } from "@bet-stats/domain";
@@ -102,9 +105,21 @@ function start(): void {
   }
 }
 
-try {
-  start();
-} catch {
-  console.error("Data-sync worker configuration is invalid");
-  process.exitCode = 1;
+function isDirectExecution(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(entry);
+  } catch {
+    return pathToFileURL(entry).href === import.meta.url;
+  }
+}
+
+if (isDirectExecution()) {
+  try {
+    start();
+  } catch {
+    console.error("Data-sync worker configuration is invalid");
+    process.exitCode = 1;
+  }
 }

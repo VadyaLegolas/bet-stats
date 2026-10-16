@@ -1,13 +1,25 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
-import { ArrayMaxSize, IsArray, IsBoolean, IsOptional, IsString } from "class-validator";
+import { ArrayMaxSize, IsArray, IsBoolean, IsOptional, IsString, Matches } from "class-validator";
 
 import { OperatorGuard } from "../reconciliation/operator.guard.js";
 import { FixturesSyncService, type SyncLeagueResult } from "./fixtures-sync.service.js";
+import { ResultsSyncService, type ResultsLeagueResult } from "./results-sync.service.js";
 import { FixturesService, type FixtureProjection, type SyncQuota } from "./fixtures.service.js";
+
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 class SyncFixturesDto {
   @IsOptional() @IsArray() @IsString({ each: true }) @ArrayMaxSize(20) competitions?: string[];
   @IsOptional() @IsBoolean() force?: boolean;
+  @IsOptional() @IsString() @Matches(DATE_ONLY, { message: "dateFrom must be a YYYY-MM-DD UTC date" }) dateFrom?: string;
+  @IsOptional() @IsString() @Matches(DATE_ONLY, { message: "dateTo must be a YYYY-MM-DD UTC date" }) dateTo?: string;
+}
+
+class ResultsSyncDto {
+  @IsOptional() @IsArray() @IsString({ each: true }) @ArrayMaxSize(20) competitions?: string[];
+  @IsOptional() @IsBoolean() force?: boolean;
+  @IsOptional() @IsString() @Matches(DATE_ONLY, { message: "dateFrom must be a YYYY-MM-DD UTC date" }) dateFrom?: string;
+  @IsOptional() @IsString() @Matches(DATE_ONLY, { message: "dateTo must be a YYYY-MM-DD UTC date" }) dateTo?: string;
 }
 
 @Controller("fixtures")
@@ -41,10 +53,25 @@ export class FixturesController {
 @UseGuards(OperatorGuard)
 @Controller("internal/fixtures")
 export class FixturesInternalController {
-  constructor(private readonly syncService: FixturesSyncService) {}
+  constructor(private readonly syncService: FixturesSyncService, private readonly resultsSyncService: ResultsSyncService) {}
 
   @Post("sync")
   sync(@Body() body: SyncFixturesDto): Promise<{ results: readonly SyncLeagueResult[] }> {
-    return this.syncService.sync({ ...(body?.competitions?.length ? { competitions: body.competitions } : {}), force: body?.force === true });
+    return this.syncService.sync({
+      ...(body?.competitions?.length ? { competitions: body.competitions } : {}),
+      force: body?.force === true,
+      ...(body?.dateFrom ? { dateFrom: body.dateFrom } : {}),
+      ...(body?.dateTo ? { dateTo: body.dateTo } : {}),
+    });
+  }
+
+  @Post("results-sync")
+  resultsSync(@Body() body: ResultsSyncDto): Promise<{ results: readonly ResultsLeagueResult[] }> {
+    return this.resultsSyncService.sync({
+      ...(body?.competitions?.length ? { competitions: body.competitions } : {}),
+      force: body?.force === true,
+      ...(body?.dateFrom ? { dateFrom: body.dateFrom } : {}),
+      ...(body?.dateTo ? { dateTo: body.dateTo } : {}),
+    });
   }
 }

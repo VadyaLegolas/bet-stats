@@ -1,6 +1,6 @@
 // Seeds the canonical league/season catalogue for every football-data.org competition the
-// platform is configured for, plus the external refs and FIXTURES capability rows that the
-// gated ingestion path requires. Idempotent: safe to run on every boot.
+// platform is configured for, plus the external refs and FIXTURES/RESULTS capability rows
+// that the gated ingestion path requires. Idempotent: safe to run on every boot.
 //
 // Usage: DATABASE_URL=postgresql://... node scripts/seed-configured-leagues.mjs
 import { createPrismaClient } from "../packages/database/dist/client.js";
@@ -32,6 +32,7 @@ async function main() {
   let leagues = 0;
   let seasons = 0;
   let capabilities = 0;
+  let resultsCapabilities = 0;
   for (const competition of COMPETITIONS) {
     const league = await db.league.upsert({
       where: { id: `league-${competition.code.toLowerCase()}` },
@@ -65,8 +66,18 @@ async function main() {
       });
       capabilities += 1;
     }
+    // RESULTS capability rows cover every configured competition x season (same row shape as
+    // FIXTURES) so results-sync can pass its capability gate for any operator window.
+    for (const season of rows) {
+      await db.providerCapability.upsert({
+        where: { provider_leagueId_seasonId_endpoint: { provider: PROVIDER, leagueId: league.id, seasonId: season.id, endpoint: "RESULTS" } },
+        update: { supported: true, expiresAt: CAPABILITY_EXPIRES },
+        create: { provider: PROVIDER, leagueId: league.id, seasonId: season.id, endpoint: "RESULTS", supported: true, verifiedAt: new Date(), expiresAt: CAPABILITY_EXPIRES },
+      });
+      resultsCapabilities += 1;
+    }
   }
-  console.info(`seeded ${leagues} leagues, ${seasons} seasons, ${capabilities} FIXTURES capabilities`);
+  console.info(`seeded ${leagues} leagues, ${seasons} seasons, ${capabilities} FIXTURES capabilities, ${resultsCapabilities} RESULTS capabilities`);
   await db.$disconnect();
 }
 

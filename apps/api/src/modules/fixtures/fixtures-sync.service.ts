@@ -1,4 +1,4 @@
-import { ServiceUnavailableException, Injectable, type OnModuleDestroy } from "@nestjs/common";
+import { BadRequestException, ServiceUnavailableException, Injectable, type OnModuleDestroy } from "@nestjs/common";
 import { createHash, randomUUID } from "node:crypto";
 
 import { readServerConfig } from "@bet-stats/config";
@@ -10,11 +10,60 @@ import { CRITICAL_HEADROOM, DAILY_ALLOWANCE, PROVIDER } from "./fixtures-budget.
 
 const SYNC_WINDOW_DAYS = 7;
 /** Skip a league when its provenance is fresher than this unless the caller forces a sync. */
-const MIN_SYNC_INTERVAL_MS = 6 * 3_600_000;
-/** Free tier allows 10 provider requests/minute; space consecutive fetches to stay under it. */
-const PROVIDER_MIN_SPACING_MS = 3_000;
+export const MIN_SYNC_INTERVAL_MS = 6 * 3_600_000;
+/** Free tier allows 10 provider requests/minute (rolling); space consecutive fetches to stay
+ * under it. 3_000 ms could burst 20/min, so every provider fetch waits 6_500 ms first. */
+export const PROVIDER_MIN_SPACING_MS = 6_500;
+/** One provider call per chunk; 31 days mirrors the replay WINDOW_TOO_LARGE bound. */
+const SYNC_CHUNK_DAYS = 31;
+/** Longest operator-requested backfill window (days, inclusive). */
+const SYNC_MAX_SPAN_DAYS = 400;
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Module-level so the fixtures and results sync services pace against ONE shared timer —
+ * both hit the same provider minute budget, so separate timers could still burst. */
+let lastProviderFetchAt = 0;
+export async function waitForProviderSpacing(): Promise<void> {
+  const waitMs = lastProviderFetchAt + PROVIDER_MIN_SPACING_MS - Date.now();
+  if (waitMs > 0) await delay(waitMs);
+  lastProviderFetchAt = Date.now();
+}
+
+function assertDateOnly(field: string, value: string): void {
+  if (!DATE_ONLY.test(value)) throw new BadRequestException(`${field} must be a YYYY-MM-DD UTC date`);
+  const parsed = Date.parse(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed) || new Date(parsed).toISOString().slice(0, 10) !== value) throw new BadRequestException(`${field} must be a valid calendar date`);
+}
+
+/** Resolves an optional YYYY-MM-DD window (defaults preserve today..+7d) and enforces
+ * format, ordering and the 400-day span bound; violations reject with 400. */
+export function resolveSyncDateRange(input: { dateFrom?: string; dateTo?: string }, defaults: { from: string; to: string }): { dateFrom: string; dateTo: string } {
+  const dateFrom = input.dateFrom ?? defaults.from;
+  const dateTo = input.dateTo ?? defaults.to;
+  assertDateOnly("dateFrom", dateFrom);
+  assertDateOnly("dateTo", dateTo);
+  const fromMs = Date.parse(`${dateFrom}T00:00:00.000Z`);
+  const toMs = Date.parse(`${dateTo}T00:00:00.000Z`);
+  if (fromMs > toMs) throw new BadRequestException("dateFrom must not be after dateTo");
+  if (toMs - fromMs > SYNC_MAX_SPAN_DAYS * 86_400_000) throw new BadRequestException(`Date range must not exceed ${SYNC_MAX_SPAN_DAYS} days`);
+  return { dateFrom, dateTo };
+}
+
+/** Splits a range into inclusive windows of at most SYNC_CHUNK_DAYS days so any span costs
+ * one provider call per chunk per league (a season backfill is ~13 calls, not 460). */
+export function chunkSyncDateRange(dateFrom: string, dateTo: string): Array<{ dateFrom: string; dateTo: string }> {
+  const chunks: Array<{ dateFrom: string; dateTo: string }> = [];
+  let cursor = Date.parse(`${dateFrom}T00:00:00.000Z`);
+  const end = Date.parse(`${dateTo}T00:00:00.000Z`);
+  while (cursor <= end) {
+    const chunkEnd = Math.min(cursor + (SYNC_CHUNK_DAYS - 1) * 86_400_000, end);
+    chunks.push({ dateFrom: new Date(cursor).toISOString().slice(0, 10), dateTo: new Date(chunkEnd).toISOString().slice(0, 10) });
+    cursor = chunkEnd + 86_400_000;
+  }
+  return chunks;
+}
 
 export type SyncLeagueResult = { league: string; status: "synced" | "skipped" | "denied" | "failed"; fixtures: number; reason?: string };
 
@@ -41,17 +90,18 @@ export class FixturesSyncService implements OnModuleDestroy {
   /** Serializes sync runs: overlapping requests (multiple tabs, auto + manual) must not
    * race the external-ref reads, or they would duplicate canonical fixtures. */
   private pending: Promise<unknown> = Promise.resolve();
-  private lastProviderFetchAt = 0;
 
-  async sync(input: { competitions?: readonly string[]; force?: boolean }): Promise<{ results: readonly SyncLeagueResult[] }> {
+  async sync(input: { competitions?: readonly string[]; force?: boolean; dateFrom?: string; dateTo?: string }): Promise<{ results: readonly SyncLeagueResult[] }> {
+    const now = new Date();
+    // Defaults keep the historical behavior exactly: today .. today+SYNC_WINDOW_DAYS.
+    const range = resolveSyncDateRange(input, { from: now.toISOString().slice(0, 10), to: new Date(now.getTime() + SYNC_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10) });
     const availability = this.availability();
     if (!availability.enabled) throw new ServiceUnavailableException({ message: "Fixtures sync is not available", reason: availability.reason });
     const task = this.pending.then(async () => {
       const database = this.database!;
-      const now = new Date();
       const targets = await this.resolveLeagues(database, input.competitions);
       const results: SyncLeagueResult[] = [];
-      for (const target of targets) results.push(await this.syncLeague(target, now, input.force === true));
+      for (const target of targets) results.push(await this.syncLeague(target, now, range, input.force === true));
       return { results };
     });
     this.pending = task.catch(() => undefined);
@@ -69,7 +119,7 @@ export class FixturesSyncService implements OnModuleDestroy {
     return leagues.filter((league) => wanted.has(league.name));
   }
 
-  private async syncLeague(league: Awaited<ReturnType<PrismaClient["league"]["findFirst"]>> & { id: string; name: string; countryCode: string; externalRefs: Array<{ externalId: string }> }, now: Date, force: boolean): Promise<SyncLeagueResult> {
+  private async syncLeague(league: Awaited<ReturnType<PrismaClient["league"]["findFirst"]>> & { id: string; name: string; countryCode: string; externalRefs: Array<{ externalId: string }> }, now: Date, range: { dateFrom: string; dateTo: string }, force: boolean): Promise<SyncLeagueResult> {
     const database = this.database!;
     const code = league.externalRefs[0]?.externalId;
     if (!code || !isConfiguredCompetitionCode(code)) return { league: league.name, status: "denied", fixtures: 0, reason: "PROVIDER_MAPPING_MISSING" };
@@ -104,58 +154,57 @@ export class FixturesSyncService implements OnModuleDestroy {
     });
     if (!reservation.reserved) return { league: league.name, status: "denied", fixtures: 0, reason: reservation.reason };
 
-    let fixtures: Awaited<ReturnType<FootballDataOrgClient["fetchCompetitionFixtures"]>>;
-    try {
-      const waitMs = this.lastProviderFetchAt + PROVIDER_MIN_SPACING_MS - Date.now();
-      if (waitMs > 0) await delay(waitMs);
-      this.lastProviderFetchAt = Date.now();
-      const client = new FootballDataOrgClient({ apiToken: this.config.FOOTBALL_DATA_API_TOKEN! });
-      fixtures = await client.fetchCompetitionFixtures({
-        competitionCode: code,
-        dateFrom: now.toISOString().slice(0, 10),
-        dateTo: new Date(now.getTime() + SYNC_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10),
-      });
-    } catch (error) {
-      const statusCode = (error as { statusCode?: number } | null)?.statusCode;
-      // 401/403 mean the subscription does not cover this resource — retrying cannot help.
-      if (statusCode === 401 || statusCode === 403) return { league: league.name, status: "failed", fixtures: 0, reason: "PROVIDER_ACCESS_RESTRICTED" };
-      return { league: league.name, status: "failed", fixtures: 0, reason: "PROVIDER_REQUEST_FAILED" };
-    }
-
     let persisted = 0;
-    for (const fixture of fixtures) {
-      const fixtureSeasonId = await this.resolveSeasonRef(database, league.id, season.id, fixture.seasonExternalId);
-      if (!fixtureSeasonId) continue;
-      const homeTeamId = await this.ensureTeam(database, fixture.provider, fixture.homeTeamExternalId, fixture.homeTeamName, league.countryCode);
-      const awayTeamId = await this.ensureTeam(database, fixture.provider, fixture.awayTeamExternalId, fixture.awayTeamName, league.countryCode);
-      const reference = await database.fixtureExternalRef.findUnique({ where: { provider_externalId: { provider: fixture.provider, externalId: fixture.externalId } } });
-      let fixtureId: string;
-      if (reference) {
-        fixtureId = reference.fixtureId;
-        await database.fixture.update({ where: { id: fixtureId }, data: { kickoffUtc: new Date(fixture.kickoffUtc), status: fixture.status } });
-      } else {
-        const candidateId = randomUUID();
-        try {
-          await database.$transaction([
-            database.fixture.create({ data: { id: candidateId, leagueId: league.id, seasonId: fixtureSeasonId, homeTeamId, awayTeamId, kickoffUtc: new Date(fixture.kickoffUtc), status: fixture.status } }),
-            database.fixtureExternalRef.create({ data: { id: randomUUID(), fixtureId: candidateId, provider: fixture.provider, externalId: fixture.externalId } }),
-          ]);
-          fixtureId = candidateId;
-        } catch (error) {
-          // A concurrent writer won the external-ref race; adopt its canonical fixture
-          // (the transaction rolled our candidate back).
-          const winner = await database.fixtureExternalRef.findUnique({ where: { provider_externalId: { provider: fixture.provider, externalId: fixture.externalId } } });
-          if (!winner) throw error;
-          fixtureId = winner.fixtureId;
-          await database.fixture.update({ where: { id: fixtureId }, data: { kickoffUtc: new Date(fixture.kickoffUtc), status: fixture.status } });
-        }
+    for (const chunk of chunkSyncDateRange(range.dateFrom, range.dateTo)) {
+      let fixtures: Awaited<ReturnType<FootballDataOrgClient["fetchCompetitionFixtures"]>>;
+      try {
+        await waitForProviderSpacing();
+        const client = new FootballDataOrgClient({ apiToken: this.config.FOOTBALL_DATA_API_TOKEN! });
+        fixtures = await client.fetchCompetitionFixtures({
+          competitionCode: code,
+          dateFrom: chunk.dateFrom,
+          dateTo: chunk.dateTo,
+        });
+      } catch (error) {
+        const statusCode = (error as { statusCode?: number } | null)?.statusCode;
+        // 401/403 mean the subscription does not cover this resource — retrying cannot help.
+        if (statusCode === 401 || statusCode === 403) return { league: league.name, status: "failed", fixtures: persisted, reason: "PROVIDER_ACCESS_RESTRICTED" };
+        return { league: league.name, status: "failed", fixtures: persisted, reason: "PROVIDER_REQUEST_FAILED" };
       }
-      const payloadHash = createHash("sha256").update(JSON.stringify(fixture.raw)).digest("hex");
-      await database.$executeRawUnsafe(
-        `INSERT INTO "FixtureProvenance" (id, "fixtureId", provider, "observedAt", "sourceUpdatedAt", "payloadHash", "rawPayload") VALUES ($1, $2, $3, $4::timestamptz, $5::timestamptz, $6, $7::jsonb) ON CONFLICT ("provider", "payloadHash") DO NOTHING`,
-        randomUUID(), fixtureId, fixture.provider, fixture.capturedAt, fixture.sourceUpdatedAt, payloadHash, JSON.stringify(fixture.raw),
-      );
-      persisted += 1;
+      for (const fixture of fixtures) {
+        const fixtureSeasonId = await this.resolveSeasonRef(database, league.id, season.id, fixture.seasonExternalId);
+        if (!fixtureSeasonId) continue;
+        const homeTeamId = await this.ensureTeam(database, fixture.provider, fixture.homeTeamExternalId, fixture.homeTeamName, league.countryCode);
+        const awayTeamId = await this.ensureTeam(database, fixture.provider, fixture.awayTeamExternalId, fixture.awayTeamName, league.countryCode);
+        const reference = await database.fixtureExternalRef.findUnique({ where: { provider_externalId: { provider: fixture.provider, externalId: fixture.externalId } } });
+        let fixtureId: string;
+        if (reference) {
+          fixtureId = reference.fixtureId;
+          await database.fixture.update({ where: { id: fixtureId }, data: { kickoffUtc: new Date(fixture.kickoffUtc), status: fixture.status } });
+        } else {
+          const candidateId = randomUUID();
+          try {
+            await database.$transaction([
+              database.fixture.create({ data: { id: candidateId, leagueId: league.id, seasonId: fixtureSeasonId, homeTeamId, awayTeamId, kickoffUtc: new Date(fixture.kickoffUtc), status: fixture.status } }),
+              database.fixtureExternalRef.create({ data: { id: randomUUID(), fixtureId: candidateId, provider: fixture.provider, externalId: fixture.externalId } }),
+            ]);
+            fixtureId = candidateId;
+          } catch (error) {
+            // A concurrent writer won the external-ref race; adopt its canonical fixture
+            // (the transaction rolled our candidate back).
+            const winner = await database.fixtureExternalRef.findUnique({ where: { provider_externalId: { provider: fixture.provider, externalId: fixture.externalId } } });
+            if (!winner) throw error;
+            fixtureId = winner.fixtureId;
+            await database.fixture.update({ where: { id: fixtureId }, data: { kickoffUtc: new Date(fixture.kickoffUtc), status: fixture.status } });
+          }
+        }
+        const payloadHash = createHash("sha256").update(JSON.stringify(fixture.raw)).digest("hex");
+        await database.$executeRawUnsafe(
+          `INSERT INTO "FixtureProvenance" (id, "fixtureId", provider, "observedAt", "sourceUpdatedAt", "payloadHash", "rawPayload") VALUES ($1, $2, $3, $4::timestamptz, $5::timestamptz, $6, $7::jsonb) ON CONFLICT ("provider", "payloadHash") DO NOTHING`,
+          randomUUID(), fixtureId, fixture.provider, fixture.capturedAt, fixture.sourceUpdatedAt, payloadHash, JSON.stringify(fixture.raw),
+        );
+        persisted += 1;
+      }
     }
     return { league: league.name, status: "synced", fixtures: persisted };
   }

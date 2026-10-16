@@ -32,7 +32,7 @@ Milestone: v1.0 — ARCHIVED
 All Phases: Complete (6/6)
 All Plans: Complete (88/88)
 Status: Quick task 261016-a87 - all 9 inline eligibility-header blocks in apps/web (7 internal-api proxy routes + scorecards page + fixture page) stamp `x-eligibility-checked-at` with `process.env.ELIGIBILITY_CHECKED_AT || new Date().toISOString()`, so the NestJS EligibilityGuard's ≤1h freshness check passes for long-running dev processes while explicit env pins (unit/e2e) keep precedence; region/age headers remain static fail-closed
-Last activity: 2026-10-16 - Completed quick task 261016-k3w: Fix bare /scorecards navigation: default cohort from/to bounds so landing without query renders the dashboard instead of 400 INVALID_FROM error
+Last activity: 2026-10-16 - Completed quick task 261016-kpi: Guard top-level auto-start in workers/data-sync/src/main.ts behind a main-module entry check so importing from tests never boots a background forecast sweep
 Last Activity Description: Gates green - targeted vitest tests/unit/internal-api-route.test.ts 4/4 (env-pin precedence preserved), web typecheck exit 0; commit fd38793; companion ops (not committed, gitignored .env): ELIGIBILITY_ALLOWED_REGIONS=PL on API, ELIGIBILITY_REGION=PL + ELIGIBILITY_AGE_ACKNOWLEDGED=true on web, ELIGIBILITY_CHECKED_AT deliberately unset
 
 Progress: [██████████] 100%
@@ -237,10 +237,11 @@ None yet.
 - [Ops 2026-10-16]: Result publication after matchdays is manual — `POST /internal/fixtures/results-sync`
   must be called per matchday; there is no scheduled results job yet (forecast evidence and
   scorecards depend on it).
-- [Ops 2026-10-16]: Importing `workers/data-sync/src/main.ts` from tests executes its top-level
-  `start()`; a test process whose env carries DATABASE_URL/REDIS_URL/provider tokens boots a
+- [Ops 2026-10-16]: Importing `workers/data-sync/src/main.ts` from tests executed its top-level
+  `start()`; a test process whose env carried DATABASE_URL/REDIS_URL/provider tokens booted a
   second sweep-enabled worker against the dev DB (root cause of the 09:02Z empty-evidence
-  INITIAL snapshots). A main-module entry guard for `start()` is a recommended follow-up.
+  INITIAL snapshots). FIXED in quick 261016-kpi: auto-start is now behind a main-module entry
+  check (`isDirectExecution()`), imports are side-effect-free, hermetic unit test guards it.
 - [Ops 2026-10-16]: The stack must run with `turbo run dev --env-mode=loose` (or direct `node dist/main.js`);
   turbo's default strict env mode strips `.env` values so the worker reports readiness false and
   exits without ticking. Background shells holding API/worker/web do NOT survive an OpenCode
@@ -255,6 +256,7 @@ None yet.
 | 261016-d9t | Windowed fixtures backfill and production results-sync endpoint | 2026-10-16 | 2083eaf | [261016-d9t-windowed-fixture-backfill-and-production](./quick/261016-d9t-windowed-fixture-backfill-and-production/) |
 | 261016-exf | Retrieve past finished fixtures in date windows with per-chunk budget reserves | 2026-10-16 | 106ee4e | [261016-exf-retrieve-past-finished-fixtures-in-windo](./quick/261016-exf-retrieve-past-finished-fixtures-in-windo/) |
 | 261016-k3w | Fix bare /scorecards navigation: default cohort from/to bounds so landing without query renders the dashboard instead of 400 INVALID_FROM error | 2026-10-16 | c6b1603 | [261016-k3w-fix-bare-scorecards-navigation-default-c](./quick/261016-k3w-fix-bare-scorecards-navigation-default-c/) |
+| 261016-kpi | Guard top-level auto-start in workers/data-sync/src/main.ts behind a main-module entry check so importing from tests never boots a background forecast sweep | 2026-10-16 | 0ffc248 | [261016-kpi-guard-top-level-auto-start-in-workers-da](./quick/261016-kpi-guard-top-level-auto-start-in-workers-da/) |
 
 ### Roadmap Evolution
 

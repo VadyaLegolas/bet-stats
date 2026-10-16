@@ -25,10 +25,15 @@ export class FootballDataOrgClient implements FixtureProvider, ResultProvider, S
     this.#now = options.now ?? (() => new Date());
   }
 
-  async fetchCompetitionFixtures(window: RequestedDateWindow): Promise<readonly NormalizedFixture[]> {
+  async fetchCompetitionFixtures(window: RequestedDateWindow, options?: { allStatuses?: boolean }): Promise<readonly NormalizedFixture[]> {
     try {
       assertConfiguredCompetition(window.competitionCode);
-      const query = new URLSearchParams({ status: "SCHEDULED", dateFrom: window.dateFrom, dateTo: window.dateTo });
+      // With allStatuses the status key is omitted so the provider returns every match
+      // status in the window (FINISHED included) — required for past-window backfills.
+      // The default path keeps the exact SCHEDULED query (key order pinned by contract tests).
+      const query = options?.allStatuses
+        ? new URLSearchParams({ dateFrom: window.dateFrom, dateTo: window.dateTo })
+        : new URLSearchParams({ status: "SCHEDULED", dateFrom: window.dateFrom, dateTo: window.dateTo });
       const response = await this.#fetcher(`https://api.football-data.org/v4/competitions/${encodeURIComponent(window.competitionCode)}/matches?${query}`, {
         headers: { "X-Auth-Token": this.#apiToken },
         signal: AbortSignal.timeout(this.#timeoutMs),

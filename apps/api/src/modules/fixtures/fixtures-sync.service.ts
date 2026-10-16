@@ -141,30 +141,38 @@ export class FixturesSyncService implements OnModuleDestroy {
       if (observedAt !== null && now.getTime() - observedAt < MIN_SYNC_INTERVAL_MS) return { league: league.name, status: "skipped", fixtures: 0, reason: "RECENTLY_SYNCED" };
     }
 
-    const reservation = await reservePriorityRequest({
-      database,
-      provider: PROVIDER,
-      resetDate: now.toISOString().slice(0, 10),
-      resetTimezone: "UTC",
-      endpointFamily: "FIXTURES",
-      lane: "critical",
-      configuredAllowance: DAILY_ALLOWANCE,
-      criticalHeadroom: CRITICAL_HEADROOM,
-      jobKey: `manual-fixtures-sync:${code}:${now.toISOString()}`,
-    });
-    if (!reservation.reserved) return { league: league.name, status: "denied", fixtures: 0, reason: reservation.reason };
+    // One run stamp per sync run: every league and chunk of this run shares it, so the
+    // per-chunk jobKey below deduplicates only re-runs of the same chunk, never chunks.
+    const runStamp = now.toISOString();
 
     let persisted = 0;
     for (const chunk of chunkSyncDateRange(range.dateFrom, range.dateTo)) {
+      // Reserve budget per chunk, not per league: one reservation row per provider fetch
+      // per run keeps the daily API-budget accounting accurate (observed 7-for-21 under-count
+      // when a single jobKey covered the whole chunked run).
+      const reservation = await reservePriorityRequest({
+        database,
+        provider: PROVIDER,
+        resetDate: runStamp.slice(0, 10),
+        resetTimezone: "UTC",
+        endpointFamily: "FIXTURES",
+        lane: "critical",
+        configuredAllowance: DAILY_ALLOWANCE,
+        criticalHeadroom: CRITICAL_HEADROOM,
+        jobKey: `manual-fixtures-sync:${code}:${chunk.dateFrom}:${chunk.dateTo}:${runStamp}`,
+      });
+      if (!reservation.reserved) return { league: league.name, status: "denied", fixtures: persisted, reason: reservation.reason };
       let fixtures: Awaited<ReturnType<FootballDataOrgClient["fetchCompetitionFixtures"]>>;
       try {
         await waitForProviderSpacing();
         const client = new FootballDataOrgClient({ apiToken: this.config.FOOTBALL_DATA_API_TOKEN! });
+        // All statuses: a past window must return FINISHED matches so their canonical rows
+        // and FixtureExternalRef exist for ResultsSyncService identity resolution.
         fixtures = await client.fetchCompetitionFixtures({
           competitionCode: code,
           dateFrom: chunk.dateFrom,
           dateTo: chunk.dateTo,
-        });
+        }, { allStatuses: true });
       } catch (error) {
         const statusCode = (error as { statusCode?: number } | null)?.statusCode;
         // 401/403 mean the subscription does not cover this resource — retrying cannot help.

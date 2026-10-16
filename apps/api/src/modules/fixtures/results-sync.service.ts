@@ -125,23 +125,29 @@ export class ResultsSyncService implements OnModuleDestroy {
       if (observedAt !== null && now.getTime() - observedAt < MIN_SYNC_INTERVAL_MS) return { league: league.name, status: "skipped", fixtures: 0, reason: "RECENTLY_SYNCED" };
     }
 
-    const reservation = await reservePriorityRequest({
-      database,
-      provider: PROVIDER,
-      resetDate: now.toISOString().slice(0, 10),
-      resetTimezone: "UTC",
-      endpointFamily: "RESULTS",
-      lane: "critical",
-      configuredAllowance: DAILY_ALLOWANCE,
-      criticalHeadroom: CRITICAL_HEADROOM,
-      jobKey: `manual-results-sync:${code}:${range.dateFrom}:${range.dateTo}`,
-    });
-    if (!reservation.reserved) return { league: league.name, status: "denied", fixtures: 0, reason: reservation.reason };
+    // One run stamp per sync run, shared by every league and chunk of this run, so the
+    // per-chunk jobKey below is unique per fetch and per run.
+    const runStamp = now.toISOString();
 
     let fixtures = 0;
     let results = 0;
     try {
       for (const chunk of chunkSyncDateRange(range.dateFrom, range.dateTo)) {
+        // Reserve budget per chunk, not per league: one reservation row per provider fetch
+        // per run keeps the daily API-budget accounting accurate (observed 7-for-21
+        // under-count when one jobKey covered the whole chunked run).
+        const reservation = await reservePriorityRequest({
+          database,
+          provider: PROVIDER,
+          resetDate: runStamp.slice(0, 10),
+          resetTimezone: "UTC",
+          endpointFamily: "RESULTS",
+          lane: "critical",
+          configuredAllowance: DAILY_ALLOWANCE,
+          criticalHeadroom: CRITICAL_HEADROOM,
+          jobKey: `manual-results-sync:${code}:${chunk.dateFrom}:${chunk.dateTo}:${runStamp}`,
+        });
+        if (!reservation.reserved) return { league: league.name, status: "denied", fixtures, results, reason: reservation.reason };
         await waitForProviderSpacing();
         const client = new FootballDataOrgClient({ apiToken: this.config.FOOTBALL_DATA_API_TOKEN! });
         const fetched = await client.fetchCompetitionResults({ competitionCode: code, dateFrom: chunk.dateFrom, dateTo: chunk.dateTo });

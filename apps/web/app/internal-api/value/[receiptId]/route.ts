@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ rec
       accept: "application/json",
       "x-eligibility-region": process.env.ELIGIBILITY_REGION ?? "",
       "x-age-acknowledged": process.env.ELIGIBILITY_AGE_ACKNOWLEDGED ?? "",
-      "x-eligibility-checked-at": process.env.ELIGIBILITY_CHECKED_AT ?? "",
+      "x-eligibility-checked-at": process.env.ELIGIBILITY_CHECKED_AT || new Date().toISOString(),
     },
     cache: "no-store",
   });

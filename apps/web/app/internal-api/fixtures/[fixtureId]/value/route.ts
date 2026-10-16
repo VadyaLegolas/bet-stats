@@ -13,7 +13,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ fi
       "content-type": "application/json",
       "x-eligibility-region": process.env.ELIGIBILITY_REGION ?? "",
       "x-age-acknowledged": process.env.ELIGIBILITY_AGE_ACKNOWLEDGED ?? "",
-      "x-eligibility-checked-at": process.env.ELIGIBILITY_CHECKED_AT ?? "",
+      "x-eligibility-checked-at": process.env.ELIGIBILITY_CHECKED_AT || new Date().toISOString(),
     },
     body: JSON.stringify(body),
     cache: "no-store",

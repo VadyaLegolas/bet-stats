@@ -4,7 +4,7 @@ const PRIVATE_NO_STORE = "private, no-store, max-age=0";
 const BODY_FIELDS = ["oddsSnapshotId", "market", "sourceLabel", "capturedAt", "selections", "replacementOfOddsSnapshotId"] as const;
 
 function eligibilityHeaders(): Record<string, string> {
-  return { "x-eligibility-region": process.env.ELIGIBILITY_REGION ?? "", "x-age-acknowledged": process.env.ELIGIBILITY_AGE_ACKNOWLEDGED ?? "", "x-eligibility-checked-at": process.env.ELIGIBILITY_CHECKED_AT ?? "" };
+  return { "x-eligibility-region": process.env.ELIGIBILITY_REGION ?? "", "x-age-acknowledged": process.env.ELIGIBILITY_AGE_ACKNOWLEDGED ?? "", "x-eligibility-checked-at": process.env.ELIGIBILITY_CHECKED_AT || new Date().toISOString() };
 }
 
 function responseFrom(upstream: Response): NextResponse {

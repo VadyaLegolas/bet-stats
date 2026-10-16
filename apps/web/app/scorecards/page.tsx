@@ -4,7 +4,7 @@ import { ScorecardDashboard, type ScorecardViewModel } from "./scorecard-dashboa
 
 type Search = Record<string, string | string[] | undefined>;
 const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
-const eligibilityHeaders = () => ({ "x-eligibility-region": process.env.ELIGIBILITY_REGION ?? "", "x-age-acknowledged": process.env.ELIGIBILITY_AGE_ACKNOWLEDGED ?? "", "x-eligibility-checked-at": process.env.ELIGIBILITY_CHECKED_AT ?? "" });
+const eligibilityHeaders = () => ({ "x-eligibility-region": process.env.ELIGIBILITY_REGION ?? "", "x-age-acknowledged": process.env.ELIGIBILITY_AGE_ACKNOWLEDGED ?? "", "x-eligibility-checked-at": process.env.ELIGIBILITY_CHECKED_AT || new Date().toISOString() });
 
 async function fetchEvidence(search: Search, view: "scorecard" | "value-candidates") {
   const query = new URLSearchParams();

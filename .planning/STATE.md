@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-status: "Quick task: Header quota counter for fixture-sync request limits"
-stopped_at: Quick task 261015-r0i-add-a-beautiful-used-remaining-fixture-s
-last_updated: "2026-10-15T20:10:00.000Z"
-last_activity: 2026-10-15
-last_activity_desc: Beautiful used/remaining request-quota counter in site header with UTC-reset countdown - all gates green, committing
+status: "Quick task: Dynamic eligibility decision timestamp for protected analytics pages (261016-a87)"
+stopped_at: Quick task 261016-a87-add-dynamic-eligibility-decision-timesta
+last_updated: "2026-10-16T05:45:00.000Z"
+last_activity: 2026-10-16
+last_activity_desc: Fresh per-request eligibility decision timestamp in all 9 web proxy/page header blocks; API guard, domain logic and env-pinned test contract untouched (fd38793)
 state_head: 3c6384e8e49b7746fd04ca665d22a5f48ff877b2
 progress:
   total_phases: 6
@@ -31,9 +31,9 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 Milestone: v1.0 — ARCHIVED
 All Phases: Complete (6/6)
 All Plans: Complete (88/88)
-Status: Quick task 261015-r0i - public `GET /fixtures/quota` (provider-wide UTC-day reservation count, exactly the enforcement scope, + rolling 60s provider minute window measured from football-data.org response headers) and header `QuotaCounter` pill: `used/allowance` as a single text node, progress meter with aria, live countdown to the 00:00 UTC reset with refetch on zero-crossing/60s poll/after each manual sync; shared budget constants moved to `fixtures-budget.ts`
-Last activity: 2026-10-15
-Last Activity Description: Gates green - api+web typecheck, unit 248+13, deterministic e2e 21/21 (after fixing a D-19 contract collision: a bare `<strong>0</strong>` in the pill matched team-evidence's "no exact `0` text" assertion - figures now render as one `used/allowance` node; test contracts untouched), phase06 journey+accessibility 22/22 (axe, 320px reflow, mobile nav), live QA desktop/390/320 with zero console errors and no horizontal overflow
+Status: Quick task 261016-a87 - all 9 inline eligibility-header blocks in apps/web (7 internal-api proxy routes + scorecards page + fixture page) stamp `x-eligibility-checked-at` with `process.env.ELIGIBILITY_CHECKED_AT || new Date().toISOString()`, so the NestJS EligibilityGuard's ≤1h freshness check passes for long-running dev processes while explicit env pins (unit/e2e) keep precedence; region/age headers remain static fail-closed
+Last activity: 2026-10-16
+Last Activity Description: Gates green - targeted vitest tests/unit/internal-api-route.test.ts 4/4 (env-pin precedence preserved), web typecheck exit 0; commit fd38793; companion ops (not committed, gitignored .env): ELIGIBILITY_ALLOWED_REGIONS=PL on API, ELIGIBILITY_REGION=PL + ELIGIBILITY_AGE_ACKNOWLEDGED=true on web, ELIGIBILITY_CHECKED_AT deliberately unset
 
 Progress: [██████████] 100%
 
@@ -235,6 +235,12 @@ None yet.
   entirely ("access to seasons 2022-2024"). UEL shows a honest restricted state in the UI; an
   api-football fetch path was not built because it cannot deliver upcoming fixtures either.
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 261016-a87 | Add dynamic eligibility decision timestamp so protected analytics pages pass the guard with region PL | 2026-10-16 | fd38793 | [261016-a87-add-dynamic-eligibility-decision-timesta](./quick/261016-a87-add-dynamic-eligibility-decision-timesta/) |
+
 ### Roadmap Evolution
 
 - Phase 6 edited: edited field: goal (MVP user-story framing; preserved nine completed plans)
@@ -247,6 +253,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-15T20:10:00.000Z
-Stopped at: Quick task 261015-r0i-add-a-beautiful-used-remaining-fixture-s - atomic commit + push to origin/main
-Resume file: .planning/quick/261015-r0i-add-a-beautiful-used-remaining-fixture-s/PLAN.md
+Last session: 2026-10-16T05:45:00.000Z
+Stopped at: Quick task 261016-a87-add-dynamic-eligibility-decision-timesta - atomic commit on main
+Resume file: .planning/quick/261016-a87-add-dynamic-eligibility-decision-timesta/PLAN.md

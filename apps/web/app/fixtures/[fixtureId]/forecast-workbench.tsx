@@ -7,6 +7,7 @@ import { forecastKindLabel, MARKET_LABELS, oddsMarketLabel, oddsSelectionLabel, 
 import { ResponsiveEvidence, type EvidenceColumn } from "../../../components/responsive-evidence";
 import { LocalDataBlock, type LocalDataBlockState } from "../../../components/local-data-block";
 import { ContextualMethodologyWarning } from "../../../components/contextual-methodology-warning";
+import { formatOdds } from "../../../components/odds-format";
 
 type OddsSnapshot = { oddsSnapshotId: string; fixtureId: string; market: OddsMarket; sourceLabel: string; capturedAt: string; schemaVersion: string; normalizationVersion: string; overround: string; selections: readonly { selection: OddsSelection; decimalOdds: string; impliedProbability: string; noVigProbability: string }[] };
 export type ValueResult = { id: string; fixtureId: string; forecastSnapshotId: string; oddsSnapshotId: string; market: OddsMarket; selection: OddsSelection; outcome: "VALUE_CANDIDATE" | "NO_VALUE" | "INSUFFICIENT_EVIDENCE"; reasons: readonly string[]; modelProbability: string; noVigProbability: string; fairOdds: string | null; edge: string; expectedValue: string; receipt: Record<string, unknown>; createdAt: string };
@@ -54,14 +55,14 @@ type ProbabilityRow = ForecastResponseDto["probabilities"][OddsMarket][number];
 const probabilityColumns: readonly EvidenceColumn<ProbabilityRow>[] = [
   { key: "selection", label: "Выбор", value: (event) => SELECTION_LABELS[event.selection] },
   { key: "probability", label: "Вероятность", value: (event) => percent(event.probability) },
-  { key: "fairOdds", label: "Справедливый десятичный коэффициент", value: (event) => event.fairOdds ?? "Недоступно" },
+  { key: "fairOdds", label: "Справедливый десятичный коэффициент", value: (event) => event.fairOdds ? formatOdds(event.fairOdds) : "Недоступно" },
 ];
 type ComparisonRow = ProbabilityRow & { odds: OddsSnapshot["selections"][number] | undefined };
 const oddsComparisonColumns: readonly EvidenceColumn<ComparisonRow>[] = [
   { key: "selection", label: "Выбор", value: (row) => SELECTION_LABELS[row.selection] },
   { key: "modelProbability", label: "Модельная вероятность", value: (row) => percent(row.probability) },
-  { key: "fairOdds", label: "Справедливый коэффициент", value: (row) => row.fairOdds ?? "Недоступно" },
-  { key: "bookOdds", label: "Коэффициент букмекера", value: (row) => row.odds?.decimalOdds ?? "Недоступно" },
+  { key: "fairOdds", label: "Справедливый коэффициент", value: (row) => row.fairOdds ? formatOdds(row.fairOdds) : "Недоступно" },
+  { key: "bookOdds", label: "Коэффициент букмекера", value: (row) => row.odds ? formatOdds(row.odds.decimalOdds) : "Недоступно" },
   { key: "implied", label: "Подразумеваемая", value: (row) => row.odds ? percent(row.odds.impliedProbability) : "Недоступно" },
   { key: "noVig", label: "Без вига", value: (row) => row.odds ? percent(row.odds.noVigProbability) : "Недоступно" },
 ];

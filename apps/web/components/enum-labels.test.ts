@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   evidenceLimitationLabel,
+  financialOutcomeLabel,
   forecastKindLabel,
   impactLabel,
   incidentStatusLabel,
@@ -122,6 +123,18 @@ describe("evidenceLimitationLabel", () => {
   it("passes full English DTO sentences through byte-identical", () => {
     const sentence = "Not enough completed matches before this cutoff.";
     expect(evidenceLimitationLabel(sentence)).toBe(sentence);
+  });
+});
+
+describe("financialOutcomeLabel", () => {
+  it("maps every settlement outcome to Russian", () => {
+    expect(financialOutcomeLabel("WIN")).toBe("выигрыш");
+    expect(financialOutcomeLabel("LOSS")).toBe("проигрыш");
+    expect(financialOutcomeLabel("VOID")).toBe("возврат ставки");
+    expect(financialOutcomeLabel("PENDING")).toBe("ожидает итога");
+  });
+  it("passes an unknown outcome through unchanged", () => {
+    expect(financialOutcomeLabel("MYSTERY")).toBe("MYSTERY");
   });
 });
 

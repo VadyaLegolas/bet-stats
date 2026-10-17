@@ -18,6 +18,7 @@ const ROUTE_OUTCOME_LABELS: Record<string, string> = { ADMITTED: "Допущен
 const ROUTE_TRIGGER_LABELS: Record<string, string> = { PRIMARY: "Первичный источник", UNSUPPORTED_COVERAGE: "Регион не поддерживается", ALLOWANCE_EXHAUSTED: "Бюджет запросов исчерпан", CIRCUIT_OPEN: "Сработал предохранитель", TRANSPORT_FAILURE: "Сбой транспорта", RATE_LIMITED: "Превышен лимит частоты", PROVIDER_UNAVAILABLE: "Провайдер недоступен", ROUTE_PENDING: "Маршрут ожидается", NO_PRODUCTION_FALLBACK: "Продакшен-резерв недоступен", UNSUPPORTED_CAPABILITY: "Возможность не поддерживается", STALE_CAPABILITY: "Устаревшая возможность", EXPIRED_CAPABILITY: "Возможность истекла", CRITICAL_HEADROOM: "Критический запас бюджета", UNKNOWN_CAPABILITY: "Неизвестная возможность", CAPABILITY_MISMATCH: "Несовпадение возможности" };
 const REASON_LABELS: Record<string, string> = { PROVIDER_OBSERVATION_RECORDED: "получено наблюдение провайдера", PROVENANCE_NOT_AVAILABLE: "провенанс источника недоступен", FRESHNESS_THRESHOLD_EXCEEDED: "превышен порог свежести", SOURCE_UPDATE_TIME_MISSING: "нет времени обновления источника", INVALID_SOURCE_UPDATE_TIME: "недопустимое время обновления источника", UNKNOWN_DATA_STATE: "состояние данных неизвестно" };
 const EVIDENCE_LIMITATION_LABELS: Record<string, string> = { NO_ELIGIBLE_HISTORY: "нет пригодной истории", LIMITED_HISTORY: "история ограничена", MISSING_TIMESTAMP: "нет отметки времени", EMPTY: "нет данных" };
+const FINANCIAL_OUTCOME_LABELS: Record<string, string> = { WIN: "выигрыш", LOSS: "проигрыш", VOID: "возврат ставки", PENDING: "ожидает итога" };
 const RECONCILIATION_METHOD_LABELS: Record<string, string> = { EXACT_EXTERNAL_REF: "точное совпадение внешней ссылки", UNIQUE_CONSERVATIVE_MATCH: "уникальное консервативное совпадение", MANUAL_REVIEW: "ручная проверка", OPERATOR_CONFIRMED: "подтверждено оператором" };
 const SERVICE_STATE_LABELS: Record<string, string> = { UP: "доступно", DOWN: "недоступно", DEGRADED: "деградация" };
 const IMPACT_LABELS: Record<string, string> = { BLOCKING: "блокирует", DEGRADED: "деградация" };
@@ -43,6 +44,8 @@ export function reasonLabel(reason: string): string { return REASON_LABELS[reaso
 export function providerReasonLabel(reason: string): string { return ROUTE_TRIGGER_LABELS[reason] ?? reasonLabel(reason); }
 /** Unknown limitation reason → the input unchanged (DTO prose must not be mangled). */
 export function evidenceLimitationLabel(reason: string): string { return EVIDENCE_LIMITATION_LABELS[reason] ?? reason; }
+/** Unknown financial outcome → the raw code. */
+export function financialOutcomeLabel(outcome: string): string { return FINANCIAL_OUTCOME_LABELS[outcome] ?? outcome; }
 /** Unknown method → the raw code. */
 export function reconciliationMethodLabel(method: string): string { return RECONCILIATION_METHOD_LABELS[method] ?? method; }
 /** Unknown service state → the raw code. */

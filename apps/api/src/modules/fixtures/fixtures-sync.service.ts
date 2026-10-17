@@ -2,9 +2,9 @@ import { BadRequestException, ServiceUnavailableException, Injectable, type OnMo
 import { createHash, randomUUID } from "node:crypto";
 
 import { readServerConfig } from "@bet-stats/config";
-import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
-import { evaluateCapability, reservePriorityRequest } from "@bet-stats/domain";
-import { FootballDataOrgClient, isConfiguredCompetitionCode } from "@bet-stats/football-data";
+import { createPrismaClient, createProviderRoutingRepository, type PrismaClient } from "@bet-stats/database";
+import { evaluateCapability, PROVIDER_ROUTE_POLICY_VERSION, reservePriorityRequest, routeReceiptContentHash, type ProviderRouteReceiptContent } from "@bet-stats/domain";
+import { createProviderRoute, FootballDataOrgClient, isConfiguredCompetitionCode } from "@bet-stats/football-data";
 
 import { CRITICAL_HEADROOM, DAILY_ALLOWANCE, PROVIDER } from "./fixtures-budget.js";
 
@@ -145,6 +145,10 @@ export class FixturesSyncService implements OnModuleDestroy {
     // per-chunk jobKey below deduplicates only re-runs of the same chunk, never chunks.
     const runStamp = now.toISOString();
 
+    // Raw provider match objects of this run; handed to the FIXTURES route receipt's
+    // SourceObservation once the league run succeeds (see recordRouteReceipt).
+    const rawMatches: Array<Readonly<Record<string, unknown>>> = [];
+
     let persisted = 0;
     for (const chunk of chunkSyncDateRange(range.dateFrom, range.dateTo)) {
       // Reserve budget per chunk, not per league: one reservation row per provider fetch
@@ -180,6 +184,7 @@ export class FixturesSyncService implements OnModuleDestroy {
         return { league: league.name, status: "failed", fixtures: persisted, reason: "PROVIDER_REQUEST_FAILED" };
       }
       for (const fixture of fixtures) {
+        rawMatches.push(fixture.raw);
         const fixtureSeasonId = await this.resolveSeasonRef(database, league.id, season.id, fixture.seasonExternalId);
         if (!fixtureSeasonId) continue;
         const homeTeamId = await this.ensureTeam(database, fixture.provider, fixture.homeTeamExternalId, fixture.homeTeamName, league.countryCode);
@@ -207,14 +212,84 @@ export class FixturesSyncService implements OnModuleDestroy {
           }
         }
         const payloadHash = createHash("sha256").update(JSON.stringify(fixture.raw)).digest("hex");
+        // Freshness = how recently WE confirmed the fixture with the provider (see the
+        // project() comment in fixtures.service.ts), so re-syncing an unchanged payload
+        // must move observedAt forward; id, fixtureId and rawPayload are never updated,
+        // keeping payload-hash row identity and raw evidence immutable.
         await database.$executeRawUnsafe(
-          `INSERT INTO "FixtureProvenance" (id, "fixtureId", provider, "observedAt", "sourceUpdatedAt", "payloadHash", "rawPayload") VALUES ($1, $2, $3, $4::timestamptz, $5::timestamptz, $6, $7::jsonb) ON CONFLICT ("provider", "payloadHash") DO NOTHING`,
+          `INSERT INTO "FixtureProvenance" (id, "fixtureId", provider, "observedAt", "sourceUpdatedAt", "payloadHash", "rawPayload") VALUES ($1, $2, $3, $4::timestamptz, $5::timestamptz, $6, $7::jsonb) ON CONFLICT ("provider", "payloadHash") DO UPDATE SET "observedAt" = EXCLUDED."observedAt", "sourceUpdatedAt" = EXCLUDED."sourceUpdatedAt"`,
           randomUUID(), fixtureId, fixture.provider, fixture.capturedAt, fixture.sourceUpdatedAt, payloadHash, JSON.stringify(fixture.raw),
         );
         persisted += 1;
       }
     }
+    await this.recordRouteReceipt({ database, leagueId: league.id, seasonId: season.id, seasonLabel: season.label, code, range, runStamp, now, rawMatches });
     return { league: league.name, status: "synced", fixtures: persisted };
+  }
+
+  /** Durable provider-route end-state for a successful league run: one FIXTURES
+   * SourceObservation over the run's raw payload, one ADMITTED receipt and one SUCCEEDED
+   * attempt. Invoked ONLY on the status "synced" path — skipped, denied and failed runs
+   * return before it, so coverage is never claimed without a successful provider call. */
+  private async recordRouteReceipt(input: {
+    database: PrismaClient;
+    leagueId: string;
+    seasonId: string;
+    seasonLabel: string;
+    code: string;
+    range: { dateFrom: string; dateTo: string };
+    runStamp: string;
+    now: Date;
+    rawMatches: ReadonlyArray<Readonly<Record<string, unknown>>>;
+  }): Promise<void> {
+    const correlationId = `manual-fixtures-sync:${input.code}:${input.runStamp}`;
+    const route = createProviderRoute({ competition: input.code, season: input.seasonLabel, endpoint: "FIXTURES" });
+    // Sole-source (api-football) leagues must never be claimed by a football-data.org
+    // sync: return without recording (assertRouteReceipt would reject it anyway).
+    if (!route.candidates.includes(PROVIDER)) return;
+    const content: ProviderRouteReceiptContent = {
+      policyVersion: PROVIDER_ROUTE_POLICY_VERSION,
+      policyHash: `sha256:${createHash("sha256").update(route.version).digest("hex")}`,
+      competitionId: input.leagueId,
+      seasonId: input.seasonId,
+      endpointFamily: route.endpoint,
+      candidates: [...route.candidates],
+      selectedProvider: PROVIDER,
+      trigger: "PRIMARY",
+      outcome: "ADMITTED",
+      capabilitySnapshot: { status: "SUPPORTED" },
+      budgetSnapshot: { configuredAllowance: DAILY_ALLOWANCE },
+      circuitSnapshot: { state: "CLOSED" },
+      correlationId,
+    };
+    const serialized = JSON.stringify({ correlationId, competitionCode: input.code, dateFrom: input.range.dateFrom, dateTo: input.range.dateTo, matches: input.rawMatches });
+    const payloadHash = createHash("sha256").update(serialized).digest("hex");
+    // Worker dedupe pattern (findFirst by exact hash, create when absent): the correlation
+    // id inside the payload makes the hash unique per run, so observedAt truthfully equals
+    // the latest confirmation while identical runs reuse one immutable observation row.
+    const existing = await input.database.sourceObservation.findFirst({ where: { provider: PROVIDER, endpointFamily: route.endpoint, payloadHash } });
+    const observation = existing ?? await input.database.sourceObservation.create({
+      data: { id: randomUUID(), provider: PROVIDER, endpointFamily: route.endpoint, externalIdentity: correlationId, observedAt: input.now, payloadHash, rawPayload: JSON.parse(serialized), payloadBytes: Buffer.byteLength(serialized) },
+    });
+    const receiptId = `${route.version}:${input.leagueId}:${input.seasonId}:${route.endpoint}:${correlationId}`;
+    const repository = createProviderRoutingRepository({ database: input.database });
+    await repository.appendRoute({ id: receiptId, contentHash: routeReceiptContentHash(content), ...content });
+    // Appended directly instead of admitAttempt/completeAttempt: the live manual path has
+    // already gated admission before each fetch (evaluateCapability + reservePriorityRequest),
+    // and a post-hoc admitAttempt would re-gate an already-succeeded call (it can deny on
+    // circuit/quota/throttle facts and requires a CLOSED circuit row), contradicting the
+    // observed success — the receipt+attempt shapes still match the worker's durable end-state.
+    // A recording error propagates to the sync caller exactly like persistence errors today.
+    await repository.appendAttempt({
+      id: `${receiptId}:attempt:result`,
+      routeReceiptId: receiptId,
+      attemptKey: `${receiptId}:result`,
+      provider: PROVIDER,
+      state: "SUCCEEDED",
+      reason: null,
+      observationId: observation.id,
+      admitted: true,
+    });
   }
 
   /** football-data.org season IDs are opaque (e.g. "2502"), so the canonical season is the

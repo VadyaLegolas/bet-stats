@@ -364,7 +364,7 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 .evidence-card dd { margin: 0; overflow-wrap: anywhere; }
 .evidence-denominator { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--color-accent); }
 .evidence-table-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
-.evidence-table-scroll::after { content: "Table scrolls horizontally when needed"; display: block; color: var(--color-muted); font-size: 13px; margin-block-start: var(--space-2); }
+.evidence-table-scroll::after { content: "Таблица прокручивается по горизонтали при необходимости"; display: block; color: var(--color-muted); font-size: 13px; margin-block-start: var(--space-2); }
 .local-data-block { min-width: 0; }
 .local-data-notice {
   border-inline-start: 4px solid var(--color-signal);

@@ -25,6 +25,33 @@ export function canonicalScorecardQuery(identity: ScorecardViewModel["cohortIden
 
 const panel = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, marginBlock: 18 } as const;
 
+/** Human-readable Russian copy for the scorecard enum codes. The API contract keeps the
+ * codes; only the display layer is translated. Unknown codes pass through unchanged so a
+ * new backend value degrades to the raw code instead of hiding information. */
+const DIRECTION_COPY = {
+  ALIGNED: "Совпадает с наблюдениями",
+  UNDER_CONFIDENT: "Наблюдаемое выше прогноза",
+  OVER_CONFIDENT: "Наблюдаемое ниже прогноза",
+} as const;
+export const describeDirection = (code: string): string => DIRECTION_COPY[code as keyof typeof DIRECTION_COPY] ?? code;
+
+const HEALTH_REASON_COPY = {
+  NO_SCOREABLE_FIXTURES: "нет завершённых матчей, пригодных для оценки",
+  COHORT_BELOW_MINIMUM: "выборка когорты меньше минимума",
+  BUCKET_BELOW_MINIMUM: "отдельные корзины вероятностей заполнены меньше минимума",
+} as const;
+export const describeHealthReason = (code: string): string => HEALTH_REASON_COPY[code as keyof typeof HEALTH_REASON_COPY] ?? code;
+
+const CLV_REASON_COPY = {
+  NO_COMPARABLE_CLOSE: "нет сопоставимого коэффициента закрытия линии",
+  CLOSING_OBSERVATION_MISSING: "нет наблюдения коэффициента закрытия",
+} as const;
+export const describeClvReason = (code: string): string => CLV_REASON_COPY[code as keyof typeof CLV_REASON_COPY] ?? code;
+
+/** Candidate CLV cell: the numeric value wins; otherwise the human reason, else «нет данных». */
+const describeCandidateClv = (clv: { status: string; reason: string | null; value: string | null }): string =>
+  clv.value ?? (clv.reason ? describeClvReason(clv.reason) : clv.status === "UNAVAILABLE" ? "нет данных" : clv.status);
+
 export function ScorecardDashboard({ scorecard, candidates, cursor }: { scorecard: ScorecardViewModel; candidates: CandidatePage; cursor?: string }) {
   const identityQuery = canonicalScorecardQuery(scorecard.cohortIdentity);
   const healthTitle = scorecard.health.state === "AVAILABLE" ? "Подтверждённые доказательства" : scorecard.health.state === "LIMITED" ? "Ограниченные доказательства" : "Доказательства недоступны";
@@ -44,10 +71,10 @@ export function ScorecardDashboard({ scorecard, candidates, cursor }: { scorecar
       <p>Точная когорта: {scorecard.cohortIdentity.modelVersion} · {scorecard.cohortIdentity.competitionId} · {scorecard.cohortIdentity.market}</p>
     </section>
     <section style={panel}><h2>Правильные меры оценки</h2>{scorecard.metrics ? <><p>Оценка Брайера: {scorecard.metrics.meanBrierScore.toFixed(4)}</p><p>Логарифмическая потеря: {scorecard.metrics.meanLogLoss.toFixed(4)}</p></> : <p>Метрики правильных мер оценки недоступны.</p>}</section>
-    <section style={panel} role="region" aria-label="Доказательства надёжности"><h2>Надёжность</h2><LocalDataBlock name="Доказательства надёжности" state={scorecard.health.state === "AVAILABLE" ? "available" : scorecard.health.state === "LIMITED" ? "limited" : "unavailable"} reason={scorecard.health.reasons.join("; ") || "Нет пригодных для оценки доказательств для этой точной когорты."} retryAllowed={false} retainContent><p><strong>Заключение:</strong> {scorecard.reliability.buckets.some((bucket) => bucket.count > 0) ? "Наблюдаемые исходы сопоставляются с зафиксированными корзинами вероятностей." : "Недостаточно доказательств для заполненных корзин надёжности."}</p><p>{scorecard.denominators.eventCount} вероятностных событий в этой точной когорте. Пустые корзины остаются недостаточными доказательствами и никогда не отображаются как нулевые исходы.</p><ResponsiveEvidence projectionId="scorecard-reliability" label="Таблица доказательств надёжности" tableLabel="Полные данные надёжности" caption="Полные данные калибровки для каждой корзины вероятностей" rows={scorecard.reliability.buckets} columns={reliabilityColumns} rowKey={(bucket) => String(bucket.index)} conclusion={(bucket) => `Диапазон вероятностей ${bucket.lowerBound.toFixed(1)}–${bucket.upperBound.toFixed(1)}`} denominator={(bucket) => `${bucket.count} вероятностных событий`} warning={(bucket) => bucket.evidenceState === "INSUFFICIENT" ? "Недостаточно доказательств" : bucket.evidenceState}/></LocalDataBlock></section>
+    <section style={panel} role="region" aria-label="Доказательства надёжности"><h2>Надёжность</h2><LocalDataBlock name="Доказательства надёжности" state={scorecard.health.state === "AVAILABLE" ? "available" : scorecard.health.state === "LIMITED" ? "limited" : "unavailable"} reason={scorecard.health.reasons.map(describeHealthReason).join("; ") || "Нет пригодных для оценки доказательств для этой точной когорты."} retryAllowed={false} retainContent><p><strong>Заключение:</strong> {scorecard.reliability.buckets.some((bucket) => bucket.count > 0) ? "Наблюдаемые исходы сопоставляются с зафиксированными корзинами вероятностей." : "Недостаточно доказательств для заполненных корзин надёжности."}</p><p>{scorecard.denominators.eventCount} вероятностных событий в этой точной когорте. Пустые корзины остаются недостаточными доказательствами и никогда не отображаются как нулевые исходы.</p><ResponsiveEvidence projectionId="scorecard-reliability" label="Таблица доказательств надёжности" tableLabel="Полные данные надёжности" caption="Полные данные калибровки для каждой корзины вероятностей" rows={scorecard.reliability.buckets} columns={reliabilityColumns} rowKey={(bucket) => String(bucket.index)} conclusion={(bucket) => `Диапазон вероятностей ${bucket.lowerBound.toFixed(1)}–${bucket.upperBound.toFixed(1)}`} denominator={(bucket) => `${bucket.count} вероятностных событий`} warning={(bucket) => bucket.evidenceState === "INSUFFICIENT" ? "Недостаточно доказательств" : ""}/></LocalDataBlock></section>
     <section style={panel}><h2>Доказательства фиксированной ставки в одну единицу</h2><p>{scorecard.financial.count} рассчитанных кандидатов · {scorecard.financial.totalStakedUnits} единиц оценено · {scorecard.financial.totalProfitUnits} единиц результата</p><p>ROI / Доходность: {scorecard.financial.roi ?? "недоступно"}</p></section>
-    <section style={panel}><h2>Доказательства по закрытию линии</h2>{scorecard.clv.status === "AVAILABLE" ? <p>{scorecard.clv.comparableCount} сопоставимых коэффициентов.</p> : <p>Доказательства по закрытию линии недоступны: {scorecard.clv.reason}.</p>}</section>
-    <section style={panel}><h2>Реестр кандидатов</h2>{candidates.items.length === 0 ? <p>В этой точной когорте нет рассчитанных кандидатов value.</p> : <div style={{ overflowX: "auto" }}><table><thead><tr><th>Выбор</th><th>Коэффициент</th><th>Исход</th><th>Единиц поставлено</th><th>Единиц прибыли</th><th>CLV</th></tr></thead><tbody>{candidates.items.map((item) => <tr key={item.id}><td>{item.selection}</td><td>{item.decimalOdds}</td><td>{item.outcome}</td><td>{item.stakeUnits}</td><td>{Number(item.profitUnits) > 0 ? `+${item.profitUnits}` : item.profitUnits}</td><td>{item.clv.value ?? item.clv.reason ?? item.clv.status}</td></tr>)}</tbody></table></div>}<p>Итоги страницы: {candidates.pageTotals.count} кандидатов, {candidates.pageTotals.stakeUnits} единиц поставлено, {candidates.pageTotals.profitUnits} единиц прибыли.</p><nav aria-label="Страницы кандидатов">{cursor && <Link href={`/scorecards?${identityQuery}`}>Назад (первая страница)</Link>} {candidates.nextCursor && <Link href={`/scorecards?${identityQuery}&cursor=${encodeURIComponent(candidates.nextCursor)}`}>Далее</Link>}</nav></section>
+    <section style={panel}><h2>Доказательства по закрытию линии</h2>{scorecard.clv.status === "AVAILABLE" ? <p>{scorecard.clv.comparableCount} сопоставимых коэффициентов.</p> : <p>Доказательства по закрытию линии недоступны: {scorecard.clv.reason ? describeClvReason(scorecard.clv.reason) : "причина не указана"}.</p>}</section>
+    <section style={panel}><h2>Реестр кандидатов</h2>{candidates.items.length === 0 ? <p>В этой точной когорте нет рассчитанных кандидатов value.</p> : <div style={{ overflowX: "auto" }}><table><thead><tr><th>Выбор</th><th>Коэффициент</th><th>Исход</th><th>Единиц поставлено</th><th>Единиц прибыли</th><th>CLV</th></tr></thead><tbody>{candidates.items.map((item) => <tr key={item.id}><td>{item.selection}</td><td>{item.decimalOdds}</td><td>{item.outcome}</td><td>{item.stakeUnits}</td><td>{Number(item.profitUnits) > 0 ? `+${item.profitUnits}` : item.profitUnits}</td><td>{describeCandidateClv(item.clv)}</td></tr>)}</tbody></table></div>}<p>Итоги страницы: {candidates.pageTotals.count} кандидатов, {candidates.pageTotals.stakeUnits} единиц поставлено, {candidates.pageTotals.profitUnits} единиц прибыли.</p><nav aria-label="Страницы кандидатов">{cursor && <Link href={`/scorecards?${identityQuery}`}>Назад (первая страница)</Link>} {candidates.nextCursor && <Link href={`/scorecards?${identityQuery}&cursor=${encodeURIComponent(candidates.nextCursor)}`}>Далее</Link>}</nav></section>
     <details id="formula-policy-receipts"><summary>Квитанции формул и политик</summary><dl><dt>Формула</dt><dd>{scorecard.receipts.formulaId}</dd><dt>Политика когорты</dt><dd>{scorecard.receipts.cohortPolicyId}</dd><dt>Политика надёжности</dt><dd>{scorecard.reliability.policyId}</dd><dt>Финансовая политика</dt><dd>{scorecard.financial.policyId}</dd></dl></details>
   </section>;
 }
@@ -58,5 +85,5 @@ const reliabilityColumns: readonly EvidenceColumn<ReliabilityBucket>[] = [
   { key: "meanForecast", label: "Средний прогноз", value: (bucket) => bucket.meanForecast.toFixed(3) },
   { key: "observedFrequency", label: "Наблюдаемое", value: (bucket) => bucket.count === 0 ? "Недостаточно доказательств" : bucket.observedFrequency.toFixed(3) },
   { key: "count", label: "Количество", value: (bucket) => bucket.count },
-  { key: "direction", label: "Направление", value: (bucket) => bucket.count === 0 ? "Недостаточно доказательств" : bucket.direction },
+  { key: "direction", label: "Направление", value: (bucket) => bucket.count === 0 ? "Недостаточно доказательств" : describeDirection(bucket.direction) },
 ];

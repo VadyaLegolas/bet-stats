@@ -22,9 +22,23 @@ describe("scorecard dashboard", () => {
     expect(markup).toContain("8 матчей");
     expect(markup).toContain("Таблица доказательств надёжности");
     expect(markup).toContain("Доказательства по закрытию линии недоступны");
-    expect(markup).toContain("NO_COMPARABLE_CLOSE");
+    expect(markup).toContain("нет сопоставимого коэффициента закрытия линии");
     expect(markup).toContain("Квитанции формул и политик");
     expect(markup).not.toMatch(/stake recommendation|guaranteed return/i);
+  });
+
+  it("renders human-readable Russian copy instead of raw calibration enum codes", () => {
+    const markup = renderToStaticMarkup(createElement(ScorecardDashboard, { scorecard: model, candidates: { items: [{ id: "v-1", selection: "Хозяева", decimalOdds: "2.10", outcome: "UNAVAILABLE", stakeUnits: "1", profitUnits: "0", clv: { status: "UNAVAILABLE", reason: "CLOSING_OBSERVATION_MISSING", value: null } }], nextCursor: null, pageTotals: { count: 1, stakeUnits: "1", profitUnits: "0" } } }));
+    expect(markup).toContain("Наблюдаемое выше прогноза");
+    expect(markup).toContain("выборка когорты меньше минимума");
+    expect(markup).toContain("нет наблюдения коэффициента закрытия");
+    expect(markup).not.toContain("UNDER_CONFIDENT");
+    expect(markup).not.toContain("OVER_CONFIDENT");
+    expect(markup).not.toContain("ALIGNED");
+    expect(markup).not.toContain("COHORT_BELOW_MINIMUM");
+    expect(markup).not.toContain("CLOSING_OBSERVATION_MISSING");
+    expect(markup).not.toContain("NO_COMPARABLE_CLOSE");
+    expect(markup).not.toContain("SUFFICIENT");
   });
 
   it("keeps exact filters in deterministic URL identity without silent substitution", () => {

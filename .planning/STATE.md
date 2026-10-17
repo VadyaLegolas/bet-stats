@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-status: "Quick task: Dynamic eligibility decision timestamp for protected analytics pages (261016-a87)"
-stopped_at: Quick task 261016-a87-add-dynamic-eligibility-decision-timesta
-last_updated: "2026-10-16T05:45:00.000Z"
-last_activity: 2026-10-16
-last_activity_desc: Fresh per-request eligibility decision timestamp in all 9 web proxy/page header blocks; API guard, domain logic and env-pinned test contract untouched (fd38793)
+status: "Fast task: INITIAL forecasts issued seven days before kickoff (fast-261017)"
+stopped_at: fast-261017-inline
+last_updated: "2026-10-17T01:15:00.000Z"
+last_activity: 2026-10-17
+last_activity_desc: INITIAL forecast window widened from kickoff-24h to kickoff-7d so every upcoming fixture (incl. Champions League midweek) has probabilities days ahead for pre-match betting; PRE_MATCH unchanged at kickoff-6h; sweep issued 47 new INITIALs on first tick (e94b4da)
 state_head: 3c6384e8e49b7746fd04ca665d22a5f48ff877b2
 progress:
   total_phases: 6
@@ -266,6 +266,7 @@ None yet.
 | 261016-l90 | Restrict provider data loading to manual sync only: drop the forecast sweep's automatic enrichment enqueue and stop hardcoding FIXTURES_AUTO_SYNC in dev-full.ps1 | 2026-10-16 | ea86607 | [261016-l90-manual-only-data-loading-drop-the-sweep-](./quick/261016-l90-manual-only-data-loading-drop-the-sweep-/) |
 | 261016-nbo | Show team name instead of a raw cuid on the evidence page heading: API evidence response now carries team/fixture display entities and the web heading omits ids when a name is missing | 2026-10-16 | 31ad67f | [261016-nbo-team-evidence-page-shows-a-raw-cuid-in-t](./quick/261016-nbo-team-evidence-page-shows-a-raw-cuid-in-t/) |
 | 261016-ooi | Make manual sync refresh fixture freshness and record provider route receipts: FixtureProvenance upserts observedAt on identical payloads so STALE clears on refresh, and successful league syncs write a ProviderRouteReceipt with a SUCCEEDED attempt so the coverage badge clears | 2026-10-16 | b0ae96e | [261016-ooi-fixture-freshness-and-provider-coverage-](./quick/261016-ooi-fixture-freshness-and-provider-coverage-/) |
+| fast-261017 | Issue INITIAL forecasts seven days before kickoff instead of 24 hours so users can place bookmaker bets days ahead; PRE_MATCH stays at kickoff-6h, boundary tests updated | 2026-10-17 | e94b4da | inline (gsd-fast) |
 
 ### Roadmap Evolution
 

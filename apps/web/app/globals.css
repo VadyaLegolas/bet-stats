@@ -184,6 +184,17 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   gap: var(--space-4);
   margin-inline-start: auto;
 }
+/* Mid-width desktops (768–1099px): one row cannot fit the brand, the full quota panel
+   and five nav links, so the wrap is made deterministic — the tools row spans the full
+   width below the brand with quota on the left and navigation flush right — instead of
+   an accidental three-row pile-up with uneven gaps. */
+@media (min-width: 768px) and (max-width: 1099px) {
+  .release-header-tools {
+    flex: 1 1 100%;
+    margin-inline-start: 0;
+    justify-content: space-between;
+  }
+}
 .release-brand {
   font-family: var(--font-serif), Georgia, serif;
   font-size: 22px;

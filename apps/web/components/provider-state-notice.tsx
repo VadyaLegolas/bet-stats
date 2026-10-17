@@ -1,4 +1,4 @@
-import { reasonLabel, routeOutcomeLabel, routeTriggerLabel } from "./enum-labels";
+import { providerReasonLabel, routeOutcomeLabel, routeTriggerLabel } from "./enum-labels";
 
 export type ProviderState = { state: "PRIMARY" | "FALLBACK" | "PENDING" | "UNAVAILABLE" | "LIMITED" | "UNSUPPORTED" | "STALE_CAPABILITY" | "BUDGET_PROTECTED" | "CIRCUIT_DENIED"; provider: string; reason: string; capturedAt: string | null; lastValidAt: string | null; retryAllowed: boolean; receipt: { id: string; policyVersion: string; outcome: string; trigger: string } | null };
 
@@ -80,7 +80,7 @@ export function ProviderStateNotice({ state, compact = false }: { state: Provide
         </p>
       )}
       <p style={{ margin: "4px 0", fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
-        Источник: <strong style={{ color: "var(--color-text)" }}>{state.provider}</strong>. Причина: {reasonLabel(state.reason)}.
+        Источник: <strong style={{ color: "var(--color-text)" }}>{state.provider}</strong>. Причина: {providerReasonLabel(state.reason)}.
       </p>
       <div style={{ fontSize: "0.8rem", color: "var(--color-muted)", display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
         {state.capturedAt && (

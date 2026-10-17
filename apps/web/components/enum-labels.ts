@@ -35,6 +35,12 @@ export function routeOutcomeLabel(outcome: string): string { return ROUTE_OUTCOM
 export function routeTriggerLabel(trigger: string): string { return ROUTE_TRIGGER_LABELS[trigger] ?? trigger; }
 /** Unknown reason → the previous lowercase-underscore transform. */
 export function reasonLabel(reason: string): string { return REASON_LABELS[reason] ?? reason.replaceAll("_", " ").toLowerCase(); }
+/**
+ * Provider route reason: `projectProviderState` puts effective trigger/capability codes into
+ * `reason`, so try the trigger dictionary first, then the data-state reason dictionary;
+ * unknown → the lowercase-underscore transform.
+ */
+export function providerReasonLabel(reason: string): string { return ROUTE_TRIGGER_LABELS[reason] ?? reasonLabel(reason); }
 /** Unknown limitation reason → the input unchanged (DTO prose must not be mangled). */
 export function evidenceLimitationLabel(reason: string): string { return EVIDENCE_LIMITATION_LABELS[reason] ?? reason; }
 /** Unknown method → the raw code. */

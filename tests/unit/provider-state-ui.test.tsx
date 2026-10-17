@@ -11,7 +11,7 @@ describe("provider state notice", () => {
     const fallback = renderToStaticMarkup(createElement(ProviderStateNotice, { state: { state: "FALLBACK", provider: "api-football", reason: "UPSTREAM_UNAVAILABLE", capturedAt: "2026-09-12T12:00:02.000Z", lastValidAt: null, retryAllowed: false, receipt: { id: "route-1", policyVersion: "v1", outcome: "SUCCEEDED", trigger: "UPSTREAM_UNAVAILABLE" } } }));
     expect(fallback).toContain("Использован резервный источник"); expect(fallback).toContain("api-football"); expect(fallback).toContain("<time"); expect(fallback).toContain("route-1");
     const limited = renderToStaticMarkup(createElement(ProviderStateNotice, { state: { state: "LIMITED", provider: "api-football", reason: "NO_PRODUCTION_FALLBACK", capturedAt: null, lastValidAt: "2026-09-12T10:00:00.000Z", retryAllowed: true, receipt: { id: "route-2", policyVersion: "v1", outcome: "NO_FALLBACK", trigger: "PROVIDER_UNAVAILABLE" } } }));
-    expect(limited).toContain("Неполные данные"); expect(limited).toContain("no production fallback"); expect(limited).toContain("API-Football — единственный настроенный источник"); expect(limited).toContain("Последний корректный захват"); expect(limited).not.toContain(">0<");
+    expect(limited).toContain("Неполные данные"); expect(limited).toContain("Причина: Продакшен-резерв недоступен."); expect(limited).toContain("API-Football — единственный настроенный источник"); expect(limited).toContain("Последний корректный захват"); expect(limited).not.toContain(">0<");
   });
 
   it("covers every written state and keeps exact collection recovery copy", () => {

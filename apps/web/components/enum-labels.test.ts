@@ -8,6 +8,7 @@ import {
   MARKET_LABELS,
   oddsMarketLabel,
   oddsSelectionLabel,
+  providerReasonLabel,
   reasonLabel,
   reconciliationMethodLabel,
   routeOutcomeLabel,
@@ -92,6 +93,22 @@ describe("reasonLabel", () => {
   it("falls back to the lowercase-underscore transform for unknown reasons", () => {
     expect(reasonLabel("NO_PRODUCTION_FALLBACK")).toBe("no production fallback");
     expect(reasonLabel("UPSTREAM_UNAVAILABLE")).toBe("upstream unavailable");
+  });
+});
+
+describe("providerReasonLabel", () => {
+  it("translates trigger and capability codes that flow into provider reasons", () => {
+    expect(providerReasonLabel("PRIMARY")).toBe("Первичный источник");
+    expect(providerReasonLabel("ROUTE_PENDING")).toBe("Маршрут ожидается");
+    expect(providerReasonLabel("NO_PRODUCTION_FALLBACK")).toBe("Продакшен-резерв недоступен");
+    expect(providerReasonLabel("CIRCUIT_OPEN")).toBe("Сработал предохранитель");
+    expect(providerReasonLabel("EXPIRED_CAPABILITY")).toBe("Возможность истекла");
+  });
+  it("uses the data-state dictionary for non-trigger reasons", () => {
+    expect(providerReasonLabel("FRESHNESS_THRESHOLD_EXCEEDED")).toBe("превышен порог свежести");
+  });
+  it("falls back to the lowercase-underscore transform for unknown reasons", () => {
+    expect(providerReasonLabel("UPSTREAM_UNAVAILABLE")).toBe("upstream unavailable");
   });
 });
 

@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "target": "ES2020",
+    "baseUrl": ".",
+    "paths": {
+      "@bet-stats/*": ["./packages/*/src"]
+    }
+  }
+}

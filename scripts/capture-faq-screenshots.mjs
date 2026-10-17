@@ -10,6 +10,10 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = path.join(ROOT, "apps", "web", "public", "images", "faq");
 const BASE = process.env.FAQ_CAPTURE_BASE ?? "http://127.0.0.1:3000";
 const FIXTURE_ID = process.env.FAQ_CAPTURE_FIXTURE ?? "e1ef6104-9515-41bb-9bbc-8412a8c4fb24";
+// Evidence URLs are exact (teamId + asOf kickoff + fixtureId); overriding FIXTURE
+// requires a matching TEAM and AS_OF or the evidence page will have nothing published.
+const TEAM_ID = process.env.FAQ_CAPTURE_TEAM ?? "cmv9oe2t5001ssogjpnm8gd8b";
+const EVIDENCE_AS_OF = process.env.FAQ_CAPTURE_AS_OF ?? "2026-10-17T16:00:00.000Z";
 const MIN_BYTES = 10 * 1024;
 
 const SHOTS = [
@@ -18,6 +22,7 @@ const SHOTS = [
   { name: "workbench.png", url: `/fixtures/${FIXTURE_ID}`, wait: "#odds-heading", fullPage: true },
   { name: "odds.png", url: `/fixtures/${FIXTURE_ID}`, wait: "#odds-heading", oddsFill: true },
   { name: "scorecards.png", url: "/scorecards", wait: "h1" },
+  { name: "evidence.png", url: `/teams/${encodeURIComponent(TEAM_ID)}/evidence?asOf=${encodeURIComponent(EVIDENCE_AS_OF)}&fixtureId=${encodeURIComponent(FIXTURE_ID)}`, wait: "Трассировка подходящих матчей", fullPage: true },
 ];
 
 async function removeDevOverlay(page) {

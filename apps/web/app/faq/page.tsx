@@ -25,7 +25,7 @@ const SCREENSHOTS: Record<ShotId, { src: string; width: number; height: number; 
   workbench: {
     src: "/images/faq/workbench.png",
     width: 1600,
-    height: 4167,
+    height: 4006,
     alt: "Страница матча Болонья — Интер: снимки прогнозов первичный и предматчевый, таблицы вероятностей 1X2, тотала 2.5 и «обе забьют» со справедливыми коэффициентами, форма ручного ввода коэффициентов.",
   },
   odds: {
@@ -43,7 +43,7 @@ const SCREENSHOTS: Record<ShotId, { src: string; width: number; height: number; 
   evidence: {
     src: "/images/faq/evidence.png",
     width: 1600,
-    height: 3127,
+    height: 2824,
     alt: "Страница исторических доказательств команды на момент начала матча: запрошенная и определённые точки отсчёта, сводки формы за 5 и 10 матчей с честными ограничениями, компоненты доказательств и трассировка подходящих матчей с датами, источниками и квитанцией воспроизведения.",
   },
 };

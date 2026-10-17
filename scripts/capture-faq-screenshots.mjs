@@ -9,11 +9,12 @@ import { chromium } from "@playwright/test";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = path.join(ROOT, "apps", "web", "public", "images", "faq");
 const BASE = process.env.FAQ_CAPTURE_BASE ?? "http://127.0.0.1:3000";
-const FIXTURE_ID = process.env.FAQ_CAPTURE_FIXTURE ?? "e1ef6104-9515-41bb-9bbc-8412a8c4fb24";
-// Evidence URLs are exact (teamId + asOf kickoff + fixtureId); overriding FIXTURE
-// requires a matching TEAM and AS_OF or the evidence page will have nothing published.
-const TEAM_ID = process.env.FAQ_CAPTURE_TEAM ?? "cmv9oe2t5001ssogjpnm8gd8b";
-const EVIDENCE_AS_OF = process.env.FAQ_CAPTURE_AS_OF ?? "2026-10-17T16:00:00.000Z";
+// Running example: Juventus FC - SS Lazio (Serie A). Evidence URLs are exact
+// (teamId + asOf kickoff + fixtureId); overriding FIXTURE requires a matching
+// TEAM and AS_OF or the evidence page will have nothing published.
+const FIXTURE_ID = process.env.FAQ_CAPTURE_FIXTURE ?? "6ac69f78-0f7d-401e-8653-404268252782";
+const TEAM_ID = process.env.FAQ_CAPTURE_TEAM ?? "cmv9oe2yk0021sogjbith744v";
+const EVIDENCE_AS_OF = process.env.FAQ_CAPTURE_AS_OF ?? "2026-10-18T18:45:00.000Z";
 const MIN_BYTES = 10 * 1024;
 
 const SHOTS = [

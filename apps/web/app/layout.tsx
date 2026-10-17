@@ -3,13 +3,14 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { QuotaCounter } from "../components/quota-counter";
+import { BrandIcon } from "../components/brand-icon";
 import { ReleaseNavigation } from "../components/release-navigation";
 
 import { plexSans, sourceSerif } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Bet Stats — достоверные футбольные прогнозы",
+  title: "Матчдей — достоверные футбольные прогнозы",
   description: "Прозрачные данные о футбольных матчах и аналитическая информация.",
 };
 
@@ -20,7 +21,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <a className="skip-link" href="#main-content">Перейти к основному содержимому</a>
         <header className="release-header">
           <div className="release-frame release-header-inner">
-            <Link href="/" className="release-brand">Bet Stats</Link>
+            <Link href="/" className="release-brand"><BrandIcon />Матчдей</Link>
             <div className="release-header-tools">
               <QuotaCounter />
               <ReleaseNavigation />

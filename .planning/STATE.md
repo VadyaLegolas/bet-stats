@@ -32,7 +32,7 @@ Milestone: v1.0 — ARCHIVED
 All Phases: Complete (6/6)
 All Plans: Complete (88/88)
 Status: Quick task 261016-a87 - all 9 inline eligibility-header blocks in apps/web (7 internal-api proxy routes + scorecards page + fixture page) stamp `x-eligibility-checked-at` with `process.env.ELIGIBILITY_CHECKED_AT || new Date().toISOString()`, so the NestJS EligibilityGuard's ≤1h freshness check passes for long-running dev processes while explicit env pins (unit/e2e) keep precedence; region/age headers remain static fail-closed
-Last activity: 2026-10-16 - Completed quick task 261016-nbo: Evidence page heading shows the team name ("{team}: исторические доказательства") — the API evidence response gained team/fixture display entities (fixtureId query param) and the web heading no longer falls back to raw ids
+Last activity: 2026-10-17 - Completed quick task 261016-ooi: manual sync refreshes FixtureProvenance observedAt for unchanged payloads (the "Устаревшие данные" badge now clears on "Обновить матчи") and records a ProviderRouteReceipt + SUCCEEDED attempt per successful league sync (the "Покрытие ожидается" badge clears); commit b0ae96e, 286/286 unit tests
 Last Activity Description: Gates green - targeted vitest tests/unit/internal-api-route.test.ts 4/4 (env-pin precedence preserved), web typecheck exit 0; commit fd38793; companion ops (not committed, gitignored .env): ELIGIBILITY_ALLOWED_REGIONS=PL on API, ELIGIBILITY_REGION=PL + ELIGIBILITY_AGE_ACKNOWLEDGED=true on web, ELIGIBILITY_CHECKED_AT deliberately unset
 
 Progress: [██████████] 100%
@@ -265,6 +265,7 @@ None yet.
 | 261016-kpi | Guard top-level auto-start in workers/data-sync/src/main.ts behind a main-module entry check so importing from tests never boots a background forecast sweep | 2026-10-16 | 0ffc248 | [261016-kpi-guard-top-level-auto-start-in-workers-da](./quick/261016-kpi-guard-top-level-auto-start-in-workers-da/) |
 | 261016-l90 | Restrict provider data loading to manual sync only: drop the forecast sweep's automatic enrichment enqueue and stop hardcoding FIXTURES_AUTO_SYNC in dev-full.ps1 | 2026-10-16 | ea86607 | [261016-l90-manual-only-data-loading-drop-the-sweep-](./quick/261016-l90-manual-only-data-loading-drop-the-sweep-/) |
 | 261016-nbo | Show team name instead of a raw cuid on the evidence page heading: API evidence response now carries team/fixture display entities and the web heading omits ids when a name is missing | 2026-10-16 | 31ad67f | [261016-nbo-team-evidence-page-shows-a-raw-cuid-in-t](./quick/261016-nbo-team-evidence-page-shows-a-raw-cuid-in-t/) |
+| 261016-ooi | Make manual sync refresh fixture freshness and record provider route receipts: FixtureProvenance upserts observedAt on identical payloads so STALE clears on refresh, and successful league syncs write a ProviderRouteReceipt with a SUCCEEDED attempt so the coverage badge clears | 2026-10-16 | b0ae96e | [261016-ooi-fixture-freshness-and-provider-coverage-](./quick/261016-ooi-fixture-freshness-and-provider-coverage-/) |
 
 ### Roadmap Evolution
 

@@ -79,11 +79,13 @@ function summaryFrom(data: Evidence, key: "five" | "ten"): Summary {
   return { value: component?.value, sampleSize: component?.sampleSize ?? 0, requestedSampleSize: key === "five" ? 5 : 10, limitationReason: component?.limitation };
 }
 
+function summaryValue(value: unknown): string { return typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : String(value); }
+
 function SummaryCard({ label, summary }: { label: string; summary: Summary }) {
   const sample = summary.sampleSize ?? 0;
   const target = summary.requestedSampleSize ?? Number(label);
   const available = summary.value !== null && summary.value !== undefined && sample > 0;
-  return <article style={panel}><h2>Сводка за {label} матчей</h2><p style={{ fontSize: 28, fontWeight: 700 }}>{available ? String(summary.value) : "Недоступно"}</p><p>Выборка: <span>{sample}/{target}</span></p>{summary.sourceUpdatedAt && <p>Источник обновлён: <time dateTime={summary.sourceUpdatedAt}>{summary.sourceUpdatedAt}</time></p>}{summary.limitationReason && <p>{evidenceLimitationLabel(summary.limitationReason)}</p>}</article>;
+  return <article style={panel}><h2>Сводка за {label} матчей</h2><p style={{ fontSize: 28, fontWeight: 700 }}>{available ? summaryValue(summary.value) : "Недоступно"}</p><p>Выборка: <span>{sample}/{target}</span></p>{summary.sourceUpdatedAt && <p>Источник обновлён: <time dateTime={summary.sourceUpdatedAt}>{summary.sourceUpdatedAt}</time></p>}{summary.limitationReason && <p>{evidenceLimitationLabel(summary.limitationReason)}</p>}</article>;
 }
 
 export function evidenceHeading(teamName: string | null | undefined): string {

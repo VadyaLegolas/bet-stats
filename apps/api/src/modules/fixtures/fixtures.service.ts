@@ -119,9 +119,29 @@ export class FixturesService implements OnModuleDestroy {
   private readonly database: PrismaClient | null = this.config.DATABASE_URL ? createPrismaClient(this.config.DATABASE_URL) : null;
   async onModuleDestroy(): Promise<void> { await this.database?.$disconnect(); }
 
+  /** Configured leagues for the competition select. Leagues whose current season carries a
+   * verified, unexpired `supported: false` FIXTURES capability (a recorded 403 tariff
+   * refusal) are excluded — the tariff cannot serve them, so offering them only produces
+   * failed syncs. An absent capability row never hides a league: no evidence, no verdict. */
   async leagues(): Promise<{ items: readonly string[] }> {
     if (!this.database) return { items: [deterministicRow.league.name] };
-    const leagues = await this.database.league.findMany({ where: { externalRefs: { some: { provider: "football-data.org" } } }, orderBy: { name: "asc" }, select: { name: true } });
+    const now = new Date();
+    const leagues = await this.database.league.findMany({
+      where: {
+        externalRefs: { some: { provider: "football-data.org" } },
+        NOT: {
+          seasons: {
+            some: {
+              startsOn: { lte: now },
+              endsOn: { gte: now },
+              providerCapabilities: { some: { provider: "football-data.org", endpoint: "FIXTURES", supported: false, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] } },
+            },
+          },
+        },
+      },
+      orderBy: { name: "asc" },
+      select: { name: true },
+    });
     return { items: leagues.map((league) => league.name) };
   }
 

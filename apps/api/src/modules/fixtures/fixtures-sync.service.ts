@@ -16,6 +16,10 @@ export const MIN_SYNC_INTERVAL_MS = 6 * 3_600_000;
 export const PROVIDER_MIN_SPACING_MS = 6_500;
 /** One provider call per chunk; 31 days mirrors the replay WINDOW_TOO_LARGE bound. */
 const SYNC_CHUNK_DAYS = 31;
+/** How long a verified per-resource tariff refusal (403) keeps a league out of the
+ * `/fixtures/leagues` list; a plan upgrade re-appears after the TTL instead of being
+ * hidden forever, and the next refused sync re-records the refusal. */
+export const UNSUPPORTED_CAPABILITY_TTL_MS = 30 * 86_400_000;
 /** Longest operator-requested backfill window (days, inclusive). */
 const SYNC_MAX_SPAN_DAYS = 400;
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
@@ -119,6 +123,18 @@ export class FixturesSyncService implements OnModuleDestroy {
     return leagues.filter((league) => wanted.has(league.name));
   }
 
+  /** Persists a verified 403 as `supported: false` for this league/season so the leagues
+   * list stops offering it; the TTL keeps the verdict re-checkable. */
+  private async recordUnsupportedCapability(database: PrismaClient, leagueId: string, seasonId: string): Promise<void> {
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + UNSUPPORTED_CAPABILITY_TTL_MS);
+    await database.providerCapability.upsert({
+      where: { provider_leagueId_seasonId_endpoint: { provider: PROVIDER, leagueId, seasonId, endpoint: "FIXTURES" } },
+      create: { provider: PROVIDER, leagueId, seasonId, endpoint: "FIXTURES", supported: false, verifiedAt: now, expiresAt },
+      update: { supported: false, verifiedAt: now, expiresAt },
+    });
+  }
+
   private async syncLeague(league: Awaited<ReturnType<PrismaClient["league"]["findFirst"]>> & { id: string; name: string; countryCode: string; externalRefs: Array<{ externalId: string }> }, now: Date, range: { dateFrom: string; dateTo: string }, force: boolean): Promise<SyncLeagueResult> {
     const database = this.database!;
     const code = league.externalRefs[0]?.externalId;
@@ -180,7 +196,12 @@ export class FixturesSyncService implements OnModuleDestroy {
       } catch (error) {
         const statusCode = (error as { statusCode?: number } | null)?.statusCode;
         // 401/403 mean the subscription does not cover this resource — retrying cannot help.
-        if (statusCode === 401 || statusCode === 403) return { league: league.name, status: "failed", fixtures: persisted, reason: "PROVIDER_ACCESS_RESTRICTED" };
+        // Only 403 is a per-resource tariff refusal worth remembering; 401 is a token-wide
+        // failure that must not condemn an individual league.
+        if (statusCode === 401 || statusCode === 403) {
+          if (statusCode === 403) await this.recordUnsupportedCapability(database, league.id, season.id);
+          return { league: league.name, status: "failed", fixtures: persisted, reason: "PROVIDER_ACCESS_RESTRICTED" };
+        }
         return { league: league.name, status: "failed", fixtures: persisted, reason: "PROVIDER_REQUEST_FAILED" };
       }
       for (const fixture of fixtures) {

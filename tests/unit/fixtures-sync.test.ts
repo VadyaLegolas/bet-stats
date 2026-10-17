@@ -12,6 +12,9 @@ const harness = vi.hoisted(() => ({
   leagues: [] as Array<Record<string, unknown>>,
   seasons: [] as Array<Record<string, unknown>>,
   capability: null as Record<string, unknown> | null,
+  capabilityUpserts: [] as Array<{ where: Record<string, unknown>; create: Record<string, unknown>; update: Record<string, unknown> }>,
+  leagueFindManyArgs: [] as Array<Record<string, unknown> | null>,
+  leagueRows: null as Array<Record<string, unknown>> | null,
   seasonRefs: [] as Array<Record<string, unknown>>,
   teamRefs: [] as Array<Record<string, unknown>>,
   fixtureRefs: [] as Array<Record<string, unknown>>,
@@ -44,7 +47,7 @@ vi.mock("../../packages/football-data/dist/index.js", async (importOriginal) => 
 });
 
 import { FixturesSyncService } from "../../apps/api/src/modules/fixtures/fixtures-sync.service.js";
-import { projectProviderState } from "../../apps/api/src/modules/fixtures/fixtures.service.js";
+import { FixturesService, projectProviderState } from "../../apps/api/src/modules/fixtures/fixtures.service.js";
 
 // Env pins must be in place before `new FixturesSyncService()` reads readServerConfig()
 // in the class field initializer; originals are restored in afterAll.
@@ -114,9 +117,20 @@ function createFakeDb() {
     harness.statements.push({ kind, sql, params });
   };
   const db = {
-    league: { findMany: async () => harness.leagues },
+    league: {
+      findMany: async (args?: Record<string, unknown> | null) => {
+        harness.leagueFindManyArgs.push(args ?? null);
+        return harness.leagueRows ?? harness.leagues;
+      },
+    },
     season: { findMany: async () => harness.seasons },
-    providerCapability: { findUnique: async () => harness.capability },
+    providerCapability: {
+      findUnique: async () => harness.capability,
+      upsert: async (args: { where: Record<string, unknown>; create: Record<string, unknown>; update: Record<string, unknown> }) => {
+        harness.capabilityUpserts.push(args);
+        return args.create;
+      },
+    },
     seasonExternalRef: {
       findFirst: async ({ where }: { where: Record<string, string | undefined> }) =>
         harness.seasonRefs.find((row) =>
@@ -238,6 +252,9 @@ function resetHarness(options: { maxObservedRows?: Array<{ observedAt: Date | nu
   harness.receipts = [];
   harness.attempts = [];
   harness.observations = [];
+  harness.capabilityUpserts = [];
+  harness.leagueFindManyArgs = [];
+  harness.leagueRows = null;
 }
 
 function provenanceStatements(): Array<{ kind: string; sql: string; params: unknown[] }> {
@@ -371,7 +388,7 @@ describe("fixtures live sync (emulated db)", () => {
     expect(harness.observations).toHaveLength(0);
   });
 
-  it("records nothing when the provider call fails with 403", async () => {
+  it("remembers a 403 tariff refusal as an unsupported capability, without route receipts", async () => {
     resetHarness();
     harness.fetchImpl = async () => {
       throw Object.assign(new Error("Forbidden"), { statusCode: 403 });
@@ -385,5 +402,44 @@ describe("fixtures live sync (emulated db)", () => {
     expect(harness.receipts).toHaveLength(0);
     expect(harness.attempts).toHaveLength(0);
     expect(harness.observations).toHaveLength(0);
+    expect(harness.capabilityUpserts).toHaveLength(1);
+    const upsert = harness.capabilityUpserts[0]!;
+    expect(upsert.where).toEqual({ provider_leagueId_seasonId_endpoint: { provider: "football-data.org", leagueId: "league-pl", seasonId: "season-2026", endpoint: "FIXTURES" } });
+    expect(upsert.create).toMatchObject({ provider: "football-data.org", leagueId: "league-pl", seasonId: "season-2026", endpoint: "FIXTURES", supported: false });
+    expect((upsert.create.expiresAt as Date).getTime()).toBeGreaterThan(Date.now());
+    expect(upsert.update).toMatchObject({ supported: false });
   }, 30_000);
+
+  it("does not condemn a league on a token-wide 401", async () => {
+    resetHarness();
+    harness.fetchImpl = async () => {
+      throw Object.assign(new Error("Unauthorized"), { statusCode: 401 });
+    };
+    const service = new FixturesSyncService();
+
+    const result = await service.sync({});
+
+    expect(result.results).toEqual([{ league: "Premier League", status: "failed", fixtures: 0, reason: "PROVIDER_ACCESS_RESTRICTED" }]);
+    expect(harness.capabilityUpserts).toHaveLength(0);
+  }, 30_000);
+});
+
+describe("fixtures leagues list (emulated db)", () => {
+  it("excludes leagues whose current season carries an active unsupported FIXTURES capability", async () => {
+    resetHarness();
+    harness.leagueRows = [{ name: "Premier League" }, { name: "Serie A" }];
+    const service = new FixturesService();
+
+    const result = await service.leagues();
+
+    expect(result.items).toEqual(["Premier League", "Serie A"]);
+    const where = harness.leagueFindManyArgs[0]?.where as Record<string, unknown>;
+    const not = where.NOT as { seasons: { some: Record<string, unknown> } };
+    const season = not.seasons.some;
+    expect(season).toHaveProperty("startsOn");
+    expect(season).toHaveProperty("endsOn");
+    const capabilities = (season.providerCapabilities as { some: Record<string, unknown> }).some;
+    expect(capabilities).toMatchObject({ provider: "football-data.org", endpoint: "FIXTURES", supported: false });
+    expect(capabilities.OR).toEqual([{ expiresAt: null }, { expiresAt: { gt: expect.any(Date) } }]);
+  });
 });

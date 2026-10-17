@@ -64,6 +64,8 @@ describe("manual odds workbench draft behavior", () => {
     const markup = renderToStaticMarkup(createElement(ForecastWorkbench, { fixtureId: "fixture-1", forecasts: [] }));
     expect(markup).toContain("Сопоставимая пара прогнозов пока недоступна");
     expect(markup).toContain("Для этого матча нет двух выпущенных снимков прогноза.");
+    expect(markup).toContain("Нет снимка INITIAL: прогноз выпускается за 14 дней до кикоффа, как только матч попадает в горизонт данных.");
+    expect(markup).toContain("Нет снимка PRE_MATCH: обновление выпускается за 6 часов до кикоффа.");
     expect(markup).not.toContain("fixture and cutoff");
   });
 });

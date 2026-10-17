@@ -9,10 +9,11 @@ import { planForecastPublication, runForecastPublicationJob, type ForecastPublis
 /** Evidence config identity for sweep-issued forecasts; must match runEvidenceRebuild keying. */
 export const EVIDENCE_CONFIG_HASH = createHash("sha256").update("evidence-v1", "utf8").digest("hex");
 
-/** INITIAL issues from kickoff-7d so bettors see probabilities days before the match. */
-const INITIAL_OFFSET_MS = 7 * 24 * 60 * 60 * 1_000;
 const PRE_MATCH_OFFSET_MS = 6 * 60 * 60 * 1_000;
+/** Only fixtures inside this window are swept. */
 const SWEEP_HORIZON_MS = 14 * 24 * 60 * 60 * 1_000;
+/** INITIAL issues as soon as a fixture enters the sweep horizon so every upcoming match has a forecast. */
+const INITIAL_OFFSET_MS = SWEEP_HORIZON_MS;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type SweepForecastKind = "INITIAL" | "PRE_MATCH";
@@ -40,7 +41,7 @@ export interface InitialCutoffInput {
   readonly now: string;
 }
 
-/** INITIAL cutoff: kickoff-7d when still ahead, otherwise the issue moment (late discovery). Pure. */
+/** INITIAL cutoff: kickoff-14d (sweep horizon) when still ahead, otherwise the issue moment (late discovery). Pure. */
 export function computeInitialCutoff(input: InitialCutoffInput): string {
   const kickoff = Date.parse(input.kickoffUtc);
   const now = Date.parse(input.now);

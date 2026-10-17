@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { computeDueKinds, computeInitialCutoff, EVIDENCE_CONFIG_HASH, runForecastPublicationSweep } from "../../workers/data-sync/src/jobs/forecast-sweep.js";
 
 const kickoff = "2026-11-08T18:00:00.000Z";
-// kickoff minus 7d = 2026-11-01T18:00:00.000Z; kickoff minus 6h = 2026-11-08T12:00:00.000Z
+// kickoff minus 14d = 2026-10-25T18:00:00.000Z; kickoff minus 6h = 2026-11-08T12:00:00.000Z
 
 function at(offsetHours: number): string {
   return new Date(Date.parse(kickoff) + offsetHours * 60 * 60 * 1_000).toISOString();
@@ -12,12 +12,12 @@ function at(offsetHours: number): string {
 
 describe("forecast sweep due-kind policy", () => {
   it("returns no kinds before either cutoff", () => {
-    expect(computeDueKinds({ kickoffUtc: kickoff, now: at(-168.001), issuedKinds: [] })).toEqual([]);
-    expect(computeDueKinds({ kickoffUtc: kickoff, now: at(-169), issuedKinds: [] })).toEqual([]);
+    expect(computeDueKinds({ kickoffUtc: kickoff, now: at(-336.001), issuedKinds: [] })).toEqual([]);
+    expect(computeDueKinds({ kickoffUtc: kickoff, now: at(-337), issuedKinds: [] })).toEqual([]);
   });
 
-  it("returns INITIAL exactly at kickoff minus 7d and until kickoff minus 6h", () => {
-    expect(computeDueKinds({ kickoffUtc: kickoff, now: at(-168), issuedKinds: [] })).toEqual(["INITIAL"]);
+  it("returns INITIAL exactly at kickoff minus 14d and until kickoff minus 6h", () => {
+    expect(computeDueKinds({ kickoffUtc: kickoff, now: at(-336), issuedKinds: [] })).toEqual(["INITIAL"]);
     expect(computeDueKinds({ kickoffUtc: kickoff, now: at(-12), issuedKinds: [] })).toEqual(["INITIAL"]);
   });
 
@@ -42,18 +42,18 @@ describe("forecast sweep due-kind policy", () => {
 });
 
 describe("forecast sweep initial cutoff policy", () => {
-  it("returns kickoff minus 7d when that moment is still ahead", () => {
-    expect(computeInitialCutoff({ kickoffUtc: kickoff, now: at(-200) })).toBe("2026-11-01T18:00:00.000Z");
-    expect(computeDueKinds({ kickoffUtc: kickoff, now: at(-200), issuedKinds: [] })).toEqual([]);
+  it("returns kickoff minus 14d when that moment is still ahead", () => {
+    expect(computeInitialCutoff({ kickoffUtc: kickoff, now: at(-400) })).toBe("2026-10-25T18:00:00.000Z");
+    expect(computeDueKinds({ kickoffUtc: kickoff, now: at(-400), issuedKinds: [] })).toEqual([]);
   });
 
-  it("returns the issue moment for a late-discovered fixture whose kickoff minus 7d already passed", () => {
+  it("returns the issue moment for a late-discovered fixture whose kickoff minus 14d already passed", () => {
     expect(computeInitialCutoff({ kickoffUtc: kickoff, now: at(-20) })).toBe(at(-20));
     expect(computeDueKinds({ kickoffUtc: kickoff, now: at(-20), issuedKinds: [] })).toEqual(["INITIAL"]);
   });
 
-  it("anchors at kickoff minus 7d exactly at the boundary", () => {
-    expect(computeInitialCutoff({ kickoffUtc: kickoff, now: at(-168) })).toBe("2026-11-01T18:00:00.000Z");
+  it("anchors at kickoff minus 14d exactly at the boundary", () => {
+    expect(computeInitialCutoff({ kickoffUtc: kickoff, now: at(-336) })).toBe("2026-10-25T18:00:00.000Z");
   });
 });
 
@@ -73,7 +73,9 @@ describe("forecast sweep DB-only contract", () => {
         findMany: async () => [
           {
             id: "3f2a1b7c-0000-4000-8000-000000000001",
-            kickoffUtc: new Date("2026-11-11T00:00:00.000Z"),
+            // Beyond the 14-day sweep horizon: no INITIAL/PRE_MATCH is due, so the DB-only
+            // tick completes without an enqueue function and without fixture_failed events.
+            kickoffUtc: new Date("2026-11-25T00:00:00.000Z"),
             homeTeamId: "3f2a1b7c-0000-4000-8000-0000000000a1",
             awayTeamId: "3f2a1b7c-0000-4000-8000-0000000000a2",
           },

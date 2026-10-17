@@ -43,9 +43,9 @@ async function fillOddsForm(page) {
   try {
     await page.locator("#source-label").waitFor({ state: "attached", timeout: 30000 });
     await page.locator("#source-label").fill("Букмекер (пример)");
-    await page.locator("#odds-HOME").fill("2.10");
-    await page.locator("#odds-DRAW").fill("3.40");
-    await page.locator("#odds-AWAY").fill("3.20");
+    await page.locator("#odds-HOME").fill("2.1");
+    await page.locator("#odds-DRAW").fill("3.4");
+    await page.locator("#odds-AWAY").fill("3.2");
     return "filled";
   } catch {
     return "empty-form";
@@ -69,6 +69,11 @@ async function main() {
     for (const shot of SHOTS) {
       const file = path.join(OUT_DIR, shot.name);
       console.log(`shot ${shot.name} <- ${shot.url}`);
+      if (shot.oddsFill) {
+        // The earlier workbench shot wrote an empty local draft; clear storage so the
+        // odds form screenshots as a first-time visitor sees it (no restore banner).
+        await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+      }
       await page.goto(`${BASE}${shot.url}`, { waitUntil: "load", timeout: 60000 });
       await page.waitForTimeout(4000);
       await waitForContent(page, shot.wait);

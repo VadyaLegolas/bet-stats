@@ -31,7 +31,7 @@ const SCREENSHOTS: Record<ShotId, { src: string; width: number; height: number; 
   odds: {
     src: "/images/faq/odds.png",
     width: 928,
-    height: 558,
+    height: 515,
     alt: "Форма «Ручная полная книга коэффициентов»: выбран рынок 1X2, заполнены метка букмекера и десятичные коэффициенты на хозяев, ничью и гостей.",
   },
   scorecards: {

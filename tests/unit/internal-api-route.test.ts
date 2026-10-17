@@ -5,6 +5,7 @@ import { GET as getForecast, POST as postForecast } from "../../apps/web/app/int
 import { GET as getOdds, POST as postOdds } from "../../apps/web/app/internal-api/fixtures/[fixtureId]/odds/route.js";
 import { POST as postValue } from "../../apps/web/app/internal-api/fixtures/[fixtureId]/value/route.js";
 import { GET as getReceipt } from "../../apps/web/app/internal-api/value/[receiptId]/route.js";
+import { POST as postResultsSync } from "../../apps/web/app/internal-api/fixtures/results-sync/route.js";
 
 const fixtureContext = { params: Promise.resolve({ fixtureId: "fixture/1" }) };
 const receiptContext = { params: Promise.resolve({ receiptId: "receipt-1" }) };
@@ -116,5 +117,46 @@ describe("protected analytics internal routes", () => {
     expect(download.headers.get("content-disposition")).toBe('attachment; filename="value-receipt-receipt-1.json"');
     expect(download.headers.get("set-cookie")).toBeNull();
     expect(download.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+  });
+
+  it("fails closed for results publication when the operator credential is missing", async () => {
+    const fetchStub = vi.fn();
+    vi.stubGlobal("fetch", fetchStub);
+    // The dev .env may or may not leak a credential into the test process — stub it explicitly.
+    vi.stubEnv("OPERATOR_CREDENTIAL", "");
+
+    const response = await postResultsSync(new NextRequest("http://web.test/internal-api/fixtures/results-sync", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ force: true }),
+    }));
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ message: "Not found" });
+    expect(fetchStub).not.toHaveBeenCalled();
+  });
+
+  it("forwards results publication with the credential attached server-side", async () => {
+    const fetchStub = vi.fn().mockResolvedValue(new Response('{"results":[]}', { status: 200, headers: { "content-type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchStub);
+    vi.stubEnv("OPERATOR_CREDENTIAL", "test-operator-secret");
+
+    const response = await postResultsSync(new NextRequest("http://web.test/internal-api/fixtures/results-sync", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ force: true, competitions: ["Премьер-лига"] }),
+    }));
+
+    expect(fetchStub.mock.calls[0]?.[0].toString()).toBe("http://api.test/internal/fixtures/results-sync");
+    expect(fetchStub.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      cache: "no-store",
+      headers: { "content-type": "application/json", "x-operator-credential": "test-operator-secret" },
+    });
+    expect(String(fetchStub.mock.calls[0]?.[1]?.body)).toBe('{"force":true,"competitions":["Премьер-лига"]}');
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(response.headers.get("x-operator-credential")).toBeNull();
   });
 });

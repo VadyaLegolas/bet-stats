@@ -57,15 +57,15 @@ describe("manual odds workbench draft behavior", () => {
       kind: "LINEUP_CONFIRMED",
       revision: 2,
       cutoff: "2026-09-06T11:17:23.000Z",
-    })).toBe("LINEUP_CONFIRMED revision 2 — 2026-09-06T11:17:23.000Z — forecast-lineup-2");
+    })).toBe("по подтверждённому составу · ревизия 2 — 2026-09-06T11:17:23.000Z — forecast-lineup-2");
   });
 
   it("renders an honest empty state when discovery returns no issued snapshots", () => {
     const markup = renderToStaticMarkup(createElement(ForecastWorkbench, { fixtureId: "fixture-1", forecasts: [] }));
     expect(markup).toContain("Сопоставимая пара прогнозов пока недоступна");
     expect(markup).toContain("Для этого матча нет двух выпущенных снимков прогноза.");
-    expect(markup).toContain("Нет снимка INITIAL: прогноз выпускается за 14 дней до кикоффа, как только матч попадает в горизонт данных.");
-    expect(markup).toContain("Нет снимка PRE_MATCH: обновление выпускается за 6 часов до кикоффа.");
+    expect(markup).toContain("Нет первичного снимка: прогноз выпускается за 14 дней до кикоффа, как только матч попадает в горизонт данных.");
+    expect(markup).toContain("Нет предматчевого снимка: обновление выпускается за 6 часов до кикоффа.");
     expect(markup).not.toContain("fixture and cutoff");
   });
 });

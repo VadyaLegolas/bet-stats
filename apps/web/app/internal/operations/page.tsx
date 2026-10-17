@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { impactLabel, incidentStatusLabel, serviceStateLabel } from "../../../components/enum-labels";
+
 type Overview = {
   readiness: { state: "READY" | "DEGRADED" | "NOT_READY"; services: Array<{ name: string; state: string }>; lastCheckedAt: string };
   providerHealth: Array<{ provider: string; endpointFamily: string; circuitState: string; lastSuccessfulObservationAt: string | null; reason: string | null }>;
@@ -51,7 +53,7 @@ export default function OperationsPage() {
   return <section style={{ display: "grid", gap: 24, minWidth: 0 }}>
     <header><h1 tabIndex={-1}>Центр операций</h1><p>Только безопасные операционные метаданные. Сырые полезные нагрузки, учётные данные, заголовки, трассировки стека и журналы здесь недоступны никогда.</p><button style={button} disabled={loading} onClick={() => void load()}>{loading && overview ? "Обновление…" : "Обновить операционные данные"}</button></header>
     <Block title="Готовность системы" loading={loading && !overview} error={error} empty={false} onRetry={() => void load()}>
-      {overview && <><p><strong>{visibleState(overview.readiness.state)}</strong></p><p>Последняя проверка: <time dateTime={overview.readiness.lastCheckedAt}>{date(overview.readiness.lastCheckedAt)}</time></p><dl>{overview.readiness.services.map((service) => <div key={service.name}><dt>{service.name}</dt><dd>{service.state}</dd></div>)}</dl></>}
+      {overview && <><p><strong>{visibleState(overview.readiness.state)}</strong></p><p>Последняя проверка: <time dateTime={overview.readiness.lastCheckedAt}>{date(overview.readiness.lastCheckedAt)}</time></p><dl>{overview.readiness.services.map((service) => <div key={service.name}><dt>{service.name}</dt><dd>{serviceStateLabel(service.state)}</dd></div>)}</dl></>}
     </Block>
     <Block title="Состояние поставщиков" loading={loading && !overview} error={error} empty={overview?.providerHealth.length === 0} onRetry={() => void load()}>
       <div style={grid}>{overview?.providerHealth.map((provider) => <article key={`${provider.provider}:${provider.endpointFamily}`} style={card}><h3>{provider.provider}</h3><p>{provider.endpointFamily} · {provider.circuitState}</p><p>Последнее успешное наблюдение: <time dateTime={provider.lastSuccessfulObservationAt ?? undefined}>{date(provider.lastSuccessfulObservationAt)}</time></p><p>Безопасная причина: {provider.reason ?? "Нет"}</p></article>)}</div>
@@ -67,7 +69,7 @@ export default function OperationsPage() {
       <ul>{overview?.dataQuality.map((item) => <li key={`${item.code}:${item.scope}`}>{item.code} · {item.scope} · {item.count} · {date(item.lastOccurrence)}</li>)}</ul>
     </Block>
     <Block title="Последние инциденты" loading={loading && !overview} error={error} empty={overview?.incidents.length === 0} onRetry={() => void load()}>
-      <ul>{overview?.incidents.map((incident) => <li key={incident.id}>{incident.summary} · {incident.impact} · {incident.status} · {date(incident.lastUpdatedAt)}{incident.correlationId && <> · <CopyCorrelation value={incident.correlationId}/></>}</li>)}</ul>
+      <ul>{overview?.incidents.map((incident) => <li key={incident.id}>{incident.summary} · {impactLabel(incident.impact)} · {incidentStatusLabel(incident.status)} · {date(incident.lastUpdatedAt)}{incident.correlationId && <> · <CopyCorrelation value={incident.correlationId}/></>}</li>)}</ul>
     </Block>
   </section>;
 }

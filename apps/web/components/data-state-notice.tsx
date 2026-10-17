@@ -1,3 +1,5 @@
+import { reasonLabel } from "./enum-labels";
+
 export type FixtureDataState = { state: "AVAILABLE" | "LIMITED" | "STALE" | "UNSUPPORTED" | "UNRESOLVED"; reason: string; provider: string; capturedAt: string; sourceUpdatedAt: string | null; freshnessThresholdMs: number; value: null };
 
 const labels: Record<FixtureDataState["state"], string> = {
@@ -61,7 +63,7 @@ export function DataStateNotice({ data, compact = false }: { data: FixtureDataSt
         <strong style={{ color: style.color }}>{labels[data.state] ?? "Данные недоступны"}</strong>
       </div>
       <p style={{ margin: "4px 0", fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
-        {data.reason.replaceAll("_", " ").toLowerCase()}.
+        {reasonLabel(data.reason)}.
       </p>
       <div style={{ fontSize: "0.8rem", color: "var(--color-muted)", display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
         <span>Источник: <strong style={{ color: "var(--color-text-secondary)" }}>{data.provider}</strong></span>

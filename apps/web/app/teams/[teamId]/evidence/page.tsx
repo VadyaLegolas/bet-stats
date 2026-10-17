@@ -12,6 +12,7 @@ import {
 } from "@bet-stats/domain";
 
 import { EvidenceStateNotice } from "../../../../components/evidence-state-notice";
+import { evidenceLimitationLabel } from "../../../../components/enum-labels";
 
 type Summary = { value?: unknown; sampleSize?: number; requestedSampleSize?: number; sourceUpdatedAt?: string | null | undefined; limitationReason?: string | null | undefined; limitation?: string | null | undefined };
 type Trace = { fixtureId: string; effectiveAt?: string; observedAt?: string; venue?: "HOME" | "AWAY" | null; outcome?: "WIN" | "DRAW" | "LOSS" | null; score?: { home: number; away: number } | null; source?: string | null };
@@ -82,7 +83,7 @@ function SummaryCard({ label, summary }: { label: string; summary: Summary }) {
   const sample = summary.sampleSize ?? 0;
   const target = summary.requestedSampleSize ?? Number(label);
   const available = summary.value !== null && summary.value !== undefined && sample > 0;
-  return <article style={panel}><h2>Сводка за {label} матчей</h2><p style={{ fontSize: 28, fontWeight: 700 }}>{available ? String(summary.value) : "Недоступно"}</p><p>Выборка: <span>{sample}/{target}</span></p>{summary.sourceUpdatedAt && <p>Источник обновлён: <time dateTime={summary.sourceUpdatedAt}>{summary.sourceUpdatedAt}</time></p>}{summary.limitationReason && <p>{summary.limitationReason}</p>}</article>;
+  return <article style={panel}><h2>Сводка за {label} матчей</h2><p style={{ fontSize: 28, fontWeight: 700 }}>{available ? String(summary.value) : "Недоступно"}</p><p>Выборка: <span>{sample}/{target}</span></p>{summary.sourceUpdatedAt && <p>Источник обновлён: <time dateTime={summary.sourceUpdatedAt}>{summary.sourceUpdatedAt}</time></p>}{summary.limitationReason && <p>{evidenceLimitationLabel(summary.limitationReason)}</p>}</article>;
 }
 
 export function evidenceHeading(teamName: string | null | undefined): string {
@@ -143,7 +144,7 @@ export default function TeamEvidencePage() {
     {invalid && <p role="alert">Эта точка отсчёта не может быть использована. Введите поддерживаемые дату и время.</p>}
     <EvidenceStateNotice state={data.state} freshness={data.freshness} limitationReason={data.limitationReason}/>
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}><SummaryCard label="5" summary={five}/><SummaryCard label="10" summary={ten}/></div>
-    <section aria-labelledby="components-heading"><h2 id="components-heading">Компоненты доказательств</h2>{Object.values(data.components ?? {}).map((component) => <details key={component.kind} style={panel}><summary>{componentLabel(component)}</summary><dl>{renderEvidenceComponentFields(component).map((field) => <div key={field.label}><dt>{field.label}</dt><dd>{field.label}: {field.value}</dd></div>)}</dl><p>Выборка: {component.sampleSize}</p>{component.limitation && <p>{component.limitation}</p>}</details>)}</section>
+    <section aria-labelledby="components-heading"><h2 id="components-heading">Компоненты доказательств</h2>{Object.values(data.components ?? {}).map((component) => <details key={component.kind} style={panel}><summary>{componentLabel(component)}</summary><dl>{renderEvidenceComponentFields(component).map((field) => <div key={field.label}><dt>{field.label}</dt><dd>{field.label}: {field.value}</dd></div>)}</dl><p>Выборка: {component.sampleSize}</p>{component.limitation && <p>{evidenceLimitationLabel(component.limitation)}</p>}</details>)}</section>
     <section aria-labelledby="trace-heading"><h2 id="trace-heading">Трассировка подходящих матчей</h2>{trace.length === 0 ? <p>Нет матчей, подходящих под отсчёт по времени действия и времени захвата.</p> : <EvidenceTraceTable rows={trace} fixtureLabels={data.fixtureLabels} components={data.components}/>}</section>
     {!data.receipt && <p role="alert">Происхождение данных недоступно; эти доказательства нельзя воспроизвести.</p>}
     <details style={panel}><summary>Квитанция воспроизведения{data.receipt?.configVersion ? ` — ${data.receipt.configVersion}` : ""}{data.receipt ? ` — ${(data.receipt.inputIds ?? data.receipt.inputs ?? []).length} ${(data.receipt.inputIds ?? data.receipt.inputs ?? []).length === 1 ? "входное значение" : "входных значений"}` : ""}</summary>{data.receipt ? <pre aria-label="Данные квитанции воспроизведения" style={{ overflow: "auto", maxWidth: "100%" }}>{JSON.stringify(data.receipt, null, 2)}</pre> : <p>Квитанция для этой точки отсчёта недоступна.</p>}</details>

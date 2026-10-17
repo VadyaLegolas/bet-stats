@@ -1,3 +1,5 @@
+import { evidenceLimitationLabel } from "./enum-labels";
+
 type EvidenceStateNoticeProps = Readonly<{
   state?: string | undefined;
   freshness?: string | undefined;
@@ -14,7 +16,7 @@ export function EvidenceStateNotice({ state, freshness, limitationReason }: Evid
   return (
     <div aria-label="Статус доказательств">
       {freshness === "STALE" && <p>Исторические доказательства неактуальны для этой точки отсчёта. Времена источников остаются видимыми ниже.</p>}
-      {limitationReason && <p>{limitationReason}</p>}
+      {limitationReason && <p>{evidenceLimitationLabel(limitationReason)}</p>}
     </div>
   );
 }

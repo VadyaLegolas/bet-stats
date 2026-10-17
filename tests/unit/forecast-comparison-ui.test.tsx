@@ -40,7 +40,9 @@ describe("forecast revision comparison UI", () => {
   it("renders documented one-snapshot and absent-lineup states with persistent risk disclosure", () => {
     const markup = renderToStaticMarkup(createElement(ForecastWorkbench, { fixtureId: "fixture-1", forecasts: [snapshot("only", "INITIAL", 0.45, [], 0.6, 1.2)] }));
     expect(markup).toContain("Сопоставимая пара прогнозов пока недоступна");
-    expect(markup).toContain("Нет снимка LINEUP_CONFIRMED: до отсечки не было официальной квитанции подтверждённого состава.");
+    expect(markup).toContain("Нет снимка по подтверждённому составу: до отсечки не было официальной квитанции подтверждённого состава.");
     expect(markup).toContain("Вероятности — это оценки, а не гарантии. Вы можете потерять деньги при ставках.");
+    expect(markup).not.toContain("PRE_MATCH");
+    expect(markup).not.toContain("LINEUP_CONFIRMED");
   });
 });

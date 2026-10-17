@@ -8,6 +8,7 @@ import {
   composeFixtureDisplay,
   loadEvidenceDisplay,
   loadEvidenceFixtureLabels,
+  loadEvidenceTrace,
   resolveTeamEvidence,
 } from "../../apps/api/src/modules/evidence/evidence.service.js";
 
@@ -22,11 +23,12 @@ describe("attachEvidenceDisplay", () => {
     const base = await baseProjection();
     const baseKeys = Object.keys(base).sort();
     const result = await attachEvidenceDisplay(base, null, null);
-    expect(result).toEqual({ ...base, team: null, fixture: null, fixtureLabels: {} });
-    expect(Object.keys(result).sort()).toEqual([...baseKeys, "fixture", "fixtureLabels", "team"].sort());
+    expect(result).toEqual({ ...base, team: null, fixture: null, fixtureLabels: {}, trace: [] });
+    expect(Object.keys(result).sort()).toEqual([...baseKeys, "fixture", "fixtureLabels", "team", "trace"].sort());
     expect(Object.keys(base).sort()).toEqual(baseKeys);
     expect(Object.hasOwn(base, "team")).toBe(false);
     expect(Object.hasOwn(base, "fixture")).toBe(false);
+    expect(Object.hasOwn(base, "trace")).toBe(false);
   });
 
   it("attaches display entities verbatim while every projection field stays deep-equal", async () => {
@@ -40,11 +42,12 @@ describe("attachEvidenceDisplay", () => {
     expect(result.state).toEqual(base.state);
     expect(result.resolvedAsOfUtc).toEqual(base.resolvedAsOfUtc);
     expect(result.components).toEqual(base.components);
-    const { team: resultTeam, fixture: resultFixture, fixtureLabels, ...projectionPart } = result;
+    const { team: resultTeam, fixture: resultFixture, fixtureLabels, trace, ...projectionPart } = result;
     expect(projectionPart).toEqual(base);
     expect(resultTeam).toBe(team);
     expect(resultFixture).toBe(fixture);
     expect(fixtureLabels).toEqual({});
+    expect(trace).toEqual([]);
   });
 });
 
@@ -159,5 +162,93 @@ describe("evidence fixture labels", () => {
   it("attaches an explicit labels map through attachEvidenceDisplay", async () => {
     const attached = await attachEvidenceDisplay(await baseProjection(), null, null, { "fix-a": "Bologna против Inter" });
     expect(attached.fixtureLabels).toEqual({ "fix-a": "Bologna против Inter" });
+  });
+});
+
+describe("loadEvidenceTrace", () => {
+  const input = (fixtureId: string, effectiveAt: string, observedAt: string) => ({ fixtureId, effectiveAt, observedAt, sourceUpdatedAt: null, payloadHash: `h-${fixtureId}-${effectiveAt}-${observedAt}`, payloadBytes: 8 });
+  const projection = (inputs: readonly ReturnType<typeof input>[]) => ({ resolvedAsOfUtc: AS_OF, receipt: { inputs } }) as unknown as EvidenceProjection;
+  const row = (fixtureId: string, effectiveAt: string, observedAt: string, homeGoals: number | null, awayGoals: number | null, homeTeamId: string, awayTeamId: string, provider = "football-data") => ({
+    fixtureId,
+    effectiveAt: new Date(effectiveAt),
+    observedAt: new Date(observedAt),
+    homeGoals,
+    awayGoals,
+    fixture: { homeTeamId, awayTeamId },
+    observation: { provider },
+  });
+  const lookupWith = (rows: readonly ReturnType<typeof row>[]) => ({ findTeam: vi.fn(), findFixture: vi.fn(), findResultTraceRows: vi.fn().mockResolvedValue(rows) });
+  const E1 = "2026-08-22T16:00:00.000Z"; const O1 = "2026-08-22T18:00:00.000Z";
+  const E2 = "2026-08-29T15:00:00.000Z"; const O2 = "2026-08-29T17:30:00.000Z";
+
+  it("matches each input by exact tuple in receipt order, keeping duplicate fixture ids", async () => {
+    const inputs = [input("fix-a", E1, O1), input("fix-a", E2, O2), input("fix-b", E1, O1)];
+    const lookup = lookupWith([
+      row("fix-b", E1, O1, 0, 0, "team-x", "team-y"),
+      row("fix-a", E2, O2, 1, 3, "team-a", "team-1"),
+      row("fix-a", E1, O1, 2, 1, "team-1", "team-a"),
+    ]);
+    const trace = await loadEvidenceTrace(lookup, projection(inputs), "team-1");
+    expect(lookup.findResultTraceRows).toHaveBeenCalledWith(["fix-a", "fix-b"], AS_OF);
+    expect(trace.map((r) => r.fixtureId)).toEqual(["fix-a", "fix-a", "fix-b"]);
+    expect(trace[0]).toEqual({ fixtureId: "fix-a", effectiveAt: E1, observedAt: O1, venue: "HOME", outcome: "WIN", score: { home: 2, away: 1 }, source: "football-data" });
+    expect(trace[1]).toEqual({ fixtureId: "fix-a", effectiveAt: E2, observedAt: O2, venue: "AWAY", outcome: "WIN", score: { home: 1, away: 3 }, source: "football-data" });
+    expect(trace[2]).toEqual({ fixtureId: "fix-b", effectiveAt: E1, observedAt: O1, venue: null, outcome: null, score: null, source: "football-data" });
+  });
+
+  it("computes HOME win/draw/loss and the AWAY perspective outcomes", async () => {
+    const inputs = [input("fix-win", E1, O1), input("fix-draw", E1, O1), input("fix-loss", E1, O1), input("fix-away-draw", E1, O1)];
+    const lookup = lookupWith([
+      row("fix-win", E1, O1, 2, 0, "team-1", "team-a"),
+      row("fix-draw", E1, O1, 1, 1, "team-1", "team-a"),
+      row("fix-loss", E1, O1, 0, 3, "team-1", "team-a"),
+      row("fix-away-draw", E1, O1, 2, 2, "team-a", "team-1"),
+    ]);
+    const trace = await loadEvidenceTrace(lookup, projection(inputs), "team-1");
+    expect(trace.map((r) => r.venue)).toEqual(["HOME", "HOME", "HOME", "AWAY"]);
+    expect(trace.map((r) => r.outcome)).toEqual(["WIN", "DRAW", "LOSS", "DRAW"]);
+  });
+
+  it("nulls outcome and score for null goals while the source stays the provider", async () => {
+    const inputs = [input("fix-a", E1, O1)];
+    const lookup = lookupWith([row("fix-a", E1, O1, null, 1, "team-1", "team-a", "manual-upload")]);
+    const trace = await loadEvidenceTrace(lookup, projection(inputs), "team-1");
+    expect(trace[0]).toEqual({ fixtureId: "fix-a", effectiveAt: E1, observedAt: O1, venue: "HOME", outcome: null, score: null, source: "manual-upload" });
+  });
+
+  it("keeps the source but nulls outcome and score when the team is neither side", async () => {
+    const inputs = [input("fix-a", E1, O1)];
+    const lookup = lookupWith([row("fix-a", E1, O1, 2, 1, "team-x", "team-y", "football-data")]);
+    const trace = await loadEvidenceTrace(lookup, projection(inputs), "team-1");
+    expect(trace[0]).toEqual({ fixtureId: "fix-a", effectiveAt: E1, observedAt: O1, venue: null, outcome: null, score: null, source: "football-data" });
+  });
+
+  it("degrades to all-null display fields when no exact tuple matches", async () => {
+    const inputs = [input("fix-a", E1, O1)];
+    const lookup = lookupWith([row("fix-a", E1, "2026-08-22T19:00:00.000Z", 2, 1, "team-1", "team-a")]);
+    const trace = await loadEvidenceTrace(lookup, projection(inputs), "team-1");
+    expect(trace[0]).toEqual({ fixtureId: "fix-a", effectiveAt: E1, observedAt: O1, venue: null, outcome: null, score: null, source: null });
+  });
+
+  it("returns [] for an empty receipt without calling the lookup method", async () => {
+    const lookup = lookupWith([]);
+    await expect(loadEvidenceTrace(lookup, projection([]), "team-1")).resolves.toEqual([]);
+    expect(lookup.findResultTraceRows).not.toHaveBeenCalled();
+  });
+
+  it("returns [] when the lookup has no findResultTraceRows method", async () => {
+    const lookup = { findTeam: vi.fn(), findFixture: vi.fn() };
+    await expect(loadEvidenceTrace(lookup, projection([input("fix-a", E1, O1)]), "team-1")).resolves.toEqual([]);
+    await expect(loadEvidenceTrace(null, projection([input("fix-a", E1, O1)]), "team-1")).resolves.toEqual([]);
+  });
+
+  it("degrades a rejecting lookup to all-null rows keeping input timestamps and never rejects", async () => {
+    const inputs = [input("fix-a", E1, O1), input("fix-b", E2, O2)];
+    const lookup = { findTeam: vi.fn(), findFixture: vi.fn(), findResultTraceRows: vi.fn().mockRejectedValue(new Error("db down")) };
+    const trace = await loadEvidenceTrace(lookup, projection(inputs), "team-1");
+    expect(trace).toEqual([
+      { fixtureId: "fix-a", effectiveAt: E1, observedAt: O1, venue: null, outcome: null, score: null, source: null },
+      { fixtureId: "fix-b", effectiveAt: E2, observedAt: O2, venue: null, outcome: null, score: null, source: null },
+    ]);
   });
 });

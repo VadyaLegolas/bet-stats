@@ -138,16 +138,37 @@ export interface EvidenceDisplay {
 
 export type EvidenceFixtureLabels = Readonly<Record<string, string>>;
 
-export type EvidenceResponse = EvidenceProjection & { team: EvidenceDisplayTeam | null; fixture: EvidenceDisplayFixture | null; fixtureLabels: EvidenceFixtureLabels };
+export interface EvidenceTraceRow {
+  fixtureId: string;
+  effectiveAt: string;
+  observedAt: string;
+  venue: "HOME" | "AWAY" | null;
+  outcome: "WIN" | "DRAW" | "LOSS" | null;
+  score: { home: number; away: number } | null;
+  source: string | null;
+}
+
+export interface EvidenceResultTraceRow {
+  fixtureId: string;
+  effectiveAt: Date;
+  observedAt: Date;
+  homeGoals: number | null;
+  awayGoals: number | null;
+  fixture: { homeTeamId: string; awayTeamId: string };
+  observation: { provider: string };
+}
+
+export type EvidenceResponse = EvidenceProjection & { team: EvidenceDisplayTeam | null; fixture: EvidenceDisplayFixture | null; fixtureLabels: EvidenceFixtureLabels; trace: readonly EvidenceTraceRow[] };
 
 export interface EvidenceDisplayLookup {
   findTeam(teamId: string): Promise<EvidenceDisplayTeam | null>;
   findFixture(fixtureId: string): Promise<EvidenceDisplayFixtureRow | null>;
   findFixtures?(fixtureIds: readonly string[]): Promise<readonly EvidenceDisplayFixtureRow[]>;
+  findResultTraceRows?(fixtureIds: readonly string[], cutoffIso: string): Promise<readonly EvidenceResultTraceRow[]>;
 }
 
-export function attachEvidenceDisplay(projection: EvidenceProjection, team: EvidenceDisplayTeam | null, fixture: EvidenceDisplayFixture | null, fixtureLabels: EvidenceFixtureLabels = {}): EvidenceResponse {
-  return { ...projection, team, fixture, fixtureLabels };
+export function attachEvidenceDisplay(projection: EvidenceProjection, team: EvidenceDisplayTeam | null, fixture: EvidenceDisplayFixture | null, fixtureLabels: EvidenceFixtureLabels = {}, trace: readonly EvidenceTraceRow[] = []): EvidenceResponse {
+  return { ...projection, team, fixture, fixtureLabels, trace };
 }
 
 export function composeFixtureDisplay(row: EvidenceDisplayFixtureRow): EvidenceDisplayFixture {
@@ -196,6 +217,41 @@ export async function loadEvidenceFixtureLabels(lookup: EvidenceDisplayLookup | 
   }
 }
 
+/**
+ * Display-only trace enrichment: exact-tuple-matches each receipt input against result
+ * version rows (fixtureId + effectiveAt + observedAt identify exactly one revision) and
+ * derives venue/outcome/score/source from the team perspective. Every lookup failure
+ * degrades to null display fields; the function NEVER rejects and never mutates the
+ * immutable receipt contract in packages/domain.
+ */
+export async function loadEvidenceTrace(lookup: EvidenceDisplayLookup | null, projection: EvidenceProjection, teamId: string): Promise<readonly EvidenceTraceRow[]> {
+  const inputs = projection.receipt?.inputs ?? [];
+  const finder = lookup?.findResultTraceRows;
+  if (inputs.length === 0 || !finder) return [];
+  const fixtureIds = [...new Set(inputs.map((input) => input.fixtureId))];
+  const degrade = (): readonly EvidenceTraceRow[] => inputs.map((input) => ({ fixtureId: input.fixtureId, effectiveAt: input.effectiveAt, observedAt: input.observedAt, venue: null, outcome: null, score: null, source: null }));
+  let rows: readonly EvidenceResultTraceRow[];
+  try {
+    rows = await finder(fixtureIds, projection.resolvedAsOfUtc);
+  } catch {
+    return degrade();
+  }
+  return inputs.map((input) => {
+    const row = rows.find((candidate) => candidate.fixtureId === input.fixtureId
+      && candidate.effectiveAt.toISOString() === input.effectiveAt
+      && candidate.observedAt.toISOString() === input.observedAt);
+    if (!row) return { fixtureId: input.fixtureId, effectiveAt: input.effectiveAt, observedAt: input.observedAt, venue: null, outcome: null, score: null, source: null };
+    const venue = teamId === row.fixture.homeTeamId ? "HOME" as const : teamId === row.fixture.awayTeamId ? "AWAY" as const : null;
+    const source = row.observation.provider;
+    if (venue === null || row.homeGoals === null || row.awayGoals === null) return { fixtureId: input.fixtureId, effectiveAt: input.effectiveAt, observedAt: input.observedAt, venue, outcome: null, score: null, source };
+    const score = { home: row.homeGoals, away: row.awayGoals };
+    const outcome = venue === "HOME"
+      ? (row.homeGoals > row.awayGoals ? "WIN" as const : row.homeGoals === row.awayGoals ? "DRAW" as const : "LOSS" as const)
+      : (row.awayGoals > row.homeGoals ? "WIN" as const : row.awayGoals === row.homeGoals ? "DRAW" as const : "LOSS" as const);
+    return { fixtureId: input.fixtureId, effectiveAt: input.effectiveAt, observedAt: input.observedAt, venue, outcome, score, source };
+  });
+}
+
 @Injectable()
 export class EvidenceService implements OnModuleDestroy {
   private readonly database: PrismaClient | null = process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null;
@@ -219,6 +275,10 @@ export class EvidenceService implements OnModuleDestroy {
         where: { id: { in: [...fixtureIds] } },
         select: { id: true, kickoffUtc: true, homeTeam: { select: { name: true } }, awayTeam: { select: { name: true } } },
       }),
+      findResultTraceRows: (fixtureIds, cutoffIso) => database.resultVersion.findMany({
+        where: { fixtureId: { in: [...fixtureIds] }, observedAt: { lte: new Date(cutoffIso) }, effectiveAt: { lte: new Date(cutoffIso) } },
+        select: { fixtureId: true, effectiveAt: true, observedAt: true, homeGoals: true, awayGoals: true, fixture: { select: { homeTeamId: true, awayTeamId: true } }, observation: { select: { provider: true } } },
+      }),
     };
   }
   async get(teamId: string, asOf?: string, fixtureId?: string): Promise<EvidenceResponse> {
@@ -226,6 +286,7 @@ export class EvidenceService implements OnModuleDestroy {
     const lookup = this.displayLookup();
     const display = await loadEvidenceDisplay(lookup, teamId, fixtureId);
     const fixtureLabels = await loadEvidenceFixtureLabels(lookup, projection);
-    return attachEvidenceDisplay(projection, display.team, display.fixture, fixtureLabels);
+    const trace = await loadEvidenceTrace(lookup, projection, teamId);
+    return attachEvidenceDisplay(projection, display.team, display.fixture, fixtureLabels, trace);
   }
 }

@@ -14,7 +14,7 @@ import {
 import { EvidenceStateNotice } from "../../../../components/evidence-state-notice";
 
 type Summary = { value?: unknown; sampleSize?: number; requestedSampleSize?: number; sourceUpdatedAt?: string | null | undefined; limitationReason?: string | null | undefined; limitation?: string | null | undefined };
-type Trace = { fixtureId: string; effectiveAt?: string; observedAt?: string; venue?: string; result?: string; score?: string; source?: string; components?: string[] };
+type Trace = { fixtureId: string; effectiveAt?: string; observedAt?: string; venue?: "HOME" | "AWAY" | null; outcome?: "WIN" | "DRAW" | "LOSS" | null; score?: { home: number; away: number } | null; source?: string | null };
 type Evidence = {
   team?: { id: string; name: string } | null;
   teamId?: string;
@@ -90,6 +90,20 @@ export function evidenceHeading(teamName: string | null | undefined): string {
   return trimmed === "" ? "Исторические доказательства" : `${trimmed}: исторические доказательства`;
 }
 
+const TRACE_FALLBACK = "Неизвестно";
+
+/** Russian labels of the evidence components whose source refs include the fixture; none → null. Pure. */
+export function traceComponentLabels(data: { components?: EvidenceProjectionDto["components"] | undefined }, fixtureId: string): string | null {
+  const labels = Object.values(data.components ?? {})
+    .filter((component): component is EvidenceProjectionComponent => component !== undefined && component !== null && (component.sourceRefs ?? []).some((ref) => ref.fixtureId === fixtureId))
+    .map((component) => componentLabel(component));
+  return labels.length === 0 ? null : labels.join(", ");
+}
+
+export function EvidenceTraceTable({ rows, fixtureLabels, components }: { rows: readonly Trace[]; fixtureLabels?: Record<string, string> | null | undefined; components?: EvidenceProjectionDto["components"] | undefined }) {
+  return <div role="region" aria-label="Подходящие матчи" style={{ overflowX: "auto" }}><table><caption>Матчи, включённые в сборку исторических доказательств</caption><thead><tr><th>Матч</th><th>Место</th><th>Исход</th><th>Счёт</th><th>Время действия</th><th>Время наблюдения</th><th>Источник</th><th>Компоненты</th></tr></thead><tbody>{rows.map((row) => <tr key={`${row.fixtureId}-${row.observedAt ?? ""}`}><td>{fixtureLabels?.[row.fixtureId] ?? row.fixtureId}</td><td>{row.venue === "HOME" ? "дома" : row.venue === "AWAY" ? "в гостях" : TRACE_FALLBACK}</td><td>{row.outcome === "WIN" ? "победа" : row.outcome === "DRAW" ? "ничья" : row.outcome === "LOSS" ? "поражение" : TRACE_FALLBACK}</td><td>{row.score ? `${row.score.home}:${row.score.away}` : TRACE_FALLBACK}</td><td>{row.effectiveAt ? <time dateTime={row.effectiveAt}>{row.effectiveAt}</time> : TRACE_FALLBACK}</td><td>{row.observedAt ? <time dateTime={row.observedAt}>{row.observedAt}</time> : TRACE_FALLBACK}</td><td>{row.source ?? TRACE_FALLBACK}</td><td>{traceComponentLabels({ components }, row.fixtureId) ?? TRACE_FALLBACK}</td></tr>)}</tbody></table></div>;
+}
+
 export default function TeamEvidencePage() {
   const params = useParams<{ teamId: string }>();
   const search = useSearchParams();
@@ -130,7 +144,7 @@ export default function TeamEvidencePage() {
     <EvidenceStateNotice state={data.state} freshness={data.freshness} limitationReason={data.limitationReason}/>
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}><SummaryCard label="5" summary={five}/><SummaryCard label="10" summary={ten}/></div>
     <section aria-labelledby="components-heading"><h2 id="components-heading">Компоненты доказательств</h2>{Object.values(data.components ?? {}).map((component) => <details key={component.kind} style={panel}><summary>{componentLabel(component)}</summary><dl>{renderEvidenceComponentFields(component).map((field) => <div key={field.label}><dt>{field.label}</dt><dd>{field.label}: {field.value}</dd></div>)}</dl><p>Выборка: {component.sampleSize}</p>{component.limitation && <p>{component.limitation}</p>}</details>)}</section>
-    <section aria-labelledby="trace-heading"><h2 id="trace-heading">Трассировка подходящих матчей</h2>{trace.length === 0 ? <p>Нет матчей, подходящих под отсчёт по времени действия и времени захвата.</p> : <div role="region" aria-label="Подходящие матчи" style={{ overflowX: "auto" }}><table><caption>Матчи, включённые в сборку исторических доказательств</caption><thead><tr><th>Матч</th><th>Стадион</th><th>Исход</th><th>Счёт</th><th>Время действия</th><th>Время наблюдения</th><th>Источник</th><th>Компоненты</th></tr></thead><tbody>{trace.map((row) => <tr key={`${row.fixtureId}-${row.observedAt ?? ""}`}><td>{data.fixtureLabels?.[row.fixtureId] ?? row.fixtureId}</td><td>{row.venue ?? "Неизвестно"}</td><td>{row.result ?? "Неизвестно"}</td><td>{row.score ?? "Неизвестно"}</td><td>{row.effectiveAt ? <time dateTime={row.effectiveAt}>{row.effectiveAt}</time> : "Неизвестно"}</td><td>{row.observedAt ? <time dateTime={row.observedAt}>{row.observedAt}</time> : "Неизвестно"}</td><td>{row.source ?? "Неизвестно"}</td><td>{row.components?.join(", ") ?? "Неизвестно"}</td></tr>)}</tbody></table></div>}</section>
+    <section aria-labelledby="trace-heading"><h2 id="trace-heading">Трассировка подходящих матчей</h2>{trace.length === 0 ? <p>Нет матчей, подходящих под отсчёт по времени действия и времени захвата.</p> : <EvidenceTraceTable rows={trace} fixtureLabels={data.fixtureLabels} components={data.components}/>}</section>
     {!data.receipt && <p role="alert">Происхождение данных недоступно; эти доказательства нельзя воспроизвести.</p>}
     <details style={panel}><summary>Квитанция воспроизведения{data.receipt?.configVersion ? ` — ${data.receipt.configVersion}` : ""}{data.receipt ? ` — ${(data.receipt.inputIds ?? data.receipt.inputs ?? []).length} ${(data.receipt.inputIds ?? data.receipt.inputs ?? []).length === 1 ? "входное значение" : "входных значений"}` : ""}</summary>{data.receipt ? <pre aria-label="Данные квитанции воспроизведения" style={{ overflow: "auto", maxWidth: "100%" }}>{JSON.stringify(data.receipt, null, 2)}</pre> : <p>Квитанция для этой точки отсчёта недоступна.</p>}</details>
   </section>;

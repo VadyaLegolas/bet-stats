@@ -9,6 +9,7 @@ const DESTINATIONS = [
   { label: "Анализ", href: "/fixtures#match-analysis", current: (pathname: string) => pathname.startsWith("/fixtures/") },
   { label: "Результаты", href: "/scorecards", current: (pathname: string) => pathname.startsWith("/scorecards") },
   { label: "Методология", href: "/methodology", current: (pathname: string) => pathname.startsWith("/methodology") },
+  { label: "FAQ", href: "/faq", current: (pathname: string) => pathname.startsWith("/faq") },
 ] as const;
 
 export function ReleaseNavigation() {

@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 status: "Fast tasks: forecasts for every listed fixture + readable evidence trace table (fast-261017c/d)"
 stopped_at: fast-261017d-inline
-last_updated: "2026-10-17T15:10:00.000Z"
+last_updated: "2026-10-17T17:20:59.312Z"
 last_activity: 2026-10-17
 last_activity_desc: INITIAL issues as soon as a fixture enters the 14-day sweep horizon (first tick issued the 8 missing Oct-24 forecasts; zero upcoming fixtures without INITIAL) and the empty workbench state explains INITIAL/PRE_MATCH timing; evidence API attaches fixtureLabels so the trace table shows team names instead of cuids, verified live for Bologna-Inter (365d5aa, d3b4583)
-state_head: 3c6384e8e49b7746fd04ca665d22a5f48ff877b2
+state_head: 4f315cb17c8bf9a9def3aedc84cb2dd261c4c95e
 progress:
   total_phases: 6
   completed_phases: 6
@@ -32,7 +32,7 @@ Milestone: v1.0 — ARCHIVED
 All Phases: Complete (6/6)
 All Plans: Complete (88/88)
 Status: Quick task 261016-a87 - all 9 inline eligibility-header blocks in apps/web (7 internal-api proxy routes + scorecards page + fixture page) stamp `x-eligibility-checked-at` with `process.env.ELIGIBILITY_CHECKED_AT || new Date().toISOString()`, so the NestJS EligibilityGuard's ≤1h freshness check passes for long-running dev processes while explicit env pins (unit/e2e) keep precedence; region/age headers remain static fail-closed
-Last activity: 2026-10-17 - Completed quick task 261016-ooi: manual sync refreshes FixtureProvenance observedAt for unchanged payloads (the "Устаревшие данные" badge now clears on "Обновить матчи") and records a ProviderRouteReceipt + SUCCEEDED attempt per successful league sync (the "Покрытие ожидается" badge clears); commit b0ae96e, 286/286 unit tests
+Last activity: 2026-10-17 - Completed quick task 261017-pyp: manual results publication button «Загрузить результаты» (internal-api operator proxy → POST /internal/fixtures/results-sync); the uncommitted auto-scheduler was reverted — results stay manual-only; commit 4f315cb, 298/298 unit tests + web typecheck
 Last Activity Description: Gates green - targeted vitest tests/unit/internal-api-route.test.ts 4/4 (env-pin precedence preserved), web typecheck exit 0; commit fd38793; companion ops (not committed, gitignored .env): ELIGIBILITY_ALLOWED_REGIONS=PL on API, ELIGIBILITY_REGION=PL + ELIGIBILITY_AGE_ACKNOWLEDGED=true on web, ELIGIBILITY_CHECKED_AT deliberately unset
 
 Progress: [██████████] 100%
@@ -234,18 +234,22 @@ None yet.
   Europa League (403 restricted) and API-Football free plan blocks the current season 2026
   entirely ("access to seasons 2022-2024"). UEL shows a honest restricted state in the UI; an
   api-football fetch path was not built because it cannot deliver upcoming fixtures either.
+
 - [Ops 2026-10-16]: Result publication after matchdays is manual — `POST /internal/fixtures/results-sync`
   must be called per matchday; there is no scheduled results job yet (forecast evidence and
   scorecards depend on it).
+
 - [Ops 2026-10-16]: Importing `workers/data-sync/src/main.ts` from tests executed its top-level
   `start()`; a test process whose env carried DATABASE_URL/REDIS_URL/provider tokens booted a
   second sweep-enabled worker against the dev DB (root cause of the 09:02Z empty-evidence
   INITIAL snapshots). FIXED in quick 261016-kpi: auto-start is now behind a main-module entry
   check (`isDirectExecution()`), imports are side-effect-free, hermetic unit test guards it.
+
 - [Ops 2026-10-16]: The stack must run with `turbo run dev --env-mode=loose` (or direct `node dist/main.js`);
   turbo's default strict env mode strips `.env` values so the worker reports readiness false and
   exits without ticking. Background shells holding API/worker/web do NOT survive an OpenCode
   session restart — restart the stack after resuming a session.
+
 - [Ops 2026-10-16]: Data loading is MANUAL ONLY (quick 261016-l90 + .env FIXTURES_AUTO_SYNC=false):
   no page-mount sync, sweep is DB-only, 288 stale enrichment jobs flushed from Redis. Refresh data
   explicitly via the "Обновить матчи" button, `POST /internal/fixtures/sync` or
@@ -270,6 +274,7 @@ None yet.
 | fast-261017b | Add double-click launcher for the local stack without a terminal: app-lifecycle.ps1 runs docker/migrations/build and a detached dev daemon (log %TEMP%\bet-stats-stack.log), start/stop .bat wrappers, desktop shortcuts | 2026-10-17 | 2442516 | inline (gsd-fast) |
 | fast-261017c | Issue INITIAL forecasts as soon as a fixture enters the 14-day sweep horizon so every listed upcoming match has probabilities; empty workbench state explains INITIAL/PRE_MATCH timing | 2026-10-17 | 365d5aa | inline (gsd-fast) |
 | fast-261017d | Show team names instead of raw fixture ids in the evidence trace table: API attaches fixtureLabels from receipt inputs and component source refs, web renders label with id fallback | 2026-10-17 | d3b4583 | inline (gsd-fast) |
+| 261017-pyp | Manual results publication button: «Загрузить результаты» on the fixtures page via internal-api operator proxy (POST /internal/fixtures/results-sync); the uncommitted auto-scheduler was reverted — results loading stays manual-only | 2026-10-17 | 4f315cb | [261017-pyp-add-a-manual-load-results-button-to-the-](./quick/261017-pyp-add-a-manual-load-results-button-to-the-/) |
 
 ### Roadmap Evolution
 

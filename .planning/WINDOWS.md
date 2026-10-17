@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 25
+open_count: 26
 waived_count: 0
 fixed_count: 0
-total_count: 25
-last_updated: 2026-10-17T00:44:20.640Z
+total_count: 26
+last_updated: 2026-10-17T17:16:41.630Z
 ---
 
 # Broken Windows Ledger
@@ -40,6 +40,7 @@ last_updated: 2026-10-17T00:44:20.640Z
 | 23 | 261016-d9t | deviation | apps/api/src/app.module.ts |  | ResultsSyncService registered in app.module.ts; plan-named fixtures.module.ts does not exist in repo | open |  | 2026-10-16T08:23:17.457Z |  |
 | 24 | 261016-d9t | deviation | tests/integration/replay.test.ts |  | Plan verify suite replay.test.ts fails 6 tests from pre-existing fixed-clock time-bomb (policy clock 2026-09-30 vs DB now -> ReplayPreview_consumed_after_created); identical at HEAD baseline, protected file | open |  | 2026-10-16T08:23:18.281Z |  |
 | 25 | 261016-ooi | deviation | tests/unit/fixtures-sync.test.ts |  | vi.mock raw @bet-stats/* keys from plan fact 11 never intercepted the service; mock keys retargeted to package dist entry points (harness-only, documented in 261016-ooi-SUMMARY.md) | open |  | 2026-10-17T00:44:20.640Z |  |
+| 26 | 261017-pyp | deviation | tests/unit/results-sync-button-ui.test.tsx |  | Plan Task 3 case (2) expected 'опубликовано 3 результатов' but must-have truth 2 requires correct Russian plural via the existing plural helper (3 -> 'результата'); delivered helper-correct string (documented in 261017-pyp-SUMMARY.md) | open |  | 2026-10-17T17:16:41.630Z |  |
 
 ````json
 [
@@ -341,6 +342,18 @@ last_updated: 2026-10-17T00:44:20.640Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-17T00:44:20.640Z",
+    "resolved_at": null
+  },
+  {
+    "id": 26,
+    "kind": "deviation",
+    "phase": "261017-pyp",
+    "file": "tests/unit/results-sync-button-ui.test.tsx",
+    "line": null,
+    "description": "Plan Task 3 case (2) expected 'опубликовано 3 результатов' but must-have truth 2 requires correct Russian plural via the existing plural helper (3 -> 'результата'); delivered helper-correct string (documented in 261017-pyp-SUMMARY.md)",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-17T17:16:41.630Z",
     "resolved_at": null
   }
 ]

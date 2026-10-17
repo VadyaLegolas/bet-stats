@@ -645,6 +645,8 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   gap: var(--space-2);
   margin-top: var(--space-1);
 }
+.fixture-forecast { color: var(--color-text-secondary); font-size: 0.9rem; font-variant-numeric: tabular-nums; margin: 0; }
+.fixture-forecast--pending { font-style: italic; }
 .date-group-heading {
   font-size: 1.25rem;
   font-weight: 600;

@@ -10,6 +10,8 @@ const MAX_RANGE_MS = 31 * 86_400_000;
 export type SyncQuota = { provider: string; daily: { used: number; allowance: number; remaining: number; resetAt: string; resetTimezone: "UTC" }; minute: { used: number; limit: number; remaining: number; windowSeconds: number } };
 export type ProviderStateProjection = { state: "PRIMARY" | "FALLBACK" | "PENDING" | "UNAVAILABLE" | "LIMITED" | "UNSUPPORTED" | "STALE_CAPABILITY" | "BUDGET_PROTECTED" | "CIRCUIT_DENIED"; provider: string; reason: string; capturedAt: string | null; lastValidAt: string | null; retryAllowed: boolean; receipt: { id: string; policyVersion: string; outcome: string; trigger: string } | null };
 export type FixtureProjection = { id: string; competition: { id: string; name: string; season: string }; teams: { home: { id: string; name: string }; away: { id: string; name: string } }; kickoff: string; status: string; dataState: DataStateProjection<null>; providerState: ProviderStateProjection };
+export type AttachedForecast = { kind: string; cutoff: string; probabilities: { home: number; draw: number; away: number } };
+export type FixtureListProjection = FixtureProjection & { forecast: AttachedForecast | null };
 type FixtureRow = { id: string; kickoffUtc: Date; status: string; updatedAt: Date; league: { id: string; name: string }; season: { id: string; label: string }; homeTeam: { id: string; name: string }; awayTeam: { id: string; name: string }; provenance: Array<{ provider: string; observedAt: Date; sourceUpdatedAt: Date | null }> };
 
 const deterministicRow: FixtureRow = { id: "fixture-premier-league-001", kickoffUtc: new Date("2026-08-29T14:00:00.000Z"), status: "SCHEDULED", updatedAt: new Date("2026-08-28T18:45:00.000Z"), league: { id: "league-premier-league", name: "Premier League" }, season: { id: "season-2026", label: "2026/27" }, homeTeam: { id: "team-arsenal", name: "Arsenal" }, awayTeam: { id: "team-chelsea", name: "Chelsea" }, provenance: [{ provider: "deterministic", observedAt: new Date("2026-08-28T18:45:00.000Z"), sourceUpdatedAt: null }] };
@@ -75,6 +77,42 @@ function project(row: FixtureRow, providerState: ProviderStateProjection): Fixtu
   return { id: row.id, competition: { id: row.league.id, name: row.league.name, season: row.season.label }, teams: { home: row.homeTeam, away: row.awayTeam }, kickoff: row.kickoffUtc.toISOString(), status: row.status, dataState, providerState };
 }
 
+const ONE_X_TWO_SELECTIONS = [["HOME", "home"], ["DRAW", "draw"], ["AWAY", "away"]] as const;
+
+/** Latest-first, order-dependent summary of ISSUED forecast snapshots. The caller pre-sorts
+ * rows with the newest-first tuple used by `ForecastRepository.listIssued` (issuedAt desc,
+ * cutoff desc, revision desc, id asc) and this function preserves that input order, row by
+ * row: the FIRST accepted row per fixtureId wins and later rows for the same fixture are
+ * skipped entirely. Per-row validation is all-or-nothing: fixtureId and kind must be
+ * non-empty strings, cutoff a valid date, and `ONE_X_TWO` must cover HOME+DRAW+AWAY with
+ * finite [0, 1] probabilities matched by `selection` (position-independent). The documented
+ * fall-through is deliberate: a
+ * malformed NEWEST snapshot (e.g. missing the AWAY event) is skipped so the next valid ISSUED
+ * row for that fixture still surfaces instead of hiding the forecast completely. Only valid
+ * rows reach the returned map. */
+export function summarizeLatestForecasts(rows: readonly { fixtureId: string; kind: unknown; cutoff: Date | string; probabilities: unknown }[]): ReadonlyMap<string, AttachedForecast> {
+  const summaries = new Map<string, AttachedForecast>();
+  for (const row of rows) {
+    if (typeof row.fixtureId !== "string" || row.fixtureId === "" || summaries.has(row.fixtureId)) continue;
+    if (typeof row.kind !== "string" || row.kind === "") continue;
+    const cutoffDate = row.cutoff instanceof Date ? row.cutoff : typeof row.cutoff === "string" ? new Date(row.cutoff) : null;
+    if (!cutoffDate || !Number.isFinite(cutoffDate.getTime())) continue;
+    const events = (row.probabilities && typeof row.probabilities === "object" ? (row.probabilities as { ONE_X_TWO?: unknown }).ONE_X_TWO : undefined);
+    if (!Array.isArray(events)) continue;
+    const probabilities: { home: number; draw: number; away: number } = { home: 0, draw: 0, away: 0 };
+    let valid = true;
+    for (const [selection, key] of ONE_X_TWO_SELECTIONS) {
+      const event = events.find((item): item is { selection: string; probability: number } => typeof item === "object" && item !== null && (item as { selection?: unknown }).selection === selection);
+      const value = event?.probability;
+      if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) { valid = false; break; }
+      probabilities[key] = value;
+    }
+    if (!valid) continue;
+    summaries.set(row.fixtureId, { kind: row.kind, cutoff: cutoffDate.toISOString(), probabilities });
+  }
+  return summaries;
+}
+
 @Injectable()
 export class FixturesService implements OnModuleDestroy {
   private readonly config = readServerConfig(process.env);
@@ -109,11 +147,22 @@ export class FixturesService implements OnModuleDestroy {
     };
   }
 
-  async list(filters: { from?: string; to?: string; competition?: string }): Promise<{ items: readonly FixtureProjection[]; range: { from: string; to: string } }> {
+  async list(filters: { from?: string; to?: string; competition?: string }): Promise<{ items: readonly FixtureListProjection[]; range: { from: string; to: string } }> {
     const { from, to } = parseRange(filters.from, filters.to);
     if (filters.competition !== undefined && (filters.competition.trim() === "" || filters.competition.length > 100)) throw new BadRequestException("competition must be between 1 and 100 characters");
     const rows: FixtureRow[] = this.database ? await this.database.fixture.findMany({ where: { kickoffUtc: { gte: from, lt: to }, ...(filters.competition ? { league: { name: filters.competition } } : { league: { externalRefs: { some: { provider: "football-data.org" } } } }) }, include: { league: true, season: true, homeTeam: true, awayTeam: true, provenance: { orderBy: { observedAt: "desc" }, take: 1 } }, orderBy: [{ kickoffUtc: "asc" }, { id: "asc" }] }) : [deterministicFixtureRow(new Date())].filter((row) => row.kickoffUtc >= from && row.kickoffUtc < to && (!filters.competition || row.league.name === filters.competition));
-    const items = await Promise.all(rows.map(async (row) => project(row, await this.providerState(row))));
+    // Forecast enrichment is display-only and additive: it degrades to the all-null
+    // (pending) state on ANY error — the list endpoint must never 500 because of it.
+    let snapshotRows: readonly { fixtureId: string; kind: unknown; cutoff: Date; probabilities: unknown }[] = [];
+    if (this.database && rows.length > 0) {
+      try {
+        snapshotRows = await this.database.forecastSnapshot.findMany({ where: { fixtureId: { in: rows.map((row) => row.id) }, state: "ISSUED" }, orderBy: [{ issuedAt: "desc" }, { cutoff: "desc" }, { revision: "desc" }, { id: "asc" }], select: { fixtureId: true, kind: true, cutoff: true, probabilities: true } });
+      } catch {
+        snapshotRows = [];
+      }
+    }
+    const forecastByFixture = summarizeLatestForecasts(snapshotRows);
+    const items = (await Promise.all(rows.map(async (row) => project(row, await this.providerState(row))))).map((item) => ({ ...item, forecast: forecastByFixture.get(item.id) ?? null }));
     return { items, range: { from: from.toISOString(), to: to.toISOString() } };
   }
   async detail(id: string): Promise<FixtureProjection> {

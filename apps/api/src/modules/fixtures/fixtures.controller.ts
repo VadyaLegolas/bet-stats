@@ -4,7 +4,7 @@ import { ArrayMaxSize, IsArray, IsBoolean, IsOptional, IsString, Matches } from 
 import { OperatorGuard } from "../reconciliation/operator.guard.js";
 import { FixturesSyncService, type SyncLeagueResult } from "./fixtures-sync.service.js";
 import { ResultsSyncService, type ResultsLeagueResult } from "./results-sync.service.js";
-import { FixturesService, type FixtureProjection, type SyncQuota } from "./fixtures.service.js";
+import { FixturesService, type FixtureListProjection, type FixtureProjection, type SyncQuota } from "./fixtures.service.js";
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -39,7 +39,7 @@ export class FixturesController {
   }
 
   @Get()
-  list(@Query("from") from?: string, @Query("to") to?: string, @Query("competition") competition?: string): Promise<{ items: readonly FixtureProjection[]; range: { from: string; to: string } }> {
+  list(@Query("from") from?: string, @Query("to") to?: string, @Query("competition") competition?: string): Promise<{ items: readonly FixtureListProjection[]; range: { from: string; to: string } }> {
     return this.fixtures.list({ ...(from === undefined ? {} : { from }), ...(to === undefined ? {} : { to }), ...(competition === undefined ? {} : { competition }) });
   }
 

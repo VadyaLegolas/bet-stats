@@ -10,6 +10,7 @@ artifacts/provider-probes/
 .env
 .env.local
 .env.*.local
+.env2
 
 *.log
 *.tsbuildinfo

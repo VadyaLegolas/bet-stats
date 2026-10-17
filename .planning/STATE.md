@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-status: "Fast task: double-click stack launcher without a terminal (fast-261017b)"
-stopped_at: fast-261017b-inline
-last_updated: "2026-10-17T08:20:00.000Z"
+status: "Fast tasks: forecasts for every listed fixture + readable evidence trace table (fast-261017c/d)"
+stopped_at: fast-261017d-inline
+last_updated: "2026-10-17T15:10:00.000Z"
 last_activity: 2026-10-17
-last_activity_desc: Double-click launcher added (scripts/app-lifecycle.ps1 + start/stop .bat): docker up, migrations, build, detached turbo dev daemon logging to %TEMP%\bet-stats-stack.log, readiness wait then browser opens; desktop shortcuts created; stack stop/start cycle verified end-to-end (2442516)
+last_activity_desc: INITIAL issues as soon as a fixture enters the 14-day sweep horizon (first tick issued the 8 missing Oct-24 forecasts; zero upcoming fixtures without INITIAL) and the empty workbench state explains INITIAL/PRE_MATCH timing; evidence API attaches fixtureLabels so the trace table shows team names instead of cuids, verified live for Bologna-Inter (365d5aa, d3b4583)
 state_head: 3c6384e8e49b7746fd04ca665d22a5f48ff877b2
 progress:
   total_phases: 6
@@ -268,6 +268,8 @@ None yet.
 | 261016-ooi | Make manual sync refresh fixture freshness and record provider route receipts: FixtureProvenance upserts observedAt on identical payloads so STALE clears on refresh, and successful league syncs write a ProviderRouteReceipt with a SUCCEEDED attempt so the coverage badge clears | 2026-10-16 | b0ae96e | [261016-ooi-fixture-freshness-and-provider-coverage-](./quick/261016-ooi-fixture-freshness-and-provider-coverage-/) |
 | fast-261017 | Issue INITIAL forecasts seven days before kickoff instead of 24 hours so users can place bookmaker bets days ahead; PRE_MATCH stays at kickoff-6h, boundary tests updated | 2026-10-17 | e94b4da | inline (gsd-fast) |
 | fast-261017b | Add double-click launcher for the local stack without a terminal: app-lifecycle.ps1 runs docker/migrations/build and a detached dev daemon (log %TEMP%\bet-stats-stack.log), start/stop .bat wrappers, desktop shortcuts | 2026-10-17 | 2442516 | inline (gsd-fast) |
+| fast-261017c | Issue INITIAL forecasts as soon as a fixture enters the 14-day sweep horizon so every listed upcoming match has probabilities; empty workbench state explains INITIAL/PRE_MATCH timing | 2026-10-17 | 365d5aa | inline (gsd-fast) |
+| fast-261017d | Show team names instead of raw fixture ids in the evidence trace table: API attaches fixtureLabels from receipt inputs and component source refs, web renders label with id fallback | 2026-10-17 | d3b4583 | inline (gsd-fast) |
 
 ### Roadmap Evolution
 

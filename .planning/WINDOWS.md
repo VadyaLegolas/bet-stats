@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 21
+open_count: 25
 waived_count: 0
 fixed_count: 0
-total_count: 21
-last_updated: 2026-09-20T05:24:02.774Z
+total_count: 25
+last_updated: 2026-10-17T00:44:20.640Z
 ---
 
 # Broken Windows Ledger
@@ -36,6 +36,10 @@ last_updated: 2026-09-20T05:24:02.774Z
 | 19 | 05 | deviation | .planning/STATE.md |  | state.advance-plan could not parse the initial Not started position; plan 02 state was recorded directly | open |  | 2026-09-12T16:33:46.954Z |  |
 | 20 | 06 | deviation | tests/e2e/release-journey.spec.ts |  | Aligned tracer assertions with canonical hash, fail-closed value outcome, and three retained market score facts | open |  | 2026-09-20T05:24:02.284Z |  |
 | 21 | 06 | deviation | package.json |  | Used explicit pnpm workspace-root flag for the approved accessibility dependency | open |  | 2026-09-20T05:24:02.774Z |  |
+| 22 | 261016-d9t | deviation | packages/database/src/results-persistence.ts |  | Plan said NormalizedResult from @bet-stats/domain; domain does not export it - imported from @bet-stats/football-data (matches provider-fixture-resolver.ts) | open |  | 2026-10-16T08:23:16.713Z |  |
+| 23 | 261016-d9t | deviation | apps/api/src/app.module.ts |  | ResultsSyncService registered in app.module.ts; plan-named fixtures.module.ts does not exist in repo | open |  | 2026-10-16T08:23:17.457Z |  |
+| 24 | 261016-d9t | deviation | tests/integration/replay.test.ts |  | Plan verify suite replay.test.ts fails 6 tests from pre-existing fixed-clock time-bomb (policy clock 2026-09-30 vs DB now -> ReplayPreview_consumed_after_created); identical at HEAD baseline, protected file | open |  | 2026-10-16T08:23:18.281Z |  |
+| 25 | 261016-ooi | deviation | tests/unit/fixtures-sync.test.ts |  | vi.mock raw @bet-stats/* keys from plan fact 11 never intercepted the service; mock keys retargeted to package dist entry points (harness-only, documented in 261016-ooi-SUMMARY.md) | open |  | 2026-10-17T00:44:20.640Z |  |
 
 ````json
 [
@@ -289,6 +293,54 @@ last_updated: 2026-09-20T05:24:02.774Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-20T05:24:02.774Z",
+    "resolved_at": null
+  },
+  {
+    "id": 22,
+    "kind": "deviation",
+    "phase": "261016-d9t",
+    "file": "packages/database/src/results-persistence.ts",
+    "line": null,
+    "description": "Plan said NormalizedResult from @bet-stats/domain; domain does not export it - imported from @bet-stats/football-data (matches provider-fixture-resolver.ts)",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-16T08:23:16.713Z",
+    "resolved_at": null
+  },
+  {
+    "id": 23,
+    "kind": "deviation",
+    "phase": "261016-d9t",
+    "file": "apps/api/src/app.module.ts",
+    "line": null,
+    "description": "ResultsSyncService registered in app.module.ts; plan-named fixtures.module.ts does not exist in repo",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-16T08:23:17.457Z",
+    "resolved_at": null
+  },
+  {
+    "id": 24,
+    "kind": "deviation",
+    "phase": "261016-d9t",
+    "file": "tests/integration/replay.test.ts",
+    "line": null,
+    "description": "Plan verify suite replay.test.ts fails 6 tests from pre-existing fixed-clock time-bomb (policy clock 2026-09-30 vs DB now -> ReplayPreview_consumed_after_created); identical at HEAD baseline, protected file",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-16T08:23:18.281Z",
+    "resolved_at": null
+  },
+  {
+    "id": 25,
+    "kind": "deviation",
+    "phase": "261016-ooi",
+    "file": "tests/unit/fixtures-sync.test.ts",
+    "line": null,
+    "description": "vi.mock raw @bet-stats/* keys from plan fact 11 never intercepted the service; mock keys retargeted to package dist entry points (harness-only, documented in 261016-ooi-SUMMARY.md)",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-17T00:44:20.640Z",
     "resolved_at": null
   }
 ]

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "gsd-ui-phase": {
+      "source": "open-gsd/gsd-core",
+      "sourceType": "github",
+      "skillPath": "skills/gsd-ui-phase/SKILL.md",
+      "computedHash": "91e058ae482cea948f27a0053506080b1bb3063f1efd08e905df8a8cc3eabd4c"
+    }
+  }
+}

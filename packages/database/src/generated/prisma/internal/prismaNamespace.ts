@@ -431,6 +431,7 @@ export const ModelName = {
   RetentionConsent: 'RetentionConsent',
   RetainedOddsHistory: 'RetainedOddsHistory',
   RetainedViewHistory: 'RetainedViewHistory',
+  RetentionPurgeAudit: 'RetentionPurgeAudit',
   ManualOddsSelection: 'ManualOddsSelection',
   ValueReceipt: 'ValueReceipt',
   ResultVersion: 'ResultVersion',
@@ -462,7 +463,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "enrichmentDecisionReceipt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "retentionSubject" | "retentionConsent" | "retainedOddsHistory" | "retainedViewHistory" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "enrichmentDecisionReceipt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "retentionSubject" | "retentionConsent" | "retainedOddsHistory" | "retainedViewHistory" | "retentionPurgeAudit" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2982,6 +2983,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    RetentionPurgeAudit: {
+      payload: Prisma.$RetentionPurgeAuditPayload<ExtArgs>
+      fields: Prisma.RetentionPurgeAuditFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.RetentionPurgeAuditFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionPurgeAuditPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.RetentionPurgeAuditFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionPurgeAuditPayload>
+        }
+        findFirst: {
+          args: Prisma.RetentionPurgeAuditFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionPurgeAuditPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.RetentionPurgeAuditFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionPurgeAuditPayload>
+        }
+        findMany: {
+          args: Prisma.RetentionPurgeAuditFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionPurgeAuditPayload>[]
+        }
+        create: {
+          args: Prisma.RetentionPurgeAuditCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionPurgeAuditPayload>
+        }
+        createMany: {
+          args: Prisma.RetentionPurgeAuditCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.RetentionPurgeAuditCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionPurgeAuditPayload>[]
+        }
+        delete: {
+          args: Prisma.RetentionPurgeAuditDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionPurgeAuditPayload>
+        }
+        update: {
+          args: Prisma.RetentionPurgeAuditUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionPurgeAuditPayload>
+        }
+        deleteMany: {
+          args: Prisma.RetentionPurgeAuditDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.RetentionPurgeAuditUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.RetentionPurgeAuditUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionPurgeAuditPayload>[]
+        }
+        upsert: {
+          args: Prisma.RetentionPurgeAuditUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RetentionPurgeAuditPayload>
+        }
+        aggregate: {
+          args: Prisma.RetentionPurgeAuditAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateRetentionPurgeAudit>
+        }
+        groupBy: {
+          args: Prisma.RetentionPurgeAuditGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RetentionPurgeAuditGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.RetentionPurgeAuditCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RetentionPurgeAuditCountAggregateOutputType> | number
+        }
+      }
+    }
     ManualOddsSelection: {
       payload: Prisma.$ManualOddsSelectionPayload<ExtArgs>
       fields: Prisma.ManualOddsSelectionFieldRefs
@@ -4747,6 +4822,19 @@ export const RetainedViewHistoryScalarFieldEnum = {
 export type RetainedViewHistoryScalarFieldEnum = (typeof RetainedViewHistoryScalarFieldEnum)[keyof typeof RetainedViewHistoryScalarFieldEnum]
 
 
+export const RetentionPurgeAuditScalarFieldEnum = {
+  id: 'id',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt',
+  cutoff: 'cutoff',
+  oddsDeleted: 'oddsDeleted',
+  viewsDeleted: 'viewsDeleted',
+  createdAt: 'createdAt'
+} as const
+
+export type RetentionPurgeAuditScalarFieldEnum = (typeof RetentionPurgeAuditScalarFieldEnum)[keyof typeof RetentionPurgeAuditScalarFieldEnum]
+
+
 export const ManualOddsSelectionScalarFieldEnum = {
   id: 'id',
   oddsSnapshotId: 'oddsSnapshotId',
@@ -5223,6 +5311,20 @@ export type ListEnumRetentionSubjectProviderModeFieldRefInput<$PrismaModel> = Fi
 
 
 /**
+ * Reference to a field of type 'RetainedViewResourceType'
+ */
+export type EnumRetainedViewResourceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'RetainedViewResourceType'>
+    
+
+
+/**
+ * Reference to a field of type 'RetainedViewResourceType[]'
+ */
+export type ListEnumRetainedViewResourceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'RetainedViewResourceType[]'>
+    
+
+
+/**
  * Reference to a field of type 'Float'
  */
 export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
@@ -5504,6 +5606,7 @@ export type GlobalOmitConfig = {
   retentionConsent?: Prisma.RetentionConsentOmit
   retainedOddsHistory?: Prisma.RetainedOddsHistoryOmit
   retainedViewHistory?: Prisma.RetainedViewHistoryOmit
+  retentionPurgeAudit?: Prisma.RetentionPurgeAuditOmit
   manualOddsSelection?: Prisma.ManualOddsSelectionOmit
   valueReceipt?: Prisma.ValueReceiptOmit
   resultVersion?: Prisma.ResultVersionOmit

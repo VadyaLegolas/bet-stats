@@ -120,3 +120,10 @@ export const RetentionSubjectProviderMode = {
 } as const
 
 export type RetentionSubjectProviderMode = (typeof RetentionSubjectProviderMode)[keyof typeof RetentionSubjectProviderMode]
+
+
+export const RetainedViewResourceType = {
+  RESULT: 'RESULT'
+} as const
+
+export type RetainedViewResourceType = (typeof RetainedViewResourceType)[keyof typeof RetainedViewResourceType]

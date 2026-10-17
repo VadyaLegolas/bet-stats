@@ -85,6 +85,7 @@ export const ModelName = {
   RetentionConsent: 'RetentionConsent',
   RetainedOddsHistory: 'RetainedOddsHistory',
   RetainedViewHistory: 'RetainedViewHistory',
+  RetentionPurgeAudit: 'RetentionPurgeAudit',
   ManualOddsSelection: 'ManualOddsSelection',
   ValueReceipt: 'ValueReceipt',
   ResultVersion: 'ResultVersion',
@@ -659,6 +660,19 @@ export const RetainedViewHistoryScalarFieldEnum = {
 } as const
 
 export type RetainedViewHistoryScalarFieldEnum = (typeof RetainedViewHistoryScalarFieldEnum)[keyof typeof RetainedViewHistoryScalarFieldEnum]
+
+
+export const RetentionPurgeAuditScalarFieldEnum = {
+  id: 'id',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt',
+  cutoff: 'cutoff',
+  oddsDeleted: 'oddsDeleted',
+  viewsDeleted: 'viewsDeleted',
+  createdAt: 'createdAt'
+} as const
+
+export type RetentionPurgeAuditScalarFieldEnum = (typeof RetentionPurgeAuditScalarFieldEnum)[keyof typeof RetentionPurgeAuditScalarFieldEnum]
 
 
 export const ManualOddsSelectionScalarFieldEnum = {

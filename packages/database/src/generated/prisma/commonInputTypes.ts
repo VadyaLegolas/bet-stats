@@ -423,6 +423,23 @@ export type EnumRetentionSubjectProviderModeWithAggregatesFilter<$PrismaModel = 
   _max?: Prisma.NestedEnumRetentionSubjectProviderModeFilter<$PrismaModel>
 }
 
+export type EnumRetainedViewResourceTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.RetainedViewResourceType | Prisma.EnumRetainedViewResourceTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.RetainedViewResourceType[] | Prisma.ListEnumRetainedViewResourceTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.RetainedViewResourceType[] | Prisma.ListEnumRetainedViewResourceTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumRetainedViewResourceTypeFilter<$PrismaModel> | $Enums.RetainedViewResourceType
+}
+
+export type EnumRetainedViewResourceTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.RetainedViewResourceType | Prisma.EnumRetainedViewResourceTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.RetainedViewResourceType[] | Prisma.ListEnumRetainedViewResourceTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.RetainedViewResourceType[] | Prisma.ListEnumRetainedViewResourceTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumRetainedViewResourceTypeWithAggregatesFilter<$PrismaModel> | $Enums.RetainedViewResourceType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumRetainedViewResourceTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumRetainedViewResourceTypeFilter<$PrismaModel>
+}
+
 export type FloatFilter<$PrismaModel = never> = {
   equals?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   in?: number[] | Prisma.ListFloatFieldRefInput<$PrismaModel>
@@ -928,6 +945,23 @@ export type NestedEnumRetentionSubjectProviderModeWithAggregatesFilter<$PrismaMo
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumRetentionSubjectProviderModeFilter<$PrismaModel>
   _max?: Prisma.NestedEnumRetentionSubjectProviderModeFilter<$PrismaModel>
+}
+
+export type NestedEnumRetainedViewResourceTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.RetainedViewResourceType | Prisma.EnumRetainedViewResourceTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.RetainedViewResourceType[] | Prisma.ListEnumRetainedViewResourceTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.RetainedViewResourceType[] | Prisma.ListEnumRetainedViewResourceTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumRetainedViewResourceTypeFilter<$PrismaModel> | $Enums.RetainedViewResourceType
+}
+
+export type NestedEnumRetainedViewResourceTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.RetainedViewResourceType | Prisma.EnumRetainedViewResourceTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.RetainedViewResourceType[] | Prisma.ListEnumRetainedViewResourceTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.RetainedViewResourceType[] | Prisma.ListEnumRetainedViewResourceTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumRetainedViewResourceTypeWithAggregatesFilter<$PrismaModel> | $Enums.RetainedViewResourceType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumRetainedViewResourceTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumRetainedViewResourceTypeFilter<$PrismaModel>
 }
 
 export type NestedFloatWithAggregatesFilter<$PrismaModel = never> = {

@@ -191,6 +191,11 @@ export type RetainedOddsHistory = Prisma.RetainedOddsHistoryModel
  */
 export type RetainedViewHistory = Prisma.RetainedViewHistoryModel
 /**
+ * Model RetentionPurgeAudit
+ * Durable operational evidence for each idempotent expiry purge.
+ */
+export type RetentionPurgeAudit = Prisma.RetentionPurgeAuditModel
+/**
  * Model ManualOddsSelection
  * 
  */

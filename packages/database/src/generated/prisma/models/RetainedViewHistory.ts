@@ -28,7 +28,7 @@ export type RetainedViewHistoryMinAggregateOutputType = {
   id: string | null
   subjectId: string | null
   consentId: string | null
-  resourceType: string | null
+  resourceType: $Enums.RetainedViewResourceType | null
   resourceId: string | null
   viewedAt: Date | null
   expiresAt: Date | null
@@ -39,7 +39,7 @@ export type RetainedViewHistoryMaxAggregateOutputType = {
   id: string | null
   subjectId: string | null
   consentId: string | null
-  resourceType: string | null
+  resourceType: $Enums.RetainedViewResourceType | null
   resourceId: string | null
   viewedAt: Date | null
   expiresAt: Date | null
@@ -169,7 +169,7 @@ export type RetainedViewHistoryGroupByOutputType = {
   id: string
   subjectId: string
   consentId: string
-  resourceType: string
+  resourceType: $Enums.RetainedViewResourceType
   resourceId: string
   viewedAt: Date
   expiresAt: Date
@@ -201,7 +201,7 @@ export type RetainedViewHistoryWhereInput = {
   id?: Prisma.StringFilter<"RetainedViewHistory"> | string
   subjectId?: Prisma.StringFilter<"RetainedViewHistory"> | string
   consentId?: Prisma.StringFilter<"RetainedViewHistory"> | string
-  resourceType?: Prisma.StringFilter<"RetainedViewHistory"> | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeFilter<"RetainedViewHistory"> | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringFilter<"RetainedViewHistory"> | string
   viewedAt?: Prisma.DateTimeFilter<"RetainedViewHistory"> | Date | string
   expiresAt?: Prisma.DateTimeFilter<"RetainedViewHistory"> | Date | string
@@ -230,7 +230,7 @@ export type RetainedViewHistoryWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.RetainedViewHistoryWhereInput | Prisma.RetainedViewHistoryWhereInput[]
   subjectId?: Prisma.StringFilter<"RetainedViewHistory"> | string
   consentId?: Prisma.StringFilter<"RetainedViewHistory"> | string
-  resourceType?: Prisma.StringFilter<"RetainedViewHistory"> | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeFilter<"RetainedViewHistory"> | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringFilter<"RetainedViewHistory"> | string
   viewedAt?: Prisma.DateTimeFilter<"RetainedViewHistory"> | Date | string
   expiresAt?: Prisma.DateTimeFilter<"RetainedViewHistory"> | Date | string
@@ -260,7 +260,7 @@ export type RetainedViewHistoryScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"RetainedViewHistory"> | string
   subjectId?: Prisma.StringWithAggregatesFilter<"RetainedViewHistory"> | string
   consentId?: Prisma.StringWithAggregatesFilter<"RetainedViewHistory"> | string
-  resourceType?: Prisma.StringWithAggregatesFilter<"RetainedViewHistory"> | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeWithAggregatesFilter<"RetainedViewHistory"> | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringWithAggregatesFilter<"RetainedViewHistory"> | string
   viewedAt?: Prisma.DateTimeWithAggregatesFilter<"RetainedViewHistory"> | Date | string
   expiresAt?: Prisma.DateTimeWithAggregatesFilter<"RetainedViewHistory"> | Date | string
@@ -269,7 +269,7 @@ export type RetainedViewHistoryScalarWhereWithAggregatesInput = {
 
 export type RetainedViewHistoryCreateInput = {
   id: string
-  resourceType: string
+  resourceType: $Enums.RetainedViewResourceType
   resourceId: string
   viewedAt: Date | string
   expiresAt: Date | string
@@ -282,7 +282,7 @@ export type RetainedViewHistoryUncheckedCreateInput = {
   id: string
   subjectId: string
   consentId: string
-  resourceType: string
+  resourceType: $Enums.RetainedViewResourceType
   resourceId: string
   viewedAt: Date | string
   expiresAt: Date | string
@@ -291,7 +291,7 @@ export type RetainedViewHistoryUncheckedCreateInput = {
 
 export type RetainedViewHistoryUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  resourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeFieldUpdateOperationsInput | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringFieldUpdateOperationsInput | string
   viewedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -304,7 +304,7 @@ export type RetainedViewHistoryUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   subjectId?: Prisma.StringFieldUpdateOperationsInput | string
   consentId?: Prisma.StringFieldUpdateOperationsInput | string
-  resourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeFieldUpdateOperationsInput | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringFieldUpdateOperationsInput | string
   viewedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -315,7 +315,7 @@ export type RetainedViewHistoryCreateManyInput = {
   id: string
   subjectId: string
   consentId: string
-  resourceType: string
+  resourceType: $Enums.RetainedViewResourceType
   resourceId: string
   viewedAt: Date | string
   expiresAt: Date | string
@@ -324,7 +324,7 @@ export type RetainedViewHistoryCreateManyInput = {
 
 export type RetainedViewHistoryUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  resourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeFieldUpdateOperationsInput | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringFieldUpdateOperationsInput | string
   viewedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -335,7 +335,7 @@ export type RetainedViewHistoryUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   subjectId?: Prisma.StringFieldUpdateOperationsInput | string
   consentId?: Prisma.StringFieldUpdateOperationsInput | string
-  resourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeFieldUpdateOperationsInput | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringFieldUpdateOperationsInput | string
   viewedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -469,9 +469,13 @@ export type RetainedViewHistoryUncheckedUpdateManyWithoutConsentNestedInput = {
   deleteMany?: Prisma.RetainedViewHistoryScalarWhereInput | Prisma.RetainedViewHistoryScalarWhereInput[]
 }
 
+export type EnumRetainedViewResourceTypeFieldUpdateOperationsInput = {
+  set?: $Enums.RetainedViewResourceType
+}
+
 export type RetainedViewHistoryCreateWithoutSubjectInput = {
   id: string
-  resourceType: string
+  resourceType: $Enums.RetainedViewResourceType
   resourceId: string
   viewedAt: Date | string
   expiresAt: Date | string
@@ -482,7 +486,7 @@ export type RetainedViewHistoryCreateWithoutSubjectInput = {
 export type RetainedViewHistoryUncheckedCreateWithoutSubjectInput = {
   id: string
   consentId: string
-  resourceType: string
+  resourceType: $Enums.RetainedViewResourceType
   resourceId: string
   viewedAt: Date | string
   expiresAt: Date | string
@@ -522,7 +526,7 @@ export type RetainedViewHistoryScalarWhereInput = {
   id?: Prisma.StringFilter<"RetainedViewHistory"> | string
   subjectId?: Prisma.StringFilter<"RetainedViewHistory"> | string
   consentId?: Prisma.StringFilter<"RetainedViewHistory"> | string
-  resourceType?: Prisma.StringFilter<"RetainedViewHistory"> | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeFilter<"RetainedViewHistory"> | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringFilter<"RetainedViewHistory"> | string
   viewedAt?: Prisma.DateTimeFilter<"RetainedViewHistory"> | Date | string
   expiresAt?: Prisma.DateTimeFilter<"RetainedViewHistory"> | Date | string
@@ -531,7 +535,7 @@ export type RetainedViewHistoryScalarWhereInput = {
 
 export type RetainedViewHistoryCreateWithoutConsentInput = {
   id: string
-  resourceType: string
+  resourceType: $Enums.RetainedViewResourceType
   resourceId: string
   viewedAt: Date | string
   expiresAt: Date | string
@@ -542,7 +546,7 @@ export type RetainedViewHistoryCreateWithoutConsentInput = {
 export type RetainedViewHistoryUncheckedCreateWithoutConsentInput = {
   id: string
   subjectId: string
-  resourceType: string
+  resourceType: $Enums.RetainedViewResourceType
   resourceId: string
   viewedAt: Date | string
   expiresAt: Date | string
@@ -578,7 +582,7 @@ export type RetainedViewHistoryUpdateManyWithWhereWithoutConsentInput = {
 export type RetainedViewHistoryCreateManySubjectInput = {
   id: string
   consentId: string
-  resourceType: string
+  resourceType: $Enums.RetainedViewResourceType
   resourceId: string
   viewedAt: Date | string
   expiresAt: Date | string
@@ -587,7 +591,7 @@ export type RetainedViewHistoryCreateManySubjectInput = {
 
 export type RetainedViewHistoryUpdateWithoutSubjectInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  resourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeFieldUpdateOperationsInput | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringFieldUpdateOperationsInput | string
   viewedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -598,7 +602,7 @@ export type RetainedViewHistoryUpdateWithoutSubjectInput = {
 export type RetainedViewHistoryUncheckedUpdateWithoutSubjectInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   consentId?: Prisma.StringFieldUpdateOperationsInput | string
-  resourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeFieldUpdateOperationsInput | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringFieldUpdateOperationsInput | string
   viewedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -608,7 +612,7 @@ export type RetainedViewHistoryUncheckedUpdateWithoutSubjectInput = {
 export type RetainedViewHistoryUncheckedUpdateManyWithoutSubjectInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   consentId?: Prisma.StringFieldUpdateOperationsInput | string
-  resourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeFieldUpdateOperationsInput | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringFieldUpdateOperationsInput | string
   viewedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -618,7 +622,7 @@ export type RetainedViewHistoryUncheckedUpdateManyWithoutSubjectInput = {
 export type RetainedViewHistoryCreateManyConsentInput = {
   id: string
   subjectId: string
-  resourceType: string
+  resourceType: $Enums.RetainedViewResourceType
   resourceId: string
   viewedAt: Date | string
   expiresAt: Date | string
@@ -627,7 +631,7 @@ export type RetainedViewHistoryCreateManyConsentInput = {
 
 export type RetainedViewHistoryUpdateWithoutConsentInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  resourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeFieldUpdateOperationsInput | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringFieldUpdateOperationsInput | string
   viewedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -638,7 +642,7 @@ export type RetainedViewHistoryUpdateWithoutConsentInput = {
 export type RetainedViewHistoryUncheckedUpdateWithoutConsentInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   subjectId?: Prisma.StringFieldUpdateOperationsInput | string
-  resourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeFieldUpdateOperationsInput | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringFieldUpdateOperationsInput | string
   viewedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -648,7 +652,7 @@ export type RetainedViewHistoryUncheckedUpdateWithoutConsentInput = {
 export type RetainedViewHistoryUncheckedUpdateManyWithoutConsentInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   subjectId?: Prisma.StringFieldUpdateOperationsInput | string
-  resourceType?: Prisma.StringFieldUpdateOperationsInput | string
+  resourceType?: Prisma.EnumRetainedViewResourceTypeFieldUpdateOperationsInput | $Enums.RetainedViewResourceType
   resourceId?: Prisma.StringFieldUpdateOperationsInput | string
   viewedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -731,7 +735,7 @@ export type $RetainedViewHistoryPayload<ExtArgs extends runtime.Types.Extensions
     id: string
     subjectId: string
     consentId: string
-    resourceType: string
+    resourceType: $Enums.RetainedViewResourceType
     resourceId: string
     viewedAt: Date
     expiresAt: Date
@@ -1164,7 +1168,7 @@ export interface RetainedViewHistoryFieldRefs {
   readonly id: Prisma.FieldRef<"RetainedViewHistory", 'String'>
   readonly subjectId: Prisma.FieldRef<"RetainedViewHistory", 'String'>
   readonly consentId: Prisma.FieldRef<"RetainedViewHistory", 'String'>
-  readonly resourceType: Prisma.FieldRef<"RetainedViewHistory", 'String'>
+  readonly resourceType: Prisma.FieldRef<"RetainedViewHistory", 'RetainedViewResourceType'>
   readonly resourceId: Prisma.FieldRef<"RetainedViewHistory", 'String'>
   readonly viewedAt: Prisma.FieldRef<"RetainedViewHistory", 'DateTime'>
   readonly expiresAt: Prisma.FieldRef<"RetainedViewHistory", 'DateTime'>

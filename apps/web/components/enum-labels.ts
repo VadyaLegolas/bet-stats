@@ -18,6 +18,11 @@ const ROUTE_OUTCOME_LABELS: Record<string, string> = { ADMITTED: "Допущен
 const ROUTE_TRIGGER_LABELS: Record<string, string> = { PRIMARY: "Первичный источник", UNSUPPORTED_COVERAGE: "Регион не поддерживается", ALLOWANCE_EXHAUSTED: "Бюджет запросов исчерпан", CIRCUIT_OPEN: "Сработал предохранитель", TRANSPORT_FAILURE: "Сбой транспорта", RATE_LIMITED: "Превышен лимит частоты", PROVIDER_UNAVAILABLE: "Провайдер недоступен", ROUTE_PENDING: "Маршрут ожидается", NO_PRODUCTION_FALLBACK: "Продакшен-резерв недоступен", UNSUPPORTED_CAPABILITY: "Возможность не поддерживается", STALE_CAPABILITY: "Устаревшая возможность", EXPIRED_CAPABILITY: "Возможность истекла", CRITICAL_HEADROOM: "Критический запас бюджета", UNKNOWN_CAPABILITY: "Неизвестная возможность", CAPABILITY_MISMATCH: "Несовпадение возможности" };
 const REASON_LABELS: Record<string, string> = { PROVIDER_OBSERVATION_RECORDED: "получено наблюдение провайдера", PROVENANCE_NOT_AVAILABLE: "провенанс источника недоступен", FRESHNESS_THRESHOLD_EXCEEDED: "превышен порог свежести", SOURCE_UPDATE_TIME_MISSING: "нет времени обновления источника", INVALID_SOURCE_UPDATE_TIME: "недопустимое время обновления источника", UNKNOWN_DATA_STATE: "состояние данных неизвестно" };
 const EVIDENCE_LIMITATION_LABELS: Record<string, string> = { NO_ELIGIBLE_HISTORY: "нет пригодной истории", LIMITED_HISTORY: "история ограничена", MISSING_TIMESTAMP: "нет отметки времени", EMPTY: "нет данных" };
+const VALUE_REASON_LABELS: Record<string, string> = { POLICY_CONFIG_MISMATCH: "версия конфигурации или схемы не соответствует политике value", UNRESOLVED_CANONICAL_IDENTITY: "каноническая идентичность команд не подтверждена", FIXTURE_MISMATCH: "снимки относятся к разным матчам", MARKET_SELECTION_MISMATCH: "рынок или выбор не совпадают", CONFIDENCE_BELOW_THRESHOLD: "уверенность ниже порога", EDGE_BELOW_THRESHOLD: "преимущество ниже порога", EV_BELOW_THRESHOLD: "ожидаемое value ниже порога" };
+const VALUE_SIDE_LABELS: Record<string, string> = { HOME: "хозяев", AWAY: "гостей" };
+const CONFIDENCE_COMPONENT_LABELS: Record<string, string> = { completeness: "Полнота данных", lineupAvailability: "Доступность составов", freshness: "Свежесть данных", sourceReliability: "Надёжность источника", modelStability: "Стабильность модели" };
+const FORECAST_LIMITATION_FIXED: Record<string, string> = { UNRESOLVED_CANONICAL_IDENTITY: "каноническая идентичность команд не подтверждена" };
+const FORECAST_LIMITATION_KINDS: Record<string, string> = { GOAL_RATES: "голевые показатели", ELO: "рейтинг Эло", FORM_5: "форма за 5 матчей", HOME_STRENGTH: "сила дома", AWAY_STRENGTH: "сила в гостях", REST_DAYS: "дни отдыха", BUILD_ID: "идентификатор сборки доказательств" };
 const FINANCIAL_OUTCOME_LABELS: Record<string, string> = { WIN: "выигрыш", LOSS: "проигрыш", VOID: "возврат ставки", PENDING: "ожидает итога" };
 const RECONCILIATION_METHOD_LABELS: Record<string, string> = { EXACT_EXTERNAL_REF: "точное совпадение внешней ссылки", UNIQUE_CONSERVATIVE_MATCH: "уникальное консервативное совпадение", MANUAL_REVIEW: "ручная проверка", OPERATOR_CONFIRMED: "подтверждено оператором" };
 const SERVICE_STATE_LABELS: Record<string, string> = { UP: "доступно", DOWN: "недоступно", DEGRADED: "деградация" };
@@ -54,3 +59,35 @@ export function serviceStateLabel(state: string): string { return SERVICE_STATE_
 export function impactLabel(impact: string): string { return IMPACT_LABELS[impact] ?? impact; }
 /** Unknown incident status → the raw code. */
 export function incidentStatusLabel(status: string): string { return INCIDENT_STATUS_LABELS[status] ?? status; }
+/** Unknown value reason → the lowercase-underscore transform (camelCase reasons are split into words first). */
+export function valueReasonLabel(reason: string): string {
+  const fixed = VALUE_REASON_LABELS[reason];
+  if (fixed) return fixed;
+  const cutoff = /^(.+)_CUTOFF_MISMATCH$/.exec(reason);
+  const side = cutoff ? VALUE_SIDE_LABELS[cutoff[1]!] : undefined;
+  if (cutoff && side) return `отсечка доказательств ${side} не совпала`;
+  return reason.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replaceAll("_", " ").toLowerCase();
+}
+/** Unknown confidence component → the previous lowercase-words transform. */
+export function confidenceComponentLabel(name: string): string { return CONFIDENCE_COMPONENT_LABELS[name] ?? name.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase(); }
+/**
+ * Forecast limitation reason: parse the structured `MISSING_/WEAK_ + side + kind`,
+ * `side_CUTOFF_MISMATCH` and `side_EVIDENCE_state` codes from the forecast model;
+ * unknown reasons → the lowercase-underscore transform.
+ */
+export function forecastLimitationLabel(reason: string): string {
+  const fixed = FORECAST_LIMITATION_FIXED[reason];
+  if (fixed) return fixed;
+  const weakMissing = /^(MISSING|WEAK)_(HOME|AWAY)_(.+)$/.exec(reason);
+  if (weakMissing) {
+    const kind = FORECAST_LIMITATION_KINDS[weakMissing[3]!];
+    const side = VALUE_SIDE_LABELS[weakMissing[2]!];
+    if (kind && side) return `${weakMissing[1] === "MISSING" ? "нет данных" : "мало данных"}: ${kind} ${side}`;
+  }
+  const sideFirst = /^(HOME|AWAY)_(CUTOFF_MISMATCH|EVIDENCE_(.+))$/.exec(reason);
+  if (sideFirst) {
+    const side = VALUE_SIDE_LABELS[sideFirst[1]!];
+    if (side) return sideFirst[2] === "CUTOFF_MISMATCH" ? `отсечка доказательств ${side} не совпала` : `доказательства ${side} неполные (${sideFirst[3]!.toLowerCase()})`;
+  }
+  return reason.replaceAll("_", " ").toLowerCase();
+}

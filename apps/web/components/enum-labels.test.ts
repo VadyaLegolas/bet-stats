@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  confidenceComponentLabel,
   evidenceLimitationLabel,
   financialOutcomeLabel,
   forecastKindLabel,
+  forecastLimitationLabel,
   impactLabel,
   incidentStatusLabel,
   MARKET_LABELS,
@@ -16,6 +18,7 @@ import {
   routeTriggerLabel,
   SELECTION_LABELS,
   serviceStateLabel,
+  valueReasonLabel,
 } from "./enum-labels";
 
 describe("forecastKindLabel", () => {
@@ -147,6 +150,58 @@ describe("reconciliationMethodLabel", () => {
   });
   it("passes an unknown method through unchanged", () => {
     expect(reconciliationMethodLabel("MYSTERY_METHOD")).toBe("MYSTERY_METHOD");
+  });
+});
+
+describe("valueReasonLabel", () => {
+  it("maps every value decision reason to Russian", () => {
+    expect(valueReasonLabel("POLICY_CONFIG_MISMATCH")).toBe("версия конфигурации или схемы не соответствует политике value");
+    expect(valueReasonLabel("UNRESOLVED_CANONICAL_IDENTITY")).toBe("каноническая идентичность команд не подтверждена");
+    expect(valueReasonLabel("FIXTURE_MISMATCH")).toBe("снимки относятся к разным матчам");
+    expect(valueReasonLabel("MARKET_SELECTION_MISMATCH")).toBe("рынок или выбор не совпадают");
+    expect(valueReasonLabel("CONFIDENCE_BELOW_THRESHOLD")).toBe("уверенность ниже порога");
+    expect(valueReasonLabel("EDGE_BELOW_THRESHOLD")).toBe("преимущество ниже порога");
+    expect(valueReasonLabel("EV_BELOW_THRESHOLD")).toBe("ожидаемое value ниже порога");
+  });
+  it("translates side-prefixed cutoff mismatch codes", () => {
+    expect(valueReasonLabel("HOME_CUTOFF_MISMATCH")).toBe("отсечка доказательств хозяев не совпала");
+    expect(valueReasonLabel("AWAY_CUTOFF_MISMATCH")).toBe("отсечка доказательств гостей не совпала");
+  });
+  it("falls back to the lowercase-words transform for unknown reasons", () => {
+    expect(valueReasonLabel("SOME_NEW_GATE_FAILED")).toBe("some new gate failed");
+  });
+});
+
+describe("confidenceComponentLabel", () => {
+  it("maps every confidence component to Russian", () => {
+    expect(confidenceComponentLabel("completeness")).toBe("Полнота данных");
+    expect(confidenceComponentLabel("lineupAvailability")).toBe("Доступность составов");
+    expect(confidenceComponentLabel("freshness")).toBe("Свежесть данных");
+    expect(confidenceComponentLabel("sourceReliability")).toBe("Надёжность источника");
+    expect(confidenceComponentLabel("modelStability")).toBe("Стабильность модели");
+  });
+  it("falls back to the lowercase-words transform for unknown components", () => {
+    expect(confidenceComponentLabel("someNewFactor")).toBe("some new factor");
+  });
+});
+
+describe("forecastLimitationLabel", () => {
+  it("maps structured missing and weak component codes to Russian", () => {
+    expect(forecastLimitationLabel("MISSING_HOME_GOAL_RATES")).toBe("нет данных: голевые показатели хозяев");
+    expect(forecastLimitationLabel("MISSING_AWAY_GOAL_RATES")).toBe("нет данных: голевые показатели гостей");
+    expect(forecastLimitationLabel("WEAK_HOME_ELO")).toBe("мало данных: рейтинг Эло хозяев");
+    expect(forecastLimitationLabel("WEAK_AWAY_FORM_5")).toBe("мало данных: форма за 5 матчей гостей");
+    expect(forecastLimitationLabel("MISSING_HOME_HOME_STRENGTH")).toBe("нет данных: сила дома хозяев");
+    expect(forecastLimitationLabel("MISSING_AWAY_REST_DAYS")).toBe("нет данных: дни отдыха гостей");
+    expect(forecastLimitationLabel("MISSING_HOME_BUILD_ID")).toBe("нет данных: идентификатор сборки доказательств хозяев");
+  });
+  it("maps cutoff and evidence state codes to Russian", () => {
+    expect(forecastLimitationLabel("HOME_CUTOFF_MISMATCH")).toBe("отсечка доказательств хозяев не совпала");
+    expect(forecastLimitationLabel("AWAY_EVIDENCE_LIMITED")).toBe("доказательства гостей неполные (limited)");
+  });
+  it("maps the fixed canonical reason and falls back for unknown codes", () => {
+    expect(forecastLimitationLabel("UNRESOLVED_CANONICAL_IDENTITY")).toBe("каноническая идентичность команд не подтверждена");
+    expect(forecastLimitationLabel("SOME_NEW_LIMITATION")).toBe("some new limitation");
   });
 });
 

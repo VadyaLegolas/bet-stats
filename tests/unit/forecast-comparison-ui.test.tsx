@@ -2,7 +2,7 @@ import { createElement } from "../../apps/web/node_modules/react/index.js";
 import { renderToStaticMarkup } from "../../apps/web/node_modules/react-dom/server.js";
 import { describe, expect, it } from "vitest";
 
-import { availabilityReasonCopy, ForecastComparisonPanel, ForecastWorkbench, initializeComparisonPair, swapComparisonPair } from "../../apps/web/app/fixtures/[fixtureId]/forecast-workbench.js";
+import { availabilityReasonCopy, ForecastComparisonPanel, ForecastWorkbench, initializeComparisonPair, swapComparisonPair, ValueOutcomeSection, type ValueResult } from "../../apps/web/app/fixtures/[fixtureId]/forecast-workbench.js";
 import { compareForecastPair } from "../../packages/domain/src/forecast/comparison.js";
 import { snapshot } from "./forecast-comparison.test.js";
 
@@ -44,5 +44,29 @@ describe("forecast revision comparison UI", () => {
     expect(markup).toContain("Вероятности — это оценки, а не гарантии. Вы можете потерять деньги при ставках.");
     expect(markup).not.toContain("PRE_MATCH");
     expect(markup).not.toContain("LINEUP_CONFIRMED");
+  });
+
+  it("renders the value verdict in Russian with translated reasons and snapshot labels", () => {
+    const result: ValueResult = {
+      id: "receipt-1", fixtureId: "fixture-1", forecastSnapshotId: "forecast-1", oddsSnapshotId: "odds-1",
+      market: "ONE_X_TWO", selection: "HOME", outcome: "NO_VALUE",
+      reasons: ["CONFIDENCE_BELOW_THRESHOLD", "EDGE_BELOW_THRESHOLD", "EV_BELOW_THRESHOLD"],
+      modelProbability: "0.381", noVigProbability: "0.55", fairOdds: "2.62", edge: "-0.169", expectedValue: "-0.352",
+      receipt: { modelVersion: "model-v1", cutoff: "2026-10-17T16:00:00.000Z", sources: [], evidenceBuildIds: [], assumptions: [], formulas: [], thresholds: {}, gates: [] },
+      createdAt: "2026-10-17T16:00:01.000Z",
+    };
+    const markup = renderToStaticMarkup(createElement(ValueOutcomeSection, { result, canonicalReceipt: "{}", copyMessage: "", copyReceipt: () => {} }));
+    expect(markup).toContain("<h3 id=\"outcome-heading\">Нет value-сигнала</h3>");
+    expect(markup).toContain("ни один из настроенных порогов value-сигнала не пройден");
+    expect(markup).toContain("Снимок прогноза");
+    expect(markup).toContain("Снимок коэффициентов");
+    expect(markup).toContain("<li>уверенность ниже порога</li>");
+    expect(markup).toContain("<li>преимущество ниже порога</li>");
+    expect(markup).toContain("<li>ожидаемое value ниже порога</li>");
+    expect(markup).toContain("<dt>Вероятность без перекрытия</dt>");
+    expect(markup).toContain("<dt>Преимущество</dt>");
+    expect(markup).toContain("<dt>Ожидаемое value</dt>");
+    expect(markup).toContain("38.1%");
+    expect(markup).toContain("role=\"status\"");
   });
 });

@@ -32,7 +32,7 @@ Milestone: v1.0 — ARCHIVED
 All Phases: Complete (6/6)
 All Plans: Complete (88/88)
 Status: Quick task 261017-r3d - /faq Russian usage guide (8 steps, 5 real captured screenshots, FAQ block, responsible-gambling disclosure) linked from the release navigation and home CONTENTS; screenshots produced by the reusable scripts/capture-faq-screenshots.mjs (fill-only odds form, fixed fixture e1ef6104, all 5 PNGs >=10 KB)
-Last activity: 2026-10-17 - Completed quick task 261017-r3d: capture script + /faq page + nav/home entries; gates green (capture exit 0; pnpm test 298/298 unit + 13/13 web; web typecheck exit 0; web build exit 0 with /faq prerendered static); commit 6ff6756
+Last activity: 2026-10-17 - Completed fast-261017e: header wrap made deterministic on 768-1099px desktops (quota flush left, nav flush right, two tidy rows; >=1100px single row unchanged); commit de796d4, 298/298 unit + 13/13 web tests, Playwright-verified at 1017/900/768/1280px
 Last Activity Description: Gates green - capture exit 0 with home 100789 B / fixtures 112345 B / workbench 348367 B / odds 29935 B / scorecards 84830 B (1600x1000, 1600x1000, 1600x4123, 928x558, 1600x1000), tests 298/298 + 13/13, typecheck and build exit 0; one atomic 9-file commit, .gsd sentinel and .planning/** unstaged, apps/web/next-env.d.ts restored to HEAD after the build gate
 
 Progress: [██████████] 100%
@@ -274,6 +274,7 @@ None yet.
 | fast-261017b | Add double-click launcher for the local stack without a terminal: app-lifecycle.ps1 runs docker/migrations/build and a detached dev daemon (log %TEMP%\bet-stats-stack.log), start/stop .bat wrappers, desktop shortcuts | 2026-10-17 | 2442516 | inline (gsd-fast) |
 | fast-261017c | Issue INITIAL forecasts as soon as a fixture enters the 14-day sweep horizon so every listed upcoming match has probabilities; empty workbench state explains INITIAL/PRE_MATCH timing | 2026-10-17 | 365d5aa | inline (gsd-fast) |
 | fast-261017d | Show team names instead of raw fixture ids in the evidence trace table: API attaches fixtureLabels from receipt inputs and component source refs, web renders label with id fallback | 2026-10-17 | d3b4583 | inline (gsd-fast) |
+| fast-261017e | Deterministic two-row header on mid-width desktops (768-1099px): tools row spans full width with quota flush left and nav flush right instead of an accidental three-row wrap | 2026-10-17 | de796d4 | inline (gsd-fast) |
 | 261017-pyp | Manual results publication button: «Загрузить результаты» on the fixtures page via internal-api operator proxy (POST /internal/fixtures/results-sync); the uncommitted auto-scheduler was reverted — results loading stays manual-only | 2026-10-17 | 4f315cb | [261017-pyp-add-a-manual-load-results-button-to-the-](./quick/261017-pyp-add-a-manual-load-results-button-to-the-/) |
 | 261017-r3d | Russian FAQ guide page (/faq): 8-step usage guide with 5 real screenshots of the live stack, reusable capture script, FAQ nav + home entries, one atomic commit | 2026-10-17 | 6ff6756 | [261017-r3d-create-a-russian-language-faq-guide-page](./quick/261017-r3d-create-a-russian-language-faq-guide-page/) |
 

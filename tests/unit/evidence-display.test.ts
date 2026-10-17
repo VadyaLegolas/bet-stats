@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { parseEvidenceProjection } from "../../packages/domain/src/index.js";
+import { parseEvidenceProjection, type EvidenceProjection } from "../../packages/domain/src/index.js";
 
 import {
   attachEvidenceDisplay,
+  collectEvidenceFixtureIds,
   composeFixtureDisplay,
   loadEvidenceDisplay,
+  loadEvidenceFixtureLabels,
   resolveTeamEvidence,
 } from "../../apps/api/src/modules/evidence/evidence.service.js";
 
@@ -20,8 +22,8 @@ describe("attachEvidenceDisplay", () => {
     const base = await baseProjection();
     const baseKeys = Object.keys(base).sort();
     const result = await attachEvidenceDisplay(base, null, null);
-    expect(result).toEqual({ ...base, team: null, fixture: null });
-    expect(Object.keys(result).sort()).toEqual([...baseKeys, "fixture", "team"].sort());
+    expect(result).toEqual({ ...base, team: null, fixture: null, fixtureLabels: {} });
+    expect(Object.keys(result).sort()).toEqual([...baseKeys, "fixture", "fixtureLabels", "team"].sort());
     expect(Object.keys(base).sort()).toEqual(baseKeys);
     expect(Object.hasOwn(base, "team")).toBe(false);
     expect(Object.hasOwn(base, "fixture")).toBe(false);
@@ -38,10 +40,11 @@ describe("attachEvidenceDisplay", () => {
     expect(result.state).toEqual(base.state);
     expect(result.resolvedAsOfUtc).toEqual(base.resolvedAsOfUtc);
     expect(result.components).toEqual(base.components);
-    const { team: resultTeam, fixture: resultFixture, ...projectionPart } = result;
+    const { team: resultTeam, fixture: resultFixture, fixtureLabels, ...projectionPart } = result;
     expect(projectionPart).toEqual(base);
     expect(resultTeam).toBe(team);
     expect(resultFixture).toBe(fixture);
+    expect(fixtureLabels).toEqual({});
   });
 });
 
@@ -115,5 +118,46 @@ describe("composeFixtureDisplay", () => {
       awayTeam: { name: "Манчестер Сити" },
     });
     expect(composed).toEqual({ id: "fix-9", name: "Ливерпуль против Манчестер Сити", kickoff: "2026-10-17T19:45:00.000Z" });
+  });
+});
+
+describe("evidence fixture labels", () => {
+  const ref = (fixtureId: string) => ({ fixtureId, effectiveAt: AS_OF, observedAt: AS_OF, sourceUpdatedAt: null, payloadHash: `h-${fixtureId}`, payloadBytes: 8 });
+  const projection = (inputs: readonly string[], refs: readonly string[]) => ({
+    receipt: { inputs: inputs.map(ref) },
+    components: { form5: { sourceRefs: refs.map(ref) } },
+  }) as unknown as EvidenceProjection;
+
+  it("collects distinct fixture ids from receipt inputs and component source refs", () => {
+    expect(collectEvidenceFixtureIds(projection(["fix-a", "fix-b"], ["fix-b", "fix-c"]))).toEqual(["fix-a", "fix-b", "fix-c"]);
+  });
+
+  it("returns no ids for an empty projection", () => {
+    expect(collectEvidenceFixtureIds(projection([], []))).toEqual([]);
+  });
+
+  it("maps fixture ids to composed team labels through the lookup", async () => {
+    const rows = [
+      { id: "fix-a", kickoffUtc: new Date("2026-08-22T16:30:00.000Z"), homeTeam: { name: "Bologna" }, awayTeam: { name: "Inter" } },
+      { id: "fix-b", kickoffUtc: new Date("2026-08-30T18:45:00.000Z"), homeTeam: { name: "Roma" }, awayTeam: { name: "Napoli" } },
+    ];
+    const findFixtures = vi.fn().mockResolvedValue(rows);
+    const labels = await loadEvidenceFixtureLabels({ findTeam: vi.fn(), findFixture: vi.fn(), findFixtures }, projection(["fix-a", "fix-b", "fix-c"], ["fix-b"]));
+    expect(findFixtures).toHaveBeenCalledWith(["fix-a", "fix-b", "fix-c"]);
+    expect(labels).toEqual({ "fix-a": "Bologna против Inter", "fix-b": "Roma против Napoli" });
+  });
+
+  it("degrades to an empty map for null lookups, empty projections and failures", async () => {
+    await expect(loadEvidenceFixtureLabels(null, projection(["fix-a"], []))).resolves.toEqual({});
+    const findFixtures = vi.fn();
+    await expect(loadEvidenceFixtureLabels({ findTeam: vi.fn(), findFixture: vi.fn(), findFixtures }, projection([], []))).resolves.toEqual({});
+    expect(findFixtures).not.toHaveBeenCalled();
+    const rejecting = vi.fn().mockRejectedValue(new Error("db down"));
+    await expect(loadEvidenceFixtureLabels({ findTeam: vi.fn(), findFixture: vi.fn(), findFixtures: rejecting }, projection(["fix-a"], []))).resolves.toEqual({});
+  });
+
+  it("attaches an explicit labels map through attachEvidenceDisplay", async () => {
+    const attached = await attachEvidenceDisplay(await baseProjection(), null, null, { "fix-a": "Bologna против Inter" });
+    expect(attached.fixtureLabels).toEqual({ "fix-a": "Bologna против Inter" });
   });
 });

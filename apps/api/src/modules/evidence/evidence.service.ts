@@ -136,15 +136,18 @@ export interface EvidenceDisplay {
   fixture: EvidenceDisplayFixture | null;
 }
 
-export type EvidenceResponse = EvidenceProjection & { team: EvidenceDisplayTeam | null; fixture: EvidenceDisplayFixture | null };
+export type EvidenceFixtureLabels = Readonly<Record<string, string>>;
+
+export type EvidenceResponse = EvidenceProjection & { team: EvidenceDisplayTeam | null; fixture: EvidenceDisplayFixture | null; fixtureLabels: EvidenceFixtureLabels };
 
 export interface EvidenceDisplayLookup {
   findTeam(teamId: string): Promise<EvidenceDisplayTeam | null>;
   findFixture(fixtureId: string): Promise<EvidenceDisplayFixtureRow | null>;
+  findFixtures?(fixtureIds: readonly string[]): Promise<readonly EvidenceDisplayFixtureRow[]>;
 }
 
-export function attachEvidenceDisplay(projection: EvidenceProjection, team: EvidenceDisplayTeam | null, fixture: EvidenceDisplayFixture | null): EvidenceResponse {
-  return { ...projection, team, fixture };
+export function attachEvidenceDisplay(projection: EvidenceProjection, team: EvidenceDisplayTeam | null, fixture: EvidenceDisplayFixture | null, fixtureLabels: EvidenceFixtureLabels = {}): EvidenceResponse {
+  return { ...projection, team, fixture, fixtureLabels };
 }
 
 export function composeFixtureDisplay(row: EvidenceDisplayFixtureRow): EvidenceDisplayFixture {
@@ -172,6 +175,27 @@ export async function loadEvidenceDisplay(lookup: EvidenceDisplayLookup | null, 
   return { team, fixture };
 }
 
+/** Distinct fixture ids referenced by the projection receipt inputs and component source refs. Pure. */
+export function collectEvidenceFixtureIds(projection: EvidenceProjection): readonly string[] {
+  const ids = new Set<string>();
+  for (const input of projection.receipt?.inputs ?? []) ids.add(input.fixtureId);
+  for (const component of Object.values(projection.components)) for (const source of component?.sourceRefs ?? []) ids.add(source.fixtureId);
+  return [...ids];
+}
+
+/** fixtureId -> composed team label for the fixture trace table; failures degrade to an unlabeled map. */
+export async function loadEvidenceFixtureLabels(lookup: EvidenceDisplayLookup | null, projection: EvidenceProjection): Promise<EvidenceFixtureLabels> {
+  if (!lookup?.findFixtures) return {};
+  const ids = collectEvidenceFixtureIds(projection);
+  if (ids.length === 0) return {};
+  try {
+    const rows = await lookup.findFixtures(ids);
+    return Object.fromEntries(rows.map((row) => [row.id, composeFixtureDisplay(row).name]));
+  } catch {
+    return {};
+  }
+}
+
 @Injectable()
 export class EvidenceService implements OnModuleDestroy {
   private readonly database: PrismaClient | null = process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null;
@@ -191,11 +215,17 @@ export class EvidenceService implements OnModuleDestroy {
         where: { id: fixtureId },
         select: { id: true, kickoffUtc: true, homeTeam: { select: { name: true } }, awayTeam: { select: { name: true } } },
       }),
+      findFixtures: (fixtureIds) => database.fixture.findMany({
+        where: { id: { in: [...fixtureIds] } },
+        select: { id: true, kickoffUtc: true, homeTeam: { select: { name: true } }, awayTeam: { select: { name: true } } },
+      }),
     };
   }
   async get(teamId: string, asOf?: string, fixtureId?: string): Promise<EvidenceResponse> {
     const projection = await resolveTeamEvidence({ teamId, asOf }, this.repository);
-    const display = await loadEvidenceDisplay(this.displayLookup(), teamId, fixtureId);
-    return attachEvidenceDisplay(projection, display.team, display.fixture);
+    const lookup = this.displayLookup();
+    const display = await loadEvidenceDisplay(lookup, teamId, fixtureId);
+    const fixtureLabels = await loadEvidenceFixtureLabels(lookup, projection);
+    return attachEvidenceDisplay(projection, display.team, display.fixture, fixtureLabels);
   }
 }

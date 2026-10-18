@@ -112,4 +112,20 @@ describe("manual odds API", () => {
     await controller.get("fixture-1", "odds-1");
     expect(calls).toEqual([["fixture-1", "odds-1"]]);
   });
+
+  it("lists a fixture's saved books and tolerates a repository without a list method", async () => {
+    const { listManualOddsSnapshots } = await import("../../apps/api/src/modules/odds/odds.service.js");
+    const books = [{ oddsSnapshotId: "odds-2" }, { oddsSnapshotId: "odds-1" }];
+    await expect(listManualOddsSnapshots("fixture-1", { list: async (fixtureId: string) => (fixtureId === "fixture-1" ? books : []) } as never)).resolves.toEqual(books);
+    await expect(listManualOddsSnapshots("fixture-2", { list: async (fixtureId: string) => (fixtureId === "fixture-1" ? books : []) } as never)).resolves.toEqual([]);
+    await expect(listManualOddsSnapshots("fixture-1", {} as never)).resolves.toEqual([]);
+  });
+
+  it("wraps the fixture's saved books into an items envelope on the list route", async () => {
+    const { OddsController } = await import("../../apps/api/src/modules/odds/odds.controller.js");
+    const calls: string[] = [];
+    const controller = new OddsController({ list: async (fixtureId: string) => { calls.push(fixtureId); return [{} as never]; } } as never);
+    await expect(controller.list("fixture-1")).resolves.toEqual({ items: [{}] });
+    expect(calls).toEqual(["fixture-1"]);
+  });
 });

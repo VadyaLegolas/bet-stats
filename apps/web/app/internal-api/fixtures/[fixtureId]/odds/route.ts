@@ -14,7 +14,8 @@ function responseFrom(upstream: Response): NextResponse {
 export async function GET(request: NextRequest, context: { params: Promise<{ fixtureId: string }> }) {
   const { fixtureId } = await context.params;
   const snapshotId = request.nextUrl.searchParams.get("oddsSnapshotId") ?? "";
-  const url = new URL(`/fixtures/${encodeURIComponent(fixtureId)}/odds/${encodeURIComponent(snapshotId)}`, process.env.API_ORIGIN ?? "http://127.0.0.1:3001");
+  const base = `/fixtures/${encodeURIComponent(fixtureId)}/odds`;
+  const url = new URL(snapshotId ? `${base}/${encodeURIComponent(snapshotId)}` : base, process.env.API_ORIGIN ?? "http://127.0.0.1:3001");
   return responseFrom(await fetch(url, { method: "GET", headers: { accept: "application/json", ...eligibilityHeaders() }, cache: "no-store" }));
 }
 

@@ -16,6 +16,7 @@ export interface ManualOddsRepository {
   findFixture(fixtureId: string): Promise<{ kickoffUtc: string } | null>;
   find?(id: string): Promise<{ fixtureId: string; market: string } | null>;
   get?(fixtureId: string, id: string): Promise<ManualOddsSnapshotDto | null>;
+  list?(fixtureId: string): Promise<ManualOddsSnapshotDto[]>;
   append(book: ManualOddsSnapshotDto & { inputHash: string }): Promise<ManualOddsSnapshotDto>;
 }
 
@@ -78,6 +79,13 @@ export async function getManualOddsSnapshot(fixtureId: string, id: string, repos
   return value;
 }
 
+/** Every saved book of one fixture, newest first — the workbench select re-lists them on
+ * each page load, so an immutable book stays reviewable after a reload. Read-only: no
+ * provider calls, no writes, scoped to the owning fixture. */
+export async function listManualOddsSnapshots(fixtureId: string, repository: Pick<ManualOddsRepository, "list">): Promise<ManualOddsSnapshotDto[]> {
+  return repository.list?.(fixtureId) ?? [];
+}
+
 export function createPrismaManualOddsRepository(client: PrismaClient): ManualOddsRepository & { get(fixtureId: string, id: string): Promise<ManualOddsSnapshotDto | null> } {
   return {
     findFixture: async (fixtureId) => {
@@ -88,6 +96,10 @@ export function createPrismaManualOddsRepository(client: PrismaClient): ManualOd
     get: async (fixtureId, id) => {
       const row = await client.manualOddsSnapshot.findFirst({ where: { id, fixtureId } });
       return row ? toDto(row) : null;
+    },
+    list: async (fixtureId) => {
+      const rows = await client.manualOddsSnapshot.findMany({ where: { fixtureId }, orderBy: { submittedAt: "desc" } });
+      return rows.map(toDto);
     },
     append: async (book) => client.$transaction(async (tx) => {
       const existing = await tx.manualOddsSnapshot.findUnique({ where: { id: book.oddsSnapshotId } });
@@ -120,5 +132,6 @@ export class OddsService implements OnModuleDestroy {
   private db() { if (!this.repository) throw Object.assign(new ServiceUnavailableException({ code: "DATABASE_UNAVAILABLE" }), { code: "DATABASE_UNAVAILABLE" }); return this.repository; }
   submit(input: unknown): Promise<ManualOddsSnapshotDto> { return submitManualOdds(input, this.db()); }
   async get(fixtureId: string, id: string): Promise<ManualOddsSnapshotDto> { return getManualOddsSnapshot(fixtureId, id, this.db()); }
+  list(fixtureId: string): Promise<ManualOddsSnapshotDto[]> { return listManualOddsSnapshots(fixtureId, this.db()); }
   async onModuleDestroy(): Promise<void> { await this.client?.$disconnect(); }
 }

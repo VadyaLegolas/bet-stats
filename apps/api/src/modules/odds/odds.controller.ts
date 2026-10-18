@@ -14,6 +14,12 @@ export class OddsController {
     return this.odds.submit({ ...body, fixtureId });
   }
 
+  @Get()
+  @Header("Cache-Control", "private, no-store, max-age=0")
+  list(@Param("fixtureId") fixtureId: string): Promise<{ items: ManualOddsSnapshotDto[] }> {
+    return this.odds.list(fixtureId).then((items) => ({ items }));
+  }
+
   @Get(":oddsSnapshotId")
   @Header("Cache-Control", "private, no-store, max-age=0")
   get(@Param("fixtureId") fixtureId: string, @Param("oddsSnapshotId") oddsSnapshotId: string): Promise<ManualOddsSnapshotDto> { return this.odds.get(fixtureId, oddsSnapshotId); }

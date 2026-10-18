@@ -9,9 +9,11 @@ import { statusLabel } from "../status-labels";
 
 type Fixture = { id: string; competition: { id: string; name: string; season: string }; teams: { home: { id: string; name: string }; away: { id: string; name: string } }; kickoff: string; status: string; dataState: FixtureDataState; providerState: ProviderState };
 const API_ORIGIN = process.env.API_ORIGIN ?? "http://127.0.0.1:3001";
-const eligibilityHeaders = { "x-eligibility-region": process.env.ELIGIBILITY_REGION ?? "", "x-age-acknowledged": process.env.ELIGIBILITY_AGE_ACKNOWLEDGED ?? "", "x-eligibility-checked-at": process.env.ELIGIBILITY_CHECKED_AT || new Date().toISOString() };
+/** Fresh per call: the API's eligibility guard rejects decision stamps older than
+ * one hour, so a module-level frozen timestamp would break this page silently. */
+const eligibilityHeaders = () => ({ "x-eligibility-region": process.env.ELIGIBILITY_REGION ?? "", "x-age-acknowledged": process.env.ELIGIBILITY_AGE_ACKNOWLEDGED ?? "", "x-eligibility-checked-at": process.env.ELIGIBILITY_CHECKED_AT || new Date().toISOString() });
 async function load(id: string): Promise<Fixture | null> { const response = await fetch(`${API_ORIGIN}/fixtures/${encodeURIComponent(id)}`, { cache: "no-store" }); if (response.status === 404) return null; if (!response.ok) throw new Error("load failed"); return response.json() as Promise<Fixture>; }
-async function loadForecasts(id: string): Promise<readonly ForecastResponseDto[]> { const response = await fetch(`${API_ORIGIN}/fixtures/${encodeURIComponent(id)}/forecasts`, { headers: { accept: "application/json", ...eligibilityHeaders }, cache: "no-store" }); return response.ok ? response.json() as Promise<readonly ForecastResponseDto[]> : []; }
+async function loadForecasts(id: string): Promise<readonly ForecastResponseDto[]> { const response = await fetch(`${API_ORIGIN}/fixtures/${encodeURIComponent(id)}/forecasts`, { headers: { accept: "application/json", ...eligibilityHeaders() }, cache: "no-store" }); return response.ok ? response.json() as Promise<readonly ForecastResponseDto[]> : []; }
 function safeReturn(value: string | string[] | undefined): string { const candidate = Array.isArray(value) ? value[0] : value; return candidate?.startsWith("/fixtures") && !candidate.startsWith("//") ? candidate : "/fixtures"; }
 
 export default async function Detail({ params, searchParams }: { params: Promise<{ fixtureId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {

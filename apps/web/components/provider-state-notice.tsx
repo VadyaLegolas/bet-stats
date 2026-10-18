@@ -14,16 +14,20 @@ const headings: Record<ProviderState["state"], string> = {
   CIRCUIT_DENIED: "Сработал предохранитель",
 };
 
+/* Badge colours reference the theme tokens (via color-mix for the washes and
+   borders) instead of literal rgba values, so both themes stay readable: the
+   light output is byte-identical to the previous literals, the dark theme
+   inherits its lifted signal colours from globals.css. */
 const providerBadgeStyles: Record<ProviderState["state"], { bg: string; color: string; border: string; dot: string }> = {
-  PRIMARY: { bg: "rgba(20, 80, 59, 0.09)", color: "#14503b", border: "rgba(20, 80, 59, 0.35)", dot: "#14503b" },
-  FALLBACK: { bg: "rgba(44, 93, 130, 0.1)", color: "#2c5d82", border: "rgba(44, 93, 130, 0.35)", dot: "#2c5d82" },
-  PENDING: { bg: "rgba(70, 84, 76, 0.09)", color: "#46544c", border: "rgba(70, 84, 76, 0.35)", dot: "#5c6b62" },
-  UNAVAILABLE: { bg: "rgba(163, 43, 43, 0.1)", color: "#a32b2b", border: "rgba(163, 43, 43, 0.35)", dot: "#a32b2b" },
-  LIMITED: { bg: "rgba(217, 154, 11, 0.18)", color: "#7a5600", border: "rgba(217, 154, 11, 0.5)", dot: "#d99a0b" },
-  UNSUPPORTED: { bg: "rgba(70, 84, 76, 0.09)", color: "#46544c", border: "rgba(70, 84, 76, 0.35)", dot: "#5c6b62" },
-  STALE_CAPABILITY: { bg: "rgba(163, 43, 43, 0.1)", color: "#a32b2b", border: "rgba(163, 43, 43, 0.35)", dot: "#a32b2b" },
-  BUDGET_PROTECTED: { bg: "rgba(217, 154, 11, 0.18)", color: "#7a5600", border: "rgba(217, 154, 11, 0.5)", dot: "#d99a0b" },
-  CIRCUIT_DENIED: { bg: "rgba(163, 43, 43, 0.1)", color: "#a32b2b", border: "rgba(163, 43, 43, 0.35)", dot: "#a32b2b" },
+  PRIMARY: { bg: "color-mix(in srgb, var(--color-accent) 9%, transparent)", color: "var(--color-accent)", border: "color-mix(in srgb, var(--color-accent) 35%, transparent)", dot: "var(--color-accent)" },
+  FALLBACK: { bg: "color-mix(in srgb, var(--color-info) 10%, transparent)", color: "var(--color-info)", border: "color-mix(in srgb, var(--color-info) 35%, transparent)", dot: "var(--color-info)" },
+  PENDING: { bg: "color-mix(in srgb, var(--color-text-secondary) 9%, transparent)", color: "var(--color-text-secondary)", border: "color-mix(in srgb, var(--color-text-secondary) 35%, transparent)", dot: "var(--color-muted)" },
+  UNAVAILABLE: { bg: "color-mix(in srgb, var(--color-danger) 10%, transparent)", color: "var(--color-danger)", border: "color-mix(in srgb, var(--color-danger) 35%, transparent)", dot: "var(--color-danger)" },
+  LIMITED: { bg: "color-mix(in srgb, var(--color-signal) 18%, transparent)", color: "var(--color-warning)", border: "color-mix(in srgb, var(--color-signal) 50%, transparent)", dot: "var(--color-signal)" },
+  UNSUPPORTED: { bg: "color-mix(in srgb, var(--color-text-secondary) 9%, transparent)", color: "var(--color-text-secondary)", border: "color-mix(in srgb, var(--color-text-secondary) 35%, transparent)", dot: "var(--color-muted)" },
+  STALE_CAPABILITY: { bg: "color-mix(in srgb, var(--color-danger) 10%, transparent)", color: "var(--color-danger)", border: "color-mix(in srgb, var(--color-danger) 35%, transparent)", dot: "var(--color-danger)" },
+  BUDGET_PROTECTED: { bg: "color-mix(in srgb, var(--color-signal) 18%, transparent)", color: "var(--color-warning)", border: "color-mix(in srgb, var(--color-signal) 50%, transparent)", dot: "var(--color-signal)" },
+  CIRCUIT_DENIED: { bg: "color-mix(in srgb, var(--color-danger) 10%, transparent)", color: "var(--color-danger)", border: "color-mix(in srgb, var(--color-danger) 35%, transparent)", dot: "var(--color-danger)" },
 };
 
 export function ProviderStateNotice({ state, compact = false }: { state: ProviderState; compact?: boolean }) {

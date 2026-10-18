@@ -10,12 +10,14 @@ const labels: Record<FixtureDataState["state"], string> = {
   UNRESOLVED: "Неоднозначная идентичность",
 };
 
+/* Token-driven colours (see provider-state-notice): identical output in the
+   light theme, readable automatically in the dark one. */
 const badgeStyles: Record<FixtureDataState["state"], { bg: string; color: string; border: string; dot: string }> = {
-  AVAILABLE: { bg: "rgba(20, 80, 59, 0.09)", color: "#14503b", border: "rgba(20, 80, 59, 0.35)", dot: "#14503b" },
-  LIMITED: { bg: "rgba(217, 154, 11, 0.18)", color: "#7a5600", border: "rgba(217, 154, 11, 0.5)", dot: "#d99a0b" },
-  STALE: { bg: "rgba(163, 43, 43, 0.1)", color: "#a32b2b", border: "rgba(163, 43, 43, 0.35)", dot: "#a32b2b" },
-  UNSUPPORTED: { bg: "rgba(70, 84, 76, 0.09)", color: "#46544c", border: "rgba(70, 84, 76, 0.35)", dot: "#5c6b62" },
-  UNRESOLVED: { bg: "rgba(44, 93, 130, 0.1)", color: "#2c5d82", border: "rgba(44, 93, 130, 0.35)", dot: "#2c5d82" },
+  AVAILABLE: { bg: "color-mix(in srgb, var(--color-accent) 9%, transparent)", color: "var(--color-accent)", border: "color-mix(in srgb, var(--color-accent) 35%, transparent)", dot: "var(--color-accent)" },
+  LIMITED: { bg: "color-mix(in srgb, var(--color-signal) 18%, transparent)", color: "var(--color-warning)", border: "color-mix(in srgb, var(--color-signal) 50%, transparent)", dot: "var(--color-signal)" },
+  STALE: { bg: "color-mix(in srgb, var(--color-danger) 10%, transparent)", color: "var(--color-danger)", border: "color-mix(in srgb, var(--color-danger) 35%, transparent)", dot: "var(--color-danger)" },
+  UNSUPPORTED: { bg: "color-mix(in srgb, var(--color-text-secondary) 9%, transparent)", color: "var(--color-text-secondary)", border: "color-mix(in srgb, var(--color-text-secondary) 35%, transparent)", dot: "var(--color-muted)" },
+  UNRESOLVED: { bg: "color-mix(in srgb, var(--color-info) 10%, transparent)", color: "var(--color-info)", border: "color-mix(in srgb, var(--color-info) 35%, transparent)", dot: "var(--color-info)" },
 };
 
 export function DataStateNotice({ data, compact = false }: { data: FixtureDataState; compact?: boolean }) {

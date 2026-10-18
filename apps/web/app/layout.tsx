@@ -5,6 +5,8 @@ import Link from "next/link";
 import { QuotaCounter } from "../components/quota-counter";
 import { BrandIcon } from "../components/brand-icon";
 import { ReleaseNavigation } from "../components/release-navigation";
+import { ThemeToggle } from "../components/theme-toggle";
+import { THEME_BOOTSTRAP_SCRIPT } from "../components/theme";
 
 import { plexSans, sourceSerif } from "./fonts";
 import "./globals.css";
@@ -16,7 +18,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="ru" className={`${sourceSerif.variable} ${plexSans.variable}`}>
+    /* data-theme="light" is the server default; the inline script below restamps
+       it from localStorage/system preference before the first paint, and
+       suppressHydrationWarning tells React to accept that stamped value. */
+    <html lang="ru" data-theme="light" suppressHydrationWarning className={`${sourceSerif.variable} ${plexSans.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+      </head>
       <body>
         <a className="skip-link" href="#main-content">Перейти к основному содержимому</a>
         <header className="release-header">
@@ -25,6 +33,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             <div className="release-header-tools">
               <QuotaCounter />
               <ReleaseNavigation />
+              <ThemeToggle />
             </div>
           </div>
         </header>

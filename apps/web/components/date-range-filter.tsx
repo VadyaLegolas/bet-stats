@@ -84,29 +84,85 @@ const describeResultsSyncFailure = (status: number, reason: string | undefined):
   return "Не удалось запустить загрузку результатов.";
 };
 
-// Exported so the node-environment unit tests can drive the exact handler the
-// «Загрузить результаты» button's onClick delegates to (no DOM library in scope).
-export const runResultsSync = async (league: string, setState: (state: FilterSyncState) => void, refresh: () => void): Promise<void> => {
-  setState({ pending: true });
+type SyncPhaseOutcome = { message: string; error: boolean; synced: boolean };
+
+/** One sync phase as data: fetch + HTTP mapping, no side effects, so the fixtures-only
+ * runner (autoSync mount path) and the combined «fixtures + results» runner share it. */
+const requestFixturesPhase = async (league: string, force: boolean): Promise<SyncPhaseOutcome> => {
   try {
-    const response = await fetch("/internal-api/fixtures/results-sync", {
+    const response = await fetch("/internal-api/fixtures/sync", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ force: true, ...(league ? { competitions: [league] } : {}) }),
+      body: JSON.stringify({ ...(league ? { competitions: [league] } : {}), force }),
       cache: "no-store",
     });
     if (!response.ok) {
       const detail = await response.json().catch(() => null) as { reason?: string } | null;
-      setState({ pending: false, message: describeResultsSyncFailure(response.status, detail?.reason), error: true });
-      return;
+      return { message: describeSyncFailure(response.status, detail?.reason), error: true, synced: false };
     }
     const { results } = await response.json() as { results: readonly SyncResult[] };
-    setState({ pending: false, message: formatResultsSyncResults(results), error: false });
-    window.dispatchEvent(new CustomEvent("fixtures-quota-refresh"));
-    if (results.some((result) => result.status === "synced")) refresh();
+    return { message: formatSyncResults(results), error: false, synced: results.some((result) => result.status === "synced") };
   } catch {
-    setState({ pending: false, message: "Сервер данных недоступен — загрузка результатов не выполнена.", error: true });
+    return { message: "Сервер данных недоступен — обновление не выполнено.", error: true, synced: false };
   }
+};
+
+/** Same shape for the results publication phase. `force: true` (the dedicated
+ * «Загрузить результаты» button) bypasses the service's freshness gate; `false` (the
+ * combined «Обновить матчи» run) lets a league whose RESULTS observations are younger
+ * than MIN_SYNC_INTERVAL_MS report «уже опубликовано недавно» without spending provider
+ * requests. */
+const requestResultsPhase = async (league: string, force: boolean): Promise<SyncPhaseOutcome> => {
+  try {
+    const response = await fetch("/internal-api/fixtures/results-sync", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ force, ...(league ? { competitions: [league] } : {}) }),
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => null) as { reason?: string } | null;
+      return { message: describeResultsSyncFailure(response.status, detail?.reason), error: true, synced: false };
+    }
+    const { results } = await response.json() as { results: readonly SyncResult[] };
+    return { message: formatResultsSyncResults(results), error: false, synced: results.some((result) => result.status === "synced") };
+  } catch {
+    return { message: "Сервер данных недоступен — загрузка результатов не выполнена.", error: true, synced: false };
+  }
+};
+
+// Exported so the node-environment unit tests can drive the exact handler the
+// «Загрузить результаты» button's onClick delegates to (no DOM library in scope).
+export const runResultsSync = async (league: string, setState: (state: FilterSyncState) => void, refresh: () => void): Promise<void> => {
+  setState({ pending: true });
+  const outcome = await requestResultsPhase(league, true);
+  setState({ pending: false, message: outcome.message, error: outcome.error });
+  if (outcome.error) return;
+  window.dispatchEvent(new CustomEvent("fixtures-quota-refresh"));
+  if (outcome.synced) refresh();
+};
+
+// Exported so the node-environment unit tests can drive the exact handler the
+// «Обновить матчи» button's onClick delegates to (no DOM library in scope). One click
+// runs two phases: the fixture schedule (forced) and then a results publication under
+// the service's freshness gate, so a repeat click within the window costs no extra
+// provider requests. One status line reports both phases; the run stops after the
+// fixtures phase only when that request itself is unreachable (same server, same
+// outage — the dedicated results button remains for a retry).
+export const runFixturesAndResultsSync = async (league: string, setState: (state: FilterSyncState) => void, refresh: () => void): Promise<void> => {
+  setState({ pending: true });
+  const fixtures = await requestFixturesPhase(league, true);
+  if (fixtures.error) {
+    setState({ pending: false, message: fixtures.message, error: true });
+    return;
+  }
+  // Progressive line: the schedule summary stays visible while results are running.
+  setState({ pending: true, message: fixtures.message });
+  window.dispatchEvent(new CustomEvent("fixtures-quota-refresh"));
+  const results = await requestResultsPhase(league, false);
+  if (!results.error) window.dispatchEvent(new CustomEvent("fixtures-quota-refresh"));
+  setState({ pending: false, message: `${fixtures.message} · ${results.message}`, error: results.error });
+  if (fixtures.synced || results.synced) refresh();
 };
 
 export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { from?: string | undefined; to?: string | undefined; competition?: string | undefined; readonly leagues: readonly string[]; autoSync?: boolean | undefined }) {
@@ -132,25 +188,11 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
   const runSync = async (force: boolean) => {
     setMessageOwner("sync");
     setSyncState({ pending: true });
-    try {
-      const response = await fetch("/internal-api/fixtures/sync", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...(selectedLeague ? { competitions: [selectedLeague] } : {}), force }),
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        const detail = await response.json().catch(() => null) as { reason?: string } | null;
-        setSyncState({ pending: false, message: describeSyncFailure(response.status, detail?.reason), error: true });
-        return;
-      }
-      const { results } = await response.json() as { results: readonly SyncResult[] };
-      setSyncState({ pending: false, message: formatSyncResults(results), error: false });
-      window.dispatchEvent(new CustomEvent("fixtures-quota-refresh"));
-      if (results.some((result) => result.status === "synced")) router.refresh();
-    } catch {
-      setSyncState({ pending: false, message: "Сервер данных недоступен — обновление не выполнено.", error: true });
-    }
+    const outcome = await requestFixturesPhase(selectedLeague, force);
+    setSyncState({ pending: false, message: outcome.message, error: outcome.error });
+    if (outcome.error) return;
+    window.dispatchEvent(new CustomEvent("fixtures-quota-refresh"));
+    if (outcome.synced) router.refresh();
   };
 
   useEffect(() => {
@@ -233,8 +275,11 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
           type="button"
           className="btn-secondary"
           style={{ minHeight: 44, padding: "8px 20px" }}
-          disabled={syncState.pending}
-          onClick={() => void runSync(true)}
+          disabled={syncState.pending || resultsSyncState.pending}
+          onClick={() => {
+            setMessageOwner("sync");
+            void runFixturesAndResultsSync(selectedLeague, setSyncState, () => router.refresh());
+          }}
         >
           {syncState.pending ? "Обновляю…" : "Обновить матчи"}
         </button>
@@ -258,8 +303,8 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
       ) : null}
       <p className="filter-hint">
         Даты выбираются календарём и трактуются по UTC: выбранный день «По» включается целиком.
-        Пустые даты означают ближайшие 48 часов. «Обновить матчи» загружает расписание у футбольного провайдера.
-        «Загрузить результаты» публикует итоги завершённых матчей.
+        Пустые даты означают ближайшие 48 часов. «Обновить матчи» загружает расписание и итоги завершённых матчей.
+        «Загрузить результаты» публикует итоги принудительно — даже если результаты загружались недавно.
       </p>
     </form>
   );

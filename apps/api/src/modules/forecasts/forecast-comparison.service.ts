@@ -6,6 +6,8 @@ export interface ForecastComparisonRepository {
   findExact(id: string): Promise<(ForecastResponseDto & { state?: string }) | null>;
   listIssued(fixtureId: string): Promise<readonly ForecastResponseDto[]>;
   absenceReason(fixtureId: string, kind: ForecastKind): Promise<ForecastAbsenceReason>;
+  /** Display-only: fixtureId -> «Home против Away» for the diffed evidence refs; optional and failure-tolerant. */
+  findFixtureLabels?(fixtureIds: readonly string[]): Promise<Readonly<Record<string, string>>>;
 }
 
 @Injectable()
@@ -25,7 +27,15 @@ export class ForecastComparisonService implements OnModuleDestroy {
     validateExact(right, "RIGHT", fixtureId);
     const { state: _leftState, ...leftForecast } = left;
     const { state: _rightState, ...rightForecast } = right;
-    return compareForecastPair(leftForecast, rightForecast);
+    const comparison = compareForecastPair(leftForecast, rightForecast);
+    const refIds = [...new Set([...comparison.sourceRefs.added, ...comparison.sourceRefs.removed].map((source) => source.fixtureId))];
+    let fixtureLabels: Readonly<Record<string, string>> = {};
+    try {
+      fixtureLabels = await this.repository.findFixtureLabels?.(refIds) ?? {};
+    } catch {
+      fixtureLabels = {};
+    }
+    return { ...comparison, fixtureLabels };
   }
 
   async availability(fixtureId: string) {
@@ -46,6 +56,14 @@ export function createProductionRepository(client: PrismaClient): ForecastCompar
       return row ? { ...(row.receipt as unknown as ForecastResponseDto), state: row.state } : null;
     },
     listIssued: async (fixtureId) => forecasts.listIssued?.(fixtureId) ?? [],
+    findFixtureLabels: async (fixtureIds) => {
+      if (fixtureIds.length === 0) return {};
+      const rows = await client.fixture.findMany({
+        where: { id: { in: [...fixtureIds] } },
+        select: { id: true, homeTeam: { select: { name: true } }, awayTeam: { select: { name: true } } },
+      });
+      return Object.fromEntries(rows.map((row) => [row.id, `${row.homeTeam.name} против ${row.awayTeam.name}`]));
+    },
     absenceReason: async (fixtureId, kind) => {
       if (kind !== "LINEUP_CONFIRMED") return "INSUFFICIENT_EVIDENCE";
       const lineup = await client.lineupObservation.findFirst({

@@ -37,6 +37,30 @@ describe("forecast revision comparison UI", () => {
     expect(markup).not.toContain("Отображаемые компоненты модели не изменились");
   });
 
+  it("renders evidence diffs as named matches with short fingerprints, UTC dates and labelled limitations", () => {
+    const left = snapshot("left", "INITIAL", 0.45, ["WEAK_HOME_ELO"], 0.6, 1.2);
+    const right = snapshot("right", "PRE_MATCH", 0.5, [], 0.7, 1.4);
+    const fixtureId = "56bd9f79-9362-4b26-802f-9a485e5cb928";
+    Object.assign(left.receipt.sourceRefs[0]!, { fixtureId, payloadHash: "b2005c8405abd62e4265d2e3fb7397bdc00432730e8127d04eaa8f4dc25d05b0", effectiveAt: "2026-10-11T13:00:00.000Z", observedAt: "2026-10-16T09:23:56.301Z" });
+    Object.assign(right.receipt.sourceRefs[0]!, { fixtureId, payloadHash: "730cbb95426ef4038d7c80b08f69840ff97e07c5da9702a45706a25857b8482", effectiveAt: "2026-10-11T13:00:00.000Z", observedAt: "2026-10-18T01:28:06.011Z" });
+    const diff = compareForecastPair(left, right);
+    const markup = renderToStaticMarkup(createElement(ForecastComparisonPanel, { comparison: { ...diff, fixtureLabels: { [fixtureId]: "Ювентус против Лацио" } } }));
+    expect(markup).toContain("<strong>Ювентус против Лацио</strong>");
+    expect(markup).toContain("11.10.2026 13:00 UTC");
+    expect(markup).toContain("16.10.2026 09:23 UTC");
+    expect(markup).toContain("18.10.2026 01:28 UTC");
+    expect(markup).toContain("b2005c8405ab…");
+    expect(markup).toContain("730cbb95426e…");
+    expect(markup).toContain("отпечаток");
+    expect(markup).toContain("мало данных: рейтинг Эло хозяев"); // removed limitation label
+    expect(markup).toContain("Добавленные ограничения: нет");
+    expect(markup).toContain(`Матч: ${fixtureId} · отпечаток:`); // exact identity stays in the hover receipt
+    /* Without labels the long UUID degrades to a short readable stub, never a raw wall of symbols. */
+    const unlabeled = renderToStaticMarkup(createElement(ForecastComparisonPanel, { comparison: diff }));
+    expect(unlabeled).toContain("<strong>56bd9f79…</strong>");
+    expect(unlabeled).not.toContain("Ювентус");
+  });
+
   it("renders documented one-snapshot and absent-lineup states with persistent risk disclosure", () => {
     const markup = renderToStaticMarkup(createElement(ForecastWorkbench, { fixtureId: "fixture-1", forecasts: [snapshot("only", "INITIAL", 0.45, [], 0.6, 1.2)] }));
     expect(markup).toContain("Сопоставимая пара прогнозов пока недоступна");

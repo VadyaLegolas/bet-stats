@@ -22,6 +22,19 @@ describe("forecast comparison API", () => {
     expect(() => controller.compare("fixture-1", { leftId: "left", rightId: "right", latest: "true" })).toThrowError(expect.objectContaining({ response: { code: "INVALID_FORECAST_COMPARISON_QUERY" } }));
   });
 
+  it("attaches display-only fixture labels for the diffed evidence refs and degrades to none", async () => {
+    const left = snapshot("left", "INITIAL", 0.45, [], 0.6, 1.2);
+    const right = snapshot("right", "PRE_MATCH", 0.5, [], 0.7, 1.4);
+    const findExact = vi.fn(async (id: string) => (id === "left" ? left : right));
+    const findFixtureLabels = vi.fn(async () => ({ "provider:A": "Ювентус против Лацио" }));
+    const service = new ForecastComparisonService({ findExact, listIssued: vi.fn(), absenceReason: vi.fn(), findFixtureLabels } as never);
+    const comparison = await service.compare("fixture-1", { leftId: "left", rightId: "right" });
+    expect(comparison.fixtureLabels).toEqual({ "provider:A": "Ювентус против Лацио" });
+    expect(findFixtureLabels).toHaveBeenCalledWith(["provider:B", "provider:A"]);
+    const failing = new ForecastComparisonService({ findExact, listIssued: vi.fn(), absenceReason: vi.fn(), findFixtureLabels: vi.fn(async () => { throw new Error("DISPLAY_LOOKUP_DOWN"); }) } as never);
+    await expect(failing.compare("fixture-1", { leftId: "left", rightId: "right" })).resolves.toMatchObject({ fixtureLabels: {} });
+  });
+
   it("projects every fixed snapshot kind as exact available or reason-coded absent", async () => {
     const issued = [snapshot("pre", "PRE_MATCH", 0.5, [], 0.7, 1.4)];
     const service = new ForecastComparisonService({ findExact: vi.fn(), listIssued: vi.fn().mockResolvedValue(issued), absenceReason: vi.fn(async (_fixture, kind) => kind === "LINEUP_CONFIRMED" ? "NO_CONFIRMED_LINEUP" : "INSUFFICIENT_EVIDENCE") } as never);

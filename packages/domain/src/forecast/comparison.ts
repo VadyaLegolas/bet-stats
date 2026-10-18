@@ -21,6 +21,9 @@ export interface ForecastComparisonDto {
   readonly confidence: { readonly score: NumericDelta; readonly components: Readonly<Record<string, NumericDelta>> };
   readonly limitations: { readonly added: readonly string[]; readonly removed: readonly string[] };
   readonly probabilities: readonly (NumericDelta & { readonly market: string; readonly selection: string })[];
+  /** Display-only fixtureId -> «Home против Away» names for the diffed source refs, attached
+      by the API after the pure comparison; absent/unknown ids degrade to the raw id in the UI. */
+  readonly fixtureLabels?: Readonly<Record<string, string>>;
 }
 
 export function parseForecastComparisonRequest(value: unknown): ForecastComparisonRequestDto {

@@ -47,8 +47,25 @@ export function initializeComparisonPair(params: URLSearchParams, forecasts: rea
 export function swapComparisonPair(pair: { leftId: string; rightId: string }) { return { leftId: pair.rightId, rightId: pair.leftId }; }
 function signedPercent(value: number): string { return `${value > 0 ? "+" : ""}${(value * 100).toFixed(1)}%`; }
 function directionText(direction: "increase" | "decrease" | "unchanged", delta: number): string { return direction === "increase" ? `вырос на ${signedPercent(delta)}` : direction === "decrease" ? `снизился на ${signedPercent(Math.abs(delta))}` : "без изменений"; }
-function sourceRefLabel(source: ForecastComparisonDto["sourceRefs"]["added"][number]): string {
-  return `${source.fixtureId} · payload ${source.payloadHash} · observed ${source.observedAt} · effective ${source.effectiveAt}`;
+type ComparisonSourceRef = ForecastComparisonDto["sourceRefs"]["added"][number];
+/** Evidence instant → «11.10.2026 13:00 UTC»; an unparsable value stays exact. */
+export function formatUtc(instant: string): string {
+  const date = new Date(instant);
+  if (Number.isNaN(date.getTime())) return instant;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${pad(date.getUTCDate())}.${pad(date.getUTCMonth() + 1)}.${date.getUTCFullYear()} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} UTC`;
+}
+/** Human-short fingerprint (12 hex chars) — the exact payload hash stays in the hover receipt. */
+export function shortFingerprint(value: string): string { return value.length > 12 ? `${value.slice(0, 12)}…` : value; }
+export function shortFixtureId(fixtureId: string): string { return fixtureId.length > 8 ? `${fixtureId.slice(0, 8)}…` : fixtureId; }
+function SourceRefItem({ source, name }: { source: ComparisonSourceRef; name?: string | undefined }) {
+  return <li title={`Матч: ${source.fixtureId} · отпечаток: ${source.payloadHash} · обновление источника: ${source.sourceUpdatedAt ?? "нет"}`}>
+    <strong>{name ?? shortFixtureId(source.fixtureId)}</strong> · {formatUtc(source.effectiveAt)} · отпечаток <code>{shortFingerprint(source.payloadHash)}</code> · наблюдено {formatUtc(source.observedAt)}
+  </li>;
+}
+function sourceRefList(sources: readonly ComparisonSourceRef[], labels: Readonly<Record<string, string>> | undefined) {
+  if (sources.length === 0) return "нет";
+  return <ul>{sources.map((source) => <SourceRefItem key={`${source.fixtureId}:${source.payloadHash}:${source.observedAt}`} source={source} name={labels?.[source.fixtureId]} />)}</ul>;
 }
 
 type ProbabilityRow = ForecastResponseDto["probabilities"][OddsMarket][number];
@@ -79,7 +96,7 @@ export function ForecastComparisonPanel({ comparison }: { comparison: ForecastCo
   const material = comparison.sourceRefs.added.length + comparison.sourceRefs.removed.length + comparison.limitations.added.length + comparison.limitations.removed.length;
   return <div>
     <h4>Значимые изменения доказательств, модели и ограничений</h4>
-    {material === 0 ? <p>Отображаемые компоненты модели не изменились между этими точными снимками.</p> : <ul><li>Добавленные доказательства: {comparison.sourceRefs.added.map(sourceRefLabel).join("; ") || "нет"}</li><li>Удалённые доказательства: {comparison.sourceRefs.removed.map(sourceRefLabel).join("; ") || "нет"}</li><li>Добавленные ограничения: {comparison.limitations.added.join(", ") || "нет"}</li><li>Устранённые ограничения: {comparison.limitations.removed.join(", ") || "нет"}</li></ul>}
+    {material === 0 ? <p>Отображаемые компоненты модели не изменились между этими точными снимками.</p> : <ul><li>Добавленные доказательства: {sourceRefList(comparison.sourceRefs.added, comparison.fixtureLabels)}</li><li>Удалённые доказательства: {sourceRefList(comparison.sourceRefs.removed, comparison.fixtureLabels)}</li><li>Добавленные ограничения: {comparison.limitations.added.map(forecastLimitationLabel).join(", ") || "нет"}</li><li>Устранённые ограничения: {comparison.limitations.removed.map(forecastLimitationLabel).join(", ") || "нет"}</li></ul>}
     <ResponsiveEvidence projectionId="forecast-revision-delta" label="Доказательства изменения вероятностей" tableLabel="Полные данные об изменении вероятностей" caption="Стабильные изменения вероятностей для выбранных неизменяемых снимков" rows={comparison.probabilities} columns={revisionColumns} rowKey={(row) => `${row.market}:${row.selection}`} conclusion={(row) => `${oddsMarketLabel(row.market as OddsMarket)} — ${oddsSelectionLabel(row.selection as OddsSelection)}`} denominator={(row) => directionText(row.direction, row.delta)}/>
     <details><summary>Точные квитанции сравнения</summary><dl><dt>ID левого снимка</dt><dd><code>{comparison.left.id}</code></dd><dt>ID правого снимка</dt><dd><code>{comparison.right.id}</code></dd><dt>Левая отсечка</dt><dd><time dateTime={comparison.left.cutoff}>{comparison.left.cutoff}</time></dd><dt>Правая отсечка</dt><dd><time dateTime={comparison.right.cutoff}>{comparison.right.cutoff}</time></dd></dl></details>
     <p>Вероятности — это оценки, а не гарантии. Вы можете потерять деньги при ставках.</p>

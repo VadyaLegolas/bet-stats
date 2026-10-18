@@ -6,7 +6,7 @@ import { QuotaCounter } from "../components/quota-counter";
 import { BrandIcon } from "../components/brand-icon";
 import { ReleaseNavigation } from "../components/release-navigation";
 import { ThemeToggle } from "../components/theme-toggle";
-import { THEME_BOOTSTRAP_SCRIPT } from "../components/theme";
+import { ThemeBootstrapScript } from "../components/theme-bootstrap";
 
 import { plexSans, sourceSerif } from "./fonts";
 import "./globals.css";
@@ -18,12 +18,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    /* data-theme="light" is the server default; the inline script below restamps
-       it from localStorage/system preference before the first paint, and
-       suppressHydrationWarning tells React to accept that stamped value. */
+    /* data-theme="light" is the server default; ThemeBootstrapScript restamps
+       it from localStorage/system preference while the HTML parses (before the
+       first paint), and suppressHydrationWarning tells React to accept that
+       stamped value. The script itself lives in components/theme-bootstrap —
+       a Client Component so React never re-executes it during client renders. */
     <html lang="ru" data-theme="light" suppressHydrationWarning className={`${sourceSerif.variable} ${plexSans.variable}`}>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+        <ThemeBootstrapScript />
       </head>
       <body>
         <a className="skip-link" href="#main-content">Перейти к основному содержимому</a>

@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { ThemeToggle } from "../../apps/web/components/theme-toggle.js";
+import { ThemeBootstrapScript } from "../../apps/web/components/theme-bootstrap.js";
 
 describe("theme toggle", () => {
   it("renders an accessible switch with both crossfade icons at the light default", () => {
@@ -26,7 +27,21 @@ describe("theme toggle", () => {
     const layout = readFileSync(resolve(import.meta.dirname, "../../apps/web/app/layout.tsx"), "utf8");
     expect(layout).toContain('data-theme="light"');
     expect(layout).toContain("suppressHydrationWarning");
-    expect(layout).toContain("THEME_BOOTSTRAP_SCRIPT");
+    expect(layout).toContain("<ThemeBootstrapScript />");
     expect(layout).toContain("<ThemeToggle />");
+  });
+
+  it("renders the bootstrap script with the guide's server/client type split", () => {
+    /* SSR path: type="text/javascript" so the browser runs it while the HTML
+       parses (before first paint); the script body is the shared constant. */
+    const markup = renderToStaticMarkup(createElement(ThemeBootstrapScript));
+    expect(markup).toContain('type="text/javascript"');
+    expect(markup).toContain("matchday-theme");
+    /* Client path: text/plain keeps later React renders inert and warning-free,
+       and suppressHydrationWarning lets hydration keep the server's type. */
+    const source = readFileSync(resolve(import.meta.dirname, "../../apps/web/components/theme-bootstrap.tsx"), "utf8");
+    expect(source).toContain('"text/plain"');
+    expect(source).toContain("suppressHydrationWarning");
+    expect(source).toContain('"use client"');
   });
 });

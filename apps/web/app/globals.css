@@ -585,6 +585,51 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 }
 .filter-fields { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
 .filter-hint { margin: var(--space-3) 0 0; font-size: 0.85rem; color: var(--color-text-secondary); }
+/* Disappearing popups for the manual sync actions («Обновить матчи» /
+   «Загрузить результаты»); the inline status line stays the durable record. */
+.sync-toast-stack {
+  position: fixed;
+  inset-block-start: 16px;
+  inset-inline-end: 16px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(380px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.sync-toast {
+  position: relative;
+  pointer-events: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-inline-start: 4px solid var(--color-success);
+  border-radius: var(--radius-control);
+  box-shadow: 0 10px 24px rgba(11, 44, 33, 0.18);
+  padding: 12px 42px 12px 14px;
+  animation: sync-toast-in 0.22s ease;
+}
+.sync-toast--error { border-inline-start-color: var(--color-danger); }
+.sync-toast strong { display: block; font-size: 0.9rem; margin-block-end: 4px; }
+.sync-toast--error strong { color: var(--color-danger); }
+.sync-toast p { margin: 0; font-size: 0.8rem; line-height: 1.4; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.sync-toast--leaving { animation: sync-toast-out 0.32s ease forwards; }
+.sync-toast-close {
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-end: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+.sync-toast-close:hover { background: var(--color-surface-hover); color: var(--color-text); }
+@keyframes sync-toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes sync-toast-out { from { opacity: 1; } to { opacity: 0; transform: translateY(-6px); } }
 .fixture-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -698,6 +743,7 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   :where(a, button, input, select, summary, [tabindex]):focus-visible { outline-color: Highlight; }
   .release-navigation nav a[aria-current="page"] { border-block-end: 2px solid Highlight; }
   .fixture-card, .hero-ledger, .evidence-card { border: 1px solid CanvasText; }
+  .sync-toast { border: 1px solid CanvasText; }
   /* The colophon uses light text on a dark panel; forced-colors replaces the
      panel background with the system canvas, so restate text explicitly. */
   .release-footer p { color: CanvasText; }

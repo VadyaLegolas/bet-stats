@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { SyncToastStack, useSyncToasts } from "./sync-toast";
+
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86_400_000;
 
@@ -176,6 +178,17 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
   // message survives until it runs again.
   const [messageOwner, setMessageOwner] = useState<"sync" | "results" | null>(null);
   const statusState: FilterSyncState = messageOwner === "results" ? resultsSyncState : syncState;
+  // Manual actions also announce themselves as disappearing popups; the inline status
+  // line above stays the durable record. The autoSync mount path stays silent.
+  const { toasts, push: pushToast, dismiss: dismissToast } = useSyncToasts();
+  const setSyncStateWithToast = (state: FilterSyncState) => {
+    setSyncState(state);
+    pushToast("fixtures", state);
+  };
+  const setResultsSyncStateWithToast = (state: FilterSyncState) => {
+    setResultsSyncState(state);
+    pushToast("results", state);
+  };
 
   const navigate = (next: { from?: string | undefined; to?: string | undefined }) => {
     const query = new URLSearchParams();
@@ -278,7 +291,7 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
           disabled={syncState.pending || resultsSyncState.pending}
           onClick={() => {
             setMessageOwner("sync");
-            void runFixturesAndResultsSync(selectedLeague, setSyncState, () => router.refresh());
+            void runFixturesAndResultsSync(selectedLeague, setSyncStateWithToast, () => router.refresh());
           }}
         >
           {syncState.pending ? "Обновляю…" : "Обновить матчи"}
@@ -290,7 +303,7 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
           disabled={syncState.pending || resultsSyncState.pending}
           onClick={() => {
             setMessageOwner("results");
-            void runResultsSync(selectedLeague, setResultsSyncState, () => router.refresh());
+            void runResultsSync(selectedLeague, setResultsSyncStateWithToast, () => router.refresh());
           }}
         >
           {resultsSyncState.pending ? "Загружаю результаты…" : "Загрузить результаты"}
@@ -306,6 +319,7 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
         Пустые даты означают ближайшие 48 часов. «Обновить матчи» загружает расписание и итоги завершённых матчей.
         «Загрузить результаты» публикует итоги принудительно — даже если результаты загружались недавно.
       </p>
+      <SyncToastStack toasts={toasts} onDismiss={dismissToast} />
     </form>
   );
 }

@@ -54,13 +54,21 @@ describe("development trusted-session issuer", () => {
     }
     const trusted = verify(cookieValue(authCookie!, "auth_session"), authSecret, "trusted-session");
     const privacy = verify(cookieValue(privacyCookie!, "privacy_session"), privacySecret, "privacy-session");
-    expect(trusted.subjectId).toBe("dev-local-subject");
+    // Fresh dev identity per visit: a withdrawal permanently locks its subject
+    // by design, so a re-visit must mint a different one to stay usable.
+    expect(trusted.subjectId).toMatch(/^dev-local-subject-[0-9a-f]{12}$/);
     // The proxy rejects a privacy credential whose claims diverge from the trusted
     // session, so both cookies must carry the same subject, session and version.
     expect(privacy.subjectId).toBe(trusted.subjectId);
     expect(privacy.sessionId).toBe(trusted.sessionId);
     expect(privacy.version).toBe(trusted.version);
-    expect(Number(trusted.expiresAt)).toBeGreaterThan(Date.now());
-    expect(Number(privacy.expiresAt)).toBeLessThanOrEqual(Number(trusted.expiresAt));
+    // Dev sessions are long-lived on purpose: both cookies share one ~30-day
+    // expiry, far beyond the production 15-minute privacy-session cap.
+    expect(Number(privacy.expiresAt)).toBe(Number(trusted.expiresAt));
+    expect(Number(privacy.expiresAt) - Date.now()).toBeGreaterThan(29 * 24 * 60 * 60_000);
+
+    const again = await GET(request());
+    const againTrusted = verify(cookieValue(again.headers.getSetCookie().find((cookie) => cookie.startsWith("auth_session="))!, "auth_session"), authSecret, "trusted-session");
+    expect(againTrusted.subjectId).not.toBe(trusted.subjectId);
   });
 });

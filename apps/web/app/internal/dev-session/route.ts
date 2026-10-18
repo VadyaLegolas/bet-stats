@@ -17,12 +17,17 @@ import {
  * without the flag this route is a plain 404, exactly like an unknown path, so
  * a deployment that never sets the variable exposes nothing. Identity is never
  * taken from the request — the subject is a fixed dev constant, so the route
- * cannot be used to impersonate any account. The privacy session mirrors the
- * proxy's own semantics: same claims as the trusted session, capped at 15
- * minutes, which is exactly what POST /internal-api/privacy/session issues. */
-const AUTH_SESSION_LIFETIME_MS = 8 * 60 * 60_000;
-const PRIVACY_SESSION_LIFETIME_MS = 15 * 60_000;
-const DEV_SUBJECT = "dev-local-subject";
+ * cannot be used to impersonate any account. Each visit mints a fresh dev
+ * identity (dev-local-subject-<random>): withdrawal permanently locks a
+ * retention subject by design — exactly as in production — so a fresh subject
+ * keeps local experimentation working without weakening that rule. Both dev
+ * cookies share one long 30-day lifetime on purpose: the production
+ * POST /internal-api/privacy/session deliberately caps the privacy credential
+ * at 15 minutes and re-minting it belongs to the account layer the MVP lacks,
+ * so the dev issuer keeps the pair alive long enough to never interrupt local
+ * work (the proxy validates the privacy claims against the trusted session,
+ * not their relative expiries). */
+const SESSION_LIFETIME_MS = 30 * 24 * 60 * 60_000;
 const privateHeaders = { "cache-control": "private, no-store, max-age=0" };
 
 export async function GET(request: NextRequest) {
@@ -38,13 +43,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ code: "DEV_ISSUER_MISCONFIGURED", missing }, { status: 503, headers: privateHeaders });
   }
   const issuedAt = Date.now();
-  const authExpiresAt = issuedAt + AUTH_SESSION_LIFETIME_MS;
-  const privacyExpiresAt = Math.min(authExpiresAt, issuedAt + PRIVACY_SESSION_LIFETIME_MS);
+  const expiresAt = issuedAt + SESSION_LIFETIME_MS;
+  const subjectId = `dev-local-subject-${randomUUID().replace(/-/g, "").slice(0, 12)}`;
   const sessionId = `session_dev_${randomUUID().replace(/-/g, "")}`;
   const response = NextResponse.redirect(new URL("/privacy", request.url), 302);
   const cookieOptions = { httpOnly: true, secure: true, sameSite: "lax", path: "/" } as const;
-  response.cookies.set("auth_session", createTrustedSessionAssertion({ secret: authSecret!, subjectId: DEV_SUBJECT, sessionId, expiresAt: authExpiresAt }), { ...cookieOptions, maxAge: Math.floor(AUTH_SESSION_LIFETIME_MS / 1000) });
-  response.cookies.set("privacy_session", createPrivacySessionAssertion({ secret: privacySecret!, subjectId: DEV_SUBJECT, sessionId, expiresAt: privacyExpiresAt }), { ...cookieOptions, maxAge: Math.max(0, Math.floor((privacyExpiresAt - issuedAt) / 1000)) });
+  const maxAge = Math.floor(SESSION_LIFETIME_MS / 1000);
+  response.cookies.set("auth_session", createTrustedSessionAssertion({ secret: authSecret!, subjectId, sessionId, expiresAt }), { ...cookieOptions, maxAge });
+  response.cookies.set("privacy_session", createPrivacySessionAssertion({ secret: privacySecret!, subjectId, sessionId, expiresAt }), { ...cookieOptions, maxAge });
   return response;
 }
 

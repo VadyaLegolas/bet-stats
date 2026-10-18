@@ -1,6 +1,13 @@
 import { createElement } from "../../apps/web/node_modules/react/index.js";
 import { renderToStaticMarkup } from "../../apps/web/node_modules/react-dom/server.js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// The dashboard mounts ResultsSyncButton, which reads the app router. As probe-verified
+// in results-sync-button-ui.test.tsx, root test files must mock the resolved
+// node_modules path — the bare `next/navigation` specifier does not intercept here.
+vi.mock("../../apps/web/node_modules/next/navigation.js", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
 
 import { ScorecardDashboard, canonicalScorecardQuery, type ScorecardViewModel } from "../../apps/web/app/scorecards/scorecard-dashboard.js";
 
@@ -49,6 +56,16 @@ describe("scorecard dashboard", () => {
     const populated = renderToStaticMarkup(createElement(ScorecardDashboard, { scorecard: model, candidates: { items: [{ id: "v-1", selection: "Хозяева", decimalOdds: "2.10", outcome: "WIN", stakeUnits: "1", profitUnits: "1.1", clv: { status: "UNAVAILABLE", reason: null, value: null } }], nextCursor: null, pageTotals: { count: 1, stakeUnits: "1", profitUnits: "1.1" } } }));
     expect(populated).not.toContain("Цепочка: кандидат value");
     expect(populated).not.toContain("Единицы оценки появляются");
+  });
+
+  it("mounts the results publication button above the ведомость", () => {
+    const markup = renderToStaticMarkup(createElement(ScorecardDashboard, { scorecard: model, candidates: { items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" } } }));
+    expect(markup).toContain("<h2>Загрузка результатов</h2>");
+    expect(markup).toContain("Загрузить результаты");
+    expect(markup).toContain("Публикует итоги завершённых матчей принудительно");
+    /* The button leads the page: its panel comes before the cohort filter form,
+       so publishing results never needs a detour through «Матчи». */
+    expect(markup.indexOf("Загрузка результатов")).toBeLessThan(markup.indexOf("Применить точную когорту"));
   });
 
   it("keeps exact filters in deterministic URL identity without silent substitution", () => {

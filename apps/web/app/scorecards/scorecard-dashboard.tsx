@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { OddsSelection } from "@bet-stats/domain";
 
 import { ResponsiveEvidence, type EvidenceColumn } from "../../components/responsive-evidence";
+import { ResultsSyncButton } from "../../components/results-sync-button";
 import { LocalDataBlock } from "../../components/local-data-block";
 import { ContextualMethodologyWarning } from "../../components/contextual-methodology-warning";
 import { financialOutcomeLabel, oddsSelectionLabel } from "../../components/enum-labels";
@@ -67,6 +68,7 @@ export function ScorecardDashboard({ scorecard, candidates, cursor }: { scorecar
     <h1>Ведомость результатов прогнозов</h1>
     <p>Историческая оценка зафиксированных прогнозов и вручную введённых коэффициентов. Это аналитические доказательства, а не рекомендации к ставкам.</p>
     <ContextualMethodologyWarning context="scorecard" />
+    <ResultsSyncButton />
     <form method="get" style={{ ...panel, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12 }}>
       {(["modelVersion", "competitionId", "market", "from", "to"] as const).map((key) => <label key={key}>{key}<input name={key} defaultValue={scorecard.cohortIdentity[key]} style={{ width: "100%", minHeight: 44 }} /></label>)}
       <button type="submit" style={{ minHeight: 44 }}>Применить точную когорту</button>

@@ -41,6 +41,16 @@ describe("scorecard dashboard", () => {
     expect(markup).not.toContain("SUFFICIENT");
   });
 
+  it("explains the missing value-unit chain only while the panels are empty", () => {
+    const empty = { ...model, financial: { ...model.financial, count: 0, totalStakedUnits: "0", totalProfitUnits: "0", roi: null, yield: null } };
+    const emptyMarkup = renderToStaticMarkup(createElement(ScorecardDashboard, { scorecard: empty, candidates: { items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" } } }));
+    expect(emptyMarkup).toContain("Цепочка: кандидат value → финиш матча → публикация результатов («Загрузить результаты») → единица оценки.");
+    expect(emptyMarkup).toContain("Единицы оценки появляются только из рассчитанных кандидатов — цепочка появления в реестре ниже.");
+    const populated = renderToStaticMarkup(createElement(ScorecardDashboard, { scorecard: model, candidates: { items: [{ id: "v-1", selection: "Хозяева", decimalOdds: "2.10", outcome: "WIN", stakeUnits: "1", profitUnits: "1.1", clv: { status: "UNAVAILABLE", reason: null, value: null } }], nextCursor: null, pageTotals: { count: 1, stakeUnits: "1", profitUnits: "1.1" } } }));
+    expect(populated).not.toContain("Цепочка: кандидат value");
+    expect(populated).not.toContain("Единицы оценки появляются");
+  });
+
   it("keeps exact filters in deterministic URL identity without silent substitution", () => {
     expect(canonicalScorecardQuery(model.cohortIdentity)).toBe("modelVersion=model-v1&competitionId=premier-league&market=ONE_X_TWO&from=2026-01-01T00%3A00%3A00.000Z&to=2026-02-01T00%3A00%3A00.000Z");
     const unavailable = { ...model, health: { state: "UNAVAILABLE" as const, reasons: ["NO_SCOREABLE_FIXTURES"], performanceClaim: null }, metrics: null };

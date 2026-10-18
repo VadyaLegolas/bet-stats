@@ -61,7 +61,7 @@ describe("manual odds workbench draft behavior", () => {
   });
 
   it("renders an honest empty state when discovery returns no issued snapshots", () => {
-    const markup = renderToStaticMarkup(createElement(ForecastWorkbench, { fixtureId: "fixture-1", forecasts: [] }));
+    const markup = renderToStaticMarkup(createElement(ForecastWorkbench, { fixtureId: "fixture-1", forecasts: [], timeZone: "Europe/Warsaw" }));
     expect(markup).toContain("Сопоставимая пара прогнозов пока недоступна");
     expect(markup).toContain("Для этого матча нет двух выпущенных снимков прогноза.");
     expect(markup).toContain("Нет первичного снимка: прогноз выпускается за 14 дней до кикоффа, как только матч попадает в горизонт данных.");

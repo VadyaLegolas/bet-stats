@@ -1,189 +1,94 @@
-# Requirements: Football Prediction & Value Betting Platform
+# Requirements: Football Prediction & Value Betting Platform (v1.1)
 
-**Defined:** 2026-08-27
+**Defined:** 2026-10-19
+**Milestone:** v1.1 — Reliability, Model Quality and Value Experience
 **Core Value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
 
-## v1 Requirements
+## v1.1 Requirements
 
-### Foundation and Guardrails
+### Delivery Pipeline (CI)
 
-- [x] **FOUND-01**: A developer can install, build, lint, test, and run the web, API, worker, and shared packages from one pnpm/Turborepo workspace.
-- [x] **FOUND-02**: An operator can start PostgreSQL and Redis locally and verify health for the web, API, worker, database, and queue dependencies.
-- [x] **FOUND-03**: The system validates required configuration and secrets at startup without exposing secret values to clients or logs.
-- [x] **FOUND-04**: A user sees probabilistic language and a persistent betting-risk disclaimer anywhere a forecast or value result is displayed.
-- [x] **FOUND-05**: The API enforces a configurable jurisdiction and age-eligibility policy before exposing betting-related analytics.
-- [x] **FOUND-06**: Automated tests reject prohibited guaranteed-profit, guaranteed-win, urgency, or certainty claims in user-facing content.
+- [ ] **CI-01**: A developer can rely on a GitHub Actions pipeline that runs on every push and pull request: frozen-lockfile install, schema verification, typecheck, lint, unit tests, integration tests, and build.
+- [ ] **CI-02**: Integration tests run on Linux runners with Docker and fail (never skip) when Docker is unavailable; CI never calls live external providers.
+- [ ] **CI-03**: Lint covers all workspace applications and packages (api, workers, domain, web) before it becomes a required gate.
+- [ ] **CI-04**: CI-enforced mutation-rejection tests protect immutable snapshot and receipt tables against UPDATE and DELETE at the database layer.
 
-### Canonical Football Data
+### Backups and Restore Verification (BAK)
 
-- [x] **DATA-01**: A user can view upcoming fixtures for the initial supported competition, filtered by date and competition.
-- [x] **DATA-02**: A user can open a fixture and see canonical teams, competition, season, kickoff, status, source provenance, and freshness.
-- [x] **DATA-03**: The system maps each provider league, team, player, and fixture reference to a canonical entity without coupling canonical IDs to a provider.
-- [x] **DATA-04**: The system reconciles a fixture across providers using canonical teams and a defined kickoff window without creating a duplicate fixture.
-- [x] **DATA-05**: An administrator can review ambiguous entity matches and approve, reject, or correct them with an auditable decision history.
-- [x] **DATA-06**: The system blocks forecasting for fixtures whose required canonical identity remains ambiguous.
-- [x] **DATA-07**: A user can see when fixture data is incomplete, stale, unsupported, or limited rather than seeing missing values represented as zero.
-- [x] **DATA-08**: The system records provider capabilities by competition, season, and endpoint before requesting conditionally available data.
+- [ ] **BAK-01**: An operator can enable automated PostgreSQL backups (pg_dump custom format) with configurable retention and rotation.
+- [ ] **BAK-02**: A scheduled restore drill restores the latest backup into a throwaway PostgreSQL container, applies migrations, runs chain-integrity checks, and records a verification receipt.
+- [ ] **BAK-03**: Backup and restore-verification status (last success, age, failures) is visible in the operations center without exposing secrets; never-verified and stale backups render as explicit non-green states.
 
-### Resilient Historical Pipeline
+### Degradation Alerting (ALRT)
 
-- [x] **PIPE-01**: The worker synchronizes upcoming fixtures, completed results, and standings through idempotent, retryable jobs.
-- [x] **PIPE-02**: The system persists raw-source provenance and capture timestamps needed to audit normalized football facts.
-- [x] **PIPE-03**: The system atomically reserves and records request budget per provider, date, and endpoint type before each external call.
-- [x] **PIPE-04**: Critical fixture and result calls retain budget priority over lineups, injuries, odds, and secondary statistics.
-- [x] **PIPE-05**: The worker uses bounded retries, backoff, and circuit breaking, and exposes degraded provider state without corrupting durable data.
-- [x] **PIPE-06**: An operator can replay failed or historical jobs without duplicating canonical facts, ratings, or snapshots.
-- [x] **PIPE-07**: A user can view a team's recent match history and its five-match and ten-match weighted form as known at a requested point in time.
-- [x] **PIPE-08**: The system calculates chronological Elo, home/away strength, goal rates, rest days, and low-weight H2H without using facts captured after the evaluation cutoff.
+- [ ] **ALRT-01**: An operator receives degradation alerts for provider-quota exhaustion, worker job failures and dead letters, sync-run failures, 5xx error spikes, and backup staleness.
+- [ ] **ALRT-02**: Alerts are durable PostgreSQL records with deduplication, severity tiers, and transition history; channel delivery is an attempt, never the source of truth.
+- [ ] **ALRT-03**: An operator can view active and recent alerts in the operations center with correlation context and redacted secrets.
+- [ ] **ALRT-04**: Alert dispatch delivers to a configurable webhook endpoint (optionally SMTP) without leaking secrets or betting data.
 
-### Forecasting and Value Analysis
+### Performance Audit and Budgets (PERF)
 
-- [x] **PRED-01**: A user can view normalized home, draw, and away probabilities whose sum satisfies the configured probability invariant.
-- [x] **PRED-02**: A user can view Over/Under 2.5 and BTTS Yes/No probabilities derived from a Poisson score matrix covering at least 0:0 through 7:7.
-- [x] **PRED-03**: A user can view fair decimal odds corresponding to each supported model probability.
-- [x] **PRED-04**: Every forecast is stored as an immutable snapshot linked to its fixture, model version, configuration, as-of cutoff, feature inputs, and source timestamps.
-- [x] **PRED-05**: A user can distinguish event probability from confidence and inspect the completeness, lineup, freshness, source-reliability, and model-stability confidence components.
-- [x] **PRED-06**: The system creates INITIAL and PRE_MATCH snapshots and creates LINEUP_CONFIRMED only when an official confirmed lineup exists.
-- [x] **ODDS-01**: A user can enter a complete mutually exclusive set of positive decimal odds for a supported market and receives actionable validation errors for invalid or incomplete input.
-- [x] **ODDS-02**: The system stores manual odds immutably with fixture, market, selection, source, and capture time.
-- [x] **ODDS-03**: A user can view multiplicatively normalized no-vig market probabilities for a complete odds book.
-- [x] **VALUE-01**: A user can view edge and expected value calculated from one exact prediction snapshot and one exact odds snapshot.
-- [x] **VALUE-02**: A user sees a value candidate only when configurable edge, expected-value, confidence, and data-quality gates pass.
-- [x] **VALUE-03**: A user sees an explicit no-value or insufficient-evidence state when thresholds or data-quality gates do not pass.
-- [x] **VALUE-04**: A user can inspect a reproducible prediction receipt showing the model version, input cutoff, source provenance, assumptions, and odds used for the value result.
+- [ ] **PERF-01**: A user receives a fixture detail page that meets configured Lighthouse performance budgets measured as a median-of-3 audit against the production build, with before/after metrics recorded.
+- [ ] **PERF-02**: Lighthouse assertions run in CI against key pages and fail on budget regression.
 
-### Settlement, Backtesting, and Calibration
+### Dixon-Coles Model Version (MODEL)
 
-- [x] **EVAL-01**: The system resolves completed, postponed, cancelled, abandoned, and void fixtures using explicit versioned settlement rules.
-- [x] **EVAL-02**: The system scores the exact frozen pre-match prediction rather than recomputing it with later data.
-- [x] **EVAL-03**: A user can view Brier Score and Log Loss by model version, competition, market, and evaluation period with sample size.
-- [x] **EVAL-04**: A user can view calibration/reliability results by probability bucket and identify under-confident or over-confident cohorts.
-- [x] **EVAL-05**: A user can view the outcome and unit profit/loss of each frozen value candidate and aggregate ROI and Yield with denominator and sample size.
-- [x] **EVAL-06**: Backtests and model comparisons use chronological rolling-origin evaluation and enforce the same as-of feature contract as production.
-- [x] **EVAL-07**: The system suppresses or labels performance/value claims when configured minimum sample-size or calibration-quality gates are not met.
-- [x] **EVAL-08**: CLV is displayed only when comparable timestamped market prices exist; it is otherwise explicitly unavailable.
+- [ ] **MODEL-01**: The forecast model applies a Dixon-Coles low-score correlation correction with a pinned tau convention and a bounded rho; tests prove rho=0 reproduces the Poisson model, the score matrix sums to 1, and draw probability rises for the documented sign.
+- [ ] **MODEL-02**: Probabilities produced under the corrected model are issued under a new model version identity across the whole stack (snapshots, backtests, comparisons, validators) in one coherent pass.
+- [ ] **MODEL-03**: An operator can compare rolling-origin backtest metrics of the new model version against the frozen baseline before it becomes the production default.
 
-### Provider Fallback and Enrichment
+### Probability Calibration (CALIB)
 
-- [x] **PROV-01**: The system uses football-data.org as primary for configured top-five leagues and Champions League fixtures and standings.
-- [x] **PROV-02**: The system can route eligible top-five/UCL requests to API-Football fallback without changing canonical fixture or team identity.
-- [x] **PROV-03**: The system can use API-Football as the primary source for configured Europa League and Conference League data.
-- [x] **PROV-04**: A user sees a limited-data state for Europa League or Conference League when API-Football is unavailable because no production fallback exists.
-- [x] **PROV-05**: The system calls lineup, injury, odds, or detailed-statistics endpoints only when the provider capability record confirms coverage and budget policy permits the call.
-- [x] **PROV-06**: A user can compare INITIAL, PRE_MATCH, and available LINEUP_CONFIRMED snapshots and see which evidence changed the forecast.
-- [x] **PROV-07**: TheSportsDB can suggest names and logos for reconciliation review but cannot supply production match statistics or silently approve ambiguous matches.
+- [ ] **CALIB-01**: A user can see calibrated probabilities (Platt first; isotonic only above a configured sample threshold) alongside raw model probabilities with a calibrator version label.
+- [ ] **CALIB-02**: The system fits calibrators per exact model version on held-out settled windows with minimum-sample gates and structurally refuses calibrators whose pinned model version does not match the served forecast.
+- [ ] **CALIB-03**: A promoted calibrator rolls back automatically under materiality and hysteresis gates when holdout Brier regresses; frozen snapshots are never modified.
+- [ ] **CALIB-04**: Below minimum sample thresholds, the user sees an explicit insufficient-data-to-calibrate state instead of a fitted layer.
 
-### Release Experience and Operations
+### CLV Price Diary (CLV)
 
-- [x] **UX-01**: A user can use fixture, match analysis, manual odds, value, and performance workflows on mobile and desktop with keyboard-accessible controls and readable charts.
-- [x] **UX-02**: A user can view a versioned methodology/model-card page explaining inputs, exclusions, confidence, limitations, evaluation, and responsible-use policy.
-- [x] **OPS-01**: An operator can inspect job failures, dead-lettered work, provider health, quota consumption, data-quality errors, and correlation identifiers without exposing secrets.
-- [x] **OPS-02**: An operator can safely retry or replay failed ingestion/evaluation work and verify that durable facts and immutable snapshots remain consistent.
-- [x] **OPS-03**: Release verification covers the complete fixture-to-forecast-to-manual-odds-to-settlement workflow and representative provider degradation states.
-- [x] **PRIV-01**: The system does not persist user betting-related history without explicit consent and a documented retention boundary.
+- [ ] **CLV-01**: An operator can record a closing-odds observation per fixture, market, and selection with a UTC observed-at timestamp validated as pre-kickoff and pre-settlement.
+- [ ] **CLV-02**: A user can see closing-line value per value candidate computed from de-vigged forecast-time and closing prices on the same line; a missing closing price renders as explicit unavailable and is never synthesized.
+- [ ] **CLV-03**: Closing observations are append-only, and CLV never influences value ranking, scanner ordering, or journal decisions; it is evaluation-only.
 
-## v2 Requirements
+### New Markets: Asian Handicap and Exact Score (MKT)
 
-### Accounts and Personalization
+- [ ] **MKT-01**: A user can view Asian handicap probabilities and fair odds derived from the frozen score matrix, including quarter-line push and half-bet semantics.
+- [ ] **MKT-02**: A user can view exact-score probabilities derived from the frozen score matrix for a configured bucket list including an explicit other-tail catch-all.
+- [ ] **MKT-03**: An operator can enter complete odds books for Asian handicap and exact-score markets with the existing validation and no-vig normalization, and receive value receipts with push-aware expected value.
+- [ ] **MKT-04**: Settlement resolves Asian handicap push, half-win, and half-loss outcomes and exact-score outcomes under explicit versioned rules inside the scorecard pipeline.
+- [ ] **MKT-05**: The score matrix needed by new markets is persisted at forecast issuance or deterministically re-derived fail-closed for legacy snapshots.
 
-- **ACCT-01**: A user can create an account and save followed competitions, fixtures, and analysis history with explicit consent.
-- **ACCT-02**: A user can configure privacy, retention, and notification preferences for saved activity.
+### Value Scanner (SCAN)
 
-### Data and Models
+- [ ] **SCAN-01**: A user can view a consolidated list of value candidates for the next seven days across fixtures and markets with fixture, market, selection, edge, expected value, and odds source.
+- [ ] **SCAN-02**: The scanner displays stored receipt edges byte-for-byte without recomputation, with freshness demotion and explicit empty versus unavailable states.
+- [ ] **SCAN-03**: The scanner page complies with responsible-gambling copy rules (no urgency or certainty claims, persistent disclaimers) and issues no N+1 query patterns.
 
-- **MODEL-01**: An analyst can evaluate a Python/ML challenger against the frozen V1 baseline and promote it only after measurable walk-forward improvement.
-- **MODEL-02**: A user can compare multiplicative, Shin, and power-method overround normalization when sample evidence supports the choice.
-- **MODEL-03**: The system can ingest licensed automated odds history and calculate reliable closing-line value.
-- **MODEL-04**: The system can add further goal lines, double-chance, and team-total markets after settlement and calibration rules are verified.
-- **DATA-09**: The system can add more competitions only after provider coverage, identity semantics, and evaluation cohorts are validated.
+### Paper-Trading Journal (JRN)
 
-### Responsible Gambling
+- [ ] **JRN-01**: An operator can record a paper (simulated) trade linked to an immutable value receipt with flat-unit and fractional-Kelly stake sizing capped at one quarter.
+- [ ] **JRN-02**: The operator can see bankroll and unit curves, drawdown, ROI, and yield with push-aware denominators, sample gates, and explicit exclusion of pending and void trades.
+- [ ] **JRN-03**: Trades are append-only with supersession corrections; the journal is clearly labeled as a simulation with Russian units/simulation vocabulary and no deposit or withdrawal verbs.
+- [ ] **JRN-04**: Journal data never leaks into public read models or the privacy-sensitive contour.
 
-- **SAFE-01**: A user can self-exclude from betting-related analytics.
-- **SAFE-02**: A user can configure activity limits and safer-gambling reminders without urgency or engagement pressure.
+## Future Requirements (deferred)
+
+- League expansion (second divisions) — deferred beyond v1.1.
+- User-facing notifications (Telegram/email) — deferred beyond v1.1.
+- User accounts and consent-scoped personalization — deferred beyond v1.1 (v2.0 candidate, ACCT-01/ACCT-02).
+- UI internationalization (EN locale) — deferred beyond v1.1.
+- Advanced overround normalization (Shin, power methods) and licensed closing-line feeds (MODEL-02/MODEL-03 from v2.0 list).
+- Isotonic upgrade trigger at >=1,000 settled outcomes per market cohort.
+- Python/ML challenger model service (MODEL-01 from v2.0 list).
 
 ## Out of Scope
 
-| Feature | Reason |
-|---------|--------|
-| Automatic bet placement or bookmaker execution | The product is an analytical workbench, not a wagering agent. |
-| Guaranteed picks, profit claims, or certainty language | Conflicts with probabilistic evidence and responsible-gambling requirements. |
-| Live/in-play betting signals | Requires different data latency, licensing, risk, and operational guarantees. |
-| Parlays, staking advice, bankroll optimization, or tipster mechanics | Encourages prescriptive wagering and distracts from forecast calibration. |
-| Paid providers in MVP | Initial value must be validated without recurring data cost. |
-| Unofficial live scraping as a required path | Availability and Terms-of-Service risk make it unsuitable for a reliable MVP dependency. |
-| Current-season FBref advanced stats | The source is historical-only after its 2026 data-license change. |
-| StatsBomb Open Data in the live pipeline | It is limited historical training/calibration data, not current production coverage. |
-| Black-box ML in V1 | A transparent Poisson/Elo baseline must be measured before adding complexity. |
-| Urgency notifications or personalized wagering prompts | Incompatible with the intended responsible-use experience. |
+- Automatic bet placement or bookmaker execution — the platform stays analytical; the journal is explicitly simulated.
+- Paid data, odds, or xG providers — free tiers and manual odds only.
+- User notifications of any kind in this milestone — alerting is operator-only.
+- Guaranteed-win, urgency, or certainty language on any new surface — rejected by the copy test suite.
+- Mutating frozen snapshots or receipts for any convenience — change is always a superseding append-only row.
 
 ## Traceability
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| FOUND-01 | Phase 1 | Complete |
-| FOUND-02 | Phase 1 | Complete |
-| FOUND-03 | Phase 1 | Complete |
-| FOUND-04 | Phase 1 | Complete |
-| FOUND-05 | Phase 1 | Complete |
-| FOUND-06 | Phase 1 | Complete |
-| DATA-01 | Phase 1 | Complete |
-| DATA-02 | Phase 1 | Complete |
-| DATA-03 | Phase 1 | Complete |
-| DATA-04 | Phase 1 | Complete |
-| DATA-05 | Phase 1 | Complete |
-| DATA-06 | Phase 1 | Complete |
-| DATA-07 | Phase 1 | Complete |
-| DATA-08 | Phase 1 | Complete |
-| PIPE-01 | Phase 2 | Complete |
-| PIPE-02 | Phase 2 | Complete |
-| PIPE-03 | Phase 2 | Complete |
-| PIPE-04 | Phase 2 | Complete |
-| PIPE-05 | Phase 2 | Complete |
-| PIPE-06 | Phase 2 | Complete |
-| PIPE-07 | Phase 2 | Complete |
-| PIPE-08 | Phase 2 | Complete |
-| PRED-01 | Phase 3 | Complete |
-| PRED-02 | Phase 3 | Complete |
-| PRED-03 | Phase 3 | Complete |
-| PRED-04 | Phase 3 | Complete |
-| PRED-05 | Phase 3 | Complete |
-| PRED-06 | Phase 3 | Complete |
-| ODDS-01 | Phase 3 | Complete |
-| ODDS-02 | Phase 3 | Complete |
-| ODDS-03 | Phase 3 | Complete |
-| VALUE-01 | Phase 3 | Complete |
-| VALUE-02 | Phase 3 | Complete |
-| VALUE-03 | Phase 3 | Complete |
-| VALUE-04 | Phase 3 | Complete |
-| EVAL-01 | Phase 4 | Complete |
-| EVAL-02 | Phase 4 | Complete |
-| EVAL-03 | Phase 4 | Complete |
-| EVAL-04 | Phase 4 | Complete |
-| EVAL-05 | Phase 4 | Complete |
-| EVAL-06 | Phase 4 | Complete |
-| EVAL-07 | Phase 4 | Complete |
-| EVAL-08 | Phase 4 | Complete |
-| PROV-01 | Phase 5 | Complete |
-| PROV-02 | Phase 5 | Complete |
-| PROV-03 | Phase 5 | Complete |
-| PROV-04 | Phase 5 | Complete |
-| PROV-05 | Phase 5 | Complete |
-| PROV-06 | Phase 5 | Complete |
-| PROV-07 | Phase 5 | Complete |
-| UX-01 | Phase 6 | Complete |
-| UX-02 | Phase 6 | Complete |
-| OPS-01 | Phase 6 | Complete |
-| OPS-02 | Phase 6 | Complete |
-| OPS-03 | Phase 6 | Complete |
-| PRIV-01 | Phase 6 | Complete |
-
-**Coverage:**
-
-- v1 requirements: 56 total
-- Mapped to phases: 56
-- Unmapped: 0 ✓
-
----
-*Requirements defined: 2026-08-27*
-*Last updated: 2026-08-27 after roadmap creation*
+_Filled by the roadmap: maps every requirement to exactly one phase._

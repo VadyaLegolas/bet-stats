@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Reliability, Model Quality and Value Experience
 status: planning
-last_updated: "2026-10-19T16:14:34.432Z"
+last_updated: "2026-10-19T18:00:00.000Z"
 last_activity: 2026-10-19
 progress:
-  total_phases: 0
+  total_phases: 10
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-08)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Fast task - theme bootstrap hydration fix (server-only script render)
+**Current focus:** Phase 7: CI Pipeline & Quality Gates (v1.1 roadmap created 2026-10-19; 10 phases, Phases 7-16)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 7 of 16 (CI Pipeline & Quality Gates — numbering continues from v1.0 Phases 1-6)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-10-19 — Milestone v1.1 started
+Status: Roadmap complete — ready to plan Phase 7
+Last activity: 2026-10-19 — v1.1 ROADMAP.md created (10 phases, 35/35 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -119,6 +121,9 @@ Last activity: 2026-10-19 — Milestone v1.1 started
 
 Decisions are logged in PROJECT.md Key Decisions table.
 
+- [Roadmap v1.1]: Ten phases continue v1.0 numbering (Phases 7-16): CI → backups → alerting → performance → Dixon-Coles → calibration → CLV → new markets → scanner → journal.
+- [Roadmap v1.1]: Safety-net ordering — CI gates before schema/model risk, verified backups before mutation, alerting before model rollouts. Performance budgets before new UI.
+- [Roadmap v1.1]: Dixon-Coles precedes calibration (calibrators fit per model version); markets derive from the corrected score matrix; scanner and journal close the value loop last.
 - [Roadmap]: Six vertical MVP slices preserve auditability before provider breadth.
 - [Roadmap]: Evaluation closes the evidence loop before fallback providers and enrichment are added.
 - [Phase 1]: Provider identity is canonicalized independently of external IDs; ambiguity is resolved through append-only audited decisions.

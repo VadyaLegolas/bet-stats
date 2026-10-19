@@ -91,4 +91,44 @@
 
 ## Traceability
 
-_Filled by the roadmap: maps every requirement to exactly one phase._
+_Milestone v1.1 roadmap (2026-10-19): every requirement maps to exactly one phase._
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| CI-01 | Phase 7 | Pending |
+| CI-02 | Phase 7 | Pending |
+| CI-03 | Phase 7 | Pending |
+| CI-04 | Phase 7 | Pending |
+| BAK-01 | Phase 8 | Pending |
+| BAK-02 | Phase 8 | Pending |
+| BAK-03 | Phase 8 | Pending |
+| ALRT-01 | Phase 9 | Pending |
+| ALRT-02 | Phase 9 | Pending |
+| ALRT-03 | Phase 9 | Pending |
+| ALRT-04 | Phase 9 | Pending |
+| PERF-01 | Phase 10 | Pending |
+| PERF-02 | Phase 10 | Pending |
+| MODEL-01 | Phase 11 | Pending |
+| MODEL-02 | Phase 11 | Pending |
+| MODEL-03 | Phase 11 | Pending |
+| CALIB-01 | Phase 12 | Pending |
+| CALIB-02 | Phase 12 | Pending |
+| CALIB-03 | Phase 12 | Pending |
+| CALIB-04 | Phase 12 | Pending |
+| CLV-01 | Phase 13 | Pending |
+| CLV-02 | Phase 13 | Pending |
+| CLV-03 | Phase 13 | Pending |
+| MKT-01 | Phase 14 | Pending |
+| MKT-02 | Phase 14 | Pending |
+| MKT-03 | Phase 14 | Pending |
+| MKT-04 | Phase 14 | Pending |
+| MKT-05 | Phase 14 | Pending |
+| SCAN-01 | Phase 15 | Pending |
+| SCAN-02 | Phase 15 | Pending |
+| SCAN-03 | Phase 15 | Pending |
+| JRN-01 | Phase 16 | Pending |
+| JRN-02 | Phase 16 | Pending |
+| JRN-03 | Phase 16 | Pending |
+| JRN-04 | Phase 16 | Pending |
+
+**Coverage: 35/35 v1.1 requirements mapped — no orphans, no duplicates.**

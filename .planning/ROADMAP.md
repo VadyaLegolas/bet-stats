@@ -1,360 +1,194 @@
-# Roadmap: Football Prediction & Value Betting Platform
+# Roadmap: Football Prediction & Value Betting Platform — Milestone v1.1
 
 ## Overview
 
-The MVP grows from one trustworthy, policy-compliant fixture path into an auditable forecasting workbench. Each phase closes a user-visible loop: canonical fixture discovery, chronological evidence, frozen forecasts with manual-odds value analysis, post-match measurement, provider-aware breadth, and finally a release-ready experience with operational controls.
+Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the phase numbering from the completed v1.0 MVP (Phases 1–6, archived under `.planning/milestones/v1.0-ROADMAP.md`). It hardens the platform an operator can trust (CI gates, verified backups, degradation alerting, performance budgets), raises probability quality with auditable math (Dixon-Coles correction, per-market calibration with versioned rollback), and closes the value-discovery loop for the user (CLV price diary, Asian handicap and exact-score markets, a 7-day value scanner, and an operator-only paper-trading journal). Every new fact stays append-only and versioned; every new user surface keeps the fail-closed honesty and responsible-gambling discipline established in v1.0. Excluded: league expansion, user notifications, user accounts, UI internationalization.
 
 ## Phases
 
-- [x] **Phase 1: Trustworthy Fixture Discovery** - Users can browse one supported competition through a healthy, policy-compliant system with canonical identities and visible data quality. (completed 2026-08-29)
-- [x] **Phase 2: Historical Evidence Pipeline** - Users and operators can rely on replayable chronological history and leakage-safe team features. (completed 2026-09-05)
-- [x] **Phase 3: Forecast and Manual Value Workbench** - Users can inspect frozen probabilities, enter odds, and receive reproducible value or abstention results. (completed 2026-09-08)
-- [x] **Phase 4: Settlement and Evidence Scorecard** - Users can see how frozen forecasts and value candidates performed under chronological evaluation. (completed 2026-09-09)
-- [x] **Phase 5: Provider-Aware Coverage and Enrichment** - Users gain fallback competitions and evidence updates without losing canonical identity or visibility into limitations. (completed 2026-09-20)
-- [x] **Phase 6: Release Experience and Operations** - Users and operators can safely use, understand, monitor, and verify the complete MVP on mobile and desktop. (completed 2026-10-01)
+- [ ] **Phase 7: CI Pipeline & Quality Gates** - Every push and PR runs a frozen, Linux-based pipeline that gates schema, types, lint, tests, and build before anything else lands.
+- [ ] **Phase 8: Backups and Restore Verification** - The operator trusts that PostgreSQL can be restored, proven by scheduled restore drills with visible verification status.
+- [ ] **Phase 9: Degradation Alerting** - The operator is told when providers, workers, HTTP error rates, or backups degrade, through durable alerts viewable in the operations center.
+- [ ] **Phase 10: Performance Audit and Budgets** - The fixture detail page meets declared Lighthouse budgets, and regressions fail CI instead of shipping.
+- [ ] **Phase 11: Dixon-Coles Model Version** - Forecasts can be issued under a corrected, versioned model whose rolling-origin backtests are compared against the frozen baseline before promotion.
+- [ ] **Phase 12: Calibration Layer and Versioned Rollback** - Users see calibrated probabilities with honest labels and insufficient-data states, backed by per-model-version calibrators that roll back on measured regression.
+- [ ] **Phase 13: CLV Price Diary** - Forecast-time and closing prices are compared per candidate, with honest unavailable states and strict evaluation-only semantics.
+- [ ] **Phase 14: Asian Handicap and Exact Score Markets** - Users see and settle Asian handicap and exact-score probabilities derived from the frozen score matrix, with push-aware value receipts.
+- [ ] **Phase 15: 7-Day Value Scanner** - Users see one consolidated, freshness-aware list of value candidates across the next seven days without N+1 queries or recompute drift.
+- [ ] **Phase 16: Paper-Trading Journal** - The operator records simulated trades against immutable receipts and sees bankroll, drawdown, ROI, and yield with append-only corrections.
 
 ## Phase Details
 
-### Phase 1: Trustworthy Fixture Discovery
+### Phase 7: CI Pipeline & Quality Gates
 
-**Goal:** As a football analytics user, I want to discover upcoming fixtures with canonical identities, provenance, limitations, and policy-compliant access, so that I can trust the data before using betting analytics.
-**Mode:** mvp
-**Depends on**: Nothing (first phase)
-**Requirements**: FOUND-01, FOUND-02, FOUND-03, FOUND-04, FOUND-05, FOUND-06, DATA-01, DATA-02, DATA-03, DATA-04, DATA-05, DATA-06, DATA-07, DATA-08
+**Goal**: A developer can rely on one GitHub Actions pipeline that proves the workspace is installable, schema-valid, type-clean, lint-clean, tested (unit + Docker-backed integration on Linux), and buildable on every push and pull request — the safety net all later v1.1 schema/model changes land behind.
+**Depends on**: Nothing (first phase of v1.1)
+**Requirements**: CI-01, CI-02, CI-03, CI-04
 **Success Criteria** (what must be TRUE):
 
-  1. A developer can install, build, lint, test, and run the web, API, worker, database, and queue from the shared workspace, with clear health and configuration failures that never reveal secrets.
-  2. An eligible user can filter upcoming fixtures for the initial competition and open a fixture showing canonical participants, kickoff, status, provenance, and freshness.
-  3. Users see explicit incomplete, stale, unsupported, or limited-data states, while unresolved canonical ambiguity blocks forecasting instead of producing misleading data.
-  4. An administrator can review ambiguous provider matches and leave an auditable approve, reject, or correction decision without creating duplicate canonical entities.
-  5. Betting analytics are server-gated by configurable jurisdiction and age policy, and every forecast/value surface uses probabilistic language, persistent risk disclosure, and automated rejection of prohibited certainty claims.
+  1. A developer opens a pull request and sees the full pipeline run automatically: frozen-lockfile install, schema verification, typecheck, lint across api/workers/domain/web, unit tests, Docker-backed integration tests, and build.
+  2. The integration job runs only on Linux runners, fails loudly (never skips) when Docker is unavailable, and no CI step ever calls a live external provider.
+  3. Lint is a required gate covering all workspace packages, and CI-enforced mutation-rejection tests prove snapshot and receipt tables reject UPDATE and DELETE at the database layer.
+  4. A deliberate breakage (type error, failing test, mutation on a frozen table) turns the pipeline red and blocks the merge.
 
-**Plans**: 12/12 plans executed
+**Notes / research flags**: Decide which Playwright E2E subset is portable to the default CI job vs a manually-triggered live smoke — CI must never burn the free-tier provider budget. E2E live-stack tests currently shell out to `cmd.exe` (Windows-only); CI must use the cross-platform `verify-release-integration.mjs` path. Extend the flat ESLint config to `apps/api`, `apps/api-e2e`, `workers/*` before making lint required.
+**Plans**: TBD
+**UI hint**: no
 
-Plans:
-**Wave 1**
+### Phase 8: Backups and Restore Verification
 
-- [x] 01-01-PLAN.md — Establish the pinned root workspace and local PostgreSQL/Redis dependencies.
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 01-02-PLAN.md — Scaffold the compile-safe Next.js and NestJS processes.
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 01-03-PLAN.md — Scaffold worker/config packages and deterministic test harnesses.
-
-**Wave 4** *(blocked on Wave 3 completion)*
-
-- [x] 01-04-PLAN.md — Prove the first browser-to-API Premier League fixture tracer and redacted readiness.
-
-**Wave 5** *(blocked on Wave 4 completion)*
-
-- [x] 01-05-PLAN.md — Materialize provider-independent canonical identity and auditable reconciliation.
-- [x] 01-08-PLAN.md — Implement five honest data states and configured freshness.
-
-**Wave 6** *(blocked on Wave 5 completion)*
-
-- [x] 01-06-PLAN.md — Persist provider capability and atomic provider/date/endpoint reservations.
-- [x] 01-09-PLAN.md — Enforce deny-by-default eligibility and responsible copy.
-
-**Wave 7** *(blocked on Wave 6 completion)*
-
-- [x] 01-07-PLAN.md — Enforce capability and reservations on football-data.org fixture ingestion.
-
-**Wave 8** *(blocked on Wave 7 completion)*
-
-- [x] 01-10-PLAN.md — Complete canonical fixture discovery and detail journeys.
-- [x] 01-11-PLAN.md — Deliver protected append-only ambiguity review.
-
-**Wave 9** *(blocked on Wave 8 completion)*
-
-- [x] 01-12-PLAN.md — Close held-out security, UI, and source-coverage validation.
-
-**UI hint**: yes
-
-### Phase 2: Historical Evidence Pipeline
-
-**Goal**: As a football analytics user, I want to inspect time-correct team evidence and request safe historical replays, so that I can rely on reproducible, quota-aware football history.
-**Mode:** mvp
-**Depends on**: Phase 1
-**Requirements**: PIPE-01, PIPE-02, PIPE-03, PIPE-04, PIPE-05, PIPE-06, PIPE-07, PIPE-08
+**Goal**: An operator can enable automated PostgreSQL backups and trust them because a scheduled restore drill proves every backup actually restores — with never-verified and stale states rendered honestly in the operations center.
+**Depends on**: Nothing (parallel-safe with Phases 7 and 10; must land before any phase that changes schema or model code)
+**Requirements**: BAK-01, BAK-02, BAK-03
 **Success Criteria** (what must be TRUE):
 
-  1. Upcoming fixtures, completed results, and standings synchronize through retryable jobs without duplicating durable football facts when rerun.
-  2. An operator can see degraded provider state and replay failed or historical work while critical fixture/result calls retain quota priority over optional enrichment.
-  3. Every external call is preceded by an atomic provider/date/endpoint budget reservation, and normalized facts retain raw-source provenance and capture time.
-  4. A user can view recent team history plus five- and ten-match weighted form as known at a selected point in time.
-  5. Elo, home/away strength, goal rates, rest days, and low-weight H2H are chronological and exclude facts captured after the requested cutoff.
+  1. An operator can enable automated `pg_dump -Fc` backups with configurable retention and rotation, running without the application stack.
+  2. A scheduled restore drill restores the latest backup into a throwaway PostgreSQL container, applies migrations, runs chain-integrity checks, and records a verification receipt.
+  3. The operations center shows backup and restore-verification status (last success, age, failures) without exposing secrets; never-verified and stale backups render as explicit non-green states.
 
-**Plans**: 28/28 plans executed; final phase verification pending
+**Notes / research flags**: Operator decisions needed before planning — RPO target (daily dump vs WAL shipping) and off-host storage destination for the actual single-Windows-host deployment. Redis is never backed up. No pgBackRest/Barman/SaaS (overkill, paid).
+**Plans**: TBD
+**UI hint**: no
 
-- [x] 02-16-PLAN.md
-- [x] 02-17-PLAN.md
-- [x] 02-18-PLAN.md
-- [x] 02-19-PLAN.md
-- [x] 02-20-PLAN.md
-- [x] 02-21-PLAN.md
-- [x] 02-22-PLAN.md
+### Phase 9: Degradation Alerting
 
-**Wave 19** *(gap closure; blocked on Wave 18 completion)*
-
-- [x] 02-23-PLAN.md
-- [x] 02-24-PLAN.md
-- [x] 02-25-PLAN.md
-
-**Wave 20** *(blocked on Wave 19 completion)*
-
-- [x] 02-26-PLAN.md
-
-**Wave 22** *(gap closure; depends on 02-26, effective DAG wave 21)*
-
-- [x] 02-27-PLAN.md — Stable replay policy identity with fresh per-unit admission.
-
-**Wave 23** *(blocked on 02-27 completion)*
-
-- [x] 02-28-PLAN.md — Recoverable execution leases, fenced publication and hard-crash recovery.
-
-- [x] 02-11-PLAN.md
-- [x] 02-12-PLAN.md
-- [x] 02-13-PLAN.md
-- [x] 02-14-PLAN.md
-- [x] 02-15-PLAN.md
-
-**Wave 1**
-
-- [x] 02-01-PLAN.md
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 02-02-PLAN.md
-- [x] 02-03-PLAN.md
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 02-04-PLAN.md
-
-**Wave 4** *(blocked on Wave 3 completion)*
-
-- [x] 02-05-PLAN.md
-
-**Wave 5** *(blocked on Wave 4 completion)*
-
-- [x] 02-06-PLAN.md
-
-**Wave 6** *(blocked on Wave 5 completion)*
-
-- [x] 02-07-PLAN.md
-
-**Wave 7** *(blocked on Wave 6 completion)*
-
-- [x] 02-08-PLAN.md
-
-**Wave 8** *(blocked on Wave 7 completion)*
-
-- [x] 02-09-PLAN.md
-
-**Wave 9** *(blocked on Wave 8 completion)*
-
-- [x] 02-10-PLAN.md
-
-**UI hint**: yes
-
-### Phase 3: Forecast and Manual Value Workbench
-
-**Goal**: As a football analytics user, I want to compare a frozen forecast with manual odds, so that I can see a reproducible value or abstention result.
-**Mode:** mvp
-**Depends on**: Phase 2
-**Requirements**: PRED-01, PRED-02, PRED-03, PRED-04, PRED-05, PRED-06, ODDS-01, ODDS-02, ODDS-03, VALUE-01, VALUE-02, VALUE-03, VALUE-04
+**Goal**: An operator is proactively told when the platform degrades — provider-quota exhaustion, worker failures and dead letters, sync-run failures, 5xx spikes, and backup staleness — with PostgreSQL as the source of truth and the operations center as the operator's view.
+**Depends on**: Phase 7 (CI-gated schema changes), Phase 8 (backup/restore age is a critical alert signal)
+**Requirements**: ALRT-01, ALRT-02, ALRT-03, ALRT-04
 **Success Criteria** (what must be TRUE):
 
-  1. A user can inspect normalized 1X2, Over/Under 2.5, and BTTS probabilities, derived fair odds, and the Poisson/Elo/form evidence behind them.
-  2. A user can distinguish event probability from confidence and inspect completeness, lineup, freshness, source-reliability, and model-stability components.
-  3. INITIAL and PRE_MATCH forecasts are immutable receipts tied to model/configuration, cutoff, feature inputs, and source timestamps; LINEUP_CONFIRMED exists only with an official confirmed lineup.
-  4. A user can enter a complete positive decimal-odds book, correct actionable validation errors, and inspect its immutable provenance and multiplicatively normalized no-vig probabilities.
-  5. The exact forecast and odds snapshots produce edge and expected value, with a candidate shown only when all gates pass and an explicit no-value or insufficient-evidence result otherwise.
+  1. Each configured degradation signal (quota exhaustion, job failures/dead letters, sync-run failures, 5xx spikes, backup staleness) produces a durable alert record with deduplication, severity tiers, and transition history.
+  2. An operator can view active and recent alerts in the operations center with correlation context and redacted secrets.
+  3. Alert dispatch delivers to a configurable webhook endpoint (optionally SMTP) without leaking secrets or betting data; a failed channel delivery never loses the alert, because detection lives in PostgreSQL.
+  4. Probes and alerting never call live external providers and per-job failures do not create alert fatigue.
 
-**Plans**: 12 plans (7 complete, 5 gap-closure)
-
-- [x] 03-01-PLAN.md
-- [x] 03-02-PLAN.md
-- [x] 03-03-PLAN.md
-- [x] 03-04-PLAN.md
-- [x] 03-05-PLAN.md
-- [x] 03-06-PLAN.md
-- [x] 03-07-PLAN.md
-- [x] 03-08-PLAN.md — Bind official lineup provenance and serialize forecast revisions
-- [x] 03-09-PLAN.md — Harden canonical, provenance-complete, fixture-scoped manual odds
-- [x] 03-10-PLAN.md — Make value receipts selection-aware and database-verifiable
-- [x] 03-11-PLAN.md — Discover issued forecasts at their exact immutable identities
-- [x] 03-12-PLAN.md — Prove all repaired boundaries in integration and browser flows
-
+**Notes / research flags**: Channel choice (webhook vs SMTP free-tier) and its rate limits need runtime verification at implementation time. BullMQ `QueueEvents` for job signals; native `fetch` for webhook dispatch.
+**Plans**: TBD
 **UI hint**: yes
 
-### Phase 4: Settlement and Evidence Scorecard
+### Phase 10: Performance Audit and Budgets
 
-**Goal:** As a user, I want to review settled frozen forecasts, so that I can judge predictive and financial quality.
-**Mode:** mvp
-**Depends on**: Phase 3
-**Requirements**: EVAL-01, EVAL-02, EVAL-03, EVAL-04, EVAL-05, EVAL-06, EVAL-07, EVAL-08
+**Goal**: A user gets a fixture detail page that meets declared Lighthouse performance budgets — measured honestly as median-of-3 before/after deltas — and budget regressions fail CI instead of shipping.
+**Depends on**: Phase 7 (CI is where the budget assertion runs); parallel-safe with Phases 8 and 9
+**Requirements**: PERF-01, PERF-02
 **Success Criteria** (what must be TRUE):
 
-  1. Completed, postponed, cancelled, abandoned, and void fixtures resolve under explicit versioned rules against the exact frozen pre-match prediction.
-  2. A user can view Brier Score and Log Loss by model version, competition, market, and period with the cohort sample size.
-  3. A user can inspect reliability buckets and identify under-confident or over-confident cohorts.
-  4. Frozen value candidates show per-result unit profit/loss and aggregate ROI and Yield with denominators and sample sizes; weak cohorts are labeled or suppressed.
-  5. Backtests use rolling-origin chronology and production-equivalent as-of features, while CLV is shown only when comparable timestamped prices exist and explicitly unavailable otherwise.
+  1. The fixture detail page meets configured Lighthouse performance budgets measured as a median-of-3 audit against the production build, with before/after metrics recorded honestly (no composite-score chasing).
+  2. Lighthouse assertions run in CI against key pages and fail the build on budget regression, so later UI phases (scanner, journal, new markets) inherit the discipline.
 
-**Plans**: 9/9 plans executed
-
-Plans:
-
-- [x] 04-01-PLAN.md — Append-only settlement receipts bound to exact frozen forecasts
-- [x] 04-02-PLAN.md — Versioned Brier and Log Loss facts
-- [x] 04-03-PLAN.md — Reliability buckets and honest cohort-health gates
-- [x] 04-04-PLAN.md — Flat-unit value settlement and fail-closed CLV
-- [x] 04-05-PLAN.md — Leakage-safe rolling-origin backtests
-- [x] 04-06-PLAN.md — Guarded URL-stable evidence scorecard API and UI
-- [x] 04-07-PLAN.md — PostgreSQL security matrix and production Chromium acceptance
-- [x] 04-08-PLAN.md — Idempotent result-to-settlement-to-score/value worker pipeline
-- [x] 04-09-PLAN.md — Production scored rolling-origin worker and matched model comparison
-
+**Notes / research flags**: Research gap to resolve at planning — STACK.md/ARCHITECTURE.md verify Recharts is absent from the repo; do not add a charting library (it would blow the budget); if Recharts unexpectedly exists, the fix strategy becomes dynamic-import-per-widget. Target component: ~39 KB client `forecast-workbench.tsx`.
+**Plans**: TBD
 **UI hint**: yes
 
-### Phase 5: Provider-Aware Coverage and Enrichment
+### Phase 11: Dixon-Coles Model Version
 
-**Goal**: As a football analytics user, I want to access configured competition coverage and pre-match evidence updates, so that provider failures remain visible and canonical identities remain stable.
-**Mode:** mvp
-**Depends on**: Phase 4
-**Requirements**: PROV-01, PROV-02, PROV-03, PROV-04, PROV-05, PROV-06, PROV-07
+**Goal**: Forecast probabilities can be issued under a new, versioned Dixon-Coles-corrected model with a pinned τ convention, and an operator can prove via rolling-origin backtests that it beats (or honestly fails to beat) the frozen Poisson baseline before it becomes the production default.
+**Depends on**: Phase 7 (every model change lands behind CI; hash/mutation gates)
+**Requirements**: MODEL-01, MODEL-02, MODEL-03
 **Success Criteria** (what must be TRUE):
 
-  1. Top-five leagues and Champions League use football-data.org primarily and can fall back to API-Football without changing canonical fixture or team identity.
-  2. Europa League and Conference League use API-Football, and users see an explicit limited-data state when that no-fallback source is unavailable.
-  3. Optional lineup, injury, odds, and detailed-statistics calls occur only when recorded coverage and budget policy permit them.
-  4. A user can compare INITIAL, PRE_MATCH, and available LINEUP_CONFIRMED snapshots and see which evidence changed the forecast.
-  5. TheSportsDB may suggest reconciliation names and logos for administrator review but cannot supply match statistics or silently resolve ambiguity.
+  1. The forecast model applies the Dixon-Coles low-score correction with a pinned τ convention and bounded ρ; tests prove ρ=0 reproduces the Poisson model, the score matrix sums to 1, and draw probability rises for the documented sign.
+  2. Probabilities produced under the corrected model carry a new model-version identity across the whole stack — snapshots, backtests, comparisons, validators — widened in one coherent pass (no partial compile).
+  3. An operator can compare rolling-origin backtest metrics of the new version against the frozen baseline, and the methodology card names the exact integration and its limitations (e.g. neutral on O/U 2.5).
 
-**Plans**: 16/16 plans executed — 6 verification gap-closure plans ready
+**Notes / research flags**: Open product decision for discuss/spec — hybrid Elo/form-derived λ,μ + fitted per-league ρ (recommended, labeled as hybrid) vs full DC attack/defence refit (risks double-counting home advantage). ρ fitting window and decay selection are project-specific. `modelVersion` is hard-pinned as a string literal in ≥10 files — must widen the shared union in one pass.
+**Plans**: TBD
+**UI hint**: no
 
-Plans:
+### Phase 12: Calibration Layer and Versioned Rollback
 
-**Wave 1**
-
-- [x] 05-01-PLAN.md — Promote the provider-neutral contract and add the strict API-Football core adapter.
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 05-02-PLAN.md — Persist migration-proven route, attempt, quota and throttle evidence.
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 05-06-PLAN.md — Provide server-authoritative exact forecast-pair comparison.
-- [x] 05-09-PLAN.md — Produce the redacted provider-policy probe and register its authenticated approval boundary in the production Nest graph.
-
-**Wave 4** *(routing/enrichment blocked on 05-09; UI comparison blocked on 05-06)*
-
-- [x] 05-03-PLAN.md — Route core ingestion with canonical-identity-safe fallback and no-fallback outcomes.
-- [x] 05-04-PLAN.md — Admit and schedule quota-safe optional pre-match enrichment.
-- [x] 05-07-PLAN.md — Deliver URL-stable accessible forecast comparison UI.
-
-**Wave 5** *(blocked on core routing)*
-
-- [x] 05-05-PLAN.md — Surface exact provider degradation states on fixture collection and detail.
-
-**Wave 6** *(blocked on routing, enrichment, provider-state and comparison UI)*
-
-- [x] 05-08-PLAN.md — Add suggestion-only TheSportsDB review and server-side logo validation.
-
-**Wave 7** *(blocked on suggestion/logo service and authenticated provider module registration)*
-
-- [x] 05-10-PLAN.md — Register the validated provider-logo HTTP boundary and close held-out security/UI acceptance.
-
-**Wave 5 gap closure** *(blocked on existing routing plans)*
-
-- [x] 05-11-PLAN.md — Complete durable provider-route admission, terminal attempts, no-fallback and append-only recovery.
-
-**Wave 6 gap closure** *(blocked on 05-11)*
-
-- [x] 05-12-PLAN.md — Validate separate live provider credentials, resolve per-provider external IDs, and wire canonical fallback into production replay.
-
-**Wave 7 gap closure** *(blocked on 05-12; plans have no file overlap)*
-
-- [x] 05-13-PLAN.md — Register and schedule the production optional enrichment queue/worker.
-- [x] 05-14-PLAN.md — Project real last-valid timestamps and consume server snapshot-availability reasons in the web UI.
-
-**Wave 8 gap closure** *(blocked on 05-13 and 05-14)*
-
-- [x] 05-15-PLAN.md — Migrate provider seasons to canonical competition scope and update generated Prisma types, all production lookups and affected creators.
-
-**Wave 9 gap closure** *(blocked on 05-15)*
-
-- [x] 05-16-PLAN.md — Finish the owned live-stack smoke, then run full provider-degradation and forecast-comparison Playwright acceptance.
-
-**UI hint**: yes
-
-### Phase 6: Release Experience and Operations
-
-**Goal**: As a football analytics user or operator, I want to safely understand and verify the fixture-to-evaluation experience on supported devices and through failure states, so that I can trust results and operate the MVP responsibly.
-**Mode:** mvp
-**Depends on**: Phase 5
-**Requirements**: UX-01, UX-02, OPS-01, OPS-02, OPS-03, PRIV-01
+**Goal**: A user sees calibrated probabilities next to raw model probabilities with an honest version label, while the operator trusts that calibrators are fitted per exact model version on held-out data and roll back automatically when measured quality regresses.
+**Depends on**: Phase 11 (calibrators fit the final model pipeline; fitting on v1-Poisson then switching models invalidates them)
+**Requirements**: CALIB-01, CALIB-02, CALIB-03, CALIB-04
 **Success Criteria** (what must be TRUE):
 
-  1. A user can complete fixture, analysis, manual-odds, value, and performance workflows on mobile and desktop with keyboard-accessible controls and readable charts.
-  2. A user can read a versioned methodology/model card covering inputs, exclusions, confidence, limitations, evaluation, and responsible use.
-  3. An operator can inspect failures, dead letters, provider health, quotas, data-quality errors, and correlation IDs without secrets being exposed.
-  4. An operator can safely retry ingestion and evaluation work and verify that durable facts and immutable snapshots remain consistent.
-  5. Release checks exercise the complete fixture-to-forecast-to-odds-to-settlement loop and provider degradation states, while betting-related history is not retained without explicit consent and a documented boundary.
+  1. A user sees calibrated probabilities (Platt first; isotonic only above a configured sample threshold) alongside raw probabilities with a calibrator version label, and sees an explicit insufficient-data-to-calibrate state below minimum thresholds.
+  2. Calibrators are fitted per exact model version on held-out settled windows with minimum-sample gates, and the system structurally refuses calibrators whose pinned model version does not match the served forecast.
+  3. A promoted calibrator rolls back automatically under materiality and hysteresis gates when holdout Brier regresses; frozen snapshots are never modified — calibration is a post-hoc layer, not a new model version.
 
-**Plans**: 9/9 plans executed
-
-Plans:
-
-**Wave 1**
-
-- [x] 06-01-PLAN.md — Prove one real fixture-to-scorecard release tracer.
-
-**Wave 2** *(after the tracer)*
-
-- [x] 06-02-PLAN.md — Deliver responsive, accessible, locally resilient public workflows.
-- [x] 06-04-PLAN.md — Deliver the guarded, secret-safe operations center.
-
-**Wave 3** *(after their Wave 2 prerequisites)*
-
-- [x] 06-03-PLAN.md — Publish the versioned methodology/model card and contextual warnings.
-- [x] 06-05-PLAN.md — Extend preview-confirm recovery across ingestion and evaluation.
-
-**Wave 4** *(after methodology and operations contracts)*
-
-- [x] 06-06-PLAN.md — Approve the one-way D-14 deletion boundary before implementation.
-
-**Wave 5** *(after the D-14 decision)*
-
-- [x] 06-07-PLAN.md — Encode fail-closed privacy policy, schema, migration, and persistence.
-
-**Wave 6** *(after privacy persistence)*
-
-- [x] 06-08-PLAN.md — Deliver transactional consent, withdrawal API, and privacy UI.
-
-**Wave 7** *(after all expansion plans)*
-
-- [x] 06-09-PLAN.md — Run the full responsive, privacy, operator, and degradation release gate.
-
-**Wave 8 gap closure**
-
-- [x] 06-10-PLAN.md — Bound retention timers and retry failed initial expiry reads.
-- [x] 06-11-PLAN.md — Erase migration quarantine and prove complete personal-history deletion.
-
+**Notes / research flags**: Policy decisions to record in `configVersion`, not hardcode — min cohort sizes, rollback materiality thresholds, fit cadence. 1X2 3-class renormalization strategy needs design. PAVA isotonic + Platt Newton steps are pure TypeScript in `packages/domain` — no ML libraries.
+**Plans**: TBD
 **UI hint**: yes
+
+### Phase 13: CLV Price Diary
+
+**Goal**: A user can judge closing-line value on every value candidate from a recorded pre-kickoff closing price, with explicit unavailable states when no comparable price exists — and CLV remains strictly evaluation-only.
+**Depends on**: Phase 7 (CI); parallel-safe with Phases 11–12 (pure wiring over the existing `ClosingOddsObservation` table)
+**Requirements**: CLV-01, CLV-02, CLV-03
+**Success Criteria** (what must be TRUE):
+
+  1. An operator can record a closing-odds observation per fixture, market, and selection with a UTC observed-at timestamp validated as pre-kickoff and pre-settlement.
+  2. A user sees closing-line value per value candidate computed from de-vigged forecast-time and closing prices on the same line; a missing closing price renders as explicit unavailable and is never synthesized.
+  3. Closing observations are append-only, and no test or integration path lets CLV influence value ranking, scanner ordering, or journal decisions — it is evaluation-only.
+
+**Notes / research flags**: `ClosingOddsObservation` already exists (schema fits) but has **no write API today** — this phase is wiring + validation + UX, not schema. Validation rules are already coded in `clv.ts`. Retrospective observations must be tagged and excluded (no hindsight/survivorship).
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 14: Asian Handicap and Exact Score Markets
+
+**Goal**: A user can view, price, and settle Asian handicap and exact-score probabilities derived from the frozen score matrix — zero new data cost — with quarter-line push/half-bet semantics handled correctly end to end.
+**Depends on**: Phase 11 (derive from the corrected score matrix), Phase 13 (settlement joins keyed by market/selection; closing capture covers new selections from day one)
+**Requirements**: MKT-01, MKT-02, MKT-03, MKT-04, MKT-05
+**Success Criteria** (what must be TRUE):
+
+  1. A user views Asian handicap probabilities and fair odds with quarter-line push and half-bet semantics, and exact-score probabilities for a configured bucket list including an explicit other-tail catch-all, all derived from the frozen score matrix.
+  2. An operator enters complete odds books for the new markets with existing validation and no-vig normalization and receives value receipts with push-aware expected value.
+  3. Settlement resolves AH push, half-win, and half-loss and exact-score outcomes under explicit versioned rules in the scorecard pipeline; the score matrix is persisted at issuance or deterministically re-derived fail-closed for legacy snapshots.
+
+**Notes / research flags**: Research explicitly flags this phase for its own research spike — score-matrix persistence key shape (the recommended no-DDL approach: optional key in snapshot `receipt` Json — must satisfy `parseForecastResponse`'s `exactKeys` validation on legacy rows), AH line set, exact-score bucket list + `OTHER`, push-aware EV display. `settlement-pipeline.ts` has a hardcoded 3-market guard — missing the widening fails settlement at runtime, not compile time. Largest spec surface of the milestone; keep standalone.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 15: 7-Day Value Scanner
+
+**Goal**: A user sees one consolidated, trustworthy list of value candidates across the next seven days — stored receipt edges rendered byte-for-byte, freshness demoted honestly, and responsible-gambling copy enforced.
+**Depends on**: Phase 10 (bundle budget applies as the page is built), Phase 14 (the window query is written once against the final market set)
+**Requirements**: SCAN-01, SCAN-02, SCAN-03
+**Success Criteria** (what must be TRUE):
+
+  1. A user views a consolidated list of value candidates for the next seven days across fixtures and markets with fixture, market, selection, edge, expected value, and odds source.
+  2. The scanner displays stored receipt edges byte-for-byte without recomputation, with freshness demotion and explicit empty-versus-unavailable states — never an edge-sorted "best bets" leaderboard.
+  3. The page complies with responsible-gambling copy rules (no urgency or certainty claims, persistent disclaimers) and issues no N+1 query patterns.
+
+**Notes / research flags**: `evaluation/value-candidates` is settled-history only — the scanner is a distinct forward-looking query over `ValueReceipt`; new endpoint, don't overload it. Extend the prohibited-vocabulary suite and Russian-copy checks in this phase.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 16: Paper-Trading Journal
+
+**Goal**: The operator validates the whole value loop without wagering — recording simulated trades against immutable receipts and reading honest bankroll, drawdown, ROI, and yield statistics with append-only corrections.
+**Depends on**: Phase 13 (journal shows CLV per trade), Phase 14 (journal settles AH push/half-loss correctly), Phase 15 (scanner deep-links) — Phase 15 and Phase 16 implementations may run in parallel after Phase 14 lands
+**Requirements**: JRN-01, JRN-02, JRN-03, JRN-04
+**Success Criteria** (what must be TRUE):
+
+  1. An operator records a paper (simulated) trade linked to an immutable value receipt with flat-unit and fractional-Kelly stake sizing capped at one quarter.
+  2. The operator sees bankroll and unit curves, drawdown, ROI, and yield with push-aware denominators, sample gates, and explicit exclusion of pending and void trades.
+  3. Trades are append-only with supersession corrections (a mutation-rejection test proves it in CI), the journal is clearly labeled as a simulation with Russian units/simulation vocabulary and no deposit or withdrawal verbs, and journal data never leaks into public read models or the privacy-sensitive contour.
+
+**Notes / research flags**: `PaperTrade` append-only DDL with FK Restrict to `valueReceiptId`; JournalModule behind the existing OperatorGuard contour; `/internal/journal` page. Kelly ≤ ¼ is descriptive, never advice. Extend the RG copy suite in this phase.
+**Plans**: TBD
+**UI hint**: yes
+
+## Parallelism and Dependency Notes
+
+- **Wave 0 (parallel-safe):** Phases 7, 8, and 10 touch disjoint surfaces (CI workflows, infra/backup, web pages) and can run concurrently.
+- **Safety-net ordering:** CI → backups → alerting — gates before risk, recovery before mutation, observability before model changes. Backup staleness becomes an alert signal.
+- **Non-negotiable model ordering:** Phase 11 → Phase 12 — calibrators are fitted per model version; any earlier fit is invalidated by the model bump.
+- **Value-loop ordering:** Phase 13 → Phase 14 → Phase 15 → Phase 16 closes the loop in dependency order; Phases 15/16 may implement in parallel after Phase 14.
+- **Optional merges (not applied):** Phases 7+8 ("operational foundation") and Phases 15+16 ("value loop closing") are safe merges if fewer phases are preferred. Phases 11/12 stay separate (different failure modes, HIGH+MEDIUM sizes); Phase 14 stays standalone (largest spec surface).
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Trustworthy Fixture Discovery | 12/12 | Complete    | 2026-08-29 |
-| 2. Historical Evidence Pipeline | 28/28 | Complete    | 2026-09-05 |
-| 3. Forecast and Manual Value Workbench | 12/12 | Complete    | 2026-09-08 |
-| 4. Settlement and Evidence Scorecard | 9/9 | Complete    | 2026-09-09 |
-| 5. Provider-Aware Coverage and Enrichment | 16/16 | Complete    | 2026-09-20 |
-| 6. Release Experience and Operations | 11/11 | Complete    | 2026-10-01 |
+| 7. CI Pipeline & Quality Gates | 0/0 | Not started | - |
+| 8. Backups and Restore Verification | 0/0 | Not started | - |
+| 9. Degradation Alerting | 0/0 | Not started | - |
+| 10. Performance Audit and Budgets | 0/0 | Not started | - |
+| 11. Dixon-Coles Model Version | 0/0 | Not started | - |
+| 12. Calibration Layer and Versioned Rollback | 0/0 | Not started | - |
+| 13. CLV Price Diary | 0/0 | Not started | - |
+| 14. Asian Handicap and Exact Score Markets | 0/0 | Not started | - |
+| 15. 7-Day Value Scanner | 0/0 | Not started | - |
+| 16. Paper-Trading Journal | 0/0 | Not started | - |

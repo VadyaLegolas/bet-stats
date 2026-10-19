@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-status: "Fast task: Theme bootstrap hydration fix — server-only script render (fast-261019a)"
-stopped_at: fast-261019a
-last_updated: "2026-10-19T18:10:00.000Z"
+milestone: v1.1
+milestone_name: Reliability, Model Quality and Value Experience
+status: planning
+last_updated: "2026-10-19T16:14:34.432Z"
 last_activity: 2026-10-19
-last_activity_desc: The theme bootstrap can no longer fail hydration — components/theme-bootstrap.tsx now emits the inline <head> script only from the server render and returns null on the client, so hydration never expects the <script> node at that position: a missing script (a browser extension stripping inline <head> scripts — the case named in React's own hydration-mismatch message) or extra nodes in <head> are simply not part of the client tree, and client re-renders never recreate a script element (no «Encountered a script tag while rendering React component» dev warning when an unrelated error regenerates the tree). The script still executes while the HTML parses, before the first paint, so there is no theme flash; ThemeToggle keeps re-applying data-theme in a layout effect. layout.tsx comment updated to describe the contract, and the unit test rewritten: SSR markup asserts type="text/javascript" + the shared matchday-theme body, source asserts "use client", the typeof window guard and return null; gates green: typecheck, 364 unit, 56 web, next build; live-verified: fresh loads of /scorecards and /faq console-clean (errors and warnings), exactly one bootstrap script in the DOM with type text/javascript after hydration, dark theme stamped pre-hydration, toggle dark→light→dark persists, soft navigation and hard reload keep the theme; commit caeee42
-state_head: caeee42
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 88
-  completed_plans: 88
-  percent: 100
-current_phase: 06
-current_phase_name: Release Experience and Operations
-current_plan: 11
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,14 +24,10 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 
 ## Current Position
 
-Milestone: v1.0 — ARCHIVED
-All Phases: Complete (6/6)
-All Plans: Complete (88/88)
-Status: Fast task 261019a - theme bootstrap hydration fix: the inline <head> script is rendered by the server only; the client render returns null so hydration never expects the <script> node
-Last activity: 2026-10-19 - Completed fast 261019a: the recurring hydration failure on the theme bootstrap is fixed structurally instead of patched. The error overlay showed React could not find the <script> node at its expected position in <head> - the classic case named in the hydration-mismatch message itself (a browser extension stripping the inline script from the HTML before React loads): the client tree still expects the node, so a missing node hard-fails throwOnHydrationMismatch, while a mere type attribute difference does not (verified in React 19.2.8 hydration sources; a clean-room reproduction always passes in a clean browser, which is why seven prior test runs looked fine). Fix: components/theme-bootstrap.tsx renders THEME_BOOTSTRAP_SCRIPT only during the server render and returns null on the client - hydration never expects the node, so a missing or extra <head> script cannot fail it, and client re-renders never create a script element (the old «Encountered a script tag while rendering React component» dev warning path closes too). The script still runs while the HTML parses, before the first paint (no theme flash), ThemeToggle layout effect still re-applies data-theme; suppressHydrationWarning and the text/plain client branch became dead weight and were removed; layout comment rewritten; unit test now asserts the server markup carries the executable script and the source keeps the typeof window guard with return null.
-Last Activity Description: Gates green - web typecheck exit 0, 364/364 unit (theme-toggle-ui assertions rewritten), 56/56 web, next build succeeds; one atomic 3-file commit (theme-bootstrap.tsx, layout.tsx comment, theme-toggle-ui.test.tsx), .planning/** only in this docs commit; live-verified: fresh /scorecards and /faq loads console-clean (errors and warnings), exactly one bootstrap script in the DOM with type text/javascript after hydration, dark theme stamped pre-hydration, toggle dark-light-dark persists, soft navigation and hard reload keep the theme
-
-Progress: [██████████] 100%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-10-19 — Milestone v1.1 started
 
 ## Performance Metrics
 

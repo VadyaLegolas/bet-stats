@@ -8,6 +8,24 @@ A web application for football analytics that collects upcoming fixtures for the
 
 Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
 
+## Current Milestone: v1.1 Reliability, Model Quality & Value Experience
+
+**Goal:** Strengthen infrastructural reliability, probability-calibration quality, and the user's value-discovery experience — without expanding league coverage, adding notifications, or introducing user accounts.
+
+**Target features:**
+- CI pipeline in GitHub Actions (install → schema validation → typecheck → lint → unit/integration tests → build)
+- Automated PostgreSQL backups with rotation and restore verification
+- Degradation alerting (provider quotas, worker health, 5xx spikes) surfaced to operators
+- Lighthouse/performance audit and fixes for the fixture detail page
+- Isotonic/Platt per-market calibration with versioned model rollback on Brier regression
+- Dixon-Coles low-score correction for the Poisson model
+- CLV price diary (price captured at forecast time + closing price, honest unavailable states)
+- New markets: Asian handicaps and exact score derived from existing model outputs
+- Consolidated 7-day value-candidate scanner page
+- Paper-trading journal (bankroll, units, drawdown, ROI) inside the operator-gated contour
+
+**Explicitly excluded from v1.1:** league expansion, user-facing notifications (Telegram/email), user accounts, UI internationalization (EN locale).
+
 ## Requirements
 
 ### Validated
@@ -25,13 +43,27 @@ Produce honest, reproducible probability estimates whose quality can be measured
 
 All 6 phases (88 plans) of the v1.0 MVP milestone have shipped and passed all end-to-end integration and verification gates. The platform is ready for production staging and live usage.
 
-### Next Milestone Goals (v2.0)
+### Active (v1.1 — this milestone)
+
+- CI in GitHub Actions covering install, typecheck, lint, tests, and build (no CI exists today).
+- Automated PostgreSQL backups with rotation and periodic restore verification.
+- Degradation alerting for provider-quota exhaustion, worker failures, and 5xx spikes, visible in the operator contour.
+- Lighthouse/performance audit of the fixture detail page with measured improvements.
+- Isotonic/Platt per-market calibration with versioned rollback when Brier degrades.
+- Dixon-Coles correction integrated into the Poisson goal model.
+- CLV price diary: timestamped forecast-time price plus closing price, fail-closed when no comparable price exists.
+- Asian handicap and exact-score markets computed from frozen model outputs.
+- Consolidated value-candidate scanner for the next 7 days.
+- Paper-trading journal (bankroll, units, drawdown, ROI) for operator-recorded bets — no automated wagering.
+
+### Deferred (future milestones, beyond v1.1)
 
 - User accounts and explicit consent preferences for saving followed teams/analysis (ACCT-01, ACCT-02).
 - Python/ML challenger model evaluation against the frozen V1 baseline (MODEL-01).
 - Advanced overround normalization (Shin, power methods) and licensed closing-line feeds (MODEL-02, MODEL-03).
 - Expanded markets (double-chance, team totals, player statistics) and additional leagues (MODEL-04, DATA-09).
 - Responsible gambling user self-exclusion and activity limits (SAFE-01, SAFE-02).
+- User-facing notifications (Telegram/email) and UI internationalization.
 
 ### Out of Scope
 
@@ -94,4 +126,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-08 after Phase 3*
+*Last updated: 2026-10-19 — milestone v1.1 started*

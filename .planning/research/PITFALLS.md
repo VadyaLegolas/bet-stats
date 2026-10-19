@@ -1,275 +1,434 @@
-# Pitfalls Research
+# Pitfalls Research — v1.1 Feature Additions
 
-**Domain:** Football prediction and value-betting analytics platform
-**Researched:** 2026-08-27
-**Confidence:** MEDIUM
+**Domain:** Football prediction and value-betting analytics platform (bet-stats)
+**Researched:** 2026-10-19
+**Confidence:** HIGH (grounded in the shipped v1.0 schema and infra; external claims verified against official runner/testcontainers documentation and the Dixon-Coles literature)
+**Scope:** Pitfalls specific to *adding* the ten v1.1 features to the existing system. The v1.0-era pitfall catalog (leakage, identity corruption, quota exhaustion, RG-by-copy) remains valid and is preserved in git history at commit `8655694`; the most important carry-overs are restated in condensed form at the end. All phase references use workstream names because the v1.1 roadmap does not exist yet — see Pitfall-to-Phase Mapping for the recommended ordering.
+
+System facts this document relies on (verified in the repo): `ForecastSnapshot` is append-only with supersession chains and a unique key over `(fixtureId, kind, cutoff, modelHash, configHash, inputHash, evidenceFingerprint, …)`; `ValueReceipt` links `forecastSnapshotId` + `oddsSnapshotId` with its own supersession chain; `ClosingOddsObservation` and `ValueSettlement` (with `clvStatus/clvReason/clvPolicyVersion`) already exist; `SettlementReceipt` carries `policyVersion/policyHash` and lifecycle/scoreability classes; `ForecastScore` carries `modelVersion` and `formulaVersion/formulaHash`; `ResultVersion` is itself versioned. No `.github/` directory exists yet; `infra/docker-compose.yml` runs `postgres:18.6-alpine` with `POSTGRES_PASSWORD` from env; `infra/.env` is gitignored; an operator gateway (`infra/operator-gateway/`) fronts the operator contour. The dev host is Windows; user-facing text must be Russian.
 
 ## Critical Pitfalls
 
-### Pitfall 1: Temporal leakage makes the model look profitable
+### Pitfall 1: CI that is green on one OS and fiction on the other
 
 **What goes wrong:**
-Backtests use standings, Elo, lineups, injuries, corrected results, or aggregates as they exist now rather than as they were known at prediction time. Random train/test splits also let future seasons influence earlier predictions. Metrics and simulated ROI become unrealistically strong and collapse in production.
+The GitHub Actions pipeline passes on `ubuntu-latest` while the Windows dev host's `pnpm test` fails (or vice versa). Worse: integration tests are quietly skipped in CI because Testcontainers cannot start Docker — GitHub-hosted **Windows** runners do not support container operations at all (`actions/runner#904`: "Container operations are only supported on Linux runners"; the `windows-2025` image additionally breaks Testcontainers even when Docker is present — `testcontainers/testcontainers-node#1093`), so a CI matrix entry that runs the DB suite on Windows fails or, if misconfigured, "passes" without ever executing it. Meanwhile `pnpm install --frozen-lockfile` flakes because Corepack/pnpm versions drift between dev machine and runner, or CRLF normalization rewrites the lockfile.
 
 **Why it happens:**
-The same mutable tables are convenient for both live features and historical evaluation. A `capturedAt` on predictions alone does not prove every input respected that cutoff. The current schema stores mutable fixture results and team statistics but does not persist the complete feature vector or an explicit feature-data cutoff in each prediction snapshot.
+Dev happens on Windows, CI runs on Linux, and nobody declares which artifacts are OS-sensitive. Lockfile, generated Prisma client, and line endings are treated as machine-local instead of contract.
 
 **How to avoid:**
-- Make every feature query accept an `asOf` timestamp and reject records captured later.
-- Use walk-forward/rolling-origin evaluation by kickoff time, never random match splits.
-- Update Elo only after a fixture is final and ensure the current fixture cannot enter its own pre-match features.
-- Store the feature vector, source timestamps, model/config version, and cutoff with each immutable snapshot, or store a content-addressed reference to an immutable feature snapshot.
-- Add synthetic leakage tests in which a post-kickoff fact would drastically improve the prediction and assert that it is unavailable.
+- Run the **full suite (unit + Testcontainers integration) only on `ubuntu-latest`**; the Windows runner (if kept in the matrix at all) runs typecheck/lint/unit only — never anything needing Docker.
+- Pin Node via `engines` + `.nvmrc` and pin pnpm via `packageManager`/Corepack so frozen-lockfile behavior is identical everywhere; commit a `.gitattributes` with `* text=auto eol=lf` and `*.lock`/`*.prisma` binary-safe rules.
+- Cache `~/.pnpm-store` and the generated Prisma client keyed on `schema.prisma` hash; always run `prisma generate` before typecheck (types are generated, not committed).
+- Run `prisma migrate validate`/`migrate deploy` against a service-container PostgreSQL in CI, and make CI a required status check via branch protection — a pipeline nobody is forced to pass is decorative.
+- CI must never call live football providers (see Pitfall 13); use fixtures/mocks.
 
 **Warning signs:**
-Large backtest-to-live performance gap; metrics improve after historical corrections; identical historical predictions change when rerun; pre-match rows contain post-kickoff `capturedAt` values; random cross-validation appears in model code.
+`--frozen-lockfile` passes in CI but lockfile diffs appear on every dev pull; integration job duration ≈ 30 s (nothing ran); Windows-only type errors reported as "CI is fine"; tests skipped via `describe.skip` when `docker` is absent, with no failing signal.
 
 **Phase to address:**
-Phase 1 — Data foundations and temporal contracts; enforce again in Phase 4 — Backtesting and model evaluation before any value claims.
+CI phase (first v1.1 phase — every later phase depends on this safety net).
 
 ---
 
-### Pitfall 2: Treating accuracy as calibrated probability quality
+### Pitfall 2: Backups that exist but cannot restore, and an RPO that silently loses irreplaceable facts
 
 **What goes wrong:**
-A model can pick the most likely result often yet systematically issue overconfident probabilities. Edge and EV are then calculated from bad probabilities, so a nominal 5% edge is not evidence of value.
+A cron job dumps `pg_dump` to a volume on the same Windows/Docker host; retention rotates files away; nobody ever restores. The first real restore fails (version mismatch, missing globals) or succeeds but yields a database whose append-only chains (`ResultVersion → SettlementReceipt → ForecastScore → ValueSettlement`, `supersedes*Id` graphs) are truncated mid-window, destroying the audit history that is the product's core value. Unlike a typical web app, *this* database cannot be reconstructed from users — immutable receipts and closing-odds observations exist nowhere else. A daily dump also means up to 24 h of irreproducible snapshots.
 
 **Why it happens:**
-Accuracy is intuitive; calibration is not. Small league/market samples invite broad conclusions. Brier Score alone combines calibration and refinement, while ROI is high variance and can be dominated by a few longshots.
+"Backup" is conflated with "dump file exists." Verification is a file-exists check. Dump tooling versions drift (`pg_dump` 19 cannot restore into PostgreSQL 18; the compose file pins `postgres:18.6-alpine`). `-j` parallelism with plain SQL format produces per-table dumps taken at *different* snapshots. Roles/globals are forgotten. Redis is backed up as if it mattered (it is disposable coordination; PostgreSQL is the only source of truth).
 
 **How to avoid:**
-- Define probability invariants: valid range, 1X2 sums to one, derived markets are internally coherent.
-- Report Brier Score, Log Loss, reliability diagrams/calibration tables, sample size, and confidence intervals by market, league, season, snapshot type, and probability band.
-- Fit any calibrator only on data preceding the evaluation window and keep calibration data disjoint from final testing.
-- Require minimum sample sizes and out-of-time performance before surfacing a model as validated.
-- Keep the product's data-confidence score visually and semantically separate from event probability and calibration quality.
+- Dump with the **server-matched major client** (`postgres:18.6-alpine` image, `pg_dump -Fc` custom format or `-Fd` directory format if using `--jobs`); never split plain-format dumps.
+- Store backups **off-host** (object storage or a second machine); a backup on the same volume as the primary is a copy, not a recovery plan. Keep credentials out of compose files — reference `${BACKUP_…}` env vars, `infra/.env` stays untracked (already the case — keep it that way; do not commit real values in a `.env.example` either).
+- **Restore verification is a scheduled job, not a chore:** weekly, spin a throwaway container on the *same image version*, restore, then assert: table row-count sanity, `prisma migrate status` clean, and referential integrity of supersession chains (no orphan `supersedes*Id`, no broken receipt→snapshot links), plus spot-check a known fixture's full chain from `ForecastSnapshot` to `ValueSettlement`. Record the result; make failure alert-worthy (Pitfall 3).
+- Define RPO/TTL deliberately: a **transactional log shipping or WAL archiving** option if losing a day of manual odds/receipts is unacceptable; otherwise document that the daily dump is the accepted RPO. Prune Redis from the backup scope entirely.
+- Schedule from inside a container/cron service, not Windows Task Scheduler, so the dev host's sleep/updates don't silently stop backups; monitor "last successful backup age," not just "backup ran."
 
 **Warning signs:**
-Only accuracy/ROI is shown; probabilities cluster near 0 or 1; a single global calibration number hides league differences; the confidence score is presented as a chance of winning; calibration is performed on the test set.
+Backup file size identical week over week (job writes to a full disk or same path); restore never attempted since launch; `pg_dump` version in the script ≠ compose image tag; backup volume is the named `postgres_data` volume's sibling directory; retention keeps N files but the oldest verified restore is "none."
 
 **Phase to address:**
-Phase 3 — Prediction baseline and snapshot integrity; acceptance gate in Phase 4 — Backtesting and calibration.
+Backups phase (before any phase that changes the schema or model code — that is when a bad migration becomes unrecoverable).
 
 ---
 
-### Pitfall 3: False “value” claims from odds math and selection bias
+### Pitfall 3: Alert fatigue, secret leakage in alert payloads, and free-tier delivery that silently stops
 
 **What goes wrong:**
-The UI labels positive model-minus-market differences as profitable opportunities without proving the model is calibrated or the odds were available at prediction time. Manual odds can be mistyped, stale, cherry-picked, or compared across incompatible markets. Multiplicative overround removal can add favorite-longshot bias.
+Every BullMQ retry and every transient 429 pages the operator; within a week all alerts are ignored, and the one that matters (provider quota exhausted → EL/UECL have *no fallback*, or worker dead → no forecasts before kickoff) is drowned. Alternatively, alert messages embed provider request context — and API keys ride in headers/URLs and raw payloads, so the alert channel (email, Telegram, webhook log) becomes a secret exfiltration path. Or delivery itself fails silently: free-tier email (SendResend/SMTP) hits rate limits, webhook tokens expire, and the alerting system never alerts on itself.
 
 **Why it happens:**
-The formulas are simple, so the surrounding provenance and uncertainty are overlooked. `BetCandidate` currently copies odds but does not reference the exact `Odds` record or its capture time, normalization method, threshold/config version, or a reproducible candidate snapshot.
+Alerting is added as "log line → notification" without severity tiers, dedup, or a message-sanitization contract. Payload builders reuse the same JSON that `SourceObservation` raw audit stores — which is correct for audit storage but wrong for messages.
 
 **How to avoid:**
-- Validate decimal odds, complete outcome sets, bookmaker, market definition, and capture time; reject partial or incoherent inputs.
-- Bind every candidate to an immutable odds snapshot and prediction snapshot.
-- Persist normalization method, overround, calculation version, and thresholds.
-- Use language such as “model-estimated edge,” never “profitable bet” or “guaranteed value.”
-- Evaluate all eligible candidates generated by a frozen rule, including losses and voids; show sample size, uncertainty, yield and CLV only when the required odds history exists.
-- Treat multiplicative normalization as an explicit V1 limitation and test power/Shin alternatives later.
+- Define **severity tiers with explicit semantics**: `info` (recorded, no notification), `warning` (digest), `critical` (page). Page only for: provider quota exhausted or <10 % reserve with live fixtures pending, worker heartbeat missing past N intervals, 5xx/exception-rate SLO breach, last-backup age exceeded, restore-verification failure, migrations/schema drift. Everything else (single job retry, single 429 that was honored) is a metric, not a message.
+- **Dedup + cooldown:** one alert key per (`severity`, `resource`) with a suppression window (e.g., 6 h for warnings, auto-acknowledge for recovered conditions); alert on *state transitions*, not on every observation. Escalate `warning → critical` only if the condition persists across two evaluation windows.
+- **Sanitization contract:** alert payloads are built from a typed DTO allowlist (ids, counts, timestamps, enum states) — never from raw provider payloads or config objects; run a redaction unit test that feeds a fixture containing fake keys/tokens through the alert builder and asserts they do not appear.
+- **Delivery health:** a weekly synthetic alert through the real channel; count sent vs bounced; treat delivery failure as `critical`. Prefer one durable channel (e.g., a webhook to a self-controlled endpoint) over several half-configured ones; keep the operator contour's alert history page as the system of record so a missed email is not a missed fact.
+- All alert-facing text follows the Russian-language convention and avoids certainty framing ("прогноз мог ухудшиться" not "прогноз неверен").
 
 **Warning signs:**
-Candidates can be edited after kickoff; no odds timestamp is visible; only winning examples are retained; ROI is reported without settled-bet count; manual odds entry accepts impossible values; market probability is computed from a single outcome without the rest of the book.
+Operator mutes the channel; >20 alerts/day; alert history shows the same key hundreds of times; a message contains a URL, header dump, or `sourceRefs` blob; nobody can name the last alert that changed a decision.
 
 **Phase to address:**
-Phase 3 — Odds and value calculation contracts; Phase 4 — honest retrospective evaluation; Phase 5 — user-facing claims review.
+Alerting phase (after Backups — backup/restore verification is a prime alert source; before model-quality phases so Dixon-Coles/calibration rollouts are observable).
 
 ---
 
-### Pitfall 4: Cross-provider identity corruption
+### Pitfall 4: Chasing synthetic Lighthouse scores while the real page gets slower
 
 **What goes wrong:**
-Provider fallback creates duplicate teams or fixtures, or fuzzy matching merges different clubs/players. Postponements, renamed clubs, youth/women squads, reserve teams, neutral venues, swapped home/away data, and timezone differences make name-plus-date matching unsafe. Once histories merge, Elo, form, predictions, and settlement are corrupted.
+CI runs Lighthouse and gates on a "performance ≥ 90" score. Scores flap ±10 points run-to-run on throttled synthetic mobile, the gate becomes a rerun-until-green ritual, and the actual regression it was meant to catch (Recharts bundles and the fixture-detail page's client-side rendering growing with data) ships anyway. Meanwhile the numbers have no relationship to field performance because there are no real-user metrics.
 
 **Why it happens:**
-Provider IDs are mistaken for universal IDs, and fuzzy name matching is treated as a convenience rather than a high-impact decision. The schema has canonical entities and external refs, but `matchedBy` is free text, match confidence/reviewer/reversal state are absent, and fixture uniqueness is described in comments rather than enforced by a durable reconciliation key.
+A single composite score is legible; LCP/TBT/JS-bytes budgets are not. Synthetic single-run Lighthouse variance (CPU throttling, CDN jitter for lab assets) is underestimated. The v1.0 stack already carries Recharts 3.8 client-side; new scanner/calibration pages will pull chart code into more routes.
 
 **How to avoid:**
-- Normalize provider payloads before reconciliation; keep raw payload and provenance for replay.
-- Resolve external refs first, then deterministic league/season/team rules, and only then fuzzy matching.
-- Use competition/season, canonical team pair, timezone-normalized kickoff window, and fixture status; never fuzzy-match on name alone.
-- Route ambiguous cases to manual review. Persist score, evidence, decision status, reviewer, and merge/split audit history.
-- Build golden fixtures covering aliases, diacritics, renamed teams, postponed matches, reserve/women teams, and provider failover.
-- Prevent predictions and Elo updates for unresolved entities.
+- Gate on **specific audits with headroom**, not the composite: total JS bytes per route, LCP, TBT, CLS, with thresholds set from a 7-run median baseline + generous band (e.g., +15 %), and `assert.assertMatrix`/median-of-3 runs in `lhci` to cut noise. Treat absolute score as a dashboard number, never a merge blocker.
+- Run Lighthouse in CI **only for the routes that exist and matter** (fixture detail, scanner once built) against a **seeded local build with mocked data** — never against live providers (Pitfall 13).
+- Structural fixes beat score-chasing: dynamic-import Recharts per chart component so the scanner route doesn't inherit calibration-chart code; keep server-side data fetch (App Router RSC) and hydrate only charts/interactive filters; set a Next.js bundle budget in the build.
+- Acknowledge limits in the methodology card: synthetic lab scores are not field data; if/when traffic justifies it, add CrUX or lightweight RUM later — do not present lab numbers as user experience.
 
 **Warning signs:**
-Canonical counts jump after fallback; one team has overlapping same-day fixtures; external refs are reassigned without audit; prediction history splits across aliases; manual review queue grows without SLA; reconciliation is impossible to replay.
+Reruns to get a green Lighthouse; score changes with no code diff; "performance" improves while bundle bytes grow; the same chart library loaded on routes without charts; LCP dominated by client-side data waterfalls.
 
 **Phase to address:**
-Phase 1 — Canonical data model and reconciliation, before any feature or prediction phase.
+Performance-audit phase — placed **before** the Scanner and New-markets UI phases so the bundle/rendering budget exists when those pages are built, not after.
 
 ---
 
-### Pitfall 5: Designing against assumed free-tier coverage
+### Pitfall 5: Calibration fitted on the evidence it is graded on, and applied by mutating frozen snapshots
 
 **What goes wrong:**
-Features are built around injuries, odds, statistics, or competitions that are absent for a league/season or later removed from a free plan. The model silently substitutes missing values as zero, and the UI presents forecasts as equally informed. Europa/Conference League can lose their only live provider.
+Isotonic/Platt calibrators are fitted on the pool of settled `ForecastScore`s and then post-calibration Brier is reported *on that same pool* — isotonic regression makes in-sample reliability near-perfect by construction, so the "improvement" is an artifact. Per-market *per-league* cohorts are tiny (a season of one league ≈ 300+ fixtures × 3 1X2 classes ≈ still small for isotonic's step function), producing degenerate staircase calibrators that map everything below the median to a constant. The tempting implementation shortcut — write calibrated probabilities back into `ForecastMarket.probabilities` — retroactively rewrites the record of what the model said, violating the immutability that `ForecastSnapshot`'s hash-keyed uniqueness exists to protect (and colliding with the unique key's meaning). A later rollback on "Brier regression" then thrashes: each noisy window flips the active calibrator.
 
 **Why it happens:**
-Marketing-level endpoint lists are mistaken for per-competition, per-season completeness. Provider capabilities and pricing change. “Endpoint exists” is not the same as “the requested data is populated and licensed for this plan.”
+Calibration looks like a post-processing utility, but it is a *model component* that must obey the same versioning, leakage, and freeze discipline as the Poisson model. The existing schema separates raw scoring (`ForecastScore.rawChosenProbability/clippedChosenProbability`, `formulaVersion/formulaHash`) but has no home for a calibrator, so developers reach for the probabilities JSON.
 
 **How to avoid:**
-- Maintain a tested capability matrix by provider, competition, season, endpoint, plan, and last verification time.
-- Discover/cache runtime coverage flags and distinguish `not covered`, `not yet available`, `temporarily failed`, and legitimate empty results.
-- Make unavailable features nullable with explicit missingness indicators; do not convert absence into zero.
-- Define a minimum baseline using fixtures/results only, with manual odds as the primary MVP path.
-- Run a pre-release coverage probe using real keys and representative competitions; keep live paths independent of unofficial/offline sources.
-- Surface a persistent limited-data state and suppress unsupported predictions rather than fabricating completeness.
+- Introduce a first-class **`CalibratorVersion`** entity: `(id, modelVersion, modelHash, configHash, market, league scope, method, fitWindow, fitDatasetFingerprint, minSample, artifact, state)`. Calibrators reference the exact model/config hash they were fitted on — a calibrator fitted on V1-Poisson snapshots must be *structurally refused* when serving V2/Dixon-Coles snapshots (see Integration Gotchas).
+- **Never mutate snapshots.** Calibrated probability = `f_calibrator(raw)` computed at read/scoring time or stored in a derived, rebuildable score layer; `ValueReceipt.modelProbability` stays raw, and any displayed calibrated value names its calibrator version.
+- **Leakage-free fitting:** fit only on forecasts whose `cutoff < kickoff` and whose settlement completed before `fitWindow.end`; evaluate the calibrator on a strictly later window (rolling-origin), and report Brier/Log Loss deltas with sample sizes per cohort. Enforce a **minimum cohort size** (rule of thumb: ≥ 200 events per class for isotonic; below that fall back to Platt, below that to global/league-level scaling, below that *no calibration* with an honest "недостаточно данных" state).
+- **Rollback with hysteresis:** compare on a fixed rolling window with a materiality threshold (e.g., Brier worse by > 2 % relative *and* ≥ 100 events), keep at most one rollback per window, and record every activation/supersession in the calibrator's own supersession chain. Drift detection compares settled-forecast windows only — never in-flight forecasts (lookahead).
+- Double-count guard: if Dixon-Coles is active, the calibrator is fitted on DC-produced probabilities; never stack "Poisson→calibrator fitted pre-DC" on top of DC outputs (Integration Gotcha C1).
 
 **Warning signs:**
-The same completeness score appears for every competition; injury count is always zero; production calls endpoints despite false coverage flags; EL/UECL silently disappear; mocks are the only evidence that a provider field exists.
+Post-calibration Brier reported on the fit window; isotonic curve with 4 steps from 40 samples; `ForecastMarket.probabilities` rows updated after `issuedAt`; calibrator selected per-request "whichever scores best today"; calibrated and raw probabilities shown without labels; Brier improving while Log Loss explodes on longshots.
 
 **Phase to address:**
-Phase 1 — Provider contract and coverage spike; Phase 2 — resilient ingestion and degraded states.
+Calibration phase (after Dixon-Coles — calibrators must be fitted on the final model pipeline; after CLV-diary groundwork is irrelevant, but *before* the Scanner so the scanner can display labeled calibrated probabilities from day one).
 
 ---
 
-### Pitfall 6: Exhausting API quotas before critical jobs run
+### Pitfall 6: Dixon-Coles sign conventions, unstable fits, and double-counted home advantage
 
 **What goes wrong:**
-Per-fixture polling, retries, page loads, or low-value statistics consume the 100-request daily API-Football allowance, leaving no budget for results or lineups. Multiple workers race because counters are not atomic. A midnight reset is calculated in local time instead of the provider's reset timezone.
+Three failure modes cluster into one feature. (a) **Sign convention bug:** sources define τ with opposite signs — the modern convention is `τ(0,0)=1−λμρ, τ(1,0)=1+μρ, τ(0,1)=1+λρ, τ(1,1)=1−ρ` with ρ<0 *increasing* 0-0 and 1-1; other summaries (including several blog implementations of the 1997 paper) use `τ(0,0)=1+λμρ …` with the opposite mapping. Fitting ρ under one convention and applying τ under the other inverts the correction — and worse, a ρ fitted on historical data via a library with the other convention is simply the wrong sign. (b) **Fitting instability:** unconstrained optimizers step outside the admissible band `max(−1/λ, −1/μ) < ρ < min(1/(λμ), 1)`, producing zero/negative cell probabilities and a log-likelihood of −∞; per-team attack/defence fits early in a season have ~5 matches of history and swing wildly; fitting decay ξ jointly with parameters inflates the weighted likelihood by construction. (c) **Identity collision with Elo:** the platform's λ,μ already come from Elo + weighted form with a home adjustment; naively applying τ to *Elo-derived* λ,μ with a borrowed league-average ρ is a half-integration that changes all 1X2/BTTS probabilities without a model change, and re-deriving λ,μ from DC attack/defence (which contains its own home factor γ) *plus* the Elo home adjustment double-counts home advantage.
 
 **Why it happens:**
-Development traffic is small, caching masks fan-out, and a database counter is updated after rather than reserved before the call. Tracking per endpoint helps reporting but does not by itself enforce the provider-wide daily ceiling.
+Dixon-Coles is described online as "add a ρ to the Poisson matrix," hiding that it is a full estimation procedure (team parameters, home advantage, ρ, separate decay selection, identification constraints) or, if used as a four-cell correction, that the correction's meaning depends on where λ,μ came from.
 
 **How to avoid:**
-- Implement a provider-wide atomic quota ledger plus endpoint allocations/priorities; reserve before sending and reconcile from response headers afterward.
-- Centralize polling in workers, batch requests where supported, deduplicate in-flight jobs, and serve all users from cached/persisted data.
-- Honor `Retry-After`, add bounded exponential backoff with jitter, and use circuit breakers; retries consume budget too.
-- Define explicit reserve floors for fixtures/results and lineup windows, UTC reset semantics, alerts, and graceful shedding of lower-priority work.
-- Test concurrency, retry storms, process restarts, DST/timezone boundaries, and exhausted-budget behavior.
+- **Pin one convention in code, document it in the model card, and test it:** unit tests asserting (i) the corrected matrix sums to 1 over the truncated grid, (ii) ρ=0 reproduces independent Poisson exactly, (iii) with the documented sign, 0-0 and 1-1 move *up* and 1-0/0-1 *down* for the fitted ρ's sign, (iv) every τ multiplier is strictly positive for the fixture's λ,μ. Any external ρ value is converted to the pinned convention explicitly or rejected.
+- Constrain ρ with the admissible band (ε-inside; τ=0 ⇒ −∞ likelihood), constrain attack/defence positive via log-link, impose the identification constraint (e.g., mean attack = 1), and select the time-decay ξ in an **outer loop by out-of-sample 1X2 log loss**, never jointly in-sample.
+- Decide the integration explicitly and record it in `modelVersion` + `configHash`: recommended for v1.1 — keep Elo/form-derived λ,μ and treat ρ as a per-league fitted correction with documented provenance, OR move to full DC team parameters; either is defensible, but the **home-advantage factor must exist exactly once** on the path from ratings to λ,μ. A hybrid (Elo λ,μ + DC τ) must be labeled as such in the methodology card, not called "Dixon-Coles model."
+- **Bump `modelVersion`/`modelHash` the moment probabilities change.** The `ForecastSnapshot` unique key includes `modelHash` — failing to bump doesn't just break comparability, it lets two different "V1" behaviors coexist under one identity. Keep frozen V1 forecasts untouched; `BacktestPlan/BacktestWindow` must pin the model version they evaluate (see Integration Gotcha C3).
 
 **Warning signs:**
-429s before kickoff; request counts exceed provider headers; UI traffic triggers upstream calls; negative remaining budget; lineups skipped while statistics succeeded; duplicate BullMQ jobs call the same endpoint.
+Draw probability *falls* after "the low-score correction"; ρ pinned at the optimizer bound; attack parameters swinging >2× week to week; model card says "Dixon-Coles" while `modelVersion` is unchanged; backtest numbers jump with no data change because the model silently changed under the same version.
 
 **Phase to address:**
-Phase 2 — Ingestion reliability and budget enforcement, before expanding competition coverage.
+Dixon-Coles phase (before Calibration — calibrators must sit on top of the final probability pipeline; before New-markets — Asian handicap/exact-score probabilities must derive from the corrected score matrix, not the old one).
 
 ---
 
-### Pitfall 7: Responsible-gambling safeguards reduced to a disclaimer
+### Pitfall 7: CLV diary that records survivorship, fake precision, and hindsight
 
 **What goes wrong:**
-The product avoids the word “guaranteed” but still uses urgent rankings, winning streaks, green profit badges, push prompts, or personalized “best bets” that exaggerate winning chances or encourage chasing losses. Age/jurisdiction rules exist only in copy, while betting-behavior data is collected without clear consent.
+The closing-line value diary sounds like one field, but the failure modes are many: closing prices are recorded from whichever book the operator happened to check (survivorship — the "closing line" is then not *the* market close); prices from different bookmakers are averaged or compared despite margin differences that dwarf typical CLV signals; `observedAt` is entered in local time or as kickoff time rather than the true capture instant, corrupting "price N minutes before kickoff"; decimal odds typed to 2 d.p. produce CLV figures like "+0.4 %," which with manual entry precision is noise dressed as signal; and — the sharpest edge — closing prices are (re)recorded *after* results are known, or CLV information is surfaced on the scanner *before* a paper bet is placed, contaminating the decision loop the diary exists to evaluate.
 
 **Why it happens:**
-Compliance is postponed until UI polish, and analytics are assumed to be outside gambling-risk concerns. Yet presentation and marketing can be misleading even without bet execution.
+CLV is treated as a settlement field rather than a data-capture discipline. The schema is already right (`ClosingOddsObservation` is a separate append-only entity with `observedAt`, `observationKind`, `sourceConvention`; `ValueSettlement` carries `clvStatus/clvReason/clvPolicyVersion` distinct from settlement `policyVersion`) — the pitfalls are in *behavior* around it.
 
 **How to avoid:**
-- Create a content policy and prohibited-claims test suite covering UI, notifications, metadata, emails, and generated copy.
-- Present probability, uncertainty, sample size, model version, data limitations, and losing history near every value claim.
-- Make age/jurisdiction gating and regional feature flags enforced server-side, with legal review before launch in each market.
-- Obtain separate, explicit consent for betting-related behavioral data; minimize retention and avoid dark patterns.
-- Keep automatic bet placement out of scope. Add links to region-appropriate help resources and schedule formal self-exclusion/activity-limit work before engagement features.
+- Capture rules: closing observations must be appended with a true UTC `observedAt` at capture time, before settlement runs for that fixture; the pipeline refuses a closing observation for a fixture whose `kickoffUtc` has passed (except an explicit late-observation kind, excluded from CLV). No edits — corrections append a new observation and supersede.
+- Comparability: compute CLV only when the closing observation matches the receipt's market/selection encoding and `sourceConvention`, and either the same book as the entry price or an explicitly declared comparable-book policy (same margin band); otherwise emit `clvStatus` unavailable with `clvReason` — the fail-closed states already designed into `ValueSettlement` must stay the default, never a fabricated midpoint.
+- Precision honesty: report CLV in rounded bands (e.g., «≈ +2 %», «в пределах точности ввода») with the count of comparable pairs; suppress any CLV aggregate below a minimum comparable-pair count; state that entry prices are manual 2-d.p. input.
+- Contamination firewall: CLV is **evaluation-only** — never displayed for unsettled fixtures, never an input to the scanner's ranking or to paper-journal decisions; the scanner must not join `ClosingOddsObservation`. A "record closing price" operator action must be blocked (or loudly audit-logged) after kickoff and is never backdatable.
+- Backfill honesty: historical closing prices observed after the fact (from archives) must carry `observationKind` = retrospective and be excluded from CLV aggregates — otherwise the diary quietly converts into hindsight.
 
 **Warning signs:**
-“Top picks” lack uncertainty; disclaimer is only in the footer; only positive ROI periods are highlighted; notifications use urgency; blocked regions can call APIs directly; product analytics infer gambling behavior without consent records.
+CLV populated for fixtures that were never watched live; identical `observedAt` timestamps in batches; CLV shown on candidate cards pre-kickoff; aggregates over < 30 comparable pairs; every CLV positive (selection bias — only "good" lines recorded); timezones other than UTC in the capture path.
 
 **Phase to address:**
-Phase 0 — Product/legal guardrails; implement in Phase 5 — UX and release readiness; re-review before any notifications, personalization, or monetization phase.
+CLV-diary phase (after Settlement-pipeline hardening — settlement ordering is a precondition — and before Paper-trading, so the journal inherits the same capture discipline).
+
+---
+
+### Pitfall 8: Asian handicap push accounting and exact-score markets breaking settlement or inflating fake value
+
+**What goes wrong:**
+Asian handicaps introduce **quarter lines** (e.g., −0.25 = half stake on 0 and half on −0.5), so a single "stake/return/profit" triple — exactly what `ValueSettlement.stakeUnits/returnUnits/profitUnits` stores as scalars — cannot represent a push split without an explicit half-bet model; implementations that round −0.25 to −0.5 or to 0 silently mis-settle pushes. Abandoned/postponed matches route around the existing `SettlementReceipt` lifecycle/scoreability classes into ad hoc "void?" logic, and results revised later (`ResultVersion` supersession) don't propagate to AH settlements. For the 3-way→2-way conversion (1X2 book → home/away handicap), developers reuse the 3-way overround or renormalize inconsistently, and — the deepest trap — **bookmaker overround on exact-score books is far larger and unevenly distributed** (longshots are priced disproportionately badly), so multiplicative no-vig on a 12-score entry produces confident-looking probabilities for 3 % outcomes whose "edges" are pure normalization artifacts. A value gate tuned for 1X2 surfaces a flood of exact-score "value" that is noise with enormous variance.
+
+**Why it happens:**
+The existing market pipeline (1X2, O/U 2.5, BTTS) has complete-book validation and settlement rules written for its selection counts; new markets are slotted into the same `market: String` / `selection: String` fields without extending the *rules* those fields imply.
+
+**How to avoid:**
+- Extend the domain layer first: canonical selection encoding (line as decimal, side home/away; exact score as `h:a` normalized), a quarter-line **half-bet decomposition** rule (stake split 50/50, per-half settlement including push), and settlement unit tests enumerating whole-line push, quarter-line split-push, and void paths per market.
+- Route every new market's outcomes through the existing `SettlementReceipt` lifecycle/scoreability/financial-eligibility classes; abandoned ⇒ void with reason, never a fabricated loss; `ResultVersion` revision ⇒ `SettlementReceipt`/`ValueSettlement` supersession recomputation, same as v1.0 markets.
+- 3-way→2-way: renormalize over the **two** outcomes only (remove the third's probability and the overround over the reduced book), never reuse the 3-way overround; derive AH probabilities **from the same (corrected) score matrix** the 1X2 comes from so markets stay coherent (Integration Gotcha C4) — and note Dixon-Coles shifts AH/draw-less markets differently than 1X2 (Pitfall 6).
+- Exact score: enforce a **minimum probability floor** (e.g., ≥ 3–5 %) and a separate, higher value-gate threshold with sample-size context in UI; declare multiplicative normalization a documented limitation for longshot-heavy books (Shin/power deferred already in PROJECT.md); keep per-market Brier (`ForecastScore` is already keyed by market) so exact-score quality is measured before any value claims.
+- All new market copy, fair-odds labels, and push explanations in Russian, with the persistent RG disclaimer — new markets are not a place to loosen the no-certainty language.
+
+**Warning signs:**
+AH settlement returns non-half-unit profits on quarter lines; void matches counted as losses in ROI; exact-score page shows dozens of positive-edge candidates; 2-way overround equals the 3-way number; AH probabilities don't match the score-matrix sum; pushes missing from `ValueSettlement` audit.
+
+**Phase to address:**
+New-markets phase (after Dixon-Coles — markets must derive from the corrected matrix — and after Settlement hardening so lifecycle rules exist to reuse).
+
+---
+
+### Pitfall 9: The 7-day scanner becomes a stale "best bets" megaphone
+
+**What goes wrong:**
+The scanner aggregates value candidates across fixtures for the next 7 days. Done naively it (a) **recomputes edge outside the immutable `ValueReceipt`** — formulas drift, and the scanner's number no longer matches the receipt that evaluation will score, breaking auditability at exactly the surface users trust most; (b) shows an odds snapshot captured five days ago with its edge as if the price were live ("stale candidates shown as fresh"); (c) orders by edge into a leaderboard — the most predictable RG failure mode, functionally a "top picks" list; (d) runs an N+1 query (latest forecast per fixture × latest odds × scores) that gets slower exactly when the slate is largest.
+
+**Why it happens:**
+A scanner page feels like a read model, so it gets built as live computation in a React component instead of as a projection over existing receipts.
+
+**How to avoid:**
+- **Read-only over receipts:** the scanner displays `ValueReceipt` rows (linking `forecastSnapshotId` + `oddsSnapshotId`) with their stored edge/EV under the receipt's `policyVersion` — never recompute; if the edge policy changes, new receipts are produced under a new policy version, old rows keep their historical meaning (Integration Gotcha C2).
+- Freshness as a first-class column: odds age from `ManualOddsSnapshot.submittedAt`, forecast kind (`INITIAL/PRE_MATCH/LINEUP_CONFIRMED`) and `cutoff`, plus fixture kickoff; auto-mark candidates stale past a configured age and visually demote/exclude them by default with an explicit "показать устаревшие" toggle; degrade to an honest empty/limited state when no candidate is fresh.
+- Query shape: one SQL projection (or materialized view) using window functions (`DISTINCT ON (fixtureId …)` / `row_number() over (partition by …)`) over the receipt/odds/fixture join with indexes covering kickoff-within-7-days + receipt creation; batch-load probabilities; no per-row API calls from the client; add an index if the plan shows a seq scan on receipts (the existing `(fixtureId, market, createdAt)` index is not by itself the scanner's access path).
+- RG posture: no "лучшие ставки" ranking, no green-profit badges, edge shown with model version, odds timestamp, sample/uncertainty context and the persistent disclaimer; ordering (if any) is by kickoff, not by edge; scanner text is Russian and passes the prohibited-claims test suite extended for this surface.
+
+**Warning signs:**
+Scanner edge ≠ fixture page receipt edge; candidates from > 48 h ago displayed unmarked; page load grows linearly with fixtures (N+1); component fetches `/api/fixtures` per row; UI copy contains «топ», «лучшее», «гарантированно».
+
+**Phase to address:**
+Scanner phase (after Calibration — labeled calibrated probabilities must be displayable; after Performance audit — the bundle/perf budget is enforced as the page is built).
+
+---
+
+### Pitfall 10: The paper-trading journal drifts into casino semantics, Kelly over-betting, and tamperable history
+
+**What goes wrong:**
+A bankroll/units/drawdown/ROI journal inside the operator contour starts to *feel* like a real betting account: «депозит», «вывод», green profit totals, streak counters, and a staking suggestion that people follow literally. Kelly stakes computed from model edge compound the problem — full Kelly on a noisy 3 % edge over-bets, and any operator tendency to "chase" a drawdown in *paper* predicts the exact behavior the RG framework exists to prevent. Meanwhile the journal is just rows an operator UI can edit, so deleting losing bets silently inflates ROI — destroying the evaluation value of the journal and, if these numbers ever surface, making them misleading claims.
+
+**Why it happens:**
+Operator-gated features are assumed to be outside RG/UX scrutiny, and a journal is assumed to be a CRUD table. Both are wrong: this product's core value is honest measurement, and the journal is measurement of the *selection process*.
+
+**How to avoid:**
+- **Append-only with supersession, like every other receipt:** journal entries reference `valueReceiptId` (no free-floating bets — this also kills selection bias, Integration Gotcha C6), record stake policy + unit definition at entry time, and corrections supersede rather than update; the ROI shown is always recomputable from the entry set. Add a DB-level guard consistent with the existing append-only pattern (repository discipline + mutation-rejection test).
+- **Semantics fixed at creation:** units are dimensionless («1 юнит = 1 % банка» declared once), no currency symbols, no deposit/withdrawal verbs; drawdown and ROI always shown with sample size and period; the UI labels the whole contour «Бумажная торговля — симуляция. Реальные ставки не совершаются» persistently, in Russian, next to every aggregate.
+- **Kelly is descriptive, fractional, and capped:** display ¼-Kelly at most as an *explanatory* stake under a recorded stake policy (`policyVersion`), never as a recommendation banner, never with urgency; the same no-certainty language rules apply inside the operator contour.
+- **Privacy boundary:** paper bets are betting-behavior data. Inside the operator-gated contour with the existing fail-closed privacy retention this is acceptable, but the journal must not leak into public read models, and any future exposure requires the consent path — do not wire journal rows into analytics events casually.
+- Evaluation separation: journal ROI measures the operator's picking, not the model; model claims use the frozen-rule candidate population only. Never present journal ROI as model performance.
+
+**Warning signs:**
+Editable bet rows; an entry with no `valueReceiptId`; UI vocabulary «депозит/вывод/максимальная ставка»; Kelly % presented as advice; ROI improving when old losing rows "disappear"; journal totals quoted on public pages.
+
+**Phase to address:**
+Paper-trading phase (last or near-last — it consumes receipts from Scanner/New-markets and should inherit every discipline built earlier).
+
+---
+
+### Pitfall 11: Immutability eroded one convenience write at a time
+
+**What goes wrong:**
+Each new v1.1 feature adds a small exception — calibration "patches" a probability, the scanner "refreshes" a candidate's edge, the journal "fixes" a typo, Dixon-Coles "recomputes" an old forecast — and the append-only guarantee that `ForecastSnapshot`/`ValueReceipt`/`SettlementReceipt` supersession chains provide quietly dies. At that point backtests, Brier trends, CLV, and ROI stop being auditable claims, which is indistinguishable from the product failing its core value.
+
+**Why it happens:**
+Immutability was enforced per-v1.0-entity, not as a platform invariant; new entities and new *fields* arrive without the same treatment.
+
+**How to avoid:**
+- State the invariant once and enforce it everywhere new: **durable facts are appended; change is expressed as a superseding row with a reason; derived views are rebuildable projections.** Any new table holding a forecast/odds/settlement/entry fact gets: `supersedes*Id` chain or append-only + `policy/formula/model version` columns + a mutation-rejection test in CI.
+- Code review gate: reject PRs that `UPDATE` receipt/snapshot tables outside migrations; add a Postgres trigger/permission in the production schema restricting updates on those tables (the v1.0 architecture research already recommended this — implement it in v1.1 now that ten new writers exist).
+- Model identity discipline: `modelVersion/modelHash/configVersion/configHash/inputHash` participate in `ForecastSnapshot` uniqueness — every change to Dixon-Coles code, calibrator serving, or market derivation must bump the relevant version/hash or uniqueness means nothing.
+
+**Warning signs:**
+`UPDATE forecast_market` in a diff; "temporary" admin edit endpoints; a `createdAt`-only fact table (no version columns); backtest rerun producing different historical Brier; receipt JSON changing without supersession.
+
+**Phase to address:**
+All phases — but the DB-level restriction lands in the CI phase (it is testable in CI first) and is re-verified in every subsequent phase.
+
+---
+
+### Pitfall 12: Free-tier API budget consumed by CI, audits, probes, and alert "health checks"
+
+**What goes wrong:**
+CI integration tests hit live football providers; nightly "provider health" alert probes call the API just to confirm it answers; Lighthouse runs against a deployment with real data fetch; a scanner rebuild triggers fixture refetches. Each is small; together they burn the API-Football 100/day allowance and starve the critical result/lineup calls — the exact failure the v1.0 atomic budget ledger prevents *inside* the app but not *around* it.
+
+**Why it happens:**
+The quota guard lives in the provider policy layer; tooling built outside the app (CI, cron probes, audit harnesses) bypasses it invisibly.
+
+**How to avoid:**
+- CI never touches live providers: adapters are faked at the port boundary; recorded raw payloads (already captured for audit) double as test fixtures. If a live smoke test is truly needed, it is a separate, manually triggered, budget-accounted workflow — not part of PR CI.
+- Alerting probes check *internal* state (last successful sync age, quota ledger remaining, circuit state, BullMQ heartbeat) rather than calling providers; "can the provider answer" is inferred from real sync outcomes.
+- One shared egress discipline: anything that must call a provider goes through the same budget reservation (a dedicated CI/tooling budget bucket), so even a misconfigured job is throttled and observable.
+
+**Warning signs:**
+Provider request ledger shows calls from Actions IPs or odd hours; quota exhausted with no user-visible sync gap to explain it; `Retry-After` storms during CI; smoke tests in the default workflow.
+
+**Phase to address:**
+CI phase (establish the no-live-calls rule) and Alerting phase (probe design) both.
+
+---
+
+### Pitfall 13: New surfaces ship English, certainty-flavored, or disclaimer-free copy
+
+**What goes wrong:**
+Ten features mean dozens of new strings: scanner labels, calibration explanations («откалибровано»), AH push notices, paper-journal vocabulary, alert-facing operator text. Some ship in English (the codebase default), some carry outcome-colored framing («выигрыш», «убыток»), and the persistent RG disclaimer is absent on newly created pages — violating both the project convention (user-facing text in Russian, 2026-10-15) and the RG framework from v1.0.
+
+**Why it happens:**
+Copy is treated as polish; the v1.0 prohibited-claims suite covered old screens only.
+
+**How to avoid:**
+- Extend the prohibited-claims/prohibited-vocabulary test suite (Playwright + unit-level string scans) to every new surface *in the phase that builds it*: ban «гарантировано», «точная ставка», «топ/лучшая ставка», deposit/withdrawal verbs in the paper journal, and untranslated UI literals in new components (a simple scan for ASCII-only user-visible strings catches most leaks).
+- Every new page composes the existing disclaimer/freshness/limited-data components rather than inventing layout; checklist item in every v1.1 phase's verification.
+
+**Warning signs:**
+New route renders raw enum values; disclaimer missing on scanner/paper-journal pages; green/red profit coloring without context; Lighthouse/accessibility pass while copy review never ran.
+
+**Phase to address:**
+Every phase; explicitly verified in Scanner and Paper-trading phases (highest-risk surfaces).
+
+---
 
 ## Technical Debt Patterns
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Recompute historical features from current mutable rows | Fast first backtest | Irrecoverable leakage and non-reproducible metrics | Never |
-| Store only final probabilities, not feature/config provenance | Smaller schema | Cannot explain, replay, or audit forecasts | Never for released predictions |
-| Use free-text provider/market/status identifiers everywhere | Faster adapters | Drift, typos, incompatible comparisons | Only inside raw staging payloads |
-| Auto-accept fuzzy entity matches | Fewer admin screens | Silent corruption of every downstream metric | Never below a validated high-confidence rule |
-| Use one daily counter per endpoint but no provider-wide limit | Simple reporting | Aggregate provider quota can still be exceeded | Never when provider enforces one overall quota |
-| Treat missing provider data as zero | Simpler feature code | Systematic bias and false confidence | Never; use nullable values plus missingness |
-| Report ROI without frozen selection policy and odds provenance | Quick demo | Selection bias and unverifiable claims | Demo only, clearly labeled synthetic |
+| Write calibrated probabilities into `ForecastMarket.probabilities` | No new entity/layer | Snapshot immutability broken; audit impossible | Never |
+| Recompute scanner edge "just for display" | Faster to build than receipt projection | Display diverges from audited receipts | Never |
+| Edit paper-journal rows in place | Simpler CRUD | ROI/journal becomes unverifiable; RG risk | Never |
+| Borrow a published league-average ρ without provenance | Skips fitting work | Correction is unexplained noise; model card lies | Only behind an explicit, documented "preset" config version |
+| Flat-file `pg_dump` on the same host, verify by file size | Zero infra effort | False recovery confidence | Only as a stopgap *until* the restore-verification job exists — days, not months |
+| Alert on every retry/429 | Catches everything | Alert fatigue silences the channel | Never for `critical` tier; acceptable for recorded-only `info` |
+| Gate CI on a composite Lighthouse score | Legible number | Flaky gate, rerun culture | Never; audit-level budgets only |
+| CLV backfill from post-hoc price archives, unmarked | Instant history | Hindsight-contaminated evaluation | Only with `observationKind = retrospective`, excluded from aggregates |
+| Journal stakes suggested at full Kelly | Exciting demo | Over-betting behavior modeled and encouraged | Never; ¼-Kelly descriptive at most |
+| Copy 1X2 overround onto AH/exact-score books | One line of code | Systematically wrong fair odds | Never |
 
-## Integration Gotchas
+## Integration Gotchas (feature ↔ feature)
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| football-data.org | Assuming all competitions/data points are free and scores are live | Use current plan/coverage as runtime configuration; respect 10 calls/minute; test delayed/null fields |
-| API-Football | Treating endpoint availability as guaranteed populated coverage | Read league/season coverage, response headers, daily/minute budgets, and actual completeness |
-| TheSportsDB | Treating community data as authoritative match statistics | Restrict to candidate aliases/logos; require canonical validation |
-| Understat | Making unofficial scraping synchronous or mandatory | Offline, cached, rate-limited, ToS-reviewed enrichment only; feature flag it off safely |
-| Manual odds | Accepting a number without bookmaker, market, outcomes, and timestamp | Validate a complete market snapshot and immutable provenance |
-| Provider fallback | Blindly upserting by provider ID | Resolve canonical external refs and run audited fixture reconciliation first |
-| BullMQ/Redis | Assuming at-least-once jobs are exactly-once | Use deterministic job IDs, idempotency keys, atomic quota reservation, and replay-safe writes |
+| ID | Interaction | Common Mistake | Correct Approach |
+|----|-------------|----------------|------------------|
+| C1 | **Calibration ↔ Dixon-Coles** | Fitting the calibrator on pre-DC forecasts and serving it on DC outputs (or stacking calibrators across model versions) | Calibrator pins `modelVersion`+`modelHash`; serving refuses mismatches; refit after every model bump |
+| C2 | **Scanner ↔ ValueReceipts** | Scanner recomputes edge/EV with current formulas instead of reading receipts | Project receipt fields verbatim; policy change ⇒ new receipts, old rows historical |
+| C3 | **Dixon-Coles ↔ Backtests** | Comparing V2 (DC) ROI/Brier to V1 history as if continuous; `BacktestPlan` not pinning model version | Pin model/config version per backtest window; keep frozen V1 baseline; label re-baselined series in UI |
+| C4 | **New markets ↔ Score matrix** | AH/exact-score probabilities computed from separate ad hoc logic, drifting from 1X2/O-U | All markets derive from the same (DC-corrected, versioned) score matrix; coherence test across markets |
+| C5 | **CLV ↔ Settlement ordering** | Closing observation appended after `ValueSettlement` wrote `clvStatus`; result revisions re-run settlement and silently recompute CLV | Pipeline order: capture close → settle → score; CLV depends on prices+kickoff only, so result supersession must preserve existing CLV fields |
+| C6 | **Paper journal ↔ Scanner/receipts** | Free-form journal entries not linked to `valueReceiptId` | Every entry names its receipt; journal ROI is therefore reproducible and bias-auditable |
+| C7 | **Calibration ↔ Scanner display** | Scanner shows calibrated probability while the receipt's edge used raw — numbers silently disagree | Receipt stays raw+authoritative; scanner labels calibrated values with calibrator version and shows the raw beside it or not at all |
+| C8 | **Alerting ↔ Backups** | Restore-verification failures logged but never alerted | Backup-age and restore-verification are `critical` alert keys |
+| C9 | **Performance audit ↔ Scanner/New-markets UI** | Chart/analytics code shared into new routes without budget | Dynamic-import Recharts per widget; bundle budget enforced in CI from the performance phase onward |
+| C10 | **CI ↔ everything** | Integration suite silently skipped where Docker is missing | Linux-only integration job; missing-Docker state must *fail*, not skip; required check in branch protection |
+| C11 | **New markets ↔ Existing settlement comparability** | New-market scoring changes shared `formulaVersion`, invalidating old `ForecastScore` comparability | Bump `formulaHash`; old rows keep old version; aggregates segmented by formula version |
+| C12 | **CLV ↔ Paper journal** | CLV of settled bets surfaced in the journal influencing subsequent paper picks | CLV displayed only in evaluation views, never in the decision surface of the journal/scanner |
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Per-user upstream API calls | Quota scales with page views | Worker-owned polling and shared cache/database | Even tens of active users on a 100/day plan |
-| Per-fixture N+1 enrichment | Morning sync burns the whole allowance | Batch by league/date; prioritize and cache | A normal slate across seven competitions |
-| Rebuilding all historical features on every sync | Long jobs and lock contention | Incremental materialization with versioned invalidation | Multiple seasons or repeated backtests |
-| Recomputing full Poisson matrices repeatedly | Slow list pages | Compute once per immutable snapshot and cache derived markets | Hundreds of fixtures/models, before user scale matters |
-| Unbounded retries during provider outage | Queue backlog and quota loss | Circuit breaker, retry budget, jitter, dead-letter review | First sustained provider outage |
+| Scanner N+1 over fixtures × snapshots × odds | Page seconds slower as 7-day slate grows | Single projection query with window functions; precomputed read model | ~50+ fixtures in window (a full PL round + UECL night) |
+| Lighthouse/CI running full builds per PR | 15+ min pipelines, flaky caches | Turbo remote/local cache, one Lighthouse job on changed routes only | Immediately; grows with pages |
+| Calibrator serving recomputing fits per request | API latency spikes, CPU burn | Fit offline; serve artifact lookup by version key | Any traffic once isotonic is per-cohort |
+| Dixon-Coles grid recomputed per market derivation | Slow forecast jobs | One corrected matrix per fixture, cached by `(modelHash, inputHash)`; truncate grid by tail tolerance | Full slate forecast refresh |
+| Alert evaluation polling DB per rule per minute | Alert storm load on primary | Single metrics query per evaluation window; in-process aggregation | Tens of rules |
+| Backup dump of growing receipt/audit tables on hot path | Lock/CPU pressure during morning sync | Dump off-peak; consider tablespace/`pg_dump` excludes of raw staging only if restore-tested | Multi-GB raw audit accumulation |
 
 ## Security Mistakes
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Exposing provider API keys to Next.js/browser code | Theft consumes quota and violates provider terms | Server-only secrets, scoped environments, rotation, redacted logs |
-| Trusting user-entered odds/market strings | Stored injection, broken settlement, manipulated analytics | Typed schemas, allowlists, length/range validation, escaped output |
-| Letting public users trigger sync/backtest jobs | Denial of wallet/quota and resource exhaustion | Authenticated admin/job boundary, rate limits, idempotency |
-| Logging raw provider/user payloads indefinitely | Sensitive behavioral data and secret leakage | Data minimization, redaction, retention policy, consent records |
-| Client-only region/age controls | Restricted functionality remains directly accessible | Server-side policy enforcement and auditable decisions |
+| Alert messages containing provider keys/tokens from headers, URLs, or raw payloads | Secret exfiltration via email/webhook/logs | Typed allowlist DTOs for alert payloads; redaction test with planted secrets |
+| Backup credentials / SMTP / webhook secrets inline in compose `environment:` or committed `.env` variants | Repo leak grants DB or channel takeover | `${VAR}` references + untracked `.env` (current state preserved); secret scan in CI (e.g., gitleaks step) |
+| CI secrets exposed to PRs from forks (Lighthouse/audit workflows with broad permissions) | Token theft | `pull_request` (not `pull_request_target`), least-privilege `permissions:`, environment-gated secrets |
+| Restore-verification dumps containing personal/retention-managed data copied to long-lived locations | Privacy-retention breach (`RetentionSubject`/purge audits become lies) | Anonymize or restrict verification dumps; TTL on verification instances; keep purge audit as source of truth |
+| Operator gateway bypassed by new scanner/journal routes mounted publicly | RG/operator data exposed | All new operator-contoured routes pass the gateway's auth/eligibility policy; server-side check, not route-by-convention |
+| Paper-journal + CLV data flowing into product analytics without consent | Betting-behavior data without basis | No analytics events on operator contour; consent boundary documented now, accounts are future work |
 
 ## UX Pitfalls
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| “Confidence 82” beside “Home 61%” without definitions | Users interpret confidence as win probability | Label confidence as data-quality confidence and show components |
-| Green “value” badge with no provenance | Implies guaranteed profitability | “Model-estimated edge,” odds timestamp, method, uncertainty and sample context |
-| Hiding limited/free-tier data gaps | Users compare unequal forecasts as equivalent | Visible data completeness and unavailable-feature reasons |
-| Showing aggregate ROI alone | Encourages overconfidence from small samples | Sample size, period, yield, drawdown/uncertainty, calibration and losing outcomes |
-| Silently removing unsupported competitions | Product appears broken or selective | Explicit degraded/unsupported status and last successful sync |
-| Treating postponed/void matches as losses | Incorrect trust and bankroll interpretation | Clear settlement rules and auditable void/postponement lifecycle |
+| Scanner sorted by edge with green badges | Reads as «лучшие ставки» — certainty framing | Sort by kickoff; edge with timestamp/uncertainty; persistent disclaimer |
+| Calibrated % shown bare | Users treat recalibration as increased certainty | Label «откалибровано (версия X)», show raw beside, link methodology |
+| Stale odds rendered like fresh ones | False actionable value | Age badge + default exclusion + explicit toggle |
+| AH push shown as loss/win without split | Mistrust of settlement | Show half-stake decomposition and push reason in receipt view |
+| Paper journal in casino vocabulary («депозит», «вывод», bright green totals) | Normalizes real-money framing | Russian «юниты/симуляция» vocabulary; neutral coloring; persistent simulation banner |
+| Lighthouse score displayed as user performance | Misleading methodology claim | Report lab audits honestly labeled as synthetic; no field claims without field data |
+| English enum leakage on new pages | Breaks product convention | String-scan tests for user-visible literals |
 
-## “Looks Done But Isn't” Checklist
+## "Looks Done But Isn't" Checklist
 
-- [ ] **Backtest:** rerunning after new results produces the same historical snapshots and metrics.
-- [ ] **Leakage protection:** every feature can prove it was available before the snapshot cutoff.
-- [ ] **Calibration:** reliability tables/plots, Log Loss and Brier are segmented and out-of-time, not just aggregate.
-- [ ] **Value engine:** candidate references exact prediction and odds snapshots plus calculation version.
-- [ ] **Entity reconciliation:** golden failover dataset creates no duplicate/mismerged teams or fixtures and ambiguous cases stop for review.
-- [ ] **Coverage:** representative live-key probes verify each enabled competition and unavailable fields remain missing, not zero.
-- [ ] **Quota control:** concurrent workers cannot exceed provider-wide or minute limits; critical reserves survive retry storms.
-- [ ] **Settlement:** postponed, cancelled, abandoned and void rules are tested separately from wins/losses.
-- [ ] **Responsible gambling:** claims are reviewed across screens, API copy, SEO metadata and notifications; server enforces region policy.
-- [ ] **Auditability:** model, config, feature data, odds, capture time and source versions reconstruct every published claim.
+- [ ] **CI:** a deliberately broken test/type actually blocks a merge (branch protection proven); integration suite provably ran (duration + container logs), not skipped.
+- [ ] **Backups:** a dump was restored into a *fresh* container on the pinned image and passed chain-integrity queries — this month, not "at creation."
+- [ ] **Alerting:** one real induced failure (stopped worker / exhausted budget fixture) produced exactly one deduplicated page; message contains no secrets (planted-key test).
+- [ ] **Lighthouse:** CI gates on audit budgets with headroom; two consecutive no-change runs are both green; bundle bytes recorded as a trend.
+- [ ] **Calibration:** reported Brier deltas come from a window *after* the fit window; min-cohort rule produces an honest «недостаточно данных» for a small league; `ForecastMarket` rows untouched.
+- [ ] **Dixon-Coles:** unit tests pin the τ convention; ρ=0 reproduces Poisson bitwise; `modelVersion` bumped; methodology card names the exact integration (Elo-λ + τ vs full refit).
+- [ ] **CLV diary:** a fixture settled without a comparable closing price shows `clvStatus` unavailable with reason — no fabricated value; no pre-kickoff CLV anywhere in UI.
+- [ ] **New markets:** quarter-line push, whole-line push, and abandoned-match void each tested per market; scanner/AH probabilities reconcile with the score matrix.
+- [ ] **Scanner:** displayed edge equals the stored `ValueReceipt` edge byte-for-byte; stale candidates demoted by default; query is one projection (EXPLAIN checked).
+- [ ] **Paper journal:** entries cannot be edited/deleted (supersession only); every entry links a `valueReceiptId`; no deposit/withdrawal vocabulary; Kelly ≤ ¼ descriptive.
+- [ ] **Cross-cutting:** new user-visible strings are Russian and pass the extended prohibited-claims suite; free-tier ledger shows no CI/audit traffic.
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Temporal leakage discovered | HIGH | Quarantine metrics, rebuild as-of features, rerun walk-forward tests, relabel model status |
-| Miscalibration | MEDIUM | Stop value labels, collect larger out-of-time set, recalibrate per justified segment, revalidate |
-| Entity mismerge | HIGH | Freeze affected pipelines, split canonical records via audit log, rebuild dependent Elo/features/snapshots |
-| Free-tier capability loss | MEDIUM | Disable feature/provider route, expose limited state, fall back to baseline/manual input, revise capability matrix |
-| Quota exhaustion | LOW–MEDIUM | Shed low-priority jobs, wait for provider reset, serve stale-marked cache, fix fan-out/reservation logic |
-| Misleading value claim shipped | HIGH | Remove claim/notifications, preserve incident evidence, correct affected reports, obtain legal/compliance review |
+| CI never gated (bad merges landed) | MEDIUM | Freeze merges; run full suite locally/CI on affected range; fix forward per phase |
+| Backups unverified, restore fails | HIGH (until fixed) | Stop trusting backups; restore-drill immediately; fix dump tooling; only then resume normal work |
+| Alert fatigue set in | MEDIUM | Mute channel; redesign tiers/dedup; re-launch with strict `critical` list; require an "alert changelog" |
+| Calibration fitted with leakage | HIGH | Quarantine calibrated series; refit on clean windows; restate Brier claims; calibrator supersession entry documents it |
+| DC sign/convention bug shipped | HIGH | Roll back to ρ=0 (Poisson) immediately — it is a valid fallback; re-verify tests; refit; bump model version; invalidate affected forecasts' claims |
+| CLV contaminated by hindsight | HIGH | Mark affected observations retrospective; recompute aggregates excluding them; state correction in methodology card |
+| Scanner displayed divergent edges | MEDIUM | Take scanner down (honest maintenance state); rebuild as receipt projection; reconcile any recorded decisions |
+| Journal edited/tampered | MEDIUM–HIGH | If no append log exists, declare journal history unverifiable; restart journal under append-only rules; note in operator log |
 
 ## Pitfall-to-Phase Mapping
 
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| Responsible-gambling scope drift | Phase 0: Product/legal guardrails | Prohibited-claims policy, jurisdiction decision record, release checklist |
-| Entity duplication/mismerge | Phase 1: Data foundations | Golden cross-provider reconciliation suite and manual-review workflow |
-| Free-tier coverage assumptions | Phase 1: Provider contracts | Live-key capability matrix for every enabled competition/season |
-| Temporal data leakage foundation | Phase 1: Temporal contracts | As-of query tests and immutable feature provenance schema |
-| API quota exhaustion | Phase 2: Resilient ingestion | Concurrent quota/reserve/retry-storm tests using provider header reconciliation |
-| Miscalibrated probabilities | Phase 3: Prediction baseline, Phase 4 gate | Probability invariants, rolling-origin evaluation, reliability tables |
-| False value claims and odds bias | Phase 3: Odds/value engine, Phase 4 gate | Immutable odds linkage, full-book validation, frozen selection backtest |
-| Misleading UX | Phase 5: UX and release readiness | Content audit, limited-data states, server-side region checks, usability review |
+Recommended v1.1 phase order and the pitfalls each phase must *structurally* prevent (verification = a check that fails the phase if absent):
+
+| # | Phase (workstream) | Pitfalls addressed structurally | Verification |
+|---|--------------------|----------------------------------|--------------|
+| 1 | **CI pipeline** | P1 (OS parity, Testcontainers on Linux only), P11 (mutation-rejection tests in CI), P12 (no live provider calls), P13 (string/claims scan) | Required check proven blocking; integration job container logs; secret scan |
+| 2 | **PostgreSQL backups** | P2 (restore verification), C8 (backup alerts) | Scheduled restore drill passing chain-integrity queries |
+| 3 | **Degradation alerting** | P3 (tiers/dedup/redaction), C8, P12 (probes are internal-only) | Induced-failure drill; planted-secret redaction test |
+| 4 | **Lighthouse/performance audit** | P4 (audit budgets not composite gate), C9 (bundle budget for later UI) | Two green no-change runs; Recharts code-split proven by bundle analyzers |
+| 5 | **Dixon-Coles** | P6 (τ convention tests, ρ bounds, single home advantage), C3 (model versioning, backtest pinning), P11 | ρ=0 bitwise-Poisson test; model version bump; methodology card section |
+| 6 | **Isotonic/Platt calibration** | P5 (leakage-free fit windows, min cohorts, no snapshot mutation, hysteresis), C1, C7, C11 | Out-of-time Brier delta with sample sizes; mutation-rejection on snapshots |
+| 7 | **CLV price diary** | P7 (capture discipline, comparability, contamination firewall), C5, C12 | Fail-closed unavailable states; post-kickoff capture blocked |
+| 8 | **Asian handicap & exact score** | P8 (quarter-line splits, void routing, 2-way renorm, value floors), C4, C11 | Push/void settlement matrix tests; cross-market coherence test |
+| 9 | **7-day value scanner** | P9 (receipt projection, staleness, RG posture), C2, C7, C12 | Edge byte-equality vs receipts; EXPLAIN single-projection check; RG copy suite |
+| 10 | **Paper-trading journal** | P10 (append-only, receipt linkage, vocabulary, fractional Kelly), C6, C13 privacy | Mutation-rejection; vocabulary scan; every entry links a receipt |
+
+**Ordering rationale:** CI first (everything else needs the gate) → backups before any schema/model mutation risk → alerting before risky model changes so rollouts are observable → performance budgets before new heavy UI → Dixon-Coles before calibration (calibrators fit the final pipeline) → calibration before scanner (labeled display) → CLV before settlement-consuming surfaces → new markets after the corrected matrix exists → scanner as the aggregation surface → journal last, consuming receipts from all prior phases.
+
+**Research flags for phases:**
+- **Dixon-Coles phase:** needs a domain decision (documented, recorded in `modelVersion`) on Elo-derived λ,μ + fitted per-league ρ vs full attack/defence refit; ρ fitting window and decay selection are project-specific.
+- **Calibration phase:** minimum cohort sizes and materiality thresholds for rollback are policy decisions to record in `configVersion`.
+- **Backups phase:** RPO target (daily dump vs WAL shipping) is an operator decision; off-host destination must be chosen for the deployment target.
+- **Alerting phase:** actual free-tier email/webhook channel choice and its rate limits need runtime verification at implementation time.
+
+## Carry-over Pitfalls from v1.0 (still enforced in v1.1)
+
+Condensed; full text in git history (commit `8655694`): temporal leakage via current-state tables (now also threatened by calibration fitting and DC refits — see P5/P6); false value claims from unvalidated odds math (now threatened by scanner presentation and AH/exact-score normalization — see P8/P9); quota exhaustion (see P12); RG reduced to disclaimer (see P10/P13); miscalibration presented as accuracy (see P5). Every v1.1 phase re-runs the v1.0 "Looks Done But Isn't" checks relevant to its data.
 
 ## Sources
 
-- [scikit-learn: Common pitfalls and recommended practices](https://scikit-learn.org/stable/common_pitfalls.html) — official documentation; leakage definition and prevention. **Confidence: MEDIUM** (official source discovered through web search).
-- [scikit-learn: Probability calibration](https://scikit-learn.org/stable/modules/calibration.html) — official documentation; calibration curves and separation of calibration data. **Confidence: MEDIUM**.
-- [scikit-learn: Metrics and scoring](https://scikit-learn.org/stable/modules/model_evaluation.html) — official documentation; probabilistic scoring with Brier and Log Loss. **Confidence: MEDIUM**.
-- [football-data.org pricing](https://www.football-data.org/pricing) and [API policies](https://docs.football-data.org/general/v4/policies.html) — official free-plan scope and throttling. **Confidence: MEDIUM**; plan details remain runtime-verification items.
-- [API-Football pricing](https://www.api-football.com/pricing/) and [quota optimization guidance](https://www.api-football.com/news/post/how-to-optimize-api-sports-calls-and-quota-usage) — official daily/minute quotas and response-header guidance. **Confidence: MEDIUM**; competition/season completeness must be probed.
-- [UK Gambling Commission: Marketing code](https://www.gamblingcommission.gov.uk/authorities/codes-of-practice/5), [advertising rules](https://www.gamblingcommission.gov.uk/licensees-and-businesses/guide/advertising-marketing-rules-and-regulations), and [licensing principles](https://www.gamblingcommission.gov.uk/policy/statement-of-principles-for-licensing-and-regulation/statement-of-principles-for-licensing-promoting-the-licensing-objectives) — official guidance against misleading marketing and exaggerating winning chances. **Confidence: MEDIUM**; jurisdiction-specific legal review is still required.
-- [FIFA Connect Data](https://data.fifaconnect.org/) and [IPTC SportsML](https://iptc.org/standards/sportsml-g2/) — official sports-data identity and interchange standards supporting normalized entity/event models. **Confidence: MEDIUM**.
+- GitHub Actions runner: container operations Linux-only (`actions/runner#904`); Testcontainers-node failures on `windows-2025` runners (`testcontainers/testcontainers-node#1093`, 2025-07); Testcontainers Windows documentation — **HIGH confidence** (official/first-party trackers).
+- Dixon, M. J. & Coles, S. G. (1997), *Modelling Association Football Scores and Inefficiencies in the Football Betting Market*, JRSS-C 46(2):265–280 (DOI 10.1113/jrsssc.46.2.265-era canonical citation per publisher) — τ four-cell correction, time-decay pseudo-likelihood, ρ bounds — **HIGH confidence** (primary source, content cross-checked via secondary implementation documentation showing the opposite-sign convention exists in the wild — that divergence is Pitfall 6).
+- scikit-learn common pitfalls & probability calibration documentation — calibrator fit/eval separation, small-sample isotonic behavior — **HIGH confidence** (official docs; principles are framework-independent).
+- PostgreSQL official documentation: `pg_dump` consistency (single snapshot), parallel dump format constraints, major-version restore compatibility — **HIGH confidence**.
+- Lighthouse CI (`@lhci/cli`) assert/median-run documentation and Chrome-Lighthouse variance discussions — score noise, audit-level assertions — **MEDIUM confidence** (official tool docs + well-established community consensus).
+- Project sources (HIGH confidence for system claims): `.planning/PROJECT.md`, `.planning/research/ARCHITECTURE.md` (v1.0), `packages/database/prisma/schema.prisma` (ForecastSnapshot, ValueReceipt, ClosingOddsObservation, ValueSettlement, SettlementReceipt, ForecastScore, ResultVersion), `infra/docker-compose.yml`, `infra/operator-gateway/`, `.gitignore` (env handling), absence of `.github/`.
 
 ---
-*Pitfalls research for: Football Prediction & Value Betting Platform*
-*Researched: 2026-08-27*
+*Pitfalls research for: v1.1 feature additions — Football Prediction & Value Betting Platform*
+*Researched: 2026-10-19*

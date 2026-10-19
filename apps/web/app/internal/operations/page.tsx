@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { impactLabel, incidentStatusLabel, serviceStateLabel } from "../../../components/enum-labels";
+import { formatInstant } from "../../../components/time-format";
 
 type Overview = {
   readiness: { state: "READY" | "DEGRADED" | "NOT_READY"; services: Array<{ name: string; state: string }>; lastCheckedAt: string };
@@ -18,7 +19,7 @@ const grid = { display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, 
 const button = { minHeight: 44, padding: "8px 14px" } as const;
 
 function visibleState(state: Overview["readiness"]["state"]): string { return state === "READY" ? "Готово" : state === "DEGRADED" ? "Деградировано" : "Не готово"; }
-function date(value: string | null): string { return value ? new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZoneName: "short" }).format(new Date(value)) : "Недоступно"; }
+function date(value: string | null): string { return value ? formatInstant(value, Intl.DateTimeFormat().resolvedOptions().timeZone) : "Недоступно"; }
 
 function Block({ title, loading, error, empty, onRetry, children }: { title: string; loading: boolean; error: string; empty: boolean; onRetry(): void; children: React.ReactNode }) {
   return <section aria-labelledby={`${title.toLowerCase().replace(/[^a-zа-яё]+/g, "-")}-heading`} style={card} aria-busy={loading || undefined}>

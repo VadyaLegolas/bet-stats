@@ -1,4 +1,5 @@
 import { providerReasonLabel, routeOutcomeLabel, routeTriggerLabel } from "./enum-labels";
+import { formatInstant } from "./time-format";
 
 export type ProviderState = { state: "PRIMARY" | "FALLBACK" | "PENDING" | "UNAVAILABLE" | "LIMITED" | "UNSUPPORTED" | "STALE_CAPABILITY" | "BUDGET_PROTECTED" | "CIRCUIT_DENIED"; provider: string; reason: string; capturedAt: string | null; lastValidAt: string | null; retryAllowed: boolean; receipt: { id: string; policyVersion: string; outcome: string; trigger: string } | null };
 
@@ -33,6 +34,7 @@ const providerBadgeStyles: Record<ProviderState["state"], { bg: string; color: s
 export function ProviderStateNotice({ state, compact = false }: { state: ProviderState; compact?: boolean }) {
   const blocking = ["UNAVAILABLE", "LIMITED", "UNSUPPORTED"].includes(state.state);
   const style = providerBadgeStyles[state.state] ?? providerBadgeStyles.PENDING;
+  const timeZone = process.env.DISPLAY_TIME_ZONE ?? "UTC";
 
   if (compact) {
     return (
@@ -88,10 +90,10 @@ export function ProviderStateNotice({ state, compact = false }: { state: Provide
       </p>
       <div style={{ fontSize: "0.8rem", color: "var(--color-muted)", display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
         {state.capturedAt && (
-          <span>Время захвата: <time dateTime={state.capturedAt}>{state.capturedAt}</time></span>
+          <span>Время захвата: <time dateTime={state.capturedAt} title={state.capturedAt}>{formatInstant(state.capturedAt, timeZone)}</time></span>
         )}
         {state.lastValidAt && (
-          <span style={{ color: "var(--color-warning)" }}>Последний корректный захват: <time dateTime={state.lastValidAt}>{state.lastValidAt}</time></span>
+          <span style={{ color: "var(--color-warning)" }}>Последний корректный захват: <time dateTime={state.lastValidAt} title={state.lastValidAt}>{formatInstant(state.lastValidAt, timeZone)}</time></span>
         )}
       </div>
       {state.retryAllowed && (

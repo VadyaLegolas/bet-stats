@@ -13,6 +13,7 @@ import {
 
 import { EvidenceStateNotice } from "../../../../components/evidence-state-notice";
 import { evidenceLimitationLabel } from "../../../../components/enum-labels";
+import { formatInstant } from "../../../../components/time-format";
 
 type Summary = { value?: unknown; sampleSize?: number; requestedSampleSize?: number; sourceUpdatedAt?: string | null | undefined; limitationReason?: string | null | undefined; limitation?: string | null | undefined };
 type Trace = { fixtureId: string; effectiveAt?: string; observedAt?: string; venue?: "HOME" | "AWAY" | null; outcome?: "WIN" | "DRAW" | "LOSS" | null; score?: { home: number; away: number } | null; source?: string | null };
@@ -81,11 +82,11 @@ function summaryFrom(data: Evidence, key: "five" | "ten"): Summary {
 
 function summaryValue(value: unknown): string { return typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : String(value); }
 
-function SummaryCard({ label, summary }: { label: string; summary: Summary }) {
+function SummaryCard({ label, summary, timeZone }: { label: string; summary: Summary; timeZone: string }) {
   const sample = summary.sampleSize ?? 0;
   const target = summary.requestedSampleSize ?? Number(label);
   const available = summary.value !== null && summary.value !== undefined && sample > 0;
-  return <article style={panel}><h2>Сводка за {label} матчей</h2><p style={{ fontSize: 28, fontWeight: 700 }}>{available ? summaryValue(summary.value) : "Недоступно"}</p><p>Выборка: <span>{sample}/{target}</span></p>{summary.sourceUpdatedAt && <p>Источник обновлён: <time dateTime={summary.sourceUpdatedAt}>{summary.sourceUpdatedAt}</time></p>}{summary.limitationReason && <p>{evidenceLimitationLabel(summary.limitationReason)}</p>}</article>;
+  return <article style={panel}><h2>Сводка за {label} матчей</h2><p style={{ fontSize: 28, fontWeight: 700 }}>{available ? summaryValue(summary.value) : "Недоступно"}</p><p>Выборка: <span>{sample}/{target}</span></p>{summary.sourceUpdatedAt && <p>Источник обновлён: <time dateTime={summary.sourceUpdatedAt} title={summary.sourceUpdatedAt}>{formatInstant(summary.sourceUpdatedAt, timeZone)}</time></p>}{summary.limitationReason && <p>{evidenceLimitationLabel(summary.limitationReason)}</p>}</article>;
 }
 
 export function evidenceHeading(teamName: string | null | undefined): string {
@@ -103,8 +104,8 @@ export function traceComponentLabels(data: { components?: EvidenceProjectionDto[
   return labels.length === 0 ? null : labels.join(", ");
 }
 
-export function EvidenceTraceTable({ rows, fixtureLabels, components }: { rows: readonly Trace[]; fixtureLabels?: Record<string, string> | null | undefined; components?: EvidenceProjectionDto["components"] | undefined }) {
-  return <div role="region" aria-label="Подходящие матчи" style={{ overflowX: "auto" }}><table><caption>Матчи, включённые в сборку исторических доказательств</caption><thead><tr><th>Матч</th><th>Место</th><th>Исход</th><th>Счёт</th><th>Время действия</th><th>Время наблюдения</th><th>Источник</th><th>Компоненты</th></tr></thead><tbody>{rows.map((row) => <tr key={`${row.fixtureId}-${row.observedAt ?? ""}`}><td>{fixtureLabels?.[row.fixtureId] ?? row.fixtureId}</td><td>{row.venue === "HOME" ? "дома" : row.venue === "AWAY" ? "в гостях" : TRACE_FALLBACK}</td><td>{row.outcome === "WIN" ? "победа" : row.outcome === "DRAW" ? "ничья" : row.outcome === "LOSS" ? "поражение" : TRACE_FALLBACK}</td><td>{row.score ? `${row.score.home}:${row.score.away}` : TRACE_FALLBACK}</td><td>{row.effectiveAt ? <time dateTime={row.effectiveAt}>{row.effectiveAt}</time> : TRACE_FALLBACK}</td><td>{row.observedAt ? <time dateTime={row.observedAt}>{row.observedAt}</time> : TRACE_FALLBACK}</td><td>{row.source ?? TRACE_FALLBACK}</td><td>{traceComponentLabels({ components }, row.fixtureId) ?? TRACE_FALLBACK}</td></tr>)}</tbody></table></div>;
+export function EvidenceTraceTable({ rows, fixtureLabels, components, timeZone }: { rows: readonly Trace[]; fixtureLabels?: Record<string, string> | null | undefined; components?: EvidenceProjectionDto["components"] | undefined; timeZone: string }) {
+  return <div role="region" aria-label="Подходящие матчи" style={{ overflowX: "auto" }}><table><caption>Матчи, включённые в сборку исторических доказательств</caption><thead><tr><th>Матч</th><th>Место</th><th>Исход</th><th>Счёт</th><th>Время действия</th><th>Время наблюдения</th><th>Источник</th><th>Компоненты</th></tr></thead><tbody>{rows.map((row) => <tr key={`${row.fixtureId}-${row.observedAt ?? ""}`}><td>{fixtureLabels?.[row.fixtureId] ?? row.fixtureId}</td><td>{row.venue === "HOME" ? "дома" : row.venue === "AWAY" ? "в гостях" : TRACE_FALLBACK}</td><td>{row.outcome === "WIN" ? "победа" : row.outcome === "DRAW" ? "ничья" : row.outcome === "LOSS" ? "поражение" : TRACE_FALLBACK}</td><td>{row.score ? `${row.score.home}:${row.score.away}` : TRACE_FALLBACK}</td><td>{row.effectiveAt ? <time dateTime={row.effectiveAt} title={row.effectiveAt}>{formatInstant(row.effectiveAt, timeZone)}</time> : TRACE_FALLBACK}</td><td>{row.observedAt ? <time dateTime={row.observedAt} title={row.observedAt}>{formatInstant(row.observedAt, timeZone)}</time> : TRACE_FALLBACK}</td><td>{row.source ?? TRACE_FALLBACK}</td><td>{traceComponentLabels({ components }, row.fixtureId) ?? TRACE_FALLBACK}</td></tr>)}</tbody></table></div>;
 }
 
 export default function TeamEvidencePage() {
@@ -138,16 +139,17 @@ export default function TeamEvidencePage() {
 
   const resolved = data.resolvedAsOfUtc ?? data.resolvedAsOf;
   const invalid = !resolved;
+  const timeZone = data.displayTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const five = summaryFrom(data, "five"); const ten = summaryFrom(data, "ten");
   const trace = data.trace ?? data.receipt?.inputs ?? [];
   return <section style={{ display: "grid", gap: 24, overflowWrap: "anywhere" }}>
     <Link href={back} style={{ minHeight: 48, display: "inline-flex", alignItems: "center", width: "fit-content" }}>{fixtureId ? "Назад к матчу" : "Назад к матчам"}</Link>
-    <header><h1>{evidenceHeading(data.team?.name)}</h1><p>То, что система могла знать на выбранный момент.</p>{data.fixture && <p>Доказательства запрошены к началу матча {data.fixture.name}</p>}<dl><dt>Запрошенная точка отсчёта</dt><dd><time dateTime={data.requestedAsOf ?? asOf}>{data.requestedAsOf ?? asOf}</time></dd><dt>Определённая точка отсчёта (UTC)</dt><dd>{resolved ? <time dateTime={resolved}>{resolved}</time> : "Недоступно"}</dd>{data.displayTimeZone && <><dt>Часовой пояс отображения</dt><dd>{data.displayTimeZone}</dd></>}</dl></header>
+    <header><h1>{evidenceHeading(data.team?.name)}</h1><p>То, что система могла знать на выбранный момент.</p>{data.fixture && <p>Доказательства запрошены к началу матча {data.fixture.name}</p>}<dl><dt>Запрошенная точка отсчёта</dt><dd><time dateTime={data.requestedAsOf ?? asOf} title={data.requestedAsOf ?? asOf}>{formatInstant(data.requestedAsOf ?? asOf, timeZone)}</time></dd><dt>Определённая точка отсчёта</dt><dd>{resolved ? <time dateTime={resolved} title={resolved}>{formatInstant(resolved, timeZone)}</time> : "Недоступно"}</dd>{data.displayTimeZone && <><dt>Часовой пояс отображения</dt><dd>{data.displayTimeZone}</dd></>}</dl></header>
     {invalid && <p role="alert">Эта точка отсчёта не может быть использована. Введите поддерживаемые дату и время.</p>}
     <EvidenceStateNotice state={data.state} freshness={data.freshness} limitationReason={data.limitationReason}/>
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}><SummaryCard label="5" summary={five}/><SummaryCard label="10" summary={ten}/></div>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}><SummaryCard label="5" summary={five} timeZone={timeZone}/><SummaryCard label="10" summary={ten} timeZone={timeZone}/></div>
     <section aria-labelledby="components-heading"><h2 id="components-heading">Компоненты доказательств</h2>{Object.values(data.components ?? {}).map((component) => <details key={component.kind} style={panel}><summary>{componentLabel(component)}</summary><dl>{renderEvidenceComponentFields(component).map((field) => <div key={field.label}><dt>{field.label}</dt><dd>{field.label}: {field.value}</dd></div>)}</dl><p>Выборка: {component.sampleSize}</p>{component.limitation && <p>{evidenceLimitationLabel(component.limitation)}</p>}</details>)}</section>
-    <section aria-labelledby="trace-heading"><h2 id="trace-heading">Трассировка подходящих матчей</h2>{trace.length === 0 ? <p>Нет матчей, подходящих под отсчёт по времени действия и времени захвата.</p> : <EvidenceTraceTable rows={trace} fixtureLabels={data.fixtureLabels} components={data.components}/>}</section>
+    <section aria-labelledby="trace-heading"><h2 id="trace-heading">Трассировка подходящих матчей</h2>{trace.length === 0 ? <p>Нет матчей, подходящих под отсчёт по времени действия и времени захвата.</p> : <EvidenceTraceTable rows={trace} fixtureLabels={data.fixtureLabels} components={data.components} timeZone={timeZone}/>}</section>
     {!data.receipt && <p role="alert">Происхождение данных недоступно; эти доказательства нельзя воспроизвести.</p>}
     <details style={panel}><summary>Квитанция воспроизведения{data.receipt?.configVersion ? ` (конфиг ${data.receipt.configVersion})` : ""}{data.receipt ? ` — ${(data.receipt.inputIds ?? data.receipt.inputs ?? []).length} ${(data.receipt.inputIds ?? data.receipt.inputs ?? []).length === 1 ? "входное значение" : "входных значений"}` : ""}</summary>{data.receipt ? <pre aria-label="Данные квитанции воспроизведения" style={{ overflow: "auto", maxWidth: "100%" }}>{JSON.stringify(data.receipt, null, 2)}</pre> : <p>Квитанция для этой точки отсчёта недоступна.</p>}</details>
   </section>;

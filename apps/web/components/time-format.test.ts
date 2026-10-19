@@ -15,4 +15,17 @@ describe("formatInstant", () => {
   it("keeps an unparsable value exact instead of dropping it", () => {
     expect(formatInstant("not-an-instant", "Europe/Warsaw")).toBe("not-an-instant");
   });
+
+  it("renders a calendar date without inventing a time or shifting the day", () => {
+    expect(formatInstant("2026-09-20", "Europe/Warsaw")).toBe("20 сентября 2026 г.");
+  });
+
+  it("never mangles id-shaped values that merely look numeric", () => {
+    expect(formatInstant("2026", "Europe/Warsaw")).toBe("2026");
+    expect(formatInstant("PL", "Europe/Warsaw")).toBe("PL");
+  });
+
+  it("falls back to the exact input when the display zone is invalid", () => {
+    expect(formatInstant("2026-10-18T18:45:00.000Z", "no-such/zone")).toBe("2026-10-18T18:45:00.000Z");
+  });
 });

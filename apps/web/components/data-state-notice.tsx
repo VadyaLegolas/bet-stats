@@ -1,4 +1,5 @@
 import { reasonLabel } from "./enum-labels";
+import { formatInstant } from "./time-format";
 
 export type FixtureDataState = { state: "AVAILABLE" | "LIMITED" | "STALE" | "UNSUPPORTED" | "UNRESOLVED"; reason: string; provider: string; capturedAt: string; sourceUpdatedAt: string | null; freshnessThresholdMs: number; value: null };
 
@@ -22,6 +23,7 @@ const badgeStyles: Record<FixtureDataState["state"], { bg: string; color: string
 
 export function DataStateNotice({ data, compact = false }: { data: FixtureDataState; compact?: boolean }) {
   const style = badgeStyles[data.state] ?? badgeStyles.UNSUPPORTED;
+  const timeZone = process.env.DISPLAY_TIME_ZONE ?? "UTC";
 
   if (compact) {
     return (
@@ -69,11 +71,11 @@ export function DataStateNotice({ data, compact = false }: { data: FixtureDataSt
       </p>
       <div style={{ fontSize: "0.8rem", color: "var(--color-muted)", display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
         <span>Источник: <strong style={{ color: "var(--color-text-secondary)" }}>{data.provider}</strong></span>
-        <span>Захвачено: <time dateTime={data.capturedAt}>{data.capturedAt}</time></span>
+        <span>Захвачено: <time dateTime={data.capturedAt} title={data.capturedAt}>{formatInstant(data.capturedAt, timeZone)}</time></span>
         <span>
           Обновление источника:{" "}
           {data.sourceUpdatedAt ? (
-            <time dateTime={data.sourceUpdatedAt}>{data.sourceUpdatedAt}</time>
+            <time dateTime={data.sourceUpdatedAt} title={data.sourceUpdatedAt}>{formatInstant(data.sourceUpdatedAt, timeZone)}</time>
           ) : (
             <span>Недоступно</span>
           )}

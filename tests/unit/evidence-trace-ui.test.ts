@@ -35,6 +35,7 @@ describe("EvidenceTraceTable", () => {
       rows: [{ fixtureId: "fx-201", effectiveAt: "2026-08-22T16:00:00.000Z", observedAt: "2026-08-22T18:00:00.000Z", venue: "HOME", outcome: "WIN", score: { home: 2, away: 1 }, source: "data-feed-7" }],
       fixtureLabels: { "fx-201": "Арсенал против Челси" },
       components,
+      timeZone: "Europe/Warsaw",
     }));
     expect(markup).toContain("Арсенал против Челси");
     expect(markup).toContain("дома");
@@ -43,8 +44,8 @@ describe("EvidenceTraceTable", () => {
     expect(markup).toContain("data-feed-7");
     expect(markup).toContain("Взвешенная форма за 5 матчей");
     expect(markup).toContain("Рейтинг Elo");
-    expect(markup).toContain("<time dateTime=\"2026-08-22T16:00:00.000Z\">2026-08-22T16:00:00.000Z</time>");
-    expect(markup).toContain("<time dateTime=\"2026-08-22T18:00:00.000Z\">2026-08-22T18:00:00.000Z</time>");
+    expect(markup).toContain("<time dateTime=\"2026-08-22T16:00:00.000Z\" title=\"2026-08-22T16:00:00.000Z\">22 августа 2026 г. в 18:00</time>");
+    expect(markup).toContain("<time dateTime=\"2026-08-22T18:00:00.000Z\" title=\"2026-08-22T18:00:00.000Z\">22 августа 2026 г. в 20:00</time>");
   });
 
   it("renders an AWAY draw row and a LOSS row in Russian", () => {
@@ -55,6 +56,7 @@ describe("EvidenceTraceTable", () => {
       ],
       fixtureLabels: {},
       components,
+      timeZone: "Europe/Warsaw",
     }));
     expect(markup).toContain("в гостях");
     expect(markup).toContain("ничья");
@@ -69,6 +71,7 @@ describe("EvidenceTraceTable", () => {
       rows: [{ fixtureId: "fx-404" }],
       fixtureLabels: {},
       components,
+      timeZone: "Europe/Warsaw",
     }));
     expect(markup).toContain("fx-404");
     expect((markup.match(/Неизвестно/g) ?? []).length).toBe(7);
@@ -84,6 +87,7 @@ describe("EvidenceTraceTable", () => {
       ],
       fixtureLabels: { "fx-201": "Арсенал против Челси" },
       components,
+      timeZone: "Europe/Warsaw",
     }));
     expect(markup).not.toContain("HOME");
     expect(markup).not.toContain("AWAY");

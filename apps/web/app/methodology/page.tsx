@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { RiskDisclosure } from "../../components/risk-disclosure";
+import { formatInstant } from "../../components/time-format";
 
 const panel = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, marginBlock: 18 } as const;
 const technical = { marginBlockStart: 16, padding: 16, background: "var(--color-surface-subtle)", borderRadius: 4 } as const;
@@ -13,6 +14,7 @@ function TechnicalDetails({ id, children }: { id: string; children: ReactNode })
 
 export default function MethodologyPage() {
   const card = MODEL_CARD;
+  const timeZone = process.env.DISPLAY_TIME_ZONE ?? "UTC";
   const minimums = card.forecast.minimumSamples;
   return <article>
     <h1>Как работают прогнозы</h1>
@@ -21,7 +23,7 @@ export default function MethodologyPage() {
 
     <dl aria-label="Метаданные текущей карточки модели" style={panel}>
       <dt>Версия карточки модели</dt><dd><strong>{card.version}</strong></dd>
-      <dt>Дата вступления в силу</dt><dd><time dateTime={card.effectiveDate}>{card.effectiveDate}</time></dd>
+      <dt>Дата вступления в силу</dt><dd><time dateTime={card.effectiveDate} title={card.effectiveDate}>{formatInstant(card.effectiveDate, timeZone)}</time></dd>
       <dt>Текущая модель/конфиг</dt><dd>{card.currentModel.modelVersion} / {card.currentModel.configVersion}</dd>
       <dt>Хеш текущего конфига</dt><dd><code>{card.currentModel.configHash}</code></dd>
     </dl>
@@ -92,7 +94,7 @@ export default function MethodologyPage() {
       <h2>История изменений</h2>
       {card.changeHistory.map((change) => <article key={change.version} style={{ borderBlockStart: "1px solid var(--color-border)", paddingBlock: 14 }}>
         <h3>{change.version}</h3>
-        <p><strong>Вступил в силу:</strong> <time dateTime={change.effectiveDate}>{change.effectiveDate}</time></p>
+        <p><strong>Вступил в силу:</strong> <time dateTime={change.effectiveDate} title={change.effectiveDate}>{formatInstant(change.effectiveDate, timeZone)}</time></p>
         <p>{change.summary}</p>
         <p><strong>Затронутые политики/модели:</strong> {change.affected}</p>
         <p><strong>Миграция/интерпретация:</strong> {change.interpretation}</p>

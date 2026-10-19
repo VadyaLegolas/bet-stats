@@ -1,5 +1,6 @@
 // Captures the five real screenshots used by /faq against the already-running dev stack.
 // Usage: node scripts/capture-faq-screenshots.mjs   (run from repo root; stack must be live on :3000)
+//        node scripts/capture-faq-screenshots.mjs scorecards   (recapture one shot by file name)
 // Console output is ASCII-only on purpose - the Windows PowerShell console mangles Cyrillic.
 import { mkdir, stat, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -66,13 +67,19 @@ async function pngDimensions(file) {
 
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
+  const only = process.argv[2];
+  const shots = only ? SHOTS.filter((shot) => shot.name === only || shot.name === `${only}.png`) : SHOTS;
+  if (only && shots.length === 0) {
+    console.log(`unknown shot "${only}"; known: ${SHOTS.map((shot) => shot.name).join(", ")}`);
+    process.exit(1);
+  }
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
   const page = await context.newPage();
   let oddsOutcome = "not-attempted";
 
   try {
-    for (const shot of SHOTS) {
+    for (const shot of shots) {
       const file = path.join(OUT_DIR, shot.name);
       console.log(`shot ${shot.name} <- ${shot.url}`);
       if (shot.oddsFill) {
@@ -109,7 +116,7 @@ async function main() {
 
   console.log(`odds form outcome: ${oddsOutcome}`);
   let failed = false;
-  for (const shot of SHOTS) {
+  for (const shot of shots) {
     const file = path.join(OUT_DIR, shot.name);
     try {
       const info = await stat(file);

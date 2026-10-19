@@ -8,6 +8,7 @@ import { LocalDataBlock } from "../../components/local-data-block";
 import { ContextualMethodologyWarning } from "../../components/contextual-methodology-warning";
 import { financialOutcomeLabel, oddsSelectionLabel } from "../../components/enum-labels";
 import { formatOdds } from "../../components/odds-format";
+import { CohortFilter } from "../../components/cohort-filter";
 
 export type ScorecardViewModel = Readonly<{
   cohortIdentity: { modelVersion: string; competitionId: string; market: string; from: string; to: string };
@@ -69,10 +70,9 @@ export function ScorecardDashboard({ scorecard, candidates, cursor }: { scorecar
     <p>Историческая оценка зафиксированных прогнозов и вручную введённых коэффициентов. Это аналитические доказательства, а не рекомендации к ставкам.</p>
     <ContextualMethodologyWarning context="scorecard" />
     <ResultsSyncButton />
-    <form method="get" style={{ ...panel, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12 }}>
-      {(["modelVersion", "competitionId", "market", "from", "to"] as const).map((key) => <label key={key}>{key}<input name={key} defaultValue={scorecard.cohortIdentity[key]} style={{ width: "100%", minHeight: 44 }} /></label>)}
-      <button type="submit" style={{ minHeight: 44 }}>Применить точную когорту</button>
-    </form>
+    <div style={panel}>
+      <CohortFilter identity={scorecard.cohortIdentity} />
+    </div>
     <section aria-labelledby="cohort-health" style={panel}>
       <h2 id="cohort-health">{healthTitle}</h2>
       {scorecard.health.state === "UNAVAILABLE" && <p role="alert">Нет пригодных для оценки доказательств для этой точной когорты. Фильтры не расширялись.</p>}

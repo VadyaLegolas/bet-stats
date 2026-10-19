@@ -76,4 +76,22 @@ describe("scorecard dashboard", () => {
     expect(markup).toContain("model-v1");
     expect(markup).toContain("premier-league");
   });
+
+  it("speaks Russian with a calendar period instead of raw API keys and ISO instants", () => {
+    const markup = renderToStaticMarkup(createElement(ScorecardDashboard, { scorecard: model, candidates: { items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" } } }));
+    for (const label of ["Период с", "Период по", "Версия модели", "Соревнование", "Рынок"]) expect(markup).toContain(label);
+    /* The five API keys must not surface as labels — they stay as input names for the query. */
+    expect(markup).not.toContain(">modelVersion<");
+    expect(markup).not.toContain(">competitionId<");
+    expect(markup).not.toContain(">from<");
+    expect(markup).not.toContain(">to<");
+    /* Whole UTC days in the pickers: the exclusive bound 2026-02-01T00:00:00.000Z floors to
+       its own day 2026-01-31 so the picked end day stays whole when the server converts back.
+       React reorders attributes in SSR markup, so match name+value pairs, not full tags. */
+    expect(markup).toContain('name="from" value="2026-01-01"');
+    expect(markup).toContain('name="to" value="2026-01-31"');
+    expect(markup.match(/type="date"/g)).toHaveLength(2);
+    expect(markup).not.toContain("2026-02-01T00:00:00.000Z");
+    expect(markup).toContain("Выберите период календарём");
+  });
 });

@@ -1,6 +1,7 @@
 import { permanentRedirect } from "next/navigation";
 
 import { resolveCohortBounds } from "./cohort-bounds";
+import { resolveCohortIdentity } from "./cohort-identity";
 import { ScorecardDashboard, type ScorecardViewModel } from "./scorecard-dashboard";
 
 type Search = Record<string, string | string[] | undefined>;
@@ -9,7 +10,7 @@ const eligibilityHeaders = () => ({ "x-eligibility-region": process.env.ELIGIBIL
 
 async function fetchEvidence(search: Search, view: "scorecard" | "value-candidates") {
   const query = new URLSearchParams();
-  for (const key of ["modelVersion", "competitionId", "market"] as const) { const value = first(search[key]); if (value) query.set(key, value); }
+  for (const [key, value] of resolveCohortIdentity(search)) query.set(key, value);
   const bounds = resolveCohortBounds(search);
   query.set("from", bounds.from);
   query.set("to", bounds.to);

@@ -31,17 +31,18 @@ describe("theme toggle", () => {
     expect(layout).toContain("<ThemeToggle />");
   });
 
-  it("renders the bootstrap script with the guide's server/client type split", () => {
+  it("emits the bootstrap script from the server render and nothing from the client", () => {
     /* SSR path: type="text/javascript" so the browser runs it while the HTML
        parses (before first paint); the script body is the shared constant. */
     const markup = renderToStaticMarkup(createElement(ThemeBootstrapScript));
     expect(markup).toContain('type="text/javascript"');
     expect(markup).toContain("matchday-theme");
-    /* Client path: text/plain keeps later React renders inert and warning-free,
-       and suppressHydrationWarning lets hydration keep the server's type. */
+    /* Client path: the component returns null, so hydration never expects the
+       <script> node — a missing or extra <head> script (browser extension)
+       cannot fail hydration, and client renders never recreate the element. */
     const source = readFileSync(resolve(import.meta.dirname, "../../apps/web/components/theme-bootstrap.tsx"), "utf8");
-    expect(source).toContain('"text/plain"');
-    expect(source).toContain("suppressHydrationWarning");
     expect(source).toContain('"use client"');
+    expect(source).toContain('typeof window !== "undefined"');
+    expect(source).toContain("return null");
   });
 });

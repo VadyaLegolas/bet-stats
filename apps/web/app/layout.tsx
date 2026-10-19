@@ -21,8 +21,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     /* data-theme="light" is the server default; ThemeBootstrapScript restamps
        it from localStorage/system preference while the HTML parses (before the
        first paint), and suppressHydrationWarning tells React to accept that
-       stamped value. The script itself lives in components/theme-bootstrap —
-       a Client Component so React never re-executes it during client renders. */
+       stamped value. The script lives in components/theme-bootstrap and is
+       emitted by the server render only — the client render returns null, so
+       hydration never expects the <script> node and cannot fail on it. */
     <html lang="ru" data-theme="light" suppressHydrationWarning className={`${sourceSerif.variable} ${plexSans.variable}`}>
       <head>
         <ThemeBootstrapScript />

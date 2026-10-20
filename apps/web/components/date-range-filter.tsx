@@ -209,6 +209,7 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate mount-time auto sync, gated by autoSync
     if (autoSync) void runSync(false);
     // Sync once when the page mounts; subsequent refreshes come from the manual button.
     // eslint-disable-next-line react-hooks/exhaustive-deps

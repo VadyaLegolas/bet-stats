@@ -24,6 +24,7 @@ export function ReleaseNavigation() {
     return () => desktop.removeEventListener("change", close);
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset: close the mobile menu whenever the route changes
   useEffect(() => setOpen(false), [pathname]);
 
   useEffect(() => {

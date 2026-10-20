@@ -33,6 +33,7 @@ export function QuotaCounter() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount: the quota counter loads immediately, then polls
     void load();
     const poll = window.setInterval(() => void load(), 60_000);
     const tick = window.setInterval(() => setNow(Date.now()), 1_000);

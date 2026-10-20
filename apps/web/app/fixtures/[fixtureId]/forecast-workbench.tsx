@@ -137,6 +137,7 @@ export function ForecastWorkbench({ fixtureId, forecasts, timeZone }: { fixtureI
       throw error;
     }
   }
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount: availability loads once per fixture
   useEffect(() => { let active = true; void loadAvailability().catch(() => { if (active) { setAvailabilityReason("Корректные данные в других частях этой страницы не изменились. Повторите попытку."); setAvailabilityState("unavailable"); } }); return () => { active = false; }; }, [fixtureId]);
   // Saved books are immutable, so the «Снимок коэффициентов» select re-lists them from
   // storage on every mount instead of only the books saved in this tab. No auto-selection:

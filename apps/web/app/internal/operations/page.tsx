@@ -49,6 +49,7 @@ export default function OperationsPage() {
     } catch { setError("Этот операционный блок недоступен. Ранее показанные безопасные сведения остаются без изменений."); }
     finally { setLoading(false); }
   };
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount: the operations overview loads once on page mount
   useEffect(() => { void load(); }, []);
 
   return <section style={{ display: "grid", gap: 24, minWidth: 0 }}>

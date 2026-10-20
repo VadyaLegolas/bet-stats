@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 const coveragePath = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  "../../.planning/phases/02-historical-evidence-pipeline/COVERAGE.md",
+  "../../.planning/milestones/v1.0-phases/02-historical-evidence-pipeline/COVERAGE.md",
 );
 const providerContractPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../packages/football-data/src/provider.interface.ts");
 const clientPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../packages/football-data/src/providers/football-data-org/client.ts");

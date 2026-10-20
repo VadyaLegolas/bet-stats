@@ -43,3 +43,18 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run test:integration:docker
+  e2e-portable:
+    runs-on: ubuntu-latest
+    # The two portable specs own their containers, migrations, seeds and process
+    # lifecycle via the live-evidence-stack globalSetup; no credentials are set.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: corepack enable
+      - run: pnpm exec playwright install chromium --with-deps
+      - run: pnpm exec playwright test -c playwright.ci.config.ts tests/e2e/evidence-scorecard.spec.ts tests/e2e/team-evidence-live.spec.ts

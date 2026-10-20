@@ -4,16 +4,16 @@ milestone: v1.1
 current_phase: 07
 current_phase_name: CI Pipeline & Quality Gates
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-10-20T17:02:43.857Z"
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-10-20T21:14:55.761Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 07 execution started
-state_head: 9f2928909e803fe0064b5e351d9f7e2b35c06d04
+state_head: 76a582d7cfd6547cbc1d94084c01bd26ae522d3c
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 07 (CI Pipeline & Quality Gates) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 07 execution started
 
@@ -120,6 +120,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06 P08 | 35min | 2 tasks | 9 files |
 | Phase 06 P09 | 2d | 3 tasks | 19 files |
 | Phase 07 P1 | 151min | 4 tasks | 40 files |
+| Phase 07-ci-pipeline-quality-gates P07-02 | 74min | 5 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -226,6 +227,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 07]: Lint debt fixed with real code changes; reasoned single-line disables only at deliberate rest-omits, never in configs (07-01 Task 3)
 - [Phase 07]: Mutation-rejection test seeds via persist_settlement_receipt/persist_value_settlement, never raw ValueSettlement INSERT, so guard_value_settlement stays the single enforcement point (07-01 Task 4)
 - [Phase 07]: Integration harness has 12 pre-existing failures (replay clock-skew, stale English label tests after d44f65f localization, privacy Serializable-conflict masking) — A/B-baselined, deferred to a repair plan; CI integration job will be red until fixed (07-01)
+- [Phase 07-ci-pipeline-quality-gates]: Task 4 human decision (2026-10-20): Option A — switch to Node 24; portable Node v24.22.0 at .tools/node24, .npmrc engine-strict=true so host Node 25 fails fast with ERR_PNPM_UNSUPPORTED_ENGINE (07-02)
+- [Phase 07-ci-pipeline-quality-gates]: Portable E2E specs refreshed to the current localized UI (cutoff time dateTime attribute, display labels in trace rows, Russian limitation labels) instead of weakening the CI config; pair now passes 5/5 locally under playwright.ci.config.ts (07-02)
+- [Phase 07-ci-pipeline-quality-gates]: Line-ending renormalization deferred: 887 tracked files (390 .planning, 497 elsewhere) would change under the new LF rule; zero staged, kept as a separate follow-up decision (07-02)
 
 ### Pending Todos
 
@@ -327,6 +331,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-20T17:02:43.786Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-10-20T21:14:55.693Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None

@@ -30,3 +30,16 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
       - run: pnpm build
+  integration:
+    runs-on: ubuntu-latest
+    # Linux-only: containers are unsupported on Windows runners (actions/runner#904).
+    # The owned-container harness owns the postgres/redis lifecycle and migrate deploy.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:integration:docker

@@ -8,7 +8,9 @@ import { describe, expect, it } from "vitest";
 // .github/workflows/ci.yml. It runs inside the unit project, therefore inside
 // the quality job itself — the policy guards the workflow that runs the policy.
 const workflowPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../.github/workflows/ci.yml");
-const source = readFileSync(workflowPath, "utf8");
+// Normalize line endings: the Windows dev host checks files out as CRLF
+// (core.autocrlf), CI checkouts are LF — the policy must hold for both.
+const source = readFileSync(workflowPath, "utf8").replace(/\r\n/g, "\n");
 
 // Job keys are matched at their exact two-space YAML indentation so step-level
 // substrings (e.g. `test:integration:docker` in a `run:` line) can never be

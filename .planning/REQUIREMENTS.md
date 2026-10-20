@@ -8,10 +8,10 @@
 
 ### Delivery Pipeline (CI)
 
-- [ ] **CI-01**: A developer can rely on a GitHub Actions pipeline that runs on every push and pull request: frozen-lockfile install, schema verification, typecheck, lint, unit tests, integration tests, and build.
+- [x] **CI-01**: A developer can rely on a GitHub Actions pipeline that runs on every push and pull request: frozen-lockfile install, schema verification, typecheck, lint, unit tests, integration tests, and build.
 - [ ] **CI-02**: Integration tests run on Linux runners with Docker and fail (never skip) when Docker is unavailable; CI never calls live external providers.
-- [ ] **CI-03**: Lint covers all workspace applications and packages (api, workers, domain, web) before it becomes a required gate.
-- [ ] **CI-04**: CI-enforced mutation-rejection tests protect immutable snapshot and receipt tables against UPDATE and DELETE at the database layer.
+- [x] **CI-03**: Lint covers all workspace applications and packages (api, workers, domain, web) before it becomes a required gate.
+- [x] **CI-04**: CI-enforced mutation-rejection tests protect immutable snapshot and receipt tables against UPDATE and DELETE at the database layer.
 
 ### Backups and Restore Verification (BAK)
 
@@ -95,10 +95,10 @@ _Milestone v1.1 roadmap (2026-10-19): every requirement maps to exactly one phas
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CI-01 | Phase 7 | Pending |
+| CI-01 | Phase 7 | Complete |
 | CI-02 | Phase 7 | Pending |
-| CI-03 | Phase 7 | Pending |
-| CI-04 | Phase 7 | Pending |
+| CI-03 | Phase 7 | Complete |
+| CI-04 | Phase 7 | Complete |
 | BAK-01 | Phase 8 | Pending |
 | BAK-02 | Phase 8 | Pending |
 | BAK-03 | Phase 8 | Pending |

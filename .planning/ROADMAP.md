@@ -32,7 +32,11 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   4. A deliberate breakage (type error, failing test, mutation on a frozen table) turns the pipeline red and blocks the merge.
 
 **Notes / research flags**: Decide which Playwright E2E subset is portable to the default CI job vs a manually-triggered live smoke — CI must never burn the free-tier provider budget. E2E live-stack tests currently shell out to `cmd.exe` (Windows-only); CI must use the cross-platform `verify-release-integration.mjs` path. Extend the flat ESLint config to `apps/api`, `apps/api-e2e`, `workers/*` before making lint required.
-**Plans**: TBD
+**Plans**: 1/3 plans executed
+- [x] 07-01-PLAN.md
+- [ ] 07-02-PLAN.md
+- [ ] 07-03-PLAN.md
+
 **UI hint**: no
 
 ### Phase 8: Backups and Restore Verification
@@ -182,7 +186,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 7. CI Pipeline & Quality Gates | 0/0 | Not started | - |
+| 7. CI Pipeline & Quality Gates | 1/3 | In Progress | - |
 | 8. Backups and Restore Verification | 0/0 | Not started | - |
 | 9. Degradation Alerting | 0/0 | Not started | - |
 | 10. Performance Audit and Budgets | 0/0 | Not started | - |

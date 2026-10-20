@@ -1,0 +1,63 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": "v1.1",
+  "phases": [
+    {
+      "number": "7",
+      "name": "CI Pipeline & Quality Gates",
+      "status": "pending"
+    },
+    {
+      "number": "8",
+      "name": "Backups and Restore Verification",
+      "status": "pending"
+    },
+    {
+      "number": "9",
+      "name": "Degradation Alerting",
+      "status": "pending"
+    },
+    {
+      "number": "10",
+      "name": "Performance Audit and Budgets",
+      "status": "pending"
+    },
+    {
+      "number": "11",
+      "name": "Dixon-Coles Model Version",
+      "status": "pending"
+    },
+    {
+      "number": "12",
+      "name": "Calibration Layer and Versioned Rollback",
+      "status": "pending"
+    },
+    {
+      "number": "13",
+      "name": "CLV Price Diary",
+      "status": "pending"
+    },
+    {
+      "number": "14",
+      "name": "Asian Handicap and Exact Score Markets",
+      "status": "pending"
+    },
+    {
+      "number": "15",
+      "name": "7-Day Value Scanner",
+      "status": "pending"
+    },
+    {
+      "number": "16",
+      "name": "Paper-Trading Journal",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd-progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 1 of 10 · 0% · executing"
+  },
+  "updated_at": "2026-10-20T17:01:56.096Z"
+}

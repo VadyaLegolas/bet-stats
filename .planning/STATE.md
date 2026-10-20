@@ -1,16 +1,21 @@
 ---
-gsd_state_version: 1.0
+gsd_state_version: "1.0"
 milestone: v1.1
-milestone_name: Reliability, Model Quality and Value Experience
-status: planning
-last_updated: "2026-10-19T18:00:00.000Z"
-last_activity: 2026-10-19
+current_phase: 07
+current_phase_name: CI Pipeline & Quality Gates
+status: executing
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-10-20T17:02:43.857Z"
+last_activity: 2026-10-20
+last_activity_desc: Phase 07 execution started
+state_head: 9f2928909e803fe0064b5e351d9f7e2b35c06d04
 progress:
   total_phases: 10
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 1
   percent: 0
+milestone_name: Reliability, Model Quality and Value Experience
 ---
 
 # Project State
@@ -20,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-08)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Phase 7: CI Pipeline & Quality Gates (v1.1 roadmap created 2026-10-19; 10 phases, Phases 7-16)
+**Current focus:** Phase 07 — CI Pipeline & Quality Gates
 
 ## Current Position
 
-Phase: 7 of 16 (CI Pipeline & Quality Gates — numbering continues from v1.0 Phases 1-6)
-Plan: —
-Status: Roadmap complete — ready to plan Phase 7
-Last activity: 2026-10-19 — v1.1 ROADMAP.md created (10 phases, 35/35 requirements mapped)
+Phase: 07 (CI Pipeline & Quality Gates) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-10-20 — Phase 07 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -114,6 +119,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06 P07 | 9min | 2 tasks | 19 files |
 | Phase 06 P08 | 35min | 2 tasks | 9 files |
 | Phase 06 P09 | 2d | 3 tasks | 19 files |
+| Phase 07 P1 | 151min | 4 tasks | 40 files |
 
 ## Accumulated Context
 
@@ -217,6 +223,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 06]: Phase 06: Cache invalidation failure rolls back withdrawal and can never produce a success response.
 - [Phase 06]: Phase 06: Desktop and mobile Chromium are the declared automated browser support matrix; broader support requires an explicit release project.
 - [Phase 06]: Phase 06: The release integration gate uses parent-owned PostgreSQL and Redis with awaited child supervision and exact test-owned BullMQ cleanup.
+- [Phase 07]: Lint debt fixed with real code changes; reasoned single-line disables only at deliberate rest-omits, never in configs (07-01 Task 3)
+- [Phase 07]: Mutation-rejection test seeds via persist_settlement_receipt/persist_value_settlement, never raw ValueSettlement INSERT, so guard_value_settlement stays the single enforcement point (07-01 Task 4)
+- [Phase 07]: Integration harness has 12 pre-existing failures (replay clock-skew, stale English label tests after d44f65f localization, privacy Serializable-conflict masking) — A/B-baselined, deferred to a repair plan; CI integration job will be red until fixed (07-01)
 
 ### Pending Todos
 
@@ -318,6 +327,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-17T17:52:00.000Z
-Stopped at: Quick task 261017-r3d-create-a-russian-language-faq-guide-page - atomic commit on main
-Resume file: .planning/quick/261017-r3d-create-a-russian-language-faq-guide-page/261017-r3d-PLAN.md
+Last session: 2026-10-20T17:02:43.786Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: None

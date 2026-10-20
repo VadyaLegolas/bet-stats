@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 26
+open_count: 27
 waived_count: 0
 fixed_count: 0
-total_count: 26
-last_updated: 2026-10-17T17:16:41.630Z
+total_count: 27
+last_updated: 2026-10-20T17:03:38.625Z
 ---
 
 # Broken Windows Ledger
@@ -41,6 +41,7 @@ last_updated: 2026-10-17T17:16:41.630Z
 | 24 | 261016-d9t | deviation | tests/integration/replay.test.ts |  | Plan verify suite replay.test.ts fails 6 tests from pre-existing fixed-clock time-bomb (policy clock 2026-09-30 vs DB now -> ReplayPreview_consumed_after_created); identical at HEAD baseline, protected file | open |  | 2026-10-16T08:23:18.281Z |  |
 | 25 | 261016-ooi | deviation | tests/unit/fixtures-sync.test.ts |  | vi.mock raw @bet-stats/* keys from plan fact 11 never intercepted the service; mock keys retargeted to package dist entry points (harness-only, documented in 261016-ooi-SUMMARY.md) | open |  | 2026-10-17T00:44:20.640Z |  |
 | 26 | 261017-pyp | deviation | tests/unit/results-sync-button-ui.test.tsx |  | Plan Task 3 case (2) expected 'опубликовано 3 результатов' but must-have truth 2 requires correct Russian plural via the existing plural helper (3 -> 'результата'); delivered helper-correct string (documented in 261017-pyp-SUMMARY.md) | open |  | 2026-10-17T17:16:41.630Z |  |
+| 27 | 07 | deviation | .planning/phases/07-ci-pipeline-quality-gates/deferred-items.md |  | Integration harness exits 1 from 12 pre-existing failures (replay clock-skew, stale English label tests after d44f65f, privacy RETENTION_DENIED masking) — A/B-baselined, deferred to a repair plan | open |  | 2026-10-20T17:03:38.625Z |  |
 
 ````json
 [
@@ -355,6 +356,19 @@ last_updated: 2026-10-17T17:16:41.630Z
     "reason": "",
     "recorded_at": "2026-10-17T17:16:41.630Z",
     "resolved_at": null
+  },
+  {
+    "id": 27,
+    "kind": "deviation",
+    "phase": "07",
+    "file": ".planning/phases/07-ci-pipeline-quality-gates/deferred-items.md",
+    "line": null,
+    "description": "Integration harness exits 1 from 12 pre-existing failures (replay clock-skew, stale English label tests after d44f65f, privacy RETENTION_DENIED masking) — A/B-baselined, deferred to a repair plan",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-20T17:03:38.625Z",
+    "resolved_at": null,
+    "milestone": "v1.1"
   }
 ]
 ````

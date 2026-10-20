@@ -49,7 +49,9 @@
     "security_asvs_level": 1,
     "security_block_on": "high",
     "_auto_chain_active": false,
-    "use_worktrees": false
+    "use_worktrees": false,
+    "build_command": "pnpm build",
+    "test_command": "pnpm test"
   },
   "ship": {
     "pr_body_sections": [

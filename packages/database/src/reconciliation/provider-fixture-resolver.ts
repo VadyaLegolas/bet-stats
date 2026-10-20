@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { NormalizedFixture } from "@bet-stats/football-data";
 
 import type { PrismaClient } from "../client.js";
+import type { Prisma } from "../generated/prisma/client.js";
 
 export const PROVIDER_FIXTURE_RESOLVER_VERSION = "fixture-resolver-v1" as const;
 export const DEFAULT_KICKOFF_TOLERANCE_MS = 15 * 60_000;
@@ -79,6 +80,6 @@ async function appendProvenance(database: PrismaClient, fixtureId: string, fixtu
   });
 }
 
-function jsonValue(value: unknown): any {
-  return JSON.parse(JSON.stringify(value));
+function jsonValue(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }

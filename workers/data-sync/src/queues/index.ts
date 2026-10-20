@@ -115,6 +115,7 @@ export function createSettlementWorker(input: { redisUrl: string; prefix?: strin
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- job-name-specific tuning is intentionally absent: every sync job shares identical retry options
 export function createSyncJobOptions(_name: CriticalJobName): JobsOptions {
   return {
     attempts: SYNC_MAX_ATTEMPTS,

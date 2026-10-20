@@ -4,6 +4,7 @@ import { dependencyReadiness } from "@bet-stats/config";
 
 type DependencyState = { postgres: boolean; redis: boolean };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- diagnostic hook: tests inject a third argument to prove it is never projected into the response
 export function projectHealth(state: DependencyState, correlationId: string, _diagnostic?: unknown) {
   const readiness = dependencyReadiness(state);
   return {

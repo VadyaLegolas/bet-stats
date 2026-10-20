@@ -86,7 +86,7 @@ export async function receiptDownload(id: string, repository: Pick<ValueReposito
   return { filename: `value-receipt-${receipt.id}.json`, contentType: "application/json; charset=utf-8", body: JSON.stringify(receipt, null, 2) };
 }
 
-function rowToDto(row: any): ValueReceiptDto { return { ...row.receipt, id: row.id, createdAt: row.createdAt.toISOString() }; }
+function rowToDto(row: { id: string; createdAt: Date; receipt: unknown }): ValueReceiptDto { return { ...(row.receipt as ValueReceiptDto), id: row.id, createdAt: row.createdAt.toISOString() }; }
 
 export function createPrismaValueRepository(client: PrismaClient): ValueRepository {
   return {

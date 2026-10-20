@@ -1,6 +1,6 @@
-import { persistResults, persistResultsInTransaction, SETTLEMENT_PIPELINE_POLICY_HASH, type PrismaClient, type ReplayProviderPolicyRepository } from "@bet-stats/database";
+import { persistResults, persistResultsInTransaction, SETTLEMENT_PIPELINE_POLICY_HASH, type createProviderRoutingRepository, type PrismaClient, type ReplayProviderPolicyRepository } from "@bet-stats/database";
 import { reservePriorityRequest } from "@bet-stats/domain";
-import { classifyProviderFailure, createProviderRoute, providerRouteJobId, type NormalizedResult, type RequestedDateWindow, type ResultProvider } from "@bet-stats/football-data";
+import { createProviderRoute, providerRouteJobId, type NormalizedResult, type RequestedDateWindow, type ResultProvider } from "@bet-stats/football-data";
 
 import { runGatedIngestion, type CircuitProbeRegistry, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
 import type { ReplayJobData, SettlementJobData } from "../queues/index.js";
@@ -91,7 +91,7 @@ export async function runReplayResultJob(input: ReplayJobData, dependencies: {
   database: PrismaClient;
   providerFactory: ResultSyncJobInput["providerFactory"];
   providerFactories?: LiveProviderFactories;
-  providerRoutingRepository?: any;
+  providerRoutingRepository?: ReturnType<typeof createProviderRoutingRepository>;
   providerPolicyRepository: ReplayProviderPolicyRepository;
   circuitRegistry: CircuitProbeRegistry;
   settlementQueue?: { enqueue(data: SettlementJobData): Promise<unknown> };

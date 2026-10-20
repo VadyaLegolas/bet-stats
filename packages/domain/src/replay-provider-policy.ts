@@ -61,6 +61,7 @@ export function verifyPersistedReplayProviderPolicyFingerprint(snapshot: ReplayP
     const identity = fingerprintReplayProviderPolicy(snapshot);
     if (fingerprint.startsWith("identity-v2:")) return fingerprint === identity ? identity : null;
     if (!/^[a-f0-9]{64}$/.test(fingerprint)) return null;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- deliberate rest-omit: observedAt must be excluded from the legacy fingerprint copy
     const { observedAt: _observedAt, ...legacy } = snapshot;
     return createHash("sha256").update(canonicalJson(legacy)).digest("hex") === fingerprint ? identity : null;
   } catch {

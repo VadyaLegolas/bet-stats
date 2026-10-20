@@ -34,6 +34,7 @@ function splitSubmission(raw: unknown): { book: OddsBookInput; replacementOfOdds
   if (Object.keys(candidate).some((key) => !allowed.has(key))) throw failure("INVALID_ODDS_BOOK_KEYS");
   const replacement = candidate.replacementOfOddsSnapshotId;
   if (replacement !== undefined && (typeof replacement !== "string" || replacement.trim() === "")) throw failure("INVALID_ODDS_REPLACEMENT_ID", "replacementOfOddsSnapshotId");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- deliberate rest-omit: strips the replacement id so the book copy carries only book fields
   const { replacementOfOddsSnapshotId: _replacement, ...book } = candidate;
   return { book: book as unknown as OddsBookInput, replacementOfOddsSnapshotId: replacement as string | undefined ?? null };
 }

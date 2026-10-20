@@ -7,7 +7,7 @@ import { ProviderLogoService } from "./provider-logo.service.js";
 export class ProviderLogoController {
   constructor(private readonly logos: ProviderLogoService) {}
   @Get(":reference")
-  async get(@Param("reference") reference: string, @Res() response: any) {
+  async get(@Param("reference") reference: string, @Res() response: { setHeader(name: string, value: string): unknown; send(body: Buffer): unknown }) {
     const image = await this.logos.fetchReference(reference); if (!image) throw new NotFoundException("Not found");
     response.setHeader("Content-Type", image.mime); response.setHeader("Content-Length", String(image.bytes.length));
     response.setHeader("X-Content-Type-Options", "nosniff"); response.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");

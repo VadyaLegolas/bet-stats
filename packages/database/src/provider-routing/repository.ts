@@ -53,6 +53,7 @@ export function createProviderRoutingRepository(options: { database: PrismaClien
   return {
     async appendRoute(input: AppendRouteInput) {
       assertRouteReceipt(input);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- deliberate rest-omit: id must be excluded from the hashed content copy
       const { id, contentHash, ...content } = input;
       if (routeReceiptContentHash(content) !== contentHash) throw new Error("ROUTE_CONTENT_HASH_MISMATCH");
       const existing = await options.database.providerRouteReceipt.findUnique({ where: { id: input.id }, include: { attempts: true } });

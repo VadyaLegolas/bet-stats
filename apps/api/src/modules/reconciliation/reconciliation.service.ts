@@ -10,8 +10,29 @@ type Command = { caseId: string; expectedVersion: number; idempotencyKey: string
 function decisionId(command: Command, kind: DecisionKind): string {
   return `review_${createHash("sha256").update(`${command.caseId}\0${kind}\0${command.idempotencyKey}`).digest("hex").slice(0, 24)}`;
 }
-function projection(row: any): any {
-  return { ...row, openedAt: row.openedAt.toISOString(), resolvedAt: row.resolvedAt?.toISOString() ?? null, candidates: row.candidates.map((candidate: any) => ({ ...candidate, confidence: Number(candidate.confidence), createdAt: candidate.createdAt.toISOString() })), decisions: row.decisions.map((decision: any) => ({ ...decision, confidence: Number(decision.confidence), decidedAt: decision.decidedAt.toISOString() })) };
+type ReconciliationCandidateRow = { confidence: unknown; createdAt: Date };
+type ReconciliationDecisionRow = { confidence: unknown; decidedAt: Date };
+type ReconciliationCaseRow = {
+  entityType: string;
+  externalId: string;
+  incomingSnapshot: unknown;
+  openedAt: Date;
+  resolvedAt?: Date | null;
+  candidates: ReadonlyArray<ReconciliationCandidateRow>;
+  decisions: ReadonlyArray<ReconciliationDecisionRow>;
+};
+type ReconciliationCaseDto = {
+  [key: string]: unknown;
+  entityType: string;
+  externalId: string;
+  incomingSnapshot: unknown;
+  openedAt: string;
+  resolvedAt: string | null;
+  candidates: Array<Record<string, unknown>>;
+  decisions: Array<Record<string, unknown>>;
+};
+function projection(row: ReconciliationCaseRow): ReconciliationCaseDto {
+  return { ...row, openedAt: row.openedAt.toISOString(), resolvedAt: row.resolvedAt?.toISOString() ?? null, candidates: row.candidates.map((candidate) => ({ ...candidate, confidence: Number(candidate.confidence), createdAt: candidate.createdAt.toISOString() })), decisions: row.decisions.map((decision) => ({ ...decision, confidence: Number(decision.confidence), decidedAt: decision.decidedAt.toISOString() })) };
 }
 
 @Injectable()
@@ -74,4 +95,4 @@ export class ReconciliationService implements OnModuleDestroy {
     });
   }
 }
-function projectionDecision(decision: any) { return { ...decision, confidence: Number(decision.confidence), decidedAt: decision.decidedAt.toISOString() }; }
+function projectionDecision(decision: { confidence: unknown; decidedAt: Date }): { confidence: number; decidedAt: string } { return { ...decision, confidence: Number(decision.confidence), decidedAt: decision.decidedAt.toISOString() }; }

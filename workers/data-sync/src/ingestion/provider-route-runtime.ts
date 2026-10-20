@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { PROVIDER_ROUTE_POLICY_VERSION, routeReceiptContentHash } from "@bet-stats/domain";
-import type { PrismaClient } from "@bet-stats/database";
+import type { createProviderRoutingRepository, PrismaClient } from "@bet-stats/database";
 import type { RouteExecutionCandidate } from "./runner.js";
 import { createProviderRoute, type ApiFootballFixtureRequest, type ProviderRoute, type RequestedDateWindow, type RoutedEndpoint, type StandingsRequestCoverage } from "@bet-stats/football-data";
 
@@ -59,7 +59,7 @@ function apiFixtureRequest(mapping: RuntimeExternalMapping, window: RequestedDat
 
 export async function executeDurableMappedRoute<T>(input: {
   database: PrismaClient;
-  repository: any;
+  repository: ReturnType<typeof createProviderRoutingRepository>;
   context: { assertOwner(): Promise<void> };
   route: ProviderRoute;
   candidates: ReturnType<typeof createMappedProviderCandidates>;
@@ -82,12 +82,16 @@ export async function executeDurableMappedRoute<T>(input: {
       await input.context.assertOwner();
       const admission = await input.repository.admitAttempt({ route: receipt, attempt: { id: attemptId, attemptKey }, provider, lane: input.lane, configuredAllowance: input.allowance, criticalHeadroom: input.criticalHeadroom, requestDate: new Date(), throttle: { windowStart: new Date(Date.now() - 1), windowEnd: new Date(Date.now() + 60_000), limit: Math.max(1, input.allowance) } });
       const stored = admission.reused ? await input.repository.readRoute(routeId) : null;
-      const terminal = stored?.attempts?.find((attempt: any) => attempt.attemptKey === attemptKey && ["FAILED", "SUCCEEDED", "NO_FALLBACK"].includes(attempt.state));
+      const terminal = stored?.attempts?.find((attempt) => attempt.attemptKey === attemptKey && ["FAILED", "SUCCEEDED", "NO_FALLBACK"].includes(attempt.state)) as Terminal | undefined;
       return { ...admission, terminal: terminal ? { state: terminal.state, observationId: terminal.observationId, provider: terminal.provider } : null };
     },
     completeAttempt: ({ attemptKey, state, reason, observationId }) => input.repository.completeAttempt({ attemptKey, state, reason, observationId }),
     call: input.call,
-    classifyFailure: (error) => { const failure = (error && typeof error === "object" && "classification" in error && (error as any).classification === "fallback") ? { eligible: true, trigger: String((error as any).code ?? "PROVIDER_FAILURE") } : { eligible: false, trigger: String((error as any)?.code ?? "PROVIDER_FAILURE") }; return failure; },
+    classifyFailure: (error) => {
+      const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+      const eligible = Boolean(error && typeof error === "object" && "classification" in error && error.classification === "fallback");
+      return { eligible, trigger: String(code ?? "PROVIDER_FAILURE") };
+    },
     persistObservation: async ({ provider, value }) => {
       const raw = JSON.stringify(value), payloadHash = createHash("sha256").update(raw).digest("hex"), observedAt = new Date(); let id: string = randomUUID();
       const rows = await input.database.$queryRawUnsafe<Array<{ id: string }>>(`INSERT INTO "SourceObservation" (id,provider,"endpointFamily","externalIdentity","observedAt","payloadHash","rawPayload","payloadBytes") VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8) ON CONFLICT (provider,"endpointFamily","payloadHash") DO NOTHING RETURNING id`, id, provider, input.route.endpoint, input.correlationId, observedAt, payloadHash, raw, Buffer.byteLength(raw));

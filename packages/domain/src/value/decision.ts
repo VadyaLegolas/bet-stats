@@ -1,6 +1,6 @@
 import { Decimal } from "decimal.js";
 
-import type { ForecastDraft, ForecastSelection } from "../forecast/model.js";
+import type { ForecastDraft } from "../forecast/model.js";
 import type { NormalizedOddsBook } from "../odds/normalize.js";
 import type { ValueCommand } from "./contract.js";
 

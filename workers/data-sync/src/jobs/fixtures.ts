@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { resolveProviderFixture, type PrismaClient, type ReplayProviderPolicyRepository } from "@bet-stats/database";
+import { resolveProviderFixture, type createProviderRoutingRepository, type PrismaClient, type ReplayProviderPolicyRepository } from "@bet-stats/database";
 import { evaluateCapability, reservePriorityRequest, type CapabilityDecision } from "@bet-stats/domain";
-import { classifyProviderFailure, createProviderRoute, isConfiguredCompetitionCode, providerRouteJobId, type FixtureProvider, type NormalizedFixture, type RequestedDateWindow } from "@bet-stats/football-data";
+import { createProviderRoute, isConfiguredCompetitionCode, providerRouteJobId, type FixtureProvider, type NormalizedFixture, type RequestedDateWindow } from "@bet-stats/football-data";
 
 import { runGatedIngestion, type CircuitProbeRegistry, type IngestionLane } from "../ingestion/runner.js";
 import { createEnrichmentSchedule, type EnrichmentJobData, type ReplayJobData } from "../queues/index.js";
@@ -167,7 +167,7 @@ export async function runReplayFixtureJob(
     database: PrismaClient;
     providerFactory: () => FixtureProvider;
     providerFactories?: LiveProviderFactories;
-    providerRoutingRepository?: any;
+    providerRoutingRepository?: ReturnType<typeof createProviderRoutingRepository>;
     enrichmentQueue?: { enqueue(data: EnrichmentJobData): Promise<unknown> };
     providerPolicyRepository: ReplayProviderPolicyRepository;
     circuitRegistry: CircuitProbeRegistry;

@@ -25,7 +25,9 @@ export class ForecastComparisonService implements OnModuleDestroy {
     const [left, right] = await Promise.all([this.repository.findExact(request.leftId), this.repository.findExact(request.rightId)]);
     validateExact(left, "LEFT", fixtureId);
     validateExact(right, "RIGHT", fixtureId);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- deliberate rest-omit: excludes the state key from the comparison copy
     const { state: _leftState, ...leftForecast } = left;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- deliberate rest-omit: excludes the state key from the comparison copy
     const { state: _rightState, ...rightForecast } = right;
     const comparison = compareForecastPair(leftForecast, rightForecast);
     const refIds = [...new Set([...comparison.sourceRefs.added, ...comparison.sourceRefs.removed].map((source) => source.fixtureId))];

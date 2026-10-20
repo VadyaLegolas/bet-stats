@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import type { PrismaClient, ReplayProviderPolicyRepository } from "@bet-stats/database";
+import type { createProviderRoutingRepository, PrismaClient, ReplayProviderPolicyRepository } from "@bet-stats/database";
 import { reservePriorityRequest } from "@bet-stats/domain";
-import { classifyProviderFailure, createProviderRoute, providerRouteJobId, type NormalizedStandingSnapshot, type StandingsProvider, type StandingsRequestCoverage } from "@bet-stats/football-data";
+import { createProviderRoute, providerRouteJobId, type NormalizedStandingSnapshot, type StandingsProvider, type StandingsRequestCoverage } from "@bet-stats/football-data";
 
 import { runGatedIngestion, type CircuitProbeRegistry, type GatedIngestionResult, type IngestionLane, type ReservationDecision } from "../ingestion/runner.js";
 import type { ReplayJobData } from "../queues/index.js";
@@ -84,7 +84,7 @@ export async function runReplayStandingsJob(input: ReplayJobData, dependencies: 
   database: PrismaClient;
   providerFactory: StandingsSyncInput["providerFactory"];
   providerFactories?: LiveProviderFactories;
-  providerRoutingRepository?: any;
+  providerRoutingRepository?: ReturnType<typeof createProviderRoutingRepository>;
   providerPolicyRepository: ReplayProviderPolicyRepository;
   circuitRegistry: CircuitProbeRegistry;
 }, context: ReplayExecutionContext): Promise<void> {

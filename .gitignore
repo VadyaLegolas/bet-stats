@@ -16,3 +16,4 @@ artifacts/provider-probes/
 *.tsbuildinfo
 .turbo/
 .tools/
+.next-e2e/

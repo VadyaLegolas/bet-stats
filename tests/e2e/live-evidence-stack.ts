@@ -128,7 +128,7 @@ export async function liveEvidenceGlobalSetup(): Promise<() => Promise<void>> {
     state.apiPid = start(["pnpm", "--filter", "@bet-stats/api", "dev"], { DATABASE_URL: state.databaseUrl, API_HOST: "127.0.0.1", API_PORT: "3211", POSTGRES_READY: "true", REDIS_READY: "true", NODE_ENV: "test" }).pid;
     persist();
     await waitFor(`${LIVE_API_ORIGIN}/health/ready`, "Nest readiness");
-    state.webPid = start(["pnpm", "--filter", "@bet-stats/web", "exec", "next", "dev", "--hostname", "127.0.0.1", "--port", "3210"], { API_ORIGIN: LIVE_API_ORIGIN, DISPLAY_TIME_ZONE: "Europe/Warsaw", NODE_ENV: "test" }).pid;
+    state.webPid = start(["pnpm", "--filter", "@bet-stats/web", "exec", "next", "dev", "--hostname", "127.0.0.1", "--port", "3210"], { API_ORIGIN: LIVE_API_ORIGIN, DISPLAY_TIME_ZONE: "Europe/Warsaw", NODE_ENV: "test", NEXT_DIST_DIR: ".next-e2e" }).pid;
     persist();
     await waitFor(LIVE_WEB_ORIGIN, "Next readiness");
     return liveEvidenceGlobalTeardown;

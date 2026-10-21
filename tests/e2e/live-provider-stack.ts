@@ -44,7 +44,11 @@ function applyMigrations(databaseUrl: string) {
   }
 }
 async function wait(url: string) { for (let i=0;i<120;i++){ try { if ((await fetch(url)).ok) return; } catch {} await new Promise(r=>setTimeout(r,500)); } throw new Error(`SERVICE_NOT_READY:${url}`); }
-async function stop(child?: ChildProcess) { if (!child?.pid || child.exitCode !== null) return; const closed = new Promise<void>((resolveClose) => child.once("close", () => resolveClose())); try { execFileSync("taskkill", ["/pid",String(child.pid),"/T","/F"], { stdio:"ignore" }); } catch {} await Promise.race([closed,new Promise<void>((resolveTimeout)=>setTimeout(resolveTimeout,5_000))]); }
+function corepackSync(args: string[], env: NodeJS.ProcessEnv = process.env): void {
+  if (process.platform === "win32") execFileSync("cmd.exe", ["/d", "/s", "/c", "corepack", ...args], { cwd: process.cwd(), env, stdio: "pipe" });
+  else execFileSync("corepack", args, { cwd: process.cwd(), env, stdio: "pipe" });
+}
+async function stop(child?: ChildProcess) { if (!child?.pid || child.exitCode !== null) return; const closed = new Promise<void>((resolveClose) => child.once("close", () => resolveClose())); try { if (process.platform === "win32") execFileSync("taskkill", ["/pid",String(child.pid),"/T","/F"], { stdio:"ignore" }); else process.kill(-child.pid, "SIGTERM"); } catch {} await Promise.race([closed,new Promise<void>((resolveTimeout)=>setTimeout(resolveTimeout,5_000))]); }
 function observe(child: ChildProcess, label: string) { for (const stream of [child.stdout, child.stderr]) stream?.on("data", (chunk) => { const safe=String(chunk).replace(/postgresql:\/\/[^\s]+/g,"[REDACTED_DATABASE_URL]").replace(/deterministic/g,"[REDACTED]"); diagnosticTails.set(child, `${diagnosticTails.get(child) ?? ""}${safe}`.slice(-4_000)); process.stderr.write(`[${label}] ${safe}`); }); return child; }
 export function superviseLiveChildren(children: Array<{label:string;child: Pick<ChildProcess,"pid"|"once"|"off">;diagnostic?:()=>string}>, terminate: (child:any)=>Promise<void> = stop) {
   let disposed=false;
@@ -79,10 +83,10 @@ export async function startLiveProviderStack() {
     await db.$disconnect();
     const deterministic:any={"football-data.org":()=>({}),"api-football":()=>({fetchEnrichment:async()=>({state:"observed-empty",payload:null})})};
     const worker=startReplayWorker({databaseUrl,redisUrl,footballDataApiToken:"deterministic",apiFootballApiKey:"deterministic",providerFactories:deterministic}); owned.worker=worker; await worker.waitUntilReady();
-    const run=(args:string[],env:NodeJS.ProcessEnv)=>spawn("cmd.exe",["/d","/s","/c","corepack",...args],{cwd:process.cwd(),env:{...process.env,...env},stdio:["ignore","pipe","pipe"],windowsHide:true});
-    execFileSync("cmd.exe",["/d","/s","/c","corepack","pnpm","--filter","@bet-stats/api...","build"],{cwd:process.cwd(),env:process.env,stdio:"pipe"});
+    const run=(args:string[],env:NodeJS.ProcessEnv)=>{const executable=process.platform==="win32"?"cmd.exe":"corepack";const commandArgs=process.platform==="win32"?["/d","/s","/c","corepack",...args]:args;return spawn(executable,commandArgs,{cwd:process.cwd(),env:{...process.env,...env},stdio:["ignore","pipe","pipe"],windowsHide:true,detached:process.platform!=="win32"});};
+    corepackSync(["pnpm","--filter","@bet-stats/api...","build"]);
     const api=observe(run(["pnpm","--filter","@bet-stats/api","dev"],{DATABASE_URL:databaseUrl,REDIS_URL:redisUrl,POSTGRES_READY:"true",REDIS_READY:"true",API_HOST:"127.0.0.1",API_PORT:"3241",NODE_ENV:"test",ELIGIBILITY_ALLOWED_REGIONS:"PL",...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV}),"api"); owned.api=api; await wait(`${PROVIDER_API_ORIGIN}/health/ready`);
-    execFileSync("cmd.exe",["/d","/s","/c","corepack","pnpm","--filter","@bet-stats/web","build"],{cwd:process.cwd(),env:{...process.env,API_ORIGIN:PROVIDER_API_ORIGIN,...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV},stdio:"pipe"});
+    corepackSync(["pnpm","--filter","@bet-stats/web","build"],{...process.env,API_ORIGIN:PROVIDER_API_ORIGIN,...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV});
     const web=observe(run(["pnpm","--filter","@bet-stats/web","exec","next","start","--hostname","127.0.0.1","--port","3240"],{API_ORIGIN:PROVIDER_API_ORIGIN,ELIGIBILITY_REGION:"PL",ELIGIBILITY_AGE_ACKNOWLEDGED:"true",ELIGIBILITY_CHECKED_AT:new Date().toISOString(),...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV}),"web"); owned.web=web;
     const supervision=superviseLiveChildren([{label:"api",child:api},{label:"web",child:web}]);
     owned.supervision=supervision;

@@ -72,7 +72,7 @@ coverage:
     requirement: CI-01
     verification:
       - kind: other
-        ref: "Drill 1 type error run 39670991039 (quality failure at typecheck step, TS2322, later steps skipped) → gh pr merge refused verbatim 'Pull request VadyaLegolas/bet-stats#4 is not mergeable: the base branch policy prohibits the merge' exit 1; Drill 2 failing test run 39672401978 (quality fails at test step, 1 failed | 380 passed, integration+e2e success); Drill 3 frozen-table mutation run 39674495067 (integration fails with 'ForecastSnapshot is immutable' P0001 from the guard trigger, quality+e2e success = isolation); each revert run green (39671744988, 39673236754, 39675050804)"
+        ref: "Drill 1 type error run 39670991039 (quality failure at typecheck step, TS2322, later steps skipped; all three jobs red because the root src/ type error also broke the api build the harnesses use) → gh pr merge refused verbatim 'Pull request VadyaLegolas/bet-stats#4 is not mergeable: the base branch policy prohibits the merge' exit 1; Drill 2 failing test run 39672401978 (quality fails at test step, 1 failed | 380 passed, integration+e2e success); Drill 3 frozen-table mutation run 39674495067 (integration fails with 'ForecastSnapshot is immutable' P0001 from the guard trigger, quality+e2e success = isolation); each revert run green (39671744988, 39673236754, 39675050804)"
         status: pass
     human_judgment: false
   - id: D4
@@ -126,7 +126,7 @@ status: complete
 
 | Drill | Commit | Run | Result |
 |---|---|---|---|
-| 1 type error | `eddbbf5` | `39670991039` | quality `failure` at `Run pnpm typecheck`: `src/ci-drill-type-error.ts(1,14): error TS2322: Type 'string' is not assignable to type 'number'`, exit 2; lint/test/build steps never started |
+| 1 type error | `eddbbf5` | `39670991039` | quality `failure` at `Run pnpm typecheck`: `src/ci-drill-type-error.ts(1,14): error TS2322: Type 'string' is not assignable to type 'number'`, exit 2; lint/test/build steps never started. (All three jobs concluded `failure` here: the injected root-`src/` type error also broke the `pnpm --filter @bet-stats/api build` that the integration/e2e harnesses rely on — causally legitimate, not flaky. Per-job isolation is proven independently by drills 2 and 3.) |
 | revert 1 | `b628f45` | `39671744988` | `success` |
 | 2 failing test | `0f86d31` | `39672401978` | quality `failure` at `Run pnpm test`: `FAIL tests/unit/ci-drill-failing.test.ts:5:15`, `1 failed | 380 passed`; integration + e2e-portable `success` |
 | revert 2 | `1d68a26` | `39673236754` | `success` |

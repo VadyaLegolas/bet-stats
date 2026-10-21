@@ -1,1 +1,0 @@
-export const ciDrillProbe: number = "type-error-drill";

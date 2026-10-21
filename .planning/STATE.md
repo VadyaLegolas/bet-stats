@@ -230,6 +230,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 07-ci-pipeline-quality-gates]: Task 4 human decision (2026-10-20): Option A — switch to Node 24; portable Node v24.22.0 at .tools/node24, .npmrc engine-strict=true so host Node 25 fails fast with ERR_PNPM_UNSUPPORTED_ENGINE (07-02)
 - [Phase 07-ci-pipeline-quality-gates]: Portable E2E specs refreshed to the current localized UI (cutoff time dateTime attribute, display labels in trace rows, Russian limitation labels) instead of weakening the CI config; pair now passes 5/5 locally under playwright.ci.config.ts (07-02)
 - [Phase 07-ci-pipeline-quality-gates]: Line-ending renormalization deferred: 887 tracked files (390 .planning, 497 elsewhere) would change under the new LF rule; zero staged, kept as a separate follow-up decision (07-02)
+- [Operating rule, user 2026-10-21]: Agent work must never disturb the running site — never kill the user's dev servers; only `scripts\app-lifecycle.ps1` (Load-Env + `turbo run dev --env-mode=loose`) starts the stack because web proxies and API guards read secrets (OPERATOR_CREDENTIAL, PRIVACY_*/AUTH_* secrets, DATABASE_URL, REDIS_URL) from process.env; plain `pnpm --filter web dev` has no secrets → sync 404 + privacy UNAVAILABLE
+- [Phase 07-ci-pipeline-quality-gates]: E2E/CI web stacks point NEXT_DIST_DIR at `.next-e2e` so Next 16's per-distDir exclusive lock can never kill the developer's `next dev` on `.next` (58aa7c2)
 
 ### Pending Todos
 

@@ -341,29 +341,31 @@ describe("privacy retention persistence", () => {
   });
 
   it("unlinkable immutable facts survive rollback-safe withdrawal", async () => {
+    const rollbackNow = new Date();
     await grantRetentionConsent(database, {
       subjectId: "rollback-subject", subjectKey: "rollback-key",
       policy: { version: "rollback-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 },
-      now: new Date("2026-09-20T12:00:00.000Z"),
+      now: rollbackNow,
     });
-    await retainViewedResult(database, { subjectId: "rollback-subject", resourceType: "RESULT", resourceId: "privacy-fixture", policy: { version: "rollback-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 }, now: new Date("2026-09-20T12:01:00.000Z") });
+    await retainViewedResult(database, { subjectId: "rollback-subject", resourceType: "RESULT", resourceId: "privacy-fixture", policy: { version: "rollback-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 }, now: rollbackNow });
     await expect(withdrawRetentionConsent(database, "rollback-subject", { invalidate: async () => { throw new Error("cache unavailable"); } })).rejects.toMatchObject({ code: "WITHDRAWAL_FAILED" });
     expect(await database.retainedViewHistory.count({ where: { subjectId: "rollback-subject" } })).toBe(1);
     expect((await database.retentionSubject.findUniqueOrThrow({ where: { id: "rollback-subject" } })).retentionBlockedAt).toBeNull();
   });
 
   it("purges expiry-bound personal links and writes durable audit counts", async () => {
+    const purgeNow = new Date();
     await grantRetentionConsent(database, {
       subjectId: "purge-subject", subjectKey: "purge-key",
-      policy: { version: "purge-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 },
-      now: new Date("2026-09-20T12:00:00.000Z"),
+      policy: { version: "purge-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 1 },
+      now: purgeNow,
     });
-    await retainViewedResult(database, { subjectId: "purge-subject", resourceType: "RESULT", resourceId: "privacy-fixture", policy: { version: "purge-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 30 }, now: new Date("2026-09-20T12:01:00.000Z") });
+    const view = await retainViewedResult(database, { subjectId: "purge-subject", resourceType: "RESULT", resourceId: "privacy-fixture", policy: { version: "purge-policy", effectiveAt: "2026-09-01T00:00:00.000Z", durationDays: 1 }, now: purgeNow });
     sql(`INSERT INTO "RetainedOddsHistory" (id, "subjectId", "consentId", "oddsSnapshotId", "retainedAt", "expiresAt", "createdAt")
          VALUES ('purge-odds-hist', 'purge-subject', (SELECT id FROM "RetentionConsent" WHERE "subjectId"='purge-subject' LIMIT 1), 'privacy-odds', now(), now() + interval '5 seconds', now());`);
 
     const oddsBefore = await database.manualOddsSnapshot.findUniqueOrThrow({ where: { id: "privacy-odds" }, select: { id: true, inputHash: true } });
-    const result = await purgeExpiredRetention(database, new Date("2026-10-21T12:00:00.000Z"));
+    const result = await purgeExpiredRetention(database, view.expiresAt);
 
     expect(result.viewsDeleted).toBeGreaterThanOrEqual(1);
     expect(result.oddsDeleted).toBeGreaterThanOrEqual(1);

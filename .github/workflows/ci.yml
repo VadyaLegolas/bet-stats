@@ -16,6 +16,9 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    # Bound the job so a hung harness cannot sit on the 6-hour default; observed
+    # cold-cache runtime is ~1-4 min per job, so these are generous ceilings.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
       # no `version` input — pnpm/action-setup reads packageManager pnpm@10.34.5
@@ -38,6 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     # Linux-only: containers are unsupported on Windows runners (actions/runner#904).
     # The owned-container harness owns the postgres/redis lifecycle and migrate deploy.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
@@ -55,6 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     # The two portable specs own their containers, migrations, seeds and process
     # lifecycle via the live-evidence-stack globalSetup; no credentials are set.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6

@@ -28,6 +28,10 @@ jobs:
       - run: pnpm verify:release:schema
       - run: pnpm typecheck
       - run: pnpm lint
+      # Unit tests import the api service graph through apps/api/node_modules, which
+      # resolves @bet-stats/* to package dist entries (mock keys target dist), and the
+      # worker-entry-guard suite executes workers/data-sync/dist directly; build first.
+      - run: pnpm exec turbo run build --filter=@bet-stats/config --filter=@bet-stats/domain --filter=@bet-stats/football-data --filter=@bet-stats/database --filter=@bet-stats/data-sync
       - run: pnpm test
       - run: pnpm build
   integration:
@@ -42,6 +46,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # replay-crash-recovery forks workers/data-sync/dist/replay-crash-harness.js and the
+      # forked runtime resolves @bet-stats/* to package dist entries; the live-provider smoke
+      # builds api/web itself but inherits these workspace dists through node_modules.
+      - run: pnpm exec turbo run build --filter=@bet-stats/config --filter=@bet-stats/domain --filter=@bet-stats/football-data --filter=@bet-stats/database --filter=@bet-stats/data-sync
       - run: pnpm run test:integration:docker
   e2e-portable:
     runs-on: ubuntu-latest
@@ -55,6 +63,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # playwright.ci.config.ts imports live-evidence-stack.ts, which reaches
+      # packages/database/src and its bare @bet-stats/domain import before globalSetup can
+      # build anything; the runtime evidence-rebuild/api dists resolve the same dist entries.
+      - run: pnpm exec turbo run build --filter=@bet-stats/config --filter=@bet-stats/domain --filter=@bet-stats/football-data --filter=@bet-stats/database --filter=@bet-stats/data-sync
       - run: corepack enable
       - run: pnpm exec playwright install chromium --with-deps
       - run: pnpm exec playwright test -c playwright.ci.config.ts tests/e2e/evidence-scorecard.spec.ts tests/e2e/team-evidence-live.spec.ts

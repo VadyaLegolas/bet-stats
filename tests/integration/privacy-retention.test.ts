@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -117,6 +117,9 @@ describe("PostgreSQL startup readiness", () => {
     const readinessContainer = `bet-stats-privacy-readiness-${randomUUID()}`;
     const ownerLabel = "gsd.phase06-readiness-owner";
     const initDirectory = mkdtempSync(join(tmpdir(), "bet-stats-privacy-init-"));
+    // mkdtempSync creates 0700; the container entrypoint runs init scripts as a different
+    // uid on Linux and cannot traverse the bind mount, so relax the directory mode.
+    chmodSync(initDirectory, 0o755);
     writeFileSync(join(initDirectory, "hold-temp-server.sql"), "SELECT pg_sleep(8);\n");
     let containerStarted = false;
 

@@ -17,9 +17,9 @@ describe("production evidence browser boundary contract", () => {
     expect(page).toContain("/internal-api/teams/${encodeURIComponent(params.teamId)}/evidence?asOf=${encodeURIComponent(asOf)}");
     expect(page).toContain('cache: "no-store"');
     expect(page).toContain("parseEvidenceProjection(body)");
-    expect(page).toContain("Requested cutoff");
-    expect(page).toContain("Resolved cutoff (UTC)");
-    expect(page).toContain("Reproduction receipt");
+    expect(page).toContain("Запрошенная точка отсчёта");
+    expect(page).toContain("Определённая точка отсчёта");
+    expect(page).toContain("Квитанция воспроизведения");
     expect(page).toContain("component.limitation");
     expect(resource).toContain("/teams/${encodeURIComponent(teamId)}/evidence");
     expect(resource).toContain('cache: "no-store"');
@@ -43,6 +43,6 @@ describe("production evidence browser boundary contract", () => {
       },
     });
 
-    expect(renderEvidenceComponentFields(projection.components.form5!)).toEqual([{ label: "Value", value: "Not available" }]);
+    expect(renderEvidenceComponentFields(projection.components.form5!)).toEqual([{ label: "Значение", value: "Недоступно" }]);
   });
 });

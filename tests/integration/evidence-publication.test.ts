@@ -93,8 +93,8 @@ describe("real PostgreSQL evidence publication boundary", () => {
       payloadBytes: 15,
     }]);
     expect(renderEvidenceComponentFields(sharedDto.components.goalRates!)).toEqual([
-      { label: "Goals for", value: "2.00 goals/match" },
-      { label: "Goals against", value: "1.00 goals/match" },
+      { label: "Забитые голы", value: "2.00 голов/матч" },
+      { label: "Пропущенные голы", value: "1.00 голов/матч" },
     ]);
 
     await prisma.sourceObservation.create({ data: { id: "obs-late", provider: "football-data.org", endpointFamily: "RESULTS", externalIdentity: "fixture", observedAt: new Date("2026-08-30T10:00:00.000Z"), payloadHash: "hash-late", rawPayload: { score: "1-1" }, payloadBytes: 15 } });

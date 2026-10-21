@@ -25,7 +25,7 @@ export interface NormalizedFixture {
   raw: Readonly<Record<string, unknown>>;
 }
 
-export const configuredCompetitionCodes = ["PL", "PD", "BL1", "SA", "FL1", "CL", "EL"] as const;
+export const configuredCompetitionCodes = ["PL", "PD", "BL1", "SA", "FL1", "CL"] as const;
 export type ConfiguredCompetitionCode = (typeof configuredCompetitionCodes)[number];
 
 export function isConfiguredCompetitionCode(value: string): value is ConfiguredCompetitionCode {

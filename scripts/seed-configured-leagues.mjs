@@ -16,7 +16,6 @@ const COMPETITIONS = [
   { code: "SA", name: "Serie A", country: "ITA" },
   { code: "FL1", name: "Ligue 1", country: "FRA" },
   { code: "CL", name: "UEFA Champions League", country: "EU" },
-  { code: "EL", name: "UEFA Europa League", country: "EU" },
 ];
 // football-data.org identifies a season by an opaque numeric ID (e.g. "2502" for 2026/27),
 // so no SeasonExternalRef is invented here — the sync maps the real ID on first fetch.

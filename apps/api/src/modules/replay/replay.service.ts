@@ -17,7 +17,7 @@ import { Queue } from "bullmq";
 import { createReplayDeliveryDispatcher } from "./replay-delivery.service.js";
 
 const PROVIDERS = new Set(["football-data.org"]);
-const COMPETITIONS = new Set(["PL", "PD", "BL1", "SA", "FL1", "CL", "EL"]);
+const COMPETITIONS = new Set(["PL", "PD", "BL1", "SA", "FL1", "CL"]);
 const ENDPOINTS = new Set(["FIXTURES", "RESULTS", "STANDINGS"]);
 const UTC_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 

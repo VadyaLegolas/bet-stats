@@ -32,9 +32,9 @@ describe("production provider worker routing", () => {
     const candidates = createMappedProviderCandidates(route, [{ provider: "api-football", leagueExternalId: "78", seasonExternalId: "2026", apiFootballLeagueId: 78, apiFootballSeason: 2026 }], { "football-data.org": football, "api-football": api });
     expect(football).not.toHaveBeenCalled(); expect(api).not.toHaveBeenCalled();
     const dispatch = candidates[0]!.factory();
-    await callMappedFixtureProvider(dispatch, { competitionCode: "EL", dateFrom: "2026-01-01", dateTo: "2026-01-02" });
-    await callMappedResultProvider(dispatch, { competitionCode: "EL", dateFrom: "2026-01-01", dateTo: "2026-01-02" });
-    await callMappedStandingsProvider(dispatch, { competitionCode: "EL" });
+    await callMappedFixtureProvider(dispatch, { competitionCode: "CL", dateFrom: "2026-01-01", dateTo: "2026-01-02" });
+    await callMappedResultProvider(dispatch, { competitionCode: "CL", dateFrom: "2026-01-01", dateTo: "2026-01-02" });
+    await callMappedStandingsProvider(dispatch, { competitionCode: "CL" });
     expect(football).not.toHaveBeenCalled(); expect(api).toHaveBeenCalledOnce();
     expect(fixtures).toHaveBeenCalledWith(expect.objectContaining({ leagueId: 78, season: 2026 }));
     expect(results).toHaveBeenCalledWith(expect.objectContaining({ leagueId: 78, season: 2026 }));

@@ -48,7 +48,7 @@ const standingsPayload = {
   }],
 };
 
-const competitionCodes = ["PL", "PD", "BL1", "SA", "FL1", "CL", "EL"] as const;
+const competitionCodes = ["PL", "PD", "BL1", "SA", "FL1", "CL"] as const;
 
 describe("football-data.org provider contract", () => {
   it("round-trips both production providers through one strict canonical observation", () => {
@@ -247,7 +247,7 @@ describe("football-data.org provider contract", () => {
     const client = new FootballDataOrgClient({ apiToken: token, fetcher: async () => { throw new Error(token); } });
 
     const error = await client.fetchCompetitionFixtures({
-      competitionCode: "EL",
+      competitionCode: "CL",
       dateFrom: "2026-09-01",
       dateTo: "2026-09-07",
     }).catch((caught: unknown) => caught);

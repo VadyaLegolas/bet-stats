@@ -78,7 +78,8 @@ async function seedPublishedEvidence(prisma: PrismaClient): Promise<void> {
 function start(commandArgs: string[], env: NodeJS.ProcessEnv): ChildProcess {
   const executable = process.platform === "win32" ? "cmd.exe" : "corepack";
   const args = process.platform === "win32" ? ["/d", "/s", "/c", "corepack", ...commandArgs] : commandArgs;
-  const child = spawn(executable, args, { cwd: process.cwd(), env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+  const child = spawn(executable, args, { cwd: process.cwd(), env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"], windowsHide: true, // POSIX stopOwned kills the process group (-pid), which requires a detached leader.
+    detached: process.platform !== "win32" });
   child.stdout?.resume(); child.stderr?.resume();
   return child;
 }
@@ -91,8 +92,12 @@ function corepack(...args: string[]): void {
 function stopOwned(pid: number | undefined): void {
   if (!pid) return;
   try {
-    if (process.platform === "win32") execFileSync("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore" });
-    else process.kill(-pid, "SIGTERM");
+    if (process.platform === "win32") { execFileSync("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore" }); return; }
+    // POSIX: the child is a detached process-group leader (see start), so -pid signals the whole group.
+    process.kill(-pid, "SIGTERM");
+    // Give the group a brief grace period, then escalate so a wedged child cannot keep the port.
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5_000);
+    process.kill(-pid, "SIGKILL");
   } catch { /* process already exited */ }
 }
 

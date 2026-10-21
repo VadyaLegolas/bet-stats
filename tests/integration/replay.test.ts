@@ -251,6 +251,11 @@ describe("durable bounded replay", () => {
   });
 
   it("freezes preview/version and loads them after service reconstruction", async () => {
+    await prisma.providerCircuitState.upsert({
+      where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
+      create: { id: randomUUID(), provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily, state: "CLOSED", updatedAt: new Date() },
+      update: { state: "CLOSED", openedAt: null, nextProbeAt: null, probeLeaseToken: null, probeLeaseExpiresAt: null, updatedAt: new Date() },
+    });
     const first = createReplayService({ database: prisma, actor: "operator-a" });
     const preview = await first.preview(request, "operator-a");
     expect(preview).toMatchObject({ dryRun: true, bounded: true, calls: 3, builds: 3 });
@@ -262,6 +267,11 @@ describe("durable bounded replay", () => {
   });
 
   it("atomically creates versioned runs, consumes once, and reconstructs status", async () => {
+    await prisma.providerCircuitState.upsert({
+      where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
+      create: { id: randomUUID(), provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily, state: "CLOSED", updatedAt: new Date() },
+      update: { state: "CLOSED", openedAt: null, nextProbeAt: null, probeLeaseToken: null, probeLeaseExpiresAt: null, updatedAt: new Date() },
+    });
     const service = createReplayService({ database: prisma, actor: "operator-b" });
     const preview = await service.preview({ ...request, from: "2026-08-05T00:00:00.000Z", to: "2026-08-06T00:00:00.000Z" }, "operator-b");
     const queued = await service.queue({ previewId: preview.previewId, previewVersion: preview.previewVersion });
@@ -429,7 +439,7 @@ describe("durable bounded replay", () => {
     const policyNow = new Date("2026-09-30T17:00:00.000Z");
     await prisma.providerCircuitState.update({
       where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
-      data: { state: "CLOSED", openedAt: null, updatedAt: policyNow },
+      data: { state: "CLOSED", openedAt: null, updatedAt: new Date() },
     });
     const zeroHeadroom = createReplayProviderPolicyRepository({
       database: prisma,
@@ -480,6 +490,11 @@ describe("durable bounded replay", () => {
   });
 
   it("keeps replay endpoints guarded and exposes only classified state", async () => {
+    await prisma.providerCircuitState.upsert({
+      where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
+      create: { id: randomUUID(), provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily, state: "CLOSED", updatedAt: new Date() },
+      update: { state: "CLOSED", openedAt: null, nextProbeAt: null, probeLeaseToken: null, probeLeaseExpiresAt: null, updatedAt: new Date() },
+    });
     const guard = new OperatorGuard("operator-secret");
     expect(() => guard.authorize("wrong-secret")).toThrowError("Not found");
     const service = createReplayService({ database: prisma });
@@ -630,6 +645,11 @@ describe("durable bounded replay", () => {
   });
 
   it("uses a real BullMQ worker for terminal, duplicate, retry and dead-letter lifecycle", async () => {
+    await prisma.providerCircuitState.upsert({
+      where: { provider_endpointFamily: { provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily } },
+      create: { id: randomUUID(), provider: resultsPolicy.provider, endpointFamily: resultsPolicy.endpointFamily, state: "CLOSED", updatedAt: new Date() },
+      update: { state: "CLOSED", openedAt: null, nextProbeAt: null, probeLeaseToken: null, probeLeaseExpiresAt: null, updatedAt: new Date() },
+    });
     const prefix = `replay-${process.pid}`; const executions = new Map<string, number>();
     const worker = createReplayWorker({ redisUrl, database: prisma, prefix, execute: async (data, context) => {
       executions.set(data.logicalId, (executions.get(data.logicalId) ?? 0) + 1);

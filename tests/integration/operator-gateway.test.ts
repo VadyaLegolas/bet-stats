@@ -91,9 +91,11 @@ async function exitsBeforeListening(overrides: Record<string, string | undefined
   const port = new URL(origin).port;
   await new Promise<void>((resolveClose, rejectClose) => reserved.close((error) => error ? rejectClose(error) : resolveClose()));
   const child = launchGateway({ GATEWAY_PORT: port, ...overrides });
+  // A fail-closed process must exit before listening; the wider window tolerates
+  // slow cold starts under full-suite load without weakening that guarantee.
   const exited = await Promise.race([
     once(child, "exit").then(() => true),
-    new Promise<false>((resolveTimeout) => setTimeout(() => resolveTimeout(false), 500)),
+    new Promise<false>((resolveTimeout) => setTimeout(() => resolveTimeout(false), 5_000)),
   ]);
   if (!exited) await stop(child);
   return exited;

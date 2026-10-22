@@ -6,7 +6,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 
 ## Phases
 
-- [ ] **Phase 7: CI Pipeline & Quality Gates** - Every push and PR runs a frozen, Linux-based pipeline that gates schema, types, lint, tests, and build before anything else lands.
+- [x] **Phase 7: CI Pipeline & Quality Gates** - Every push and PR runs a frozen, Linux-based pipeline that gates schema, types, lint, tests, and build before anything else lands. (completed 2026-10-22)
 - [ ] **Phase 8: Backups and Restore Verification** - The operator trusts that PostgreSQL can be restored, proven by scheduled restore drills with visible verification status.
 - [ ] **Phase 9: Degradation Alerting** - The operator is told when providers, workers, HTTP error rates, or backups degrade, through durable alerts viewable in the operations center.
 - [ ] **Phase 10: Performance Audit and Budgets** - The fixture detail page meets declared Lighthouse budgets, and regressions fail CI instead of shipping.
@@ -32,10 +32,10 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   4. A deliberate breakage (type error, failing test, mutation on a frozen table) turns the pipeline red and blocks the merge.
 
 **Notes / research flags**: Decide which Playwright E2E subset is portable to the default CI job vs a manually-triggered live smoke — CI must never burn the free-tier provider budget. E2E live-stack tests currently shell out to `cmd.exe` (Windows-only); CI must use the cross-platform `verify-release-integration.mjs` path. Extend the flat ESLint config to `apps/api`, `apps/api-e2e`, `workers/*` before making lint required.
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 - [x] 07-01-PLAN.md
 - [x] 07-02-PLAN.md
-- [ ] 07-03-PLAN.md
+- [x] 07-03-PLAN.md
 
 **UI hint**: no
 
@@ -186,7 +186,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 7. CI Pipeline & Quality Gates | 2/3 | In Progress | - |
+| 7. CI Pipeline & Quality Gates | 3/3 | Complete    | 2026-10-22 |
 | 8. Backups and Restore Verification | 0/0 | Not started | - |
 | 9. Degradation Alerting | 0/0 | Not started | - |
 | 10. Performance Audit and Budgets | 0/0 | Not started | - |

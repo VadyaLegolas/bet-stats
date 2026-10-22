@@ -1,20 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.1
-current_phase: 07
-current_phase_name: CI Pipeline & Quality Gates
-status: executing
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-10-20T21:14:55.761Z"
-last_activity: 2026-10-20
-last_activity_desc: Phase 07 execution started
-state_head: 76a582d7cfd6547cbc1d94084c01bd26ae522d3c
+current_phase: 8
+current_phase_name: Backups and Restore Verification
+status: planning
+stopped_at: Phase 7 complete, ready to plan Phase 8
+last_updated: "2026-10-22T16:38:29.663Z"
+last_activity: 2026-10-22
+last_activity_desc: Phase 7 complete, transitioned to Phase 8
+state_head: 7b0d8478fa42dbbe673cb0661ce2972c9a53e241
 progress:
   total_phases: 10
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 0
+  completed_plans: 3
+  percent: 10
 milestone_name: Reliability, Model Quality and Value Experience
 ---
 
@@ -29,18 +29,18 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 
 ## Current Position
 
-Phase: 07 (CI Pipeline & Quality Gates) — EXECUTING
-Plan: 3 of 3
-Status: Ready to execute
-Last activity: 2026-10-20 — Phase 07 execution started
+Phase: 8 — Backups and Restore Verification
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-22 — Phase 7 complete, transitioned to Phase 8
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 10%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 88
+- Total plans completed: 91
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -54,6 +54,7 @@ Progress: [░░░░░░░░░░] 0%
 | 04 | 9 | - | - |
 | 05 | 16 | - | - |
 | 06 | 11 | - | - |
+| 7 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -320,6 +321,7 @@ None yet.
 | 261017-pyp | Manual results publication button: «Загрузить результаты» on the fixtures page via internal-api operator proxy (POST /internal/fixtures/results-sync); the uncommitted auto-scheduler was reverted — results loading stays manual-only | 2026-10-17 | 4f315cb | [261017-pyp-add-a-manual-load-results-button-to-the-](./quick/261017-pyp-add-a-manual-load-results-button-to-the-/) |
 | 261017-r3d | Russian FAQ guide page (/faq): 8-step usage guide with 5 real screenshots of the live stack, reusable capture script, FAQ nav + home entries, one atomic commit | 2026-10-17 | 6ff6756 | [261017-r3d-create-a-russian-language-faq-guide-page](./quick/261017-r3d-create-a-russian-language-faq-guide-page/) |
 | 261019-cfc | Calendar cohort filter with Russian labels on /scorecards: date pickers replace raw ISO inputs, server converts picked UTC days to the exact API instants (end day inclusive), cleared identity dimensions complete to the all sentinel (fixes live INCOMPLETE_COHORT_IDENTITY 400) while an absent identity keeps 308 canonicalization, FAQ describes the filter, scorecards.png recaptured | 2026-10-19 | 06748b8 | [261019-cfc-cohort-filter-calendar-dates-russian-labels](./quick/261019-cfc-cohort-filter-calendar-dates-russian-labels/) |
+| phase-7-complete | Phase 07 CI Pipeline & Quality Gates COMPLETE (3/3 plans): three-job ci.yml (quality/integration/e2e-portable) with build-before-test, branch protection required checks [quality,integration,e2e-portable] (read-back verified, force-push/delete disabled), success criterion 4 executed (three sanctioned drills: type error 39670991039, failing test 39672401978, frozen-table mutation 39674495067 — each turned the intended job red and gh pr merge was refused verbatim; three green reverts; PR #4 closed never-merged). Post-execution code-review gate (07-REVIEW.md, APPROVE, no CRITICAL) and gsd-verifier (07-VERIFICATION.md, 10/10, goal achieved) both ran; two review fixes applied on main: 6afb2bd (live-evidence-stack detached children so POSIX group-stop reaps the stack + SIGKILL escalation) and 9e11a0e (timeout-minutes 20/25/25 on all three jobs). Deferred gates (non-blocking per #4972, phase is infra not new threat surface): 07-VALIDATION.md nyquist audit and SECURITY.md secure-phase were not run | 2026-10-22 | 7b0d847 | inline (gsd-execute-phase) |
 
 ### Roadmap Evolution
 
@@ -334,5 +336,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-10-20T21:14:55.693Z
-Stopped at: Completed 07-02-PLAN.md
+Stopped at: Phase 7 complete, ready to plan Phase 8
 Resume file: None

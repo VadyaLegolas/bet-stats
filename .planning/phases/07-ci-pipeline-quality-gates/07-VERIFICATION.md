@@ -1,6 +1,6 @@
 ---
 phase: 07-ci-pipeline-quality-gates
-verified: 2026-10-21T21:55:00Z
+verified: 2026-10-22T16:34:47Z
 status: passed
 score: 10/10 must-haves verified
 covered_files:
@@ -13,6 +13,7 @@ covered_files:
   - .planning/phases/07-ci-pipeline-quality-gates/07-02-SUMMARY.md
   - .planning/phases/07-ci-pipeline-quality-gates/07-03-PLAN.md
   - .planning/phases/07-ci-pipeline-quality-gates/07-03-SUMMARY.md
+  - .planning/phases/07-ci-pipeline-quality-gates/07-REVIEW.md
   - package.json
   - playwright.ci.config.ts
   - scripts/verify-release-integration.mjs
@@ -23,18 +24,27 @@ covered_files:
   - tests/integration/privacy-retention.test.ts
   - tests/unit/ci-workflow-contract.test.ts
   - tests/unit/lint-coverage.test.ts
-covered_digest: "v3:sha256:dbf93191f3153953dbea57bb8f46f3ecd9546d63565651e6a1748b21f0284504"
+covered_digest: "v3:sha256:a1114923721ba692c63f2b7f16a00ceaaf4ce1efa0d62d523761216bc0c739bb"
 behavior_unverified: 0
 overrides_applied: 0
 gaps: []
+re_verification:
+  previous_status: passed
+  previous_score: 10/10
+  previous_digest: "v3:sha256:dbf93191f3153953dbea57bb8f46f3ecd9546d63565651e6a1748b21f0284504"
+  previous_verified_at: 2026-10-21T21:55:00Z
+  reason: "Digest refresh at HEAD 7b0d847 — the prior report (verified at 9e11a0e) was flagged stale after a docs-only commit landed. Not a re-audit."
+  gaps_closed: []
+  gaps_remaining: []
+  regressions: []
 ---
 
-# Phase 7: CI Pipeline & Quality Gates — Verification Report
+# Phase 7: CI Pipeline & Quality Gates — Verification Report (Re-verification)
 
 **Phase Goal:** A developer can rely on one GitHub Actions pipeline that proves the workspace is installable, schema-valid, type-clean, lint-clean, tested (unit + Docker-backed integration on Linux), and buildable on every push and pull request — with the checks required on main and a proven red-run merge block.
-**Verified:** 2026-10-21T21:55:00Z
+**Verified:** 2026-10-22T16:34:47Z (digest refreshed at HEAD `7b0d847`)
 **Status:** passed
-**Re-verification:** No — initial verification (no prior VERIFICATION.md existed)
+**Re-verification:** Yes — digest refresh after a docs-only commit (`7b0d847`). The prior verification at `9e11a0e` was flagged stale solely because `.planning` docs (07-REVIEW.md, 07-VERIFICATION.md, and a 07-03-SUMMARY.md drill-1 disclosure fix) landed afterward; `git diff --name-only 9e11a0e..7b0d847` confirms **only those three docs changed — zero source files**. Key facts were cheaply re-confirmed at HEAD; the deep audit was not redone.
 
 ## Goal Achievement
 
@@ -42,16 +52,16 @@ gaps: []
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Three-job pipeline (quality / integration / e2e-portable) runs automatically on push to main and every PR: frozen-lockfile install → schema verify → typecheck → lint → build-before-test → test → build (quality); Docker-backed owned-container integration; portable Playwright E2E | ✓ VERIFIED | `.github/workflows/ci.yml` on disk (77 lines, 3 jobs, all `ubuntu-latest`, `timeout-minutes` 20/25/25); first green run `39665293727` live-confirmed: quality/integration/e2e-portable all `success` (SHA `376d9a7`); latest main run `39680435389` (tip `9e11a0e`) also all green |
-| 2 | Quality job keeps the release-gate step order and pinned toolchain (checkout@v6, pnpm/action-setup@v6 no version input, setup-node@v7 node-version 24 cache pnpm) | ✓ VERIFIED | Contract test `tests/unit/ci-workflow-contract.test.ts` asserts the exact order chain and pins; ran it live in this verification: **15/15 passed (2.83 s)** |
-| 3 | Lint covers all 7 workspace packages and is a guarded required gate | ✓ VERIFIED | `tests/unit/lint-coverage.test.ts` run live: **3/3 passed**; negative probe recorded in 07-01-SUMMARY (unused const flips `pnpm lint` non-zero); lint green in every CI run; required via branch protection |
-| 4 | CI-04 mutation-rejection tests reject raw UPDATE/DELETE on all six protected tables against real Postgres via the owned-container harness | ✓ VERIFIED | `tests/integration/mutation-rejection.test.ts` on disk (ValueReceipt/ValueSettlement/ClosingOddsObservation/ForecastMarket → `/immutable/i`, ResultVersion/SourceObservation → `/append-only/i`); integration harness now passes 467/467 in CI (deferred-items.md closure row) |
-| 5 | Integration job is Linux-only, owns its containers, and fails loudly (never skips) when Docker is unavailable | ✓ VERIFIED | `scripts/verify-release-integration.mjs` invokes `execFileSync("docker", …)` with no presence guard — missing docker throws → non-zero; ci.yml contains no `if docker info` / skip branch / `continue-on-error`; fail-loud probe recorded in 07-01 coverage D1 |
-| 6 | CI-02 hard constraints: token is read-only (`permissions: contents: read`), no `secrets.` reference, no provider credentials, no live external provider calls; the contract test is the executable backstop inside the quality job | ✓ VERIFIED | On-disk grep of ci.yml: zero matches for `secrets.` / `API_FOOTBALL` / `FOOTBALL_DATA` / `pull_request_target` / `continue-on-error`; contract test asserts all of these and passed live 15/15; 07-REVIEW.md traced every CI-path provider touchpoint to a stub |
-| 7 | e2e-portable runs the closed two-spec list under `playwright.ci.config.ts` with no webServer (globalSetup owns the live-evidence stack) | ✓ VERIFIED | `playwright.ci.config.ts` on disk: no `webServer`, `globalSetup: ./tests/e2e/live-evidence-stack.ts`, `forbidOnly`, `retries: 0`; ci.yml passes the explicit two-spec command; green in runs `39665293727` and `39680435389` |
-| 8 | Repo parity pins: `.gitattributes` enforces LF, `.npmrc` sets `engine-strict=true` with Node 24 as the sanctioned runtime | ✓ VERIFIED | `.gitattributes` (`* text=auto eol=lf`) and `.npmrc` (`engine-strict=true`) read on disk; `node-version: 24` pinned in ci.yml and asserted by the contract test; portable Node v24.22.0 at `.tools/node24` |
-| 9 | Branch protection on main requires exactly [quality, integration, e2e-portable], disallows force pushes and deletions, no required reviews | ✓ VERIFIED | Live read-back this pass: `gh api …/branches/main/protection` → `{"contexts":["quality","integration","e2e-portable"],"strict":false}`, `force_pushes: false`, `deletions: false`, `required_reviews: none` — matches the user-approved payload exactly |
-| 10 | Success criterion 4 end-to-end: the three sanctioned drills turn the intended job red, a red run blocks the merge (verbatim refusal), every revert restores green, and zero drill residue remains on main | ✓ VERIFIED | All 8 run ids live-confirmed with matching SHAs and per-job conclusions: drill 1 `39670991039` quality fails at `Run pnpm typecheck` (TS2322); drill 2 `39672401978` quality fails at `Run pnpm test` (`ci-drill-failing.test.ts:5:15`, `1 failed \| 380 passed`, integration+e2e green = isolation); drill 3 `39674495067` integration fails with `P0001 ForecastSnapshot is immutable` at `ci-drill-mutation.test.ts:29` (quality+e2e green = isolation); reverts `39671744988`/`39673236754`/`39675050804` all `success`; PR #4 live-confirmed `CLOSED`, `mergedAt=null`; drill files 404/absent on main (`git ls-files` empty, worktree `Test-Path` false ×3), drill branch deleted; merge refusal recorded verbatim in 07-03-SUMMARY and consistent with the live protection read-back |
+| 1 | Three-job pipeline (quality / integration / e2e-portable) runs automatically on push to main and every PR: frozen-lockfile install → schema verify → typecheck → lint → build-before-test → test → build (quality); Docker-backed owned-container integration; portable Playwright E2E | ✓ VERIFIED | `.github/workflows/ci.yml` re-read at HEAD `7b0d847` (77 lines, 3 jobs, all `ubuntu-latest`, `timeout-minutes` 20/25/25, build-before-test turbo step present in all three jobs); first green run `39665293727` previously live-confirmed; **latest main run #13 (headSha `7b0d8478…` = current HEAD) live-confirmed `success`/`completed` this pass** |
+| 2 | Quality job keeps the release-gate step order and pinned toolchain (checkout@v6, pnpm/action-setup@v6 no version input, setup-node@v7 node-version 24 cache pnpm) | ✓ VERIFIED | ci.yml on disk at HEAD: exact order chain and pins intact (unchanged since the 15/15 contract-test pass recorded at `9e11a0e`); contract test `tests/unit/ci-workflow-contract.test.ts` unchanged by the docs-only commit |
+| 3 | Lint covers all 7 workspace packages and is a guarded required gate | ✓ VERIFIED | `tests/unit/lint-coverage.test.ts` unchanged since its live 3/3 pass; lint step present in ci.yml at HEAD; required via branch protection (re-read live this pass) |
+| 4 | CI-04 mutation-rejection tests reject raw UPDATE/DELETE on all six protected tables against real Postgres via the owned-container harness | ✓ VERIFIED | `tests/integration/mutation-rejection.test.ts` unchanged since the 467/467 CI-passing harness evidence; integration job in ci.yml at HEAD unchanged |
+| 5 | Integration job is Linux-only, owns its containers, and fails loudly (never skips) when Docker is unavailable | ✓ VERIFIED | ci.yml integration job unchanged at HEAD (no `if docker info` / skip branch / `continue-on-error`); `scripts/verify-release-integration.mjs` unchanged; fail-loud mechanism previously verified |
+| 6 | CI-02 hard constraints: token is read-only (`permissions: contents: read`), no `secrets.` reference, no provider credentials, no live external provider calls; the contract test is the executable backstop inside the quality job | ✓ VERIFIED | Full re-read of ci.yml at HEAD: `permissions: contents: read` present (line 10); zero matches for `secrets.` / `API_FOOTBALL` / `FOOTBALL_DATA` / `pull_request_target` / `continue-on-error` |
+| 7 | e2e-portable runs the closed two-spec list under `playwright.ci.config.ts` with no webServer (globalSetup owns the live-evidence stack) | ✓ VERIFIED | ci.yml line 77 at HEAD: explicit `playwright.ci.config.ts` + two-spec command intact; config unchanged since prior live verification |
+| 8 | Repo parity pins: `.gitattributes` enforces LF, `.npmrc` sets `engine-strict=true` with Node 24 as the sanctioned runtime | ✓ VERIFIED | Both files unchanged at HEAD (covered by the fresh digest below); `node-version: 24` still pinned in ci.yml |
+| 9 | Branch protection on main requires exactly [quality, integration, e2e-portable], disallows force pushes and deletions, no required reviews | ✓ VERIFIED | Live re-read this pass: `gh api …/branches/main/protection` → `{"contexts":["quality","integration","e2e-portable"],"strict":false}`, `allow_force_pushes.enabled: false`, `allow_deletions.enabled: false`, `required_pull_request_reviews: null` — matches the user-approved payload exactly |
+| 10 | Success criterion 4 end-to-end: the three sanctioned drills turn the intended job red, a red run blocks the merge (verbatim refusal), every revert restores green, and zero drill residue remains on main | ✓ VERIFIED | 07-03-SUMMARY.md drill evidence re-confirmed intact at HEAD: drill 1 `39670991039` quality fails at typecheck (TS2322), drill 2 `39672401978` quality fails at test, drill 3 `39674495067` integration fails with `P0001 ForecastSnapshot is immutable`; verbatim merge refusal captured (lines 137–141); reverts `39671744988`/`39673236754`/`39675050804` all `success`; PR #4 CLOSED, never merged; **the drill-1 disclosure from the previous warning row is now complete in 07-03-SUMMARY (lines 75/129: all three jobs red in that run, causally explained)** |
 
 **Score:** 10/10 truths verified (0 present-but-behavior-unverified)
 
@@ -59,50 +69,51 @@ gaps: []
 
 | Artifact | Expected | Status | Details |
 | -------- | -------- | ------ | ------- |
-| `.github/workflows/ci.yml` | Three jobs, ordered steps, read-only token, timeouts | ✓ VERIFIED | On disk; `timeout-minutes: 20/25/25` (review fix `9e11a0e`); build-before-test turbo step in all three jobs |
-| `tests/unit/ci-workflow-contract.test.ts` | Executable CI-02 security policy, 15 assertions | ✓ VERIFIED | Ran live: 15/15 green; negative self-check (continue-on-error flips red) recorded in 07-02 |
-| `playwright.ci.config.ts` | webServer-less CI config, closed spec list | ✓ VERIFIED | On disk, matches |
-| `tests/integration/mutation-rejection.test.ts` | Six-table trigger rejection | ✓ VERIFIED | On disk, all six tables + both trigger families |
-| `scripts/verify-release-integration.mjs` + root `test:integration:docker` | Owned-container harness, fail-loud | ✓ VERIFIED | On disk; `docker()` has no fallback path; script wired in package.json:19 |
-| `tests/unit/lint-coverage.test.ts` | Meta-test guarding 7-package lint coverage | ✓ VERIFIED | Ran live: 3/3 green |
-| `.gitattributes`, `.npmrc` | LF pin + engine-strict | ✓ VERIFIED | On disk, exact content |
-| `tests/e2e/live-evidence-stack.ts`, `tests/e2e/live-provider-stack.ts` | Owned stack lifecycle, cross-platform teardown | ✓ VERIFIED | POSIX `detached: process.platform !== "win32"` + `process.kill(-pid, SIGTERM → 5 s → SIGKILL)` and win32 `taskkill /T /F` both present (review fix `6afb2bd`) |
+| `.github/workflows/ci.yml` | Three jobs, ordered steps, read-only token, timeouts | ✓ VERIFIED | Re-read at HEAD; `timeout-minutes: 20/25/25`; build-before-test turbo step in all three jobs |
+| `tests/unit/ci-workflow-contract.test.ts` | Executable CI-02 security policy, 15 assertions | ✓ VERIFIED | Unchanged at HEAD (in digest); previously 15/15 live |
+| `playwright.ci.config.ts` | webServer-less CI config, closed spec list | ✓ VERIFIED | Unchanged at HEAD (in digest) |
+| `tests/integration/mutation-rejection.test.ts` | Six-table trigger rejection | ✓ VERIFIED | Unchanged at HEAD (in digest) |
+| `scripts/verify-release-integration.mjs` + root `test:integration:docker` | Owned-container harness, fail-loud | ✓ VERIFIED | Unchanged at HEAD (in digest) |
+| `tests/unit/lint-coverage.test.ts` | Meta-test guarding 7-package lint coverage | ✓ VERIFIED | Unchanged at HEAD (in digest); previously 3/3 live |
+| `.gitattributes`, `.npmrc` | LF pin + engine-strict | ✓ VERIFIED | Unchanged at HEAD (in digest) |
+| `tests/e2e/live-evidence-stack.ts`, `tests/e2e/live-provider-stack.ts` | Owned stack lifecycle, cross-platform teardown | ✓ VERIFIED | Unchanged at HEAD (in digest) |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 | ---- | --- | --- | ------ | ------- |
-| push/PR → ci.yml → three required checks → merge gate | branch protection | required_status_checks contexts | ✓ WIRED | Live read-back shows exactly the three job names as contexts; job names in ci.yml match verbatim |
-| ci.yml integration job | `test:integration:docker` → `verify-release-integration.mjs` → vitest integration project (incl. mutation-rejection) | run step | ✓ WIRED | Step present; contract test asserts it and forbids direct vitest calls in that job |
-| ci.yml e2e-portable job | `playwright.ci.config.ts` → live-evidence-stack globalSetup → two portable specs | run step | ✓ WIRED | Command line on disk names config + both specs |
-| quality job | `tests/unit/ci-workflow-contract.test.ts` (CI-02 backstop) | `pnpm test` unit project | ✓ WIRED | File under `tests/unit/` which the unit project runs; 15/15 green locally |
+| push/PR → ci.yml → three required checks → merge gate | branch protection | required_status_checks contexts | ✓ WIRED | Live read-back this pass shows exactly `[quality, integration, e2e-portable]`; job names in ci.yml match verbatim |
+| ci.yml integration job | `test:integration:docker` → `verify-release-integration.mjs` → vitest integration project (incl. mutation-rejection) | run step | ✓ WIRED | ci.yml line 57 intact at HEAD |
+| ci.yml e2e-portable job | `playwright.ci.config.ts` → live-evidence-stack globalSetup → two portable specs | run step | ✓ WIRED | ci.yml line 77 intact at HEAD |
+| quality job | `tests/unit/ci-workflow-contract.test.ts` (CI-02 backstop) | `pnpm test` unit project | ✓ WIRED | File under `tests/unit/`, unchanged; unit project wiring previously verified live |
 
 ### Data-Flow Trace (Level 4)
 
-Not applicable in the classic sense (no rendered dynamic data). The data-equivalent chain — CI run conclusion → GitHub required check → branch-protection merge decision — was traced live end-to-end: red run `39670991039` → required check unsatisfied → merge refusal (verbatim, exit 1) → PR #4 closed unmerged; green runs → mergeable again.
+Not applicable in the classic sense (no rendered dynamic data). The data-equivalent chain — CI run conclusion → GitHub required check → branch-protection merge decision — was traced live end-to-end at the original pass (red run `39670991039` → required check unsatisfied → verbatim merge refusal → PR #4 closed unmerged; green runs → mergeable again) and the chain's live endpoints (protection state, latest green run at HEAD) were re-read this pass.
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 | -------- | ------- | ------ | ------ |
-| CI-02 contract test (executable backstop) | `pnpm exec vitest run --project unit tests/unit/ci-workflow-contract.test.ts` (Node 24) | 15 passed, 2.83 s | ✓ PASS |
-| Lint-coverage meta-test | `pnpm exec vitest run --project unit tests/unit/lint-coverage.test.ts` | 3 passed, 3.02 s | ✓ PASS |
-| First green run all three jobs | `gh run view 39665293727 --json jobs` | quality/integration/e2e-portable all `success` | ✓ PASS |
-| Branch protection read-back | `gh api repos/VadyaLegolas/bet-stats/branches/main/protection` | contexts `[quality, integration, e2e-portable]`, force-pushes/deletions disabled | ✓ PASS |
-| Drill attribution (all three drills) | `gh run view <id> --json jobs` + `gh run view --job=<id> --log` for `39670991039`, `39672401978`, `39674495067` | Intended job/step failed with the exact injected defect (TS2322 / `ci-drill-failing.test.ts:5` / `P0001 ForecastSnapshot is immutable`) | ✓ PASS |
-| PR #4 teardown | `gh pr view 4 --json state,mergedAt` | CLOSED, mergedAt=null | ✓ PASS |
-| Drill residue absent | `git ls-files \| Select-String ci-drill` + `Test-Path` ×3 + `git branch -a` | empty / False ×3 / no drill branch | ✓ PASS |
-| Review fixes strengthen (not weaken) | `git show 6afb2bd`, `git show 9e11a0e` | 6afb2bd: +detached spawn + SIGKILL escalation (harness teardown reliability); 9e11a0e: +timeout-minutes only (5 insertions, fail-closed bounds) — neither touches a gate, both reduce silent-failure surface | ✓ PASS |
+| Latest main CI run at HEAD | `gh run list --repo VadyaLegolas/bet-stats --workflow CI --branch main --limit 1 --json conclusion,headSha` | `conclusion: success`, `headSha: 7b0d8478fa42dbbe673cb0661ce2972c9a53e241` (= current HEAD), run #13 | ✓ PASS |
+| Branch protection read-back | `gh api repos/VadyaLegolas/bet-stats/branches/main/protection` | contexts `[quality, integration, e2e-portable]`, force-pushes disabled, deletions disabled, no required reviews | ✓ PASS |
+| ci.yml hard constraints at HEAD | on-disk read of `.github/workflows/ci.yml` | 3 jobs; `permissions: contents: read`; no `secrets.` / provider-credential / live-provider reference; timeouts 20/25/25; build-before-test in all jobs | ✓ PASS |
+| SUMMARY drill evidence intact | grep of 07-03-SUMMARY.md | All 6 run ids (3 drills + 3 reverts) present with expected failure/success attributions; verbatim merge refusal lines 137–141; drill-1 all-red disclosure present at lines 75/129 | ✓ PASS |
+| Diff scope 9e11a0e..HEAD | `git diff --name-only 9e11a0e..7b0d847` | Exactly 3 docs files (07-03-SUMMARY.md, 07-REVIEW.md, 07-VERIFICATION.md); zero source files | ✓ PASS |
+| CI-02 contract test (executable backstop) | `pnpm exec vitest run --project unit tests/unit/ci-workflow-contract.test.ts` (Node 24) at prior pass | 15 passed, 2.83 s (file unchanged since; no re-run needed for a docs-only diff) | ✓ PASS (prior, source-identical) |
+| Lint-coverage meta-test | `pnpm exec vitest run --project unit tests/unit/lint-coverage.test.ts` at prior pass | 3 passed, 3.02 s (file unchanged since) | ✓ PASS (prior, source-identical) |
+| Drill attribution (all three drills) | `gh run view <id>` logs for `39670991039`, `39672401978`, `39674495067` at prior pass | Intended job/step failed with the exact injected defect (TS2322 / `ci-drill-failing.test.ts:5` / `P0001 ForecastSnapshot is immutable`) | ✓ PASS (prior, evidence unchanged) |
+| PR #4 teardown | `gh pr view 4 --json state,mergedAt` at prior pass | CLOSED, mergedAt=null | ✓ PASS (prior, immutable history) |
 
 ### Probe Execution
 
-No phase-declared `probe-*.sh` scripts. Equivalent executable evidence run directly by the verifier: the two named unit files above (single-file runs), plus live `gh` read-backs listed in Behavioral Spot-Checks. The "fail-loud on missing docker" probe and the contract-test negative self-check were executed during execution and are recorded in 07-01/07-02 coverage metadata; the mechanism (unguarded `execFileSync("docker")`, `continue-on-error`-forbidding contract test) was re-confirmed on disk this pass.
+No phase-declared `probe-*.sh` scripts. Equivalent executable evidence: the two named unit files (single-file runs at the prior pass — both source-identical at HEAD), plus the live `gh` read-backs in Behavioral Spot-Checks, all re-run this pass.
 
 ### Requirements Coverage
 
 | Requirement | Status | Evidence |
 | ----------- | ------ | -------- |
-| CI-01 (pipeline on every push/PR: frozen install, schema, typecheck, lint, unit + Docker integration, build; required checks; drills block merge) | ✓ SATISFIED | Truths 1–5, 9, 10; live run + protection evidence |
+| CI-01 (pipeline on every push/PR: frozen install, schema, typecheck, lint, unit + Docker integration, build; required checks; drills block merge) | ✓ SATISFIED | Truths 1–5, 9, 10; live run-at-HEAD + protection evidence |
 | CI-02 (Linux + Docker fail-loud; never calls live providers; contract test backstop) | ✓ SATISFIED | Truths 5–6 |
 | CI-03 (lint covers all workspace packages before becoming required) | ✓ SATISFIED | Truth 3; lint landed in wave 1 before protection in wave 3 |
 | CI-04 (CI-enforced mutation rejection at DB layer) | ✓ SATISFIED | Truths 4, 10 (drill 3 shows the guard trigger firing on a real runner) |
@@ -113,21 +124,20 @@ No orphaned requirements: REQUIREMENTS.md maps exactly CI-01…CI-04 to Phase 7,
 
 | File | Pattern | Severity | Impact |
 | ---- | ------- | -------- | ------ |
-| 07-03-SUMMARY.md drill-1 row | Records only the quality failure for drill 1 (`39670991039`), but live per-job data shows all three jobs were red in that run: the injected root-`src/` type error also broke `pnpm --filter @bet-stats/api build`, which the integration harness and e2e globalSetup legitimately invoke | ⚠️ Warning (documentation completeness, not a gate defect) | The corresponding job did fail at the intended step and SC4 ("turns the pipeline red") is fully satisfied; drills 2 and 3 prove per-job isolation. Causal chain of the collateral reds is legitimate, not flaky. Summary under-discloses; no fix required for the goal |
-| — | No `TBD`/`FIXME`/`XXX`/`TODO`/`HACK`/`PLACEHOLDER` debt markers in any phase-created/modified file | ✓ clean | — |
-| 07-REVIEW.md MEDIUM-02/03/04, LOW-01…06, NITs | Remaining hardening findings from the code-review gate (shared tmpdir pointer, contract-test evasion surface, static `/health/ready`, mutable action majors, no artifact upload on red e2e, etc.) | ℹ️ Info | Tracked in 07-REVIEW.md as follow-ups; none touches a phase must-have; HIGH-01 and MEDIUM-01 were fixed (`6afb2bd`, `9e11a0e`) |
-| commit `4f8e3b9` | Subject "x" on a bulk planning-docs commit | ℹ️ Info | Hygiene only; no code impact |
-| worktree | Untracked `bet-stats-main.zip`, modified `apps/web/next-env.d.ts` | ℹ️ Info | Pre-existing local noise, not phase artifacts; orchestrator commit hygiene item |
+| — | No `TBD`/`FIXME`/`XXX`/`TODO`/`HACK`/`PLACEHOLDER` debt markers in any phase-created/modified file (re-scanned the three docs changed in `7b0d847`: clean) | ✓ clean | — |
+| 07-03-SUMMARY.md drill-1 row | Prior-pass ⚠️ Warning (under-disclosure of drill-1's all-three-jobs-red run) — **resolved by `7b0d847`**: lines 75/129 now disclose and causally explain the collateral reds | ✓ resolved | No remaining documentation-completeness gap |
+| 07-REVIEW.md MEDIUM-02/03/04, LOW-01…06, NITs | Remaining hardening findings from the code-review gate (now committed on disk as 07-REVIEW.md) | ℹ️ Info | Tracked as follow-ups; none touches a phase must-have; HIGH-01 and MEDIUM-01 were fixed (`6afb2bd`, `9e11a0e`) |
+| worktree | Untracked `bet-stats-main.zip`, modified `apps/web/next-env.d.ts` | ℹ️ Info | Pre-existing local noise, not phase artifacts; orchestrator commit hygiene item (unchanged since prior pass) |
 
 ### Human Verification Required
 
-N/A — infrastructure/foundation phase with no user-facing elements. All acceptance criteria were verified programmatically, including the live GitHub reads (branch protection, run conclusions, drill logs, PR state). The one human decision the phase required (branch-protection payload approval) was executed and recorded during wave 3, and this pass re-read the live protection state against that payload.
+N/A — infrastructure/foundation phase with no user-facing elements. All acceptance criteria were verified programmatically, including the live GitHub reads (branch protection, run conclusions at HEAD, drill logs, PR state).
 
 ### Gaps Summary
 
-No gaps. Every roadmap success criterion (1–4) and every plan must-have truth is backed by on-disk artifacts re-checked by the verifier and by live GitHub evidence (run ids, per-job conclusions, failure-log text, branch-protection read-back, PR state) that matches the summaries' claims. The only finding is a documentation-completeness nuance on the drill-1 row of 07-03-SUMMARY.md (non-isolation of the other two jobs in that run, causally legitimate), recorded above as a warning that does not affect the goal.
+No gaps. This is a digest-refresh re-verification: the commit delta since the prior passing verification (`9e11a0e..7b0d847`) is docs-only (three `.planning` files — zero source changes, confirmed by `git diff --name-only`), the fresh `verification.fingerprint` digest above is computed at HEAD `7b0d847`, all previously verified facts were cheaply re-confirmed at HEAD (ci.yml contents, protection read-back, drill evidence, latest green main run — now at HEAD itself), and the prior pass's only warning (drill-1 disclosure) was closed by this docs commit. All roadmap success criteria (1–4) and every plan must-have truth remain backed by on-disk artifacts and live GitHub evidence.
 
 ---
 
-_Verified: 2026-10-21T21:55:00Z_
-_Verifier: the agent (gsd-verifier, subagent spawn)_
+_Verified: 2026-10-22T16:34:47Z (digest refreshed at HEAD 7b0d847)_
+_Verifier: the agent (gsd-verifier, subagent spawn — digest refresh)_

@@ -4,16 +4,16 @@ milestone: v1.1
 current_phase: 8
 current_phase_name: Backups and Restore Verification
 status: executing
-stopped_at: Phase 8 context captured (08-CONTEXT.md + DISCUSSION-LOG), ready to plan Phase 8
-last_updated: "2026-10-22T18:57:14.198Z"
+stopped_at: Completed 08-01-PLAN.md (backup engine) — next: 08-02 restore drill
+last_updated: "2026-10-22T20:18:00.000Z"
 last_activity: 2026-10-22
-last_activity_desc: Phase 8 discuss complete — agent decided all 4 gray areas (daily pg_dump -Fc / 14-retention, robocopy off-host, weekly worker restore drill, opt-in + ops-center block)
-state_head: 4c2f3d5842076a639adb87b42ce560c38503fb7a
+last_activity_desc: Phase 8 plan 08-01 (backup engine) complete
+state_head: 9c8ad16eb2f7f25b0acd1b0c94e5ee2026b2f6af
 progress:
   total_phases: 10
   completed_phases: 1
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 10
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -25,14 +25,14 @@ milestone_name: Reliability, Model Quality and Value Experience
 See: .planning/PROJECT.md (updated 2026-09-08)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Phase 07 — CI Pipeline & Quality Gates
+**Current focus:** Phase 8 — Backups and Restore Verification
 
 ## Current Position
 
-Phase: 8 (Backups and Restore Verification) — READY TO EXECUTE
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-10-22 — Phase 8 discuss complete; 08-CONTEXT.md captured (agent decided all 4 gray areas)
+Phase: 8 (Backups and Restore Verification) — EXECUTING
+Plan: 2 of 3 (08-01 backup engine complete)
+Status: Executing Phase 8
+Last activity: 2026-10-22 — 08-01 complete: fail-closed config, append-only BackupRun receipts, pg_dump engine, retention rotation, robocopy off-host, daily persisted-state scheduler (9 commits)
 
 Progress: [█░░░░░░░░░] 10%
 
@@ -40,7 +40,7 @@ Progress: [█░░░░░░░░░] 10%
 
 **Velocity:**
 
-- Total plans completed: 91
+- Total plans completed: 92
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -55,6 +55,7 @@ Progress: [█░░░░░░░░░] 10%
 | 05 | 16 | - | - |
 | 06 | 11 | - | - |
 | 7 | 3 | - | - |
+| 08 | 1 | - | - |
 
 **Recent Trend:**
 
@@ -122,6 +123,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 06 P09 | 2d | 3 tasks | 19 files |
 | Phase 07 P1 | 151min | 4 tasks | 40 files |
 | Phase 07-ci-pipeline-quality-gates P07-02 | 74min | 5 tasks | 6 files |
+| Phase 08 P01 | 70min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -233,6 +235,12 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 07-ci-pipeline-quality-gates]: Line-ending renormalization deferred: 887 tracked files (390 .planning, 497 elsewhere) would change under the new LF rule; zero staged, kept as a separate follow-up decision (07-02)
 - [Operating rule, user 2026-10-21]: Agent work must never disturb the running site — never kill the user's dev servers; only `scripts\app-lifecycle.ps1` (Load-Env + `turbo run dev --env-mode=loose`) starts the stack because web proxies and API guards read secrets (OPERATOR_CREDENTIAL, PRIVACY_*/AUTH_* secrets, DATABASE_URL, REDIS_URL) from process.env; plain `pnpm --filter web dev` has no secrets → sync 404 + privacy UNAVAILABLE
 - [Phase 07-ci-pipeline-quality-gates]: E2E/CI web stacks point NEXT_DIST_DIR at `.next-e2e` so Next 16's per-distDir exclusive lock can never kill the developer's `next dev` on `.next` (58aa7c2)
+- [Phase 08]: BackupRun receipts are appended after the off-host copy (the table is frozen append-only), so the single SUCCEEDED row carries the final offsiteStatus COPIED/DEGRADED/NOT_CONFIGURED; prune runs after the receipt and a failed dump deletes nothing (08-01)
+- [Phase 08]: docker pg_dump argv omits `-f -` — postgres 18 treats it as a literal file named `-` (exit 0, zero stdout); the archive streams via stdout only when -f is absent (08-01, verified against postgres:18.6)
+- [Phase 08]: pg identity is resolved config-first (BACKUP_PG_USER/BACKUP_PG_DB), then `docker exec printenv`, else FAILED PG_IDENTITY_UNRESOLVED without invoking pg_dump — never hardcoded roles (08-01)
+- [Phase 08]: Added BACKUP_PG_CONTAINER config key and BackupRun.reason column — both required by plan acceptance (container-targeted docker fallback + reason codes persisted on FAILED rows) (08-01)
+- [Phase 08]: Daily backup tick is armed from persisted state (latest SUCCEEDED completedAt + 24h) with idle-poll before first success — no cron library, no BullMQ v5 repeat option (08-01)
+- [Operating rule, gsd_run CLI]: `gsd_run`/`gsd-tools` are not on PATH in this executor shell — state/roadmap/requirements tracking and final docs commits are done as manual file edits + plain git commits (07-01..07-03 and 08-01 precedent)
 
 ### Pending Todos
 

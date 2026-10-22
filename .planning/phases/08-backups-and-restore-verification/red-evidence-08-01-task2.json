@@ -1,0 +1,25 @@
+{
+  "plan": "08-01",
+  "task": 2,
+  "phase": "RED",
+  "command": "pnpm vitest run --project unit tests/unit/backup-job.test.ts --reporter=default",
+  "exitCode": 1,
+  "targetFile": "tests/unit/backup-job.test.ts",
+  "targetTest": "backup job: retention rotation and robocopy off-host > maps robocopy exit code 0 below the failure bitmask to COPIED",
+  "expected": "result.offsiteStatus === \"COPIED\" after a successful dump with robocopy exit code 0 (and 1/3/7); DEGRADED with recorded code for exits 8/16 and spawn ENOENT; robocopy argv carrying /R:2 /W:5; retention prune reducing 16 matching dumps to 14",
+  "actual": "result.offsiteStatus === \"NOT_CONFIGURED\" for every case (no off-host wiring exists yet); robocopy never invoked (argv test: expected undefined to be defined); prune never runs (16 dumps remain, expected length 14)",
+  "report": {
+    "discovered": 11,
+    "failed": 9,
+    "passed": 2,
+    "note": "The 2 passing tests are guard cases whose expected behavior the existing code already exhibits (unset BACKUP_OFFSITE_DIR records NOT_CONFIGURED; a failed dump invokes no robocopy). They are not the RED targets. All 9 RED-target tests failed on their planned assertions.",
+    "failureClasses": [
+      "4x AssertionError: expected 'NOT_CONFIGURED' to be 'COPIED' (robocopy exits 0, 1, 3, 7)",
+      "3x AssertionError: expected 'NOT_CONFIGURED' to be 'DEGRADED' (robocopy exits 8, 16; spawn ENOENT)",
+      "1x AssertionError: robocopy must be invoked for the off-host copy: expected undefined to be defined (argv bounded-retry flags)",
+      "1x AssertionError: expected [ ...(16) ] to have a length of 14 but got 16 (retention prune)"
+    ]
+  },
+  "semanticAssessment": "VALID RED. The named target test executed and failed on the planned assertion (offsiteStatus mapping) for the intended reason: copyOffsite/pruneBackupRetention and the runBackup wiring do not exist yet, so the run always ends NOT_CONFIGURED and no pruning occurs. No load, fixture, syntax, or collection fault: 11/11 tests discovered and executed. No unrelated failures. The two passing tests are deliberate regression guards, not the target. Machine classifier (gsd_run check tdd-red-evidence) unavailable in this environment (CLI not on PATH) — assessment performed manually per deviation protocol.",
+  "machineClassifier": "unavailable: gsd_run CLI not on PATH in the executor shell"
+}

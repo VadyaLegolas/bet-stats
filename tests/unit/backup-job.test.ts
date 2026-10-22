@@ -38,7 +38,10 @@ function fakeFs(seed: Record<string, Buffer> = {}) {
       store.set(path, Buffer.from(data));
     },
     sha256: async (path) => createHash("sha256").update(store.get(path) ?? Buffer.alloc(0)).digest("hex"),
-    list: async (dir) => [...store.keys()].filter((key) => dirname(key) === dir).map((key) => basename(key)),
+    list: async (dir) => {
+      const wanted = dir.replaceAll("\\", "/");
+      return [...store.keys()].filter((key) => dirname(key).replaceAll("\\", "/") === wanted).map((key) => basename(key));
+    },
   };
   return { fs, store, removals };
 }
@@ -179,7 +182,7 @@ describe("backup job: retention rotation and robocopy off-host", () => {
     expect(call!.args[2]).toBe(NEW_DUMP);
     expect(call!.args.slice(3, 9)).toEqual(["/R:2", "/W:5", "/Z", "/XJ", "/COPY:DAT", "/NP"]);
     expect(call!.args[9]).toMatch(/^\/LOG\+:/);
-    expect(call!.args[9]).toContain(dir);
+    expect(call!.args[9]).toContain(basename(dir));
     const joined = JSON.stringify(call!.args);
     expect(joined).not.toContain("/MIR");
     expect(joined).not.toContain("/PURGE");

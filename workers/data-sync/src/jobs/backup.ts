@@ -1,10 +1,10 @@
 import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
-import { rename, rm, stat, writeFile } from "node:fs/promises";
+import { rename, rm, readdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { BackupConfig } from "@bet-stats/config";
+import { DEFAULT_BACKUP_RETENTION_COUNT, type BackupConfig } from "@bet-stats/config";
 import type { PrismaClient } from "@bet-stats/database";
 
 export type BackupTrigger = "SCHEDULED" | "MANUAL";
@@ -64,6 +64,7 @@ export type BackupFs = Readonly<{
   rename(from: string, to: string): Promise<void>;
   write(path: string, data: Buffer): Promise<void>;
   sha256(path: string): Promise<string>;
+  list(dir: string): Promise<string[]>;
 }>;
 
 export const nodeBackupFs: BackupFs = {
@@ -86,6 +87,7 @@ export const nodeBackupFs: BackupFs = {
       stream.once("error", rejectHash);
       stream.once("end", () => resolveHash(hash.digest("hex")));
     }),
+  list: async (dir) => await readdir(dir),
 };
 
 /** System-generated dump names only — callers never supply a filename. */
@@ -94,6 +96,59 @@ export const BACKUP_DUMP_FILE_PATTERN = /^football_prediction-\d{8}T\d{6}Z\.dump
 export function backupDumpFileName(timestamp: Date): string {
   const iso = timestamp.toISOString();
   return `football_prediction-${iso.slice(0, 4)}${iso.slice(5, 7)}${iso.slice(8, 10)}T${iso.slice(11, 13)}${iso.slice(14, 16)}${iso.slice(17, 19)}Z.dump`;
+}
+
+export const OFFSITE_ROBOCOPY_LOG_FILE = "football-prediction-offsite.log";
+
+export type OffsiteCopyResult = Readonly<{ status: BackupOffsiteStatus; error?: string | undefined }>;
+
+/**
+ * Copies one dump to the off-host destination with Windows robocopy. The exit
+ * code is a bitmask, not a boolean: 0-7 are success classes (0 = the file is
+ * already present at the destination, 1 = copied), 8+ are failure classes.
+ * Bounded retries (/R:2 /W:5) are mandatory because robocopy's defaults would
+ * otherwise wait essentially forever on an unreachable share; never a
+ * destructive mirror or purge flag. A spawn failure degrades honestly rather
+ * than failing the backup (D-06).
+ */
+export async function copyOffsite(input: { exec: BackupExec; sourceDir: string; destinationDir: string; fileName: string; timeoutMs?: number | undefined }): Promise<OffsiteCopyResult> {
+  const args = [
+    input.sourceDir,
+    input.destinationDir,
+    input.fileName,
+    "/R:2",
+    "/W:5",
+    "/Z",
+    "/XJ",
+    "/COPY:DAT",
+    "/NP",
+    `/LOG+:${join(input.sourceDir, OFFSITE_ROBOCOPY_LOG_FILE)}`,
+  ];
+  const result = await input.exec.run("robocopy", args, { timeoutMs: input.timeoutMs ?? SPAWN_DUMP_TIMEOUT_MS });
+  if (result.spawnError) return { status: "DEGRADED", error: result.spawnError };
+  if (result.code === undefined) return { status: "DEGRADED", error: "ROBOCOPY_NO_EXIT_CODE" };
+  if (result.code >= 8) return { status: "DEGRADED", error: String(result.code) };
+  return { status: "COPIED" };
+}
+
+/**
+ * Keeps the newest retentionCount dumps in BACKUP_DIR and deletes the rest.
+ * System-generated names only (BACKUP_DUMP_FILE_PATTERN), so an operator file
+ * or the robocopy log can never be deleted; names embed UTC timestamps, so a
+ * lexicographic sort is chronological. Runs strictly after the new dump is
+ * renamed into place, so a failed dump can never shrink the retention window.
+ */
+export async function pruneBackupRetention(input: { fs: BackupFs; dir: string; retentionCount: number; logger?: ((event: Readonly<Record<string, unknown>>) => void) | undefined }): Promise<{ deleted: string[] }> {
+  const entries = await input.fs.list(input.dir);
+  const dumps = entries.filter((name) => BACKUP_DUMP_FILE_PATTERN.test(name)).sort().reverse();
+  const excess = dumps.slice(input.retentionCount);
+  const deleted: string[] = [];
+  for (const name of excess) {
+    await input.fs.remove(join(input.dir, name));
+    deleted.push(name);
+  }
+  if (deleted.length > 0) input.logger?.({ event: "backup.retention_pruned", dir: input.dir, deleted });
+  return { deleted };
 }
 
 export type ResolvedPgTools =
@@ -177,6 +232,7 @@ export type BackupRunResult = Readonly<{
   runId: string;
   status: "SUCCEEDED" | "FAILED";
   offsiteStatus: BackupOffsiteStatus;
+  offsiteError?: string | undefined;
   durationMs: number;
   reason?: string | undefined;
   fileName?: string | undefined;
@@ -260,6 +316,16 @@ export async function runBackup(input: RunBackupInput): Promise<BackupRunResult>
   const sha256 = await fs.sha256(partialPath);
   await fs.rename(partialPath, finalPath);
 
+  // BackupRun is append-only, so the single SUCCEEDED receipt is appended after
+  // the off-host copy to carry the final offsiteStatus (COPIED/DEGRADED).
+  let offsiteStatus: BackupOffsiteStatus = "NOT_CONFIGURED";
+  let offsiteError: string | undefined;
+  if (config.offsiteDir) {
+    const offsite = await copyOffsite({ exec, sourceDir: config.dir, destinationDir: config.offsiteDir, fileName });
+    offsiteStatus = offsite.status;
+    offsiteError = offsite.error;
+  }
+
   const completedAt = now();
   const durationMs = Math.max(0, completedAt.getTime() - startedAt.getTime());
   await input.database.backupRun.create({
@@ -269,14 +335,24 @@ export async function runBackup(input: RunBackupInput): Promise<BackupRunResult>
       completedAt,
       durationMs,
       status: "SUCCEEDED",
-      offsiteStatus: "NOT_CONFIGURED",
+      offsiteStatus,
       trigger: input.trigger,
       fileName,
       byteSize,
       sha256,
+      ...(offsiteError ? { offsiteError } : {}),
       ...(tools.version ? { dbVersion: tools.version } : {}),
     },
   });
-  log({ event: "backup.succeeded", runId, fileName, byteSize, durationMs });
-  return { runId, status: "SUCCEEDED", offsiteStatus: "NOT_CONFIGURED", durationMs, fileName, byteSize, sha256 };
+  log({ event: "backup.succeeded", runId, fileName, byteSize, durationMs, offsiteStatus, ...(offsiteError ? { offsiteError } : {}) });
+
+  // Retention rotates only after this run's receipt is durable; a prune failure
+  // never retroactively flips a succeeded backup.
+  try {
+    await pruneBackupRetention({ fs, dir: config.dir, retentionCount: config.retentionCount ?? DEFAULT_BACKUP_RETENTION_COUNT, logger: log });
+  } catch (error) {
+    log({ event: "backup.prune_failed", runId, message: error instanceof Error ? error.message : String(error) });
+  }
+
+  return { runId, status: "SUCCEEDED", offsiteStatus, durationMs, fileName, byteSize, sha256, ...(offsiteError ? { offsiteError } : {}) };
 }

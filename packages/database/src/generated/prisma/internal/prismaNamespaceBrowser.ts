@@ -87,6 +87,7 @@ export const ModelName = {
   RetainedViewHistory: 'RetainedViewHistory',
   RetentionPurgeAudit: 'RetentionPurgeAudit',
   BackupRun: 'BackupRun',
+  BackupVerificationReceipt: 'BackupVerificationReceipt',
   ManualOddsSelection: 'ManualOddsSelection',
   ValueReceipt: 'ValueReceipt',
   ResultVersion: 'ResultVersion',
@@ -694,6 +695,23 @@ export const BackupRunScalarFieldEnum = {
 } as const
 
 export type BackupRunScalarFieldEnum = (typeof BackupRunScalarFieldEnum)[keyof typeof BackupRunScalarFieldEnum]
+
+
+export const BackupVerificationReceiptScalarFieldEnum = {
+  id: 'id',
+  backupFileName: 'backupFileName',
+  restoreDurationMs: 'restoreDurationMs',
+  checks: 'checks',
+  containerCleanup: 'containerCleanup',
+  overall: 'overall',
+  dbVersion: 'dbVersion',
+  failureReason: 'failureReason',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type BackupVerificationReceiptScalarFieldEnum = (typeof BackupVerificationReceiptScalarFieldEnum)[keyof typeof BackupVerificationReceiptScalarFieldEnum]
 
 
 export const ManualOddsSelectionScalarFieldEnum = {

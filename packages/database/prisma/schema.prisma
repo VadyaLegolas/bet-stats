@@ -782,6 +782,26 @@ model BackupRun {
   @@index([completedAt])
 }
 
+/// Immutable proof of one restore-drill attempt (append-only, frozen by trigger).
+/// overall is VERIFIED only when restore, migrations at head and every executed
+/// chain-integrity check passed — UNVERIFIED/FAILED render non-green (D-11).
+model BackupVerificationReceipt {
+  id                String    @id
+  /// Nullable: a NO_BACKUP_FOUND drill has no file and must still record honestly.
+  backupFileName    String?   @db.VarChar(256)
+  restoreDurationMs Int
+  checks            Json
+  containerCleanup  String
+  overall           String
+  dbVersion         String?   @db.VarChar(128)
+  failureReason     String?   @db.VarChar(128)
+  startedAt         DateTime  @db.Timestamptz(3)
+  completedAt       DateTime  @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([completedAt])
+}
+
 model ManualOddsSelection {
   id               String             @id @default(cuid())
   oddsSnapshotId   String

@@ -433,6 +433,7 @@ export const ModelName = {
   RetainedViewHistory: 'RetainedViewHistory',
   RetentionPurgeAudit: 'RetentionPurgeAudit',
   BackupRun: 'BackupRun',
+  BackupVerificationReceipt: 'BackupVerificationReceipt',
   ManualOddsSelection: 'ManualOddsSelection',
   ValueReceipt: 'ValueReceipt',
   ResultVersion: 'ResultVersion',
@@ -464,7 +465,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "enrichmentDecisionReceipt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "retentionSubject" | "retentionConsent" | "retainedOddsHistory" | "retainedViewHistory" | "retentionPurgeAudit" | "backupRun" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "enrichmentDecisionReceipt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "retentionSubject" | "retentionConsent" | "retainedOddsHistory" | "retainedViewHistory" | "retentionPurgeAudit" | "backupRun" | "backupVerificationReceipt" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -3132,6 +3133,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    BackupVerificationReceipt: {
+      payload: Prisma.$BackupVerificationReceiptPayload<ExtArgs>
+      fields: Prisma.BackupVerificationReceiptFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BackupVerificationReceiptFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupVerificationReceiptPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BackupVerificationReceiptFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupVerificationReceiptPayload>
+        }
+        findFirst: {
+          args: Prisma.BackupVerificationReceiptFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupVerificationReceiptPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BackupVerificationReceiptFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupVerificationReceiptPayload>
+        }
+        findMany: {
+          args: Prisma.BackupVerificationReceiptFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupVerificationReceiptPayload>[]
+        }
+        create: {
+          args: Prisma.BackupVerificationReceiptCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupVerificationReceiptPayload>
+        }
+        createMany: {
+          args: Prisma.BackupVerificationReceiptCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BackupVerificationReceiptCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupVerificationReceiptPayload>[]
+        }
+        delete: {
+          args: Prisma.BackupVerificationReceiptDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupVerificationReceiptPayload>
+        }
+        update: {
+          args: Prisma.BackupVerificationReceiptUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupVerificationReceiptPayload>
+        }
+        deleteMany: {
+          args: Prisma.BackupVerificationReceiptDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BackupVerificationReceiptUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BackupVerificationReceiptUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupVerificationReceiptPayload>[]
+        }
+        upsert: {
+          args: Prisma.BackupVerificationReceiptUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupVerificationReceiptPayload>
+        }
+        aggregate: {
+          args: Prisma.BackupVerificationReceiptAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBackupVerificationReceipt>
+        }
+        groupBy: {
+          args: Prisma.BackupVerificationReceiptGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BackupVerificationReceiptGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BackupVerificationReceiptCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BackupVerificationReceiptCountAggregateOutputType> | number
+        }
+      }
+    }
     ManualOddsSelection: {
       payload: Prisma.$ManualOddsSelectionPayload<ExtArgs>
       fields: Prisma.ManualOddsSelectionFieldRefs
@@ -4930,6 +5005,23 @@ export const BackupRunScalarFieldEnum = {
 export type BackupRunScalarFieldEnum = (typeof BackupRunScalarFieldEnum)[keyof typeof BackupRunScalarFieldEnum]
 
 
+export const BackupVerificationReceiptScalarFieldEnum = {
+  id: 'id',
+  backupFileName: 'backupFileName',
+  restoreDurationMs: 'restoreDurationMs',
+  checks: 'checks',
+  containerCleanup: 'containerCleanup',
+  overall: 'overall',
+  dbVersion: 'dbVersion',
+  failureReason: 'failureReason',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type BackupVerificationReceiptScalarFieldEnum = (typeof BackupVerificationReceiptScalarFieldEnum)[keyof typeof BackupVerificationReceiptScalarFieldEnum]
+
+
 export const ManualOddsSelectionScalarFieldEnum = {
   id: 'id',
   oddsSnapshotId: 'oddsSnapshotId',
@@ -5703,6 +5795,7 @@ export type GlobalOmitConfig = {
   retainedViewHistory?: Prisma.RetainedViewHistoryOmit
   retentionPurgeAudit?: Prisma.RetentionPurgeAuditOmit
   backupRun?: Prisma.BackupRunOmit
+  backupVerificationReceipt?: Prisma.BackupVerificationReceiptOmit
   manualOddsSelection?: Prisma.ManualOddsSelectionOmit
   valueReceipt?: Prisma.ValueReceiptOmit
   resultVersion?: Prisma.ResultVersionOmit

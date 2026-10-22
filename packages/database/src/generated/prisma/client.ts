@@ -225,6 +225,13 @@ export type RetentionPurgeAudit = Prisma.RetentionPurgeAuditModel
  */
 export type BackupRun = Prisma.BackupRunModel
 /**
+ * Model BackupVerificationReceipt
+ * Immutable proof of one restore-drill attempt (append-only, frozen by trigger).
+ * overall is VERIFIED only when restore, migrations at head and every executed
+ * chain-integrity check passed — UNVERIFIED/FAILED render non-green (D-11).
+ */
+export type BackupVerificationReceipt = Prisma.BackupVerificationReceiptModel
+/**
  * Model ManualOddsSelection
  * 
  */

@@ -4,10 +4,10 @@ milestone: v1.1
 current_phase: 8
 current_phase_name: Backups and Restore Verification
 status: planning
-stopped_at: Phase 7 complete, ready to plan Phase 8
-last_updated: "2026-10-22T16:38:29.663Z"
+stopped_at: Phase 8 context captured (08-CONTEXT.md + DISCUSSION-LOG), ready to plan Phase 8
+last_updated: "2026-10-22T17:05:00.000Z"
 last_activity: 2026-10-22
-last_activity_desc: Phase 7 complete, transitioned to Phase 8
+last_activity_desc: Phase 8 discuss complete — agent decided all 4 gray areas (daily pg_dump -Fc / 14-retention, robocopy off-host, weekly worker restore drill, opt-in + ops-center block)
 state_head: 7b0d8478fa42dbbe673cb0661ce2972c9a53e241
 progress:
   total_phases: 10
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 Phase: 8 — Backups and Restore Verification
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-22 — Phase 7 complete, transitioned to Phase 8
+Last activity: 2026-10-22 — Phase 8 discuss complete; 08-CONTEXT.md captured (agent decided all 4 gray areas)
 
 Progress: [█░░░░░░░░░] 10%
 

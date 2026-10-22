@@ -1,7 +1,7 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { dependencyReadiness, readServerConfig } from "@bet-stats/config";
+import { dependencyReadiness, readBackupConfig, readServerConfig, type BackupConfig } from "@bet-stats/config";
 import { createPrismaBacktestReceiptRepository, createPrismaClient, createPrismaForecastRepository, createProviderRoutingRepository, createReplayProviderPolicyRepository, createSettlementPipelineService, DEFAULT_REPLAY_PROVIDER_POLICIES } from "@bet-stats/database";
 import { currentForecastConfigHash, ForecastOrchestrator } from "@bet-stats/domain";
 import { ApiFootballClient, FootballDataOrgClient, type FixtureProvider, type ResultProvider, type StandingsProvider } from "@bet-stats/football-data";
@@ -13,6 +13,7 @@ import { createProductionEnrichmentExecutor } from "./jobs/enrichment.js";
 import { createSettlementJobHandler } from "./jobs/settlement.js";
 import { reconcileBacktestDelivery, runBacktestPlan } from "./jobs/backtests.js";
 import { scheduleRetentionPurge } from "./jobs/retention-purge.js";
+import { backupQueue, createBackupQueue, createBackupWorker, runBackup, scheduleBackupTick } from "./jobs/backup.js";
 import { createBacktestQueue, createBacktestWorker, createEnrichmentQueue, createEnrichmentSchedule, createEnrichmentWorker, createReplayWorker, createSettlementQueue, createSettlementWorker, type EnrichmentJobData, type ReplayJobData } from "./queues/index.js";
 import { createDurableProviderCircuitRegistry } from "./resilience/circuits.js";
 
@@ -91,6 +92,41 @@ export function startReplayWorker(input: { databaseUrl: string; redisUrl: string
   return { worker, settlementWorker, backtestWorker, enrichmentWorker, enrichmentQueue: enrichmentQueueHandle, async waitUntilReady() { await Promise.all([worker.waitUntilReady(), enrichmentWorker.waitUntilReady(), settlementWorker.waitUntilReady(), backtestWorker.waitUntilReady()]); return { ready: true, workers: ["replay", "enrichment", "settlement", "backtest"] as const }; }, async close() { if (forecastSweepStartTimer) clearTimeout(forecastSweepStartTimer); if (forecastSweepInterval) clearInterval(forecastSweepInterval); clearInterval(backtestReconcileTimer); retentionPurgeScheduler.close(); await worker.close(); await enrichmentWorker.close(); await settlementWorker.close(); await backtestWorker.close(); await enrichmentQueueHandle.close(); await backtestQueueHandle.close(); await settlementQueueHandle.close(); await database.$disconnect(); } };
 }
 
+/**
+ * Backup runtime composition root. Enabled config with a BACKUP_DIR arms the
+ * daily persisted-state tick on the bet-stats-backup queue; anything else
+ * logs backup.disabled and leaves backups honestly unconfigured (D-04).
+ */
+export function startBackupRuntime(input: { databaseUrl: string; redisUrl: string; prefix?: string; backupConfig: BackupConfig; log?: (event: Readonly<Record<string, unknown>>) => void }) {
+  const log = input.log ?? ((event: Readonly<Record<string, unknown>>) => console.info(JSON.stringify(event)));
+  const config = input.backupConfig;
+  if (!config.enabled || !config.dir) {
+    log({ event: "backup.disabled" });
+    return undefined;
+  }
+  const database = createPrismaClient(input.databaseUrl);
+  const queue = createBackupQueue({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}) });
+  const worker = createBackupWorker({
+    redisUrl: input.redisUrl,
+    ...(input.prefix ? { prefix: input.prefix } : {}),
+    execute: (data) => runBackup({ config, database, trigger: data.trigger, logger: log }),
+  });
+  const scheduler = scheduleBackupTick({
+    database,
+    enqueue: queue.enqueue,
+    onError: (error) => log({ event: "backup.tick_failed", error: error instanceof Error ? error.message : "UNKNOWN" }),
+  });
+  log({ event: "backup.armed", queue: backupQueue(input.prefix), intervalHours: 24, dir: config.dir });
+  return {
+    async close() {
+      scheduler.close();
+      await worker.close();
+      await queue.close();
+      await database.$disconnect();
+    },
+  };
+}
+
 function start(): void {
   const config = readServerConfig(process.env);
   const readiness = createWorkerReadiness({
@@ -100,7 +136,8 @@ function start(): void {
   console.info(JSON.stringify({ event: "worker.initialized", readiness }));
   if (config.DATABASE_URL && config.REDIS_URL && config.FOOTBALL_DATA_API_TOKEN && config.API_FOOTBALL_API_KEY) {
     const runtime = startReplayWorker({ databaseUrl: config.DATABASE_URL, redisUrl: config.REDIS_URL, footballDataApiToken: config.FOOTBALL_DATA_API_TOKEN, apiFootballApiKey: config.API_FOOTBALL_API_KEY, forecastSweep: { intervalMs: 60_000 } });
-    const close = () => { void runtime.close(); };
+    const backupRuntime = startBackupRuntime({ databaseUrl: config.DATABASE_URL, redisUrl: config.REDIS_URL, backupConfig: readBackupConfig(process.env) });
+    const close = () => { void runtime.close(); void backupRuntime?.close(); };
     process.once("SIGTERM", close); process.once("SIGINT", close);
   }
 }

@@ -762,6 +762,26 @@ model RetentionPurgeAudit {
   @@index([completedAt])
 }
 
+/// Durable operational evidence for each backup attempt (append-only, frozen by trigger).
+model BackupRun {
+  id            String    @id
+  startedAt     DateTime  @db.Timestamptz(3)
+  completedAt   DateTime  @db.Timestamptz(3)
+  durationMs    Int
+  status        String
+  offsiteStatus String
+  trigger       String
+  reason        String?   @db.VarChar(128)
+  fileName      String?   @db.VarChar(256)
+  byteSize      Int?
+  sha256        String?   @db.VarChar(128)
+  offsiteError  String?   @db.VarChar(256)
+  dbVersion     String?   @db.VarChar(128)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([completedAt])
+}
+
 model ManualOddsSelection {
   id               String             @id @default(cuid())
   oddsSnapshotId   String

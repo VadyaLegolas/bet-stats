@@ -432,6 +432,7 @@ export const ModelName = {
   RetainedOddsHistory: 'RetainedOddsHistory',
   RetainedViewHistory: 'RetainedViewHistory',
   RetentionPurgeAudit: 'RetentionPurgeAudit',
+  BackupRun: 'BackupRun',
   ManualOddsSelection: 'ManualOddsSelection',
   ValueReceipt: 'ValueReceipt',
   ResultVersion: 'ResultVersion',
@@ -463,7 +464,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "enrichmentDecisionReceipt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "retentionSubject" | "retentionConsent" | "retainedOddsHistory" | "retainedViewHistory" | "retentionPurgeAudit" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "enrichmentDecisionReceipt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "retentionSubject" | "retentionConsent" | "retainedOddsHistory" | "retainedViewHistory" | "retentionPurgeAudit" | "backupRun" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -3057,6 +3058,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    BackupRun: {
+      payload: Prisma.$BackupRunPayload<ExtArgs>
+      fields: Prisma.BackupRunFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BackupRunFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRunPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BackupRunFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRunPayload>
+        }
+        findFirst: {
+          args: Prisma.BackupRunFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRunPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BackupRunFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRunPayload>
+        }
+        findMany: {
+          args: Prisma.BackupRunFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRunPayload>[]
+        }
+        create: {
+          args: Prisma.BackupRunCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRunPayload>
+        }
+        createMany: {
+          args: Prisma.BackupRunCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BackupRunCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRunPayload>[]
+        }
+        delete: {
+          args: Prisma.BackupRunDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRunPayload>
+        }
+        update: {
+          args: Prisma.BackupRunUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRunPayload>
+        }
+        deleteMany: {
+          args: Prisma.BackupRunDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BackupRunUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BackupRunUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRunPayload>[]
+        }
+        upsert: {
+          args: Prisma.BackupRunUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BackupRunPayload>
+        }
+        aggregate: {
+          args: Prisma.BackupRunAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBackupRun>
+        }
+        groupBy: {
+          args: Prisma.BackupRunGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BackupRunGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BackupRunCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BackupRunCountAggregateOutputType> | number
+        }
+      }
+    }
     ManualOddsSelection: {
       payload: Prisma.$ManualOddsSelectionPayload<ExtArgs>
       fields: Prisma.ManualOddsSelectionFieldRefs
@@ -4835,6 +4910,26 @@ export const RetentionPurgeAuditScalarFieldEnum = {
 export type RetentionPurgeAuditScalarFieldEnum = (typeof RetentionPurgeAuditScalarFieldEnum)[keyof typeof RetentionPurgeAuditScalarFieldEnum]
 
 
+export const BackupRunScalarFieldEnum = {
+  id: 'id',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt',
+  durationMs: 'durationMs',
+  status: 'status',
+  offsiteStatus: 'offsiteStatus',
+  trigger: 'trigger',
+  reason: 'reason',
+  fileName: 'fileName',
+  byteSize: 'byteSize',
+  sha256: 'sha256',
+  offsiteError: 'offsiteError',
+  dbVersion: 'dbVersion',
+  createdAt: 'createdAt'
+} as const
+
+export type BackupRunScalarFieldEnum = (typeof BackupRunScalarFieldEnum)[keyof typeof BackupRunScalarFieldEnum]
+
+
 export const ManualOddsSelectionScalarFieldEnum = {
   id: 'id',
   oddsSnapshotId: 'oddsSnapshotId',
@@ -5607,6 +5702,7 @@ export type GlobalOmitConfig = {
   retainedOddsHistory?: Prisma.RetainedOddsHistoryOmit
   retainedViewHistory?: Prisma.RetainedViewHistoryOmit
   retentionPurgeAudit?: Prisma.RetentionPurgeAuditOmit
+  backupRun?: Prisma.BackupRunOmit
   manualOddsSelection?: Prisma.ManualOddsSelectionOmit
   valueReceipt?: Prisma.ValueReceiptOmit
   resultVersion?: Prisma.ResultVersionOmit

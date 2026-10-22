@@ -220,6 +220,11 @@ export type RetainedViewHistory = Prisma.RetainedViewHistoryModel
  */
 export type RetentionPurgeAudit = Prisma.RetentionPurgeAuditModel
 /**
+ * Model BackupRun
+ * Durable operational evidence for each backup attempt (append-only, frozen by trigger).
+ */
+export type BackupRun = Prisma.BackupRunModel
+/**
  * Model ManualOddsSelection
  * 
  */

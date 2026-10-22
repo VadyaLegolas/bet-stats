@@ -86,6 +86,7 @@ export const ModelName = {
   RetainedOddsHistory: 'RetainedOddsHistory',
   RetainedViewHistory: 'RetainedViewHistory',
   RetentionPurgeAudit: 'RetentionPurgeAudit',
+  BackupRun: 'BackupRun',
   ManualOddsSelection: 'ManualOddsSelection',
   ValueReceipt: 'ValueReceipt',
   ResultVersion: 'ResultVersion',
@@ -673,6 +674,26 @@ export const RetentionPurgeAuditScalarFieldEnum = {
 } as const
 
 export type RetentionPurgeAuditScalarFieldEnum = (typeof RetentionPurgeAuditScalarFieldEnum)[keyof typeof RetentionPurgeAuditScalarFieldEnum]
+
+
+export const BackupRunScalarFieldEnum = {
+  id: 'id',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt',
+  durationMs: 'durationMs',
+  status: 'status',
+  offsiteStatus: 'offsiteStatus',
+  trigger: 'trigger',
+  reason: 'reason',
+  fileName: 'fileName',
+  byteSize: 'byteSize',
+  sha256: 'sha256',
+  offsiteError: 'offsiteError',
+  dbVersion: 'dbVersion',
+  createdAt: 'createdAt'
+} as const
+
+export type BackupRunScalarFieldEnum = (typeof BackupRunScalarFieldEnum)[keyof typeof BackupRunScalarFieldEnum]
 
 
 export const ManualOddsSelectionScalarFieldEnum = {

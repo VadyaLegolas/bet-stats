@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { readBackupConfig } from "@bet-stats/config";
 
-import { runBackup, type BackupExec, type BackupExecResult, type BackupFs } from "../../workers/data-sync/src/jobs/backup.js";
+import { runBackup, backupQueue, scheduleBackupTick, type BackupExec, type BackupExecResult, type BackupFs, type BackupJobData } from "../../workers/data-sync/src/jobs/backup.js";
 
 const NOW = new Date("2026-10-22T19:00:00.000Z");
 const NEW_DUMP = "football_prediction-20261022T190000Z.dump";
@@ -269,5 +269,153 @@ describe("backup job: retention rotation and robocopy off-host", () => {
     expect(dumpFilesIn(fake)).toHaveLength(3);
     expect(calls.some((entry) => entry.command === "robocopy")).toBe(false);
     expect(rows[0]).toMatchObject({ status: "FAILED", reason: "DUMP_FAILED" });
+  });
+});
+
+describe("backup queue naming", () => {
+  it("derives the validated backup queue name and rejects unsafe prefixes", () => {
+    expect(backupQueue()).toBe("bet-stats-backup");
+    expect(backupQueue("custom")).toBe("custom-backup");
+    expect(() => backupQueue("bad prefix!")).toThrow();
+  });
+});
+
+describe("backup tick scheduler", () => {
+  const dayMs = 86_400_000;
+
+  function fakeDatabase(findFirst: () => Promise<{ completedAt: Date } | null>) {
+    return { backupRun: { findFirst } } as never;
+  }
+
+  it("arms at the idle-poll delay when no successful run is on record and enqueues only the trigger discriminator", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const delays: number[] = [];
+    let callback: (() => void) | undefined;
+    const enqueued: BackupJobData[] = [];
+    const scheduler = scheduleBackupTick({
+      database: fakeDatabase(async () => null),
+      enqueue: async (data) => { enqueued.push(data); },
+      now: () => now,
+      idlePollMs: 1_000,
+      setTimeout: (next, delay) => { callback = next; delays.push(delay); return 1 as never; },
+      clearTimeout: () => undefined,
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(delays).toEqual([1_000]);
+
+    callback?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    // T-08-02: the payload carries only the trigger discriminator — never a credential or URL.
+    expect(enqueued).toEqual([{ trigger: "SCHEDULED" }]);
+    expect(delays).toEqual([1_000, 1_000]);
+    scheduler.close();
+  });
+
+  it("arms at max(0, lastSuccess + 24h - now) when a success is on record", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const successAt = new Date(now.getTime() - 82_800_000); // 23h ago => 1h remaining
+    const delays: number[] = [];
+    const scheduler = scheduleBackupTick({
+      database: fakeDatabase(async () => ({ completedAt: successAt })),
+      enqueue: async () => undefined,
+      now: () => now,
+      idlePollMs: 1_000,
+      setTimeout: (_next, delay) => { delays.push(delay); return 1 as never; },
+      clearTimeout: () => undefined,
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(delays).toEqual([3_600_000]);
+    scheduler.close();
+  });
+
+  it("re-arms from persisted state after a run instead of stacking a fixed interval", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const delays: number[] = [];
+    let callback: (() => void) | undefined;
+    let queries = 0;
+    let enqueued = 0;
+    const scheduler = scheduleBackupTick({
+      database: fakeDatabase(async () => {
+        queries += 1;
+        return queries === 1 ? null : { completedAt: new Date(now.getTime() - dayMs + 500) };
+      }),
+      enqueue: async () => { enqueued += 1; },
+      now: () => now,
+      idlePollMs: 1_000,
+      setTimeout: (next, delay) => { callback = next; delays.push(delay); return delays.length as never; },
+      clearTimeout: () => undefined,
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(delays).toEqual([1_000]);
+
+    callback?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(enqueued).toBe(1);
+    expect(queries).toBe(2);
+    expect(delays).toEqual([1_000, 500]); // 24h from the persisted success minus the 500ms already elapsed
+    scheduler.close();
+  });
+
+  it("cancels the pending timer on close and enqueues nothing afterwards", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const delays: number[] = [];
+    const cleared: number[] = [];
+    let callback: (() => void) | undefined;
+    let enqueued = 0;
+    const scheduler = scheduleBackupTick({
+      database: fakeDatabase(async () => null),
+      enqueue: async () => { enqueued += 1; },
+      now: () => now,
+      idlePollMs: 1_000,
+      setTimeout: (next, delay) => { callback = next; delays.push(delay); return delays.length as never; },
+      clearTimeout: (timer) => { cleared.push(timer as unknown as number); },
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(delays).toEqual([1_000]);
+    scheduler.close();
+    expect(cleared).toEqual([1]);
+
+    callback?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(enqueued).toBe(0);
+  });
+
+  it("reports an arm query failure, schedules a retry, and resumes from persisted state", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const delays: number[] = [];
+    const errors: unknown[] = [];
+    let callback: (() => void) | undefined;
+    let queries = 0;
+    const scheduler = scheduleBackupTick({
+      database: fakeDatabase(async () => {
+        queries += 1;
+        if (queries === 1) throw new Error("transient postgres outage");
+        return null;
+      }),
+      enqueue: async () => undefined,
+      now: () => now,
+      idlePollMs: 1_000,
+      retryMs: 25,
+      setTimeout: (next, delay) => { callback = next; delays.push(delay); return delays.length as never; },
+      clearTimeout: () => undefined,
+      onError: (error) => errors.push(error),
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(errors).toHaveLength(1);
+    expect(delays).toEqual([25]);
+
+    callback?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(queries).toBe(2);
+    expect(delays).toEqual([25, 1_000]);
+    scheduler.close();
   });
 });

@@ -4,8 +4,12 @@ import { createReadStream, existsSync } from "node:fs";
 import { rename, rm, readdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { Queue, Worker } from "bullmq";
+
 import { DEFAULT_BACKUP_RETENTION_COUNT, type BackupConfig } from "@bet-stats/config";
 import type { PrismaClient } from "@bet-stats/database";
+
+import { redisConnection } from "../queues/index.js";
 
 export type BackupTrigger = "SCHEDULED" | "MANUAL";
 export type BackupOffsiteStatus = "NOT_CONFIGURED" | "COPIED" | "DEGRADED";
@@ -355,4 +359,103 @@ export async function runBackup(input: RunBackupInput): Promise<BackupRunResult>
   }
 
   return { runId, status: "SUCCEEDED", offsiteStatus, durationMs, fileName, byteSize, sha256, ...(offsiteError ? { offsiteError } : {}) };
+}
+
+// --- bet-stats-backup queue + daily persisted-state scheduler ------------------
+
+export type BackupJobData = Readonly<{ trigger: BackupTrigger }>;
+
+export function backupQueue(prefix = "bet-stats"): string {
+  if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) throw new Error("Queue prefix contains unsupported characters");
+  return `${prefix}-backup`;
+}
+
+export function createBackupQueue(input: { redisUrl: string; prefix?: string }) {
+  const queue = new Queue<BackupJobData>(backupQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
+  return {
+    enqueue: (data: BackupJobData) => queue.add("backup", data, {
+      attempts: 1,
+      removeOnComplete: { age: 86_400, count: 1_000 },
+      removeOnFail: { age: 604_800, count: 5_000 },
+    }),
+    close: () => queue.close(),
+  };
+}
+
+/** Concurrency 1: dumps and drills are host-serialized. Dispatches on job.name — Plan 02 adds the "drill" name. */
+export function createBackupWorker(input: { redisUrl: string; prefix?: string; execute: (data: BackupJobData) => Promise<unknown> }) {
+  return new Worker<BackupJobData>(backupQueue(input.prefix), async (job) => {
+    if (job.name === "backup") return input.execute(job.data);
+    throw Object.assign(new Error("UNSUPPORTED_BACKUP_JOB"), { code: "UNSUPPORTED_BACKUP_JOB" });
+  }, { connection: redisConnection(input.redisUrl), concurrency: 1 });
+}
+
+export const BACKUP_INTERVAL_MS = 86_400_000;
+const MAX_TIMER_DELAY = 2 ** 31 - 1;
+
+export type BackupTickScheduler = Readonly<{ close(): void; refresh(): Promise<void> }>;
+
+/**
+ * Arms each backup tick from persisted state (the latest SUCCEEDED BackupRun
+ * completedAt + 24h), not a self-anchored interval — the pattern is
+ * self-healing across restarts with no cron library and no BullMQ v5 repeat
+ * option (removed in v6). No success on record ⇒ arm at idlePollMs so the
+ * first backup happens soon after worker start.
+ */
+export function scheduleBackupTick(input: {
+  database: Pick<PrismaClient, "backupRun">;
+  enqueue: (data: BackupJobData) => Promise<unknown>;
+  now?: () => Date;
+  setTimeout?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout>;
+  clearTimeout?: (timer: ReturnType<typeof setTimeout>) => void;
+  onError?: (error: unknown) => void;
+  idlePollMs?: number;
+  retryMs?: number;
+  intervalMs?: number;
+}): BackupTickScheduler {
+  const now = input.now ?? (() => new Date());
+  const setTimer = input.setTimeout ?? setTimeout;
+  const clearTimer = input.clearTimeout ?? clearTimeout;
+  const intervalMs = input.intervalMs ?? BACKUP_INTERVAL_MS;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let closed = false;
+
+  const arm = async (): Promise<void> => {
+    if (closed) return;
+    if (timer) clearTimer(timer);
+    try {
+      const row = await input.database.backupRun.findFirst({
+        where: { status: "SUCCEEDED" },
+        orderBy: { completedAt: "desc" },
+        select: { completedAt: true },
+      });
+      if (closed) return;
+      const rawDelay = row?.completedAt ? Math.max(0, row.completedAt.getTime() + intervalMs - now().getTime()) : (input.idlePollMs ?? 1_000);
+      const delay = Math.min(MAX_TIMER_DELAY, rawDelay);
+      timer = setTimer(() => { void run().catch(input.onError); }, delay);
+    } catch (error) {
+      input.onError?.(error);
+      if (!closed) timer = setTimer(() => { void arm(); }, input.retryMs ?? 1_000);
+    }
+  };
+
+  const run = async (): Promise<void> => {
+    if (closed) return;
+    try {
+      await input.enqueue({ trigger: "SCHEDULED" });
+      await arm();
+    } catch (error) {
+      input.onError?.(error);
+      if (!closed) timer = setTimer(() => { void run().catch(input.onError); }, input.retryMs ?? 1_000);
+    }
+  };
+
+  void arm();
+  return {
+    close: () => {
+      closed = true;
+      if (timer) clearTimer(timer);
+    },
+    refresh: arm,
+  };
 }

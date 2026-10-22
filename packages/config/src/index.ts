@@ -101,3 +101,64 @@ export function readPrivacyRetentionConfig(input: Record<string, string | undefi
     effectiveAt: effectiveAt ? effectiveAt : undefined,
   };
 }
+
+export type BackupConfig = {
+  enabled: boolean;
+  dir?: string | undefined;
+  offsiteDir?: string | undefined;
+  retentionCount?: number | undefined;
+  drillIntervalHours?: number | undefined;
+  pgBinDir?: string | undefined;
+  pgContainer?: string | undefined;
+  pgUser?: string | undefined;
+  pgDb?: string | undefined;
+};
+
+export const DEFAULT_BACKUP_RETENTION_COUNT = 14;
+export const DEFAULT_BACKUP_DRILL_INTERVAL_HOURS = 168;
+
+function isAbsolutePath(value: string): boolean {
+  // Drive-rooted (C:\ or C:/), POSIX root, or UNC-ish //server — nothing else counts.
+  return /^(?:[A-Za-z]:[\\/]|[\\/]{1,2})/.test(value);
+}
+
+function readAbsoluteDirectory(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed && isAbsolutePath(trimmed) ? trimmed : undefined;
+}
+
+function readNonEmpty(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function readBoundedInteger(value: string | undefined, minimum: number, maximum: number): number | undefined {
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= minimum && parsed <= maximum ? parsed : undefined;
+}
+
+/**
+ * Reads only explicit backup inputs (opt-in per D-04). Invalid or absent inputs
+ * remain absent so callers deterministically fail closed instead of guessing a
+ * directory, a retention count, or a pg identity. BACKUP_* keys are deliberately
+ * absent from the production-required superRefine: backups are opt-in, so only
+ * shape validation applies here.
+ */
+export function readBackupConfig(input: Record<string, string | undefined>): BackupConfig {
+  return {
+    enabled: input.BACKUP_ENABLED === "true" || input.BACKUP_ENABLED === "1",
+    dir: readAbsoluteDirectory(input.BACKUP_DIR),
+    offsiteDir: readAbsoluteDirectory(input.BACKUP_OFFSITE_DIR),
+    retentionCount: input.BACKUP_RETENTION_COUNT === undefined
+      ? DEFAULT_BACKUP_RETENTION_COUNT
+      : readBoundedInteger(input.BACKUP_RETENTION_COUNT, 1, 365),
+    drillIntervalHours: input.BACKUP_DRILL_INTERVAL_HOURS === undefined
+      ? DEFAULT_BACKUP_DRILL_INTERVAL_HOURS
+      : readBoundedInteger(input.BACKUP_DRILL_INTERVAL_HOURS, 1, 8_760),
+    pgBinDir: readNonEmpty(input.PG_BIN),
+    pgContainer: readNonEmpty(input.BACKUP_PG_CONTAINER),
+    pgUser: readNonEmpty(input.BACKUP_PG_USER),
+    pgDb: readNonEmpty(input.BACKUP_PG_DB),
+  };
+}

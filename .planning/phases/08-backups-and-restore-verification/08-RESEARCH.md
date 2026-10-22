@@ -517,7 +517,7 @@ Reuse the existing `Block` component verbatim (Russian title, `loading`/`error`/
 |----------|-------|
 | Framework | Vitest 4.1.11 (root devDependency), projects `unit` + `integration` [VERIFIED: vitest.config.ts:14-40] |
 | Config file | `vitest.config.ts` (root); integration = `tests/integration/**/*.test.ts`, `fileParallelism: false` |
-| Quick run | `pnpm vitest run --project unit` / targeted: `pnpm vitest run --project integration tests/integration/backup-drill.test.ts` (Node 24 via `.tools/node24` on PATH) |
+| Quick run | `pnpm vitest run --project unit` / targeted: `pnpm vitest run --project integration tests/integration/backup-restore-drill.test.ts` (Node 24 via `.tools/node24` on PATH) |
 | Full suite | `pnpm test` (unit + web) and `pnpm test:integration` (Docker required — harness pattern) |
 | Release gate | `pnpm verify:release` already chains schema validate → typecheck → unit → owned-container integration → build |
 
@@ -526,7 +526,7 @@ Reuse the existing `Block` component verbatim (Russian title, `loading`/`error`/
 | Req ID | Behavior | Test Type | Automated Command | File |
 |--------|----------|-----------|-------------------|------|
 | BAK-01 | `readBackupConfig` fail-closed gating (disabled/dir-missing/invalid retention) | unit | `pnpm vitest run --project unit packages/config` | `packages/config/src/index.test.ts` (extend) |
-| BAK-01 | retention rotation: prune to N after success only; never delete-before-success | unit | same | new `workers/data-sync/src/jobs/backup.test.ts` |
+| BAK-01 | retention rotation: prune to N after success only; never delete-before-success | unit | same | new `tests/unit/backup-job.test.ts` |
 | BAK-01 | robocopy exit-bitmask interpretation (0,1,3,7 pass; 8,16,ENOENT fail → DEGRADED) | unit | same | `backup.test.ts` |
 | BAK-01 | real `pg_dump -Fc` roundtrip + atomic rename + rotation on throwaway container | integration | `pnpm test:integration` (targeted filter) | new `tests/integration/backup-restore-drill.test.ts` |
 | BAK-02 | full drill: container → restore → deploy → status-at-head → checks → receipt → cleanup | integration | `pnpm test:integration` | `tests/integration/backup-restore-drill.test.ts` |
@@ -546,7 +546,7 @@ Reuse the existing `Block` component verbatim (Russian title, `loading`/`error`/
 
 ### Wave 0 Gaps
 - [ ] `tests/integration/backup-restore-drill.test.ts` — new harness test (needs Docker; follows `verify-release-integration.mjs` shape).
-- [ ] `workers/data-sync/src/jobs/backup.test.ts` + `backup-drill.test.ts` — unit-level orchestration tests with injected `docker`/`execFile` fakes (the job modules must accept injected exec functions, like `scheduleRetentionPurge` injects timers — keep testability symmetry).
+- [ ] `tests/unit/backup-job.test.ts` + `tests/unit/backup-drill.test.ts` — unit-level orchestration tests with injected `docker`/`execFile` fakes (the job modules must accept injected exec functions, like `scheduleRetentionPurge` injects timers — keep testability symmetry).
 - [ ] Extend `tests/integration/mutation-rejection.test.ts` with the two new receipt tables.
 - [ ] Web route test file exists for operations proxy (`route.test.ts` pattern is proven under `internal-api/privacy`) — add operations-POST cases.
 - [ ] No framework installs needed.

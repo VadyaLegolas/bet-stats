@@ -235,7 +235,9 @@ export async function runBackup(input: RunBackupInput): Promise<BackupRunResult>
     const identity = await resolvePgIdentity({ config, container: tools.container, exec });
     if (!identity) return recordFailure("PG_IDENTITY_UNRESOLVED");
     command = "docker";
-    args = ["exec", tools.container, "pg_dump", "--format=custom", "--no-password", "-U", identity.user, "-d", identity.db, "-f", "-"];
+    // pg_dump 18 treats `-f -` as a literal file named `-` (writes nothing to stdout,
+    // exit 0) — the archive flows through stdout only when -f is omitted entirely.
+    args = ["exec", tools.container, "pg_dump", "--format=custom", "--no-password", "-U", identity.user, "-d", identity.db];
   } else {
     command = tools.pgDump;
     args = ["--format=custom", "--no-password", `--file=${partialPath}`];

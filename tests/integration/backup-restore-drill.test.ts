@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readBackupConfig } from "@bet-stats/config";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import { runBackup, spawnBackupExec, type BackupExec } from "../../workers/data-sync/src/jobs/backup.js";
+import { DRILL_CONTAINER_PREFIX, runBackupDrill } from "../../workers/data-sync/src/jobs/backup-drill.js";
 
 const root = resolve(import.meta.dirname, "../..");
 const databaseRoot = resolve(root, "packages/database");
@@ -175,4 +176,83 @@ describe("backup dump and receipt drill", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ status: "FAILED", byteSize: null, sha256: null });
   });
+
+  it("restores the newest dump into an owned throwaway container and appends exactly one VERIFIED verification receipt", async () => {
+    const record: RecordedCall[] = [];
+    const config = readBackupConfig({ BACKUP_ENABLED: "true", BACKUP_DIR: backupDir, BACKUP_PG_CONTAINER: postgresName });
+
+    const result = await runBackupDrill({ config, database, exec: recordingExec({ record }) });
+
+    expect(result.overall, JSON.stringify({ failureReason: result.failureReason, checks: "see receipt" })).toBe("VERIFIED");
+    expect(dumpFilesIn(backupDir)).toHaveLength(1);
+    expect(result.backupFileName).toBe(dumpFilesIn(backupDir)[0]);
+
+    const rows = await database.backupVerificationReceipt.findMany({ orderBy: { createdAt: "asc" } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      overall: "VERIFIED",
+      containerCleanup: "REMOVED",
+      failureReason: null,
+      backupFileName: dumpFilesIn(backupDir)[0],
+    });
+    expect(rows[0]!.restoreDurationMs).toBeGreaterThan(0);
+    expect(rows[0]!.dbVersion).toContain("pg_restore (PostgreSQL)");
+    const checks = rows[0]!.checks as Record<string, { state?: string; exitCode?: number }>;
+    expect(checks.migrations?.state).toBe("AT_HEAD");
+    expect(checks.restore?.exitCode).toBe(0);
+
+    const restoreCall = record.find((call) => call.command === "docker" && call.args.includes("pg_restore") && call.args.includes("--exit-on-error"));
+    expect(restoreCall, "pg_restore must run with explicit identity and fail-closed flags").toBeDefined();
+    expect(restoreCall!.args).toEqual(expect.arrayContaining(["--no-owner", "--no-privileges", "--exit-on-error", "--no-password", "-U", "postgres", "-d", "bet_stats"]));
+    const deployCall = record.find((call) => call.args.includes("migrate") && call.args.includes("deploy"));
+    expect(deployCall, "migrate deploy must run against the throwaway container").toBeDefined();
+    expect(deployCall!.args).toEqual(expect.arrayContaining(["migrate", "deploy"]));
+    // Credentials only via child env — never argv.
+    const everything = JSON.stringify(record);
+    expect(everything).not.toContain("POSTGRES_PASSWORD=");
+    expect(everything).not.toContain("postgresql://");
+
+    // The owned throwaway container must be gone from `docker ps --all` (T-08-10).
+    const startCall = record.find((call) => call.command === "docker" && call.args[0] === "run" && call.args.some((arg) => String(arg).startsWith(DRILL_CONTAINER_PREFIX)));
+    expect(startCall, "the drill must start its own uniquely named container").toBeDefined();
+    const drillContainer = startCall!.args[startCall!.args.indexOf("--name") + 1]!;
+    expect(drillContainer.startsWith(DRILL_CONTAINER_PREFIX)).toBe(true);
+    expect(docker("ps", "--all", "--filter", `name=${drillContainer}`, "--format", "{{.Names}}")).toBe("");
+  }, 120_000);
+
+  it("records exactly one UNVERIFIED NO_BACKUP_FOUND receipt and starts no container for an empty BACKUP_DIR", async () => {
+    const dir = tempDir();
+    const record: RecordedCall[] = [];
+    const config = readBackupConfig({ BACKUP_ENABLED: "true", BACKUP_DIR: dir, BACKUP_PG_CONTAINER: postgresName });
+    const before = await database.backupVerificationReceipt.count();
+
+    const result = await runBackupDrill({ config, database, exec: recordingExec({ record }) });
+
+    expect(result.overall).toBe("UNVERIFIED");
+    expect(result.failureReason).toBe("NO_BACKUP_FOUND");
+    expect(result.containerCleanup).toBe("NOT_STARTED");
+    expect(record.some((call) => call.command === "docker" && call.args[0] === "run")).toBe(false);
+
+    const rows = await database.backupVerificationReceipt.findMany({ orderBy: { createdAt: "asc" } });
+    expect(rows).toHaveLength(before + 1);
+    expect(rows.at(-1)).toMatchObject({ overall: "UNVERIFIED", failureReason: "NO_BACKUP_FOUND", containerCleanup: "NOT_STARTED", backupFileName: null });
+  }, 60_000);
+
+  it("fails closed with PG_IDENTITY_UNRESOLVED and starts no container when neither config nor container env supply the identity", async () => {
+    const record: RecordedCall[] = [];
+    const config = readBackupConfig({ BACKUP_ENABLED: "true", BACKUP_DIR: backupDir, BACKUP_PG_CONTAINER: postgresName });
+    const before = await database.backupVerificationReceipt.count();
+
+    const result = await runBackupDrill({ config, database, exec: recordingExec({ record, blockPrintenv: true }) });
+
+    expect(result.overall).toBe("UNVERIFIED");
+    expect(result.failureReason).toBe("PG_IDENTITY_UNRESOLVED");
+    expect(result.containerCleanup).toBe("NOT_STARTED");
+    expect(record.some((call) => call.command === "docker" && call.args[0] === "run")).toBe(false);
+    expect(record.some((call) => call.args.includes("pg_restore"))).toBe(false);
+
+    const rows = await database.backupVerificationReceipt.findMany({ orderBy: { createdAt: "asc" } });
+    expect(rows).toHaveLength(before + 1);
+    expect(rows.at(-1)).toMatchObject({ overall: "UNVERIFIED", failureReason: "PG_IDENTITY_UNRESOLVED", containerCleanup: "NOT_STARTED", backupFileName: dumpFilesIn(backupDir)[0] });
+  }, 60_000);
 });

@@ -17,7 +17,7 @@ export type BackupOffsiteStatus = "NOT_CONFIGURED" | "COPIED" | "DEGRADED";
 export const SPAWN_PROBE_TIMEOUT_MS = 60_000;
 export const SPAWN_DUMP_TIMEOUT_MS = 1_800_000;
 
-export type BackupExecOptions = Readonly<{ env?: NodeJS.ProcessEnv | undefined; timeoutMs?: number | undefined }>;
+export type BackupExecOptions = Readonly<{ env?: NodeJS.ProcessEnv | undefined; cwd?: string | undefined; timeoutMs?: number | undefined }>;
 export type BackupExecResult = Readonly<{ code: number | undefined; stdout: Buffer; stderr: string; spawnError?: string | undefined }>;
 
 /** Child processes run with argv arrays only — never shell string interpolation. */
@@ -28,6 +28,7 @@ export const spawnBackupExec: BackupExec = {
     return new Promise((resolveResult) => {
       const child = spawn(command, [...args], {
         env: options?.env ?? process.env,
+        ...(options?.cwd ? { cwd: options.cwd } : {}),
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
       });

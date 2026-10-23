@@ -373,22 +373,40 @@ export function backupQueue(prefix = "bet-stats"): string {
 
 export function createBackupQueue(input: { redisUrl: string; prefix?: string }) {
   const queue = new Queue<BackupJobData>(backupQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
+  const add = (name: string, data: BackupJobData) => queue.add(name, data, {
+    attempts: 1,
+    removeOnComplete: { age: 86_400, count: 1_000 },
+    removeOnFail: { age: 604_800, count: 5_000 },
+  });
   return {
-    enqueue: (data: BackupJobData) => queue.add("backup", data, {
-      attempts: 1,
-      removeOnComplete: { age: 86_400, count: 1_000 },
-      removeOnFail: { age: 604_800, count: 5_000 },
-    }),
+    enqueue: (data: BackupJobData) => add("backup", data),
+    enqueueDrill: (data: BackupJobData) => add("drill", data),
     close: () => queue.close(),
   };
 }
 
-/** Concurrency 1: dumps and drills are host-serialized. Dispatches on job.name — Plan 02 adds the "drill" name. */
-export function createBackupWorker(input: { redisUrl: string; prefix?: string; execute: (data: BackupJobData) => Promise<unknown> }) {
-  return new Worker<BackupJobData>(backupQueue(input.prefix), async (job) => {
+export type BackupJobDispatcher = (job: Readonly<{ name: string; data: BackupJobData }>) => Promise<unknown>;
+
+/**
+ * Dispatches on job.name — "backup" and "drill" share the concurrency-1 worker
+ * (dumps and drills are host-serialized); anything else fails closed without a
+ * second Redis connection. Extracted from createBackupWorker so the routing is
+ * unit-provable without Redis.
+ */
+export function createBackupJobDispatcher(input: { execute: (data: BackupJobData) => Promise<unknown>; executeDrill?: ((data: BackupJobData) => Promise<unknown>) | undefined }): BackupJobDispatcher {
+  return async (job) => {
     if (job.name === "backup") return input.execute(job.data);
+    if (job.name === "drill") {
+      if (!input.executeDrill) throw Object.assign(new Error("UNSUPPORTED_BACKUP_JOB"), { code: "UNSUPPORTED_BACKUP_JOB" });
+      return input.executeDrill(job.data);
+    }
     throw Object.assign(new Error("UNSUPPORTED_BACKUP_JOB"), { code: "UNSUPPORTED_BACKUP_JOB" });
-  }, { connection: redisConnection(input.redisUrl), concurrency: 1 });
+  };
+}
+
+/** Concurrency 1: dumps and drills are host-serialized. Dispatches on job.name. */
+export function createBackupWorker(input: { redisUrl: string; prefix?: string; execute: (data: BackupJobData) => Promise<unknown>; executeDrill?: ((data: BackupJobData) => Promise<unknown>) | undefined }) {
+  return new Worker<BackupJobData>(backupQueue(input.prefix), createBackupJobDispatcher(input), { connection: redisConnection(input.redisUrl), concurrency: 1 });
 }
 
 export const BACKUP_INTERVAL_MS = 86_400_000;

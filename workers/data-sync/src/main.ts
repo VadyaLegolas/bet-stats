@@ -1,7 +1,7 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { dependencyReadiness, readBackupConfig, readServerConfig, type BackupConfig } from "@bet-stats/config";
+import { dependencyReadiness, readBackupConfig, readServerConfig, DEFAULT_BACKUP_DRILL_INTERVAL_HOURS, type BackupConfig } from "@bet-stats/config";
 import { createPrismaBacktestReceiptRepository, createPrismaClient, createPrismaForecastRepository, createProviderRoutingRepository, createReplayProviderPolicyRepository, createSettlementPipelineService, DEFAULT_REPLAY_PROVIDER_POLICIES } from "@bet-stats/database";
 import { currentForecastConfigHash, ForecastOrchestrator } from "@bet-stats/domain";
 import { ApiFootballClient, FootballDataOrgClient, type FixtureProvider, type ResultProvider, type StandingsProvider } from "@bet-stats/football-data";
@@ -14,6 +14,7 @@ import { createSettlementJobHandler } from "./jobs/settlement.js";
 import { reconcileBacktestDelivery, runBacktestPlan } from "./jobs/backtests.js";
 import { scheduleRetentionPurge } from "./jobs/retention-purge.js";
 import { backupQueue, createBackupQueue, createBackupWorker, runBackup, scheduleBackupTick } from "./jobs/backup.js";
+import { runBackupDrill, scheduleDrillTick } from "./jobs/backup-drill.js";
 import { createBacktestQueue, createBacktestWorker, createEnrichmentQueue, createEnrichmentSchedule, createEnrichmentWorker, createReplayWorker, createSettlementQueue, createSettlementWorker, type EnrichmentJobData, type ReplayJobData } from "./queues/index.js";
 import { createDurableProviderCircuitRegistry } from "./resilience/circuits.js";
 
@@ -94,8 +95,10 @@ export function startReplayWorker(input: { databaseUrl: string; redisUrl: string
 
 /**
  * Backup runtime composition root. Enabled config with a BACKUP_DIR arms the
- * daily persisted-state tick on the bet-stats-backup queue; anything else
- * logs backup.disabled and leaves backups honestly unconfigured (D-04).
+ * daily persisted-state backup tick plus the weekly drill tick on the
+ * bet-stats-backup queue; anything else logs backup.disabled and leaves
+ * backups honestly unconfigured (D-04). Both ticks are armed only on the
+ * enabled path — no timers exist when backups are off.
  */
 export function startBackupRuntime(input: { databaseUrl: string; redisUrl: string; prefix?: string; backupConfig: BackupConfig; log?: (event: Readonly<Record<string, unknown>>) => void }) {
   const log = input.log ?? ((event: Readonly<Record<string, unknown>>) => console.info(JSON.stringify(event)));
@@ -110,16 +113,25 @@ export function startBackupRuntime(input: { databaseUrl: string; redisUrl: strin
     redisUrl: input.redisUrl,
     ...(input.prefix ? { prefix: input.prefix } : {}),
     execute: (data) => runBackup({ config, database, trigger: data.trigger, logger: log }),
+    executeDrill: () => runBackupDrill({ config, database, logger: log }),
   });
   const scheduler = scheduleBackupTick({
     database,
     enqueue: queue.enqueue,
     onError: (error) => log({ event: "backup.tick_failed", error: error instanceof Error ? error.message : "UNKNOWN" }),
   });
-  log({ event: "backup.armed", queue: backupQueue(input.prefix), intervalHours: 24, dir: config.dir });
+  const drillIntervalHours = config.drillIntervalHours ?? DEFAULT_BACKUP_DRILL_INTERVAL_HOURS;
+  const drillScheduler = scheduleDrillTick({
+    database,
+    enqueue: queue.enqueueDrill,
+    intervalMs: drillIntervalHours * 3_600_000,
+    onError: (error) => log({ event: "backup.drill_tick_failed", error: error instanceof Error ? error.message : "UNKNOWN" }),
+  });
+  log({ event: "backup.armed", queue: backupQueue(input.prefix), intervalHours: 24, drillIntervalHours, dir: config.dir });
   return {
     async close() {
       scheduler.close();
+      drillScheduler.close();
       await worker.close();
       await queue.close();
       await database.$disconnect();

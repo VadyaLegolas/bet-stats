@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { redactSecrets, type BackupConfig } from "@bet-stats/config";
+import { redactSecrets, DEFAULT_BACKUP_DRILL_INTERVAL_HOURS, type BackupConfig } from "@bet-stats/config";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 
 import {
@@ -15,6 +15,7 @@ import {
   SPAWN_PROBE_TIMEOUT_MS,
   type BackupExec,
   type BackupFs,
+  type BackupJobData,
   type PgIdentity,
 } from "./backup.js";
 
@@ -439,4 +440,74 @@ export async function runBackupDrill(input: RunBackupDrillInput): Promise<Backup
 
   // (7) Exactly one immutable receipt — the durable fact Plan 03 projects.
   return record(outcome);
+}
+
+/** Weekly cadence default (D-10): BACKUP_DRILL_INTERVAL_HOURS, 168h when unset. */
+export const DRILL_INTERVAL_MS = DEFAULT_BACKUP_DRILL_INTERVAL_HOURS * 3_600_000;
+const MAX_TIMER_DELAY = 2 ** 31 - 1;
+
+export type DrillTickScheduler = Readonly<{ close(): void; refresh(): Promise<void> }>;
+
+/**
+ * Arms each drill tick from persisted state (D-03): the newest
+ * BackupVerificationReceipt completedAt + drillIntervalMs — any drill outcome
+ * (VERIFIED, FAILED, UNVERIFIED) resets the cadence, so a failing deployment
+ * drills again weekly rather than never. No receipt on record ⇒ idlePollMs, so
+ * a never-verified deployment drills soon after worker start without operator
+ * action. The callback enqueues the "drill" job with the trigger discriminator
+ * only (Pitfall 8 — never a credential or URL) and re-arms from persisted
+ * state. Structural copy of scheduleBackupTick/scheduleRetentionPurge.
+ */
+export function scheduleDrillTick(input: {
+  database: Pick<PrismaClient, "backupVerificationReceipt">;
+  enqueue: (data: BackupJobData) => Promise<unknown>;
+  now?: () => Date;
+  setTimeout?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout>;
+  clearTimeout?: (timer: ReturnType<typeof setTimeout>) => void;
+  onError?: (error: unknown) => void;
+  idlePollMs?: number;
+  retryMs?: number;
+  intervalMs?: number;
+}): DrillTickScheduler {
+  const now = input.now ?? (() => new Date());
+  const setTimer = input.setTimeout ?? setTimeout;
+  const clearTimer = input.clearTimeout ?? clearTimeout;
+  const intervalMs = input.intervalMs ?? DRILL_INTERVAL_MS;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let closed = false;
+
+  const arm = async (): Promise<void> => {
+    if (closed) return;
+    if (timer) clearTimer(timer);
+    try {
+      const row = await input.database.backupVerificationReceipt.findFirst({ orderBy: { completedAt: "desc" }, select: { completedAt: true } });
+      if (closed) return;
+      const rawDelay = row?.completedAt ? Math.max(0, row.completedAt.getTime() + intervalMs - now().getTime()) : (input.idlePollMs ?? 1_000);
+      const delay = Math.min(MAX_TIMER_DELAY, rawDelay);
+      timer = setTimer(() => { void run().catch(input.onError); }, delay);
+    } catch (error) {
+      input.onError?.(error);
+      if (!closed) timer = setTimer(() => { void arm(); }, input.retryMs ?? 1_000);
+    }
+  };
+
+  const run = async (): Promise<void> => {
+    if (closed) return;
+    try {
+      await input.enqueue({ trigger: "SCHEDULED" });
+      await arm();
+    } catch (error) {
+      input.onError?.(error);
+      if (!closed) timer = setTimer(() => { void run().catch(input.onError); }, input.retryMs ?? 1_000);
+    }
+  };
+
+  void arm();
+  return {
+    close: () => {
+      closed = true;
+      if (timer) clearTimer(timer);
+    },
+    refresh: arm,
+  };
 }

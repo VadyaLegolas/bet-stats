@@ -16,7 +16,7 @@
 ### Backups and Restore Verification (BAK)
 
 - [x] **BAK-01**: An operator can enable automated PostgreSQL backups (pg_dump custom format) with configurable retention and rotation.
-- [ ] **BAK-02**: A scheduled restore drill restores the latest backup into a throwaway PostgreSQL container, applies migrations, runs chain-integrity checks, and records a verification receipt.
+- [x] **BAK-02**: A scheduled restore drill restores the latest backup into a throwaway PostgreSQL container, applies migrations, runs chain-integrity checks, and records a verification receipt.
 - [ ] **BAK-03**: Backup and restore-verification status (last success, age, failures) is visible in the operations center without exposing secrets; never-verified and stale backups render as explicit non-green states.
 
 ### Degradation Alerting (ALRT)
@@ -100,7 +100,7 @@ _Milestone v1.1 roadmap (2026-10-19): every requirement maps to exactly one phas
 | CI-03 | Phase 7 | Complete |
 | CI-04 | Phase 7 | Complete |
 | BAK-01 | Phase 8 | Complete |
-| BAK-02 | Phase 8 | Pending |
+| BAK-02 | Phase 8 | Complete |
 | BAK-03 | Phase 8 | Pending |
 | ALRT-01 | Phase 9 | Pending |
 | ALRT-02 | Phase 9 | Pending |

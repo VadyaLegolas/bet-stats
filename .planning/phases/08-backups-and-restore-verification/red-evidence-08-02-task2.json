@@ -1,0 +1,26 @@
+{
+  "plan": "08-02",
+  "task": 2,
+  "phase": "RED",
+  "command": "pnpm vitest run --project unit tests/unit/backup-drill.test.ts",
+  "exitCode": 1,
+  "targetFile": "tests/unit/backup-drill.test.ts",
+  "targetTest": "runBackupDrill fail-closed states > records FAILED CHAIN_INTEGRITY_FAILED when a restored table count falls below the captured source count",
+  "expected": "restored < captured -> overall FAILED CHAIN_INTEGRITY_FAILED with parity.Team {state FAILED, delta -1}; restored > captured -> VERIFIED with positive delta recorded; zero-source table -> nonEmpty SKIPPED (never PASSED); pg_restore non-zero -> FAILED with redacted length-bounded excerpt; fk-orphan scan failing on orphans; receipt checks JSON carrying sourceCounts/nonEmpty/fkOrphans/curated/parity; captureSourceCounts one UNION ALL pass; runChainIntegrityChecks pg_constraint-driven scan with IS NOT NULL guards and curated supersession checks",
+  "actual": "captureSourceCounts/runChainIntegrityChecks missing entirely (imported as undefined -> 'is not a function'); drill returns VERIFIED regardless of restored counts (checks.nonEmpty/parity/fkOrphans/curated/sourceCounts all undefined in receipts); redactDrillExcerpt kept the 'postgresql://' scheme prefix in the restore stderr excerpt",
+  "report": {
+    "discovered": 12,
+    "failed": 10,
+    "passed": 2,
+    "note": "The 2 passing tests are fail-closed guard cases whose expected behavior Task 1 already exhibits (docker spawn error -> UNVERIFIED/DOCKER_UNAVAILABLE; unresolved pg identity -> no pg_restore). They are not the RED targets. All 10 RED-target tests failed on their planned behaviors.",
+    "failureClasses": [
+      "4x missing exports (captureSourceCounts, runChainIntegrityChecks 'is not a function') — direct contract tests",
+      "2x AssertionError: expected 'VERIFIED' to be 'FAILED' (restored < captured drill flow; fk-orphan drill flow)",
+      "2x AssertionError: checks entries undefined (parity delta, sourceCounts/nonEmpty/fkOrphans/curated in receipt JSON)",
+      "1x AssertionError: expected 'SKIPPED' behavior unavailable (zero-source table would have been PASSED)",
+      "1x AssertionError: restore stderr excerpt still contained 'postgresql://' after redaction"
+    ]
+  },
+  "semanticAssessment": "VALID RED. All 12 tests discovered and executed; the 10 RED-target tests failed on the planned assertions for the intended reason: chain-integrity checks, the source-count capture, the drill query wiring and the drill tick do not exist yet, so the drill always ends VERIFIED after migrations and the receipt checks JSON lacks the four evidence entries. No load, fixture, syntax, or collection fault. The two passing tests are deliberate regression guards, not the target. Machine classifier (gsd_run check tdd-red-evidence) unavailable in this environment (CLI not on PATH) — assessment performed manually per deviation protocol.",
+  "machineClassifier": "unavailable: gsd_run CLI not on PATH in the executor shell"
+}

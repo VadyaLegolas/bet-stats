@@ -4,17 +4,17 @@ milestone: v1.1
 current_phase: 8
 current_phase_name: Backups and Restore Verification
 status: executing
-stopped_at: Completed 08-01-PLAN.md (backup engine) — next: 08-02 restore drill
-last_updated: "2026-10-22T20:18:00.000Z"
-last_activity: 2026-10-22
-last_activity_desc: Phase 8 plan 08-01 (backup engine) complete
-state_head: 9c8ad16eb2f7f25b0acd1b0c94e5ee2026b2f6af
+stopped_at: Completed 08-02-PLAN.md (restore drill) — next: 08-03 operations visibility
+last_updated: "2026-10-23T13:35:00.000Z"
+last_activity: 2026-10-23
+last_activity_desc: Phase 8 plan 08-02 (restore drill) complete
+state_head: 8b5aa5bb1718a47b08b88abc6600069ac7a3ef54
 progress:
   total_phases: 10
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
-  percent: 10
+  completed_plans: 5
+  percent: 12
 milestone_name: Reliability, Model Quality and Value Experience
 ---
 
@@ -30,17 +30,17 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 8 (Backups and Restore Verification) — EXECUTING
-Plan: 2 of 3 (08-01 backup engine complete)
+Plan: 3 of 3 (08-01 backup engine and 08-02 restore drill complete)
 Status: Executing Phase 8
-Last activity: 2026-10-22 — 08-01 complete: fail-closed config, append-only BackupRun receipts, pg_dump engine, retention rotation, robocopy off-host, daily persisted-state scheduler (9 commits)
+Last activity: 2026-10-23 — 08-02 complete: append-only BackupVerificationReceipt, fail-closed runBackupDrill (throwaway container restore, migrations at head, chain-integrity checks recorded in the receipt), weekly persisted-state drill scheduler and "drill" worker dispatch (7 commits across two sessions)
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [██░░░░░░░░] 12%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 92
+- Total plans completed: 93
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -55,7 +55,7 @@ Progress: [█░░░░░░░░░] 10%
 | 05 | 16 | - | - |
 | 06 | 11 | - | - |
 | 7 | 3 | - | - |
-| 08 | 1 | - | - |
+| 08 | 2 | - | - |
 
 **Recent Trend:**
 
@@ -124,6 +124,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 07 P1 | 151min | 4 tasks | 40 files |
 | Phase 07-ci-pipeline-quality-gates P07-02 | 74min | 5 tasks | 6 files |
 | Phase 08 P01 | 70min | 3 tasks | 18 files |
+| Phase 08 P02 | 40min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -241,6 +242,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 08]: Added BACKUP_PG_CONTAINER config key and BackupRun.reason column — both required by plan acceptance (container-targeted docker fallback + reason codes persisted on FAILED rows) (08-01)
 - [Phase 08]: Daily backup tick is armed from persisted state (latest SUCCEEDED completedAt + 24h) with idle-poll before first success — no cron library, no BullMQ v5 repeat option (08-01)
 - [Operating rule, gsd_run CLI]: `gsd_run`/`gsd-tools` are not on PATH in this executor shell — state/roadmap/requirements tracking and final docs commits are done as manual file edits + plain git commits (07-01..07-03 and 08-01 precedent)
+- [Phase 08]: Drill tick arms from the newest BackupVerificationReceipt.completedAt regardless of `overall` (any outcome resets the weekly cadence); no receipt yet ⇒ idle poll (08-02)
+- [Phase 08]: `SOURCE_COUNTS_UNAVAILABLE` (UNVERIFIED, no container) distinguishes failed source capture from `CHAIN_INTEGRITY_FAILED` (FAILED) for restored-DB check failures — parity signal lives in the checks JSON (08-02)
+- [Phase 08]: FK-orphan scan uses per-key `IS NOT NULL` guards — nullable `supersedes*Id` FKs would false-fail the naive predicate (hardened beyond research Q5) (08-02)
+- [Phase 08]: Receipt checks JSON is the immutable audit trail — verified by UPDATE/DELETE rejection tests against a throwaway Postgres, not by sampling (08-02)
 
 ### Pending Todos
 
@@ -343,6 +348,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-20T21:14:55.693Z
-Stopped at: Phase 7 complete, ready to plan Phase 8
+Last session: 2026-10-23T13:33:34Z
+Stopped at: Phase 8 plan 08-02 complete, ready to plan 08-03
 Resume file: None

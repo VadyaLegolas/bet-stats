@@ -54,7 +54,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 **Plans**: 3 plans
 **Plan list**:
 - [x] 08-01-PLAN.md — Backup engine: fail-closed config, pg_dump -Fc + BackupRun receipt, rotation after success, robocopy off-host, daily persisted-state scheduler
-- [ ] 08-02-PLAN.md — Restore drill: throwaway container restore, migrations at head, chain-integrity checks, immutable BackupVerificationReceipt, weekly scheduler
+- [x] 08-02-PLAN.md — Restore drill: throwaway container restore, migrations at head, chain-integrity checks, immutable BackupVerificationReceipt, weekly scheduler
 - [ ] 08-03-PLAN.md — Operations visibility: backups() read model with 5-state honesty, secret-free projection, manual triggers behind OperatorGuard, Russian UI block
 **UI hint**: no
 
@@ -191,7 +191,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 7. CI Pipeline & Quality Gates | 3/3 | Complete    | 2026-10-22 |
-| 8. Backups and Restore Verification | 1/3 | In progress | - |
+| 8. Backups and Restore Verification | 2/3 | In progress | - |
 | 9. Degradation Alerting | 0/0 | Not started | - |
 | 10. Performance Audit and Budgets | 0/0 | Not started | - |
 | 11. Dixon-Coles Model Version | 0/0 | Not started | - |

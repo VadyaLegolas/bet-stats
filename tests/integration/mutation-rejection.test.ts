@@ -152,4 +152,24 @@ describe("raw SQL mutation rejection across guarded tables", () => {
     await expectRowExists("SourceObservation", id("mut-result-obs"));
     await expect(prisma.$executeRawUnsafe(`DELETE FROM "SourceObservation" WHERE id=$1`, id("mut-result-obs"))).rejects.toThrow(/append-only/i);
   });
+
+  it("rejects BackupRun mutation and removal as immutable", async () => {
+    await expect(prisma.$executeRawUnsafe(
+      `INSERT INTO "BackupRun" (id,"startedAt","completedAt","durationMs",status,"offsiteStatus",trigger) VALUES ($1,now(),now(),1,'SUCCEEDED','NOT_CONFIGURED','MANUAL')`,
+      id("mut-backup-run"),
+    )).resolves.toBe(1);
+    await expect(prisma.$executeRawUnsafe(`UPDATE "BackupRun" SET status='FAILED' WHERE id=$1`, id("mut-backup-run"))).rejects.toThrow(/immutable/i);
+    await expectRowExists("BackupRun", id("mut-backup-run"));
+    await expect(prisma.$executeRawUnsafe(`DELETE FROM "BackupRun" WHERE id=$1`, id("mut-backup-run"))).rejects.toThrow(/immutable/i);
+  });
+
+  it("rejects BackupVerificationReceipt mutation and removal as immutable", async () => {
+    await expect(prisma.$executeRawUnsafe(
+      `INSERT INTO "BackupVerificationReceipt" (id,"restoreDurationMs",checks,"containerCleanup",overall,"startedAt","completedAt") VALUES ($1,0,$2::jsonb,'NOT_STARTED','UNVERIFIED',now(),now())`,
+      id("mut-verification-receipt"), JSON.stringify({ sourceCounts: {} }),
+    )).resolves.toBe(1);
+    await expect(prisma.$executeRawUnsafe(`UPDATE "BackupVerificationReceipt" SET overall='VERIFIED' WHERE id=$1`, id("mut-verification-receipt"))).rejects.toThrow(/immutable/i);
+    await expectRowExists("BackupVerificationReceipt", id("mut-verification-receipt"));
+    await expect(prisma.$executeRawUnsafe(`DELETE FROM "BackupVerificationReceipt" WHERE id=$1`, id("mut-verification-receipt"))).rejects.toThrow(/immutable/i);
+  });
 });

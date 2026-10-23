@@ -201,6 +201,15 @@ describe("backup dump and receipt drill", () => {
     expect(checks.migrations?.state).toBe("AT_HEAD");
     expect(checks.restore?.exitCode).toBe(0);
 
+    // Chain-integrity evidence (D-09) recorded in the receipt checks JSON.
+    const chain = checks as unknown as Record<string, Record<string, { state?: string; delta?: number }>>;
+    expect(checks.sourceCounts).toMatchObject({ League: 1 });
+    expect(chain.nonEmpty?.League).toMatchObject({ state: "PASSED", source: 1, restored: 1 });
+    expect(chain.nonEmpty?.Team?.state).toBe("SKIPPED");
+    expect(chain.fkOrphans?.state).toBe("PASSED");
+    expect(chain.curated?.state).toBe("PASSED");
+    expect(chain.parity?.League).toMatchObject({ state: "PASSED", delta: 0 });
+
     const restoreCall = record.find((call) => call.command === "docker" && call.args.includes("pg_restore") && call.args.includes("--exit-on-error"));
     expect(restoreCall, "pg_restore must run with explicit identity and fail-closed flags").toBeDefined();
     expect(restoreCall!.args).toEqual(expect.arrayContaining(["--no-owner", "--no-privileges", "--exit-on-error", "--no-password", "-U", "postgres", "-d", "bet_stats"]));

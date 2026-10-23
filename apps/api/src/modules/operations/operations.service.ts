@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException, Optional, type OnModuleDestroy } from "@nestjs/common";
+import { DEFAULT_BACKUP_DRILL_INTERVAL_HOURS, DEFAULT_BACKUP_RETENTION_COUNT, readBackupConfig, redactSecrets } from "@bet-stats/config";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 
 const CORRELATION = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/;
@@ -12,6 +13,94 @@ type FailureFact = { id: string; rootCause: string; impact: "BLOCKING" | "DEGRAD
 type DataQualityFact = { code: string; scope: string; count: number; firstOccurrence: Date; lastOccurrence: Date };
 type IncidentFact = { id: string; status: "OPEN" | "RESOLVED"; impact: "BLOCKING" | "DEGRADED"; summary: string; startedAt: Date; lastUpdatedAt: Date; correlationId: string | null };
 
+// --- Backup read model (BAK-03) ------------------------------------------------
+
+export type BackupState = "NOT_CONFIGURED" | "NEVER_VERIFIED" | "STALE" | "FAILED" | "HEALTHY";
+
+/** Raw repository rows (Dates intact) — state is computed at read time, never stored (T-08-15, D-14). */
+export type BackupRows = {
+  configured: boolean;
+  lastBackup: { fileName: string; byteSize: number | null; sha256: string | null; durationMs: number; completedAt: Date; status: string; offsiteStatus: string } | null;
+  lastDrill: { overall: string; completedAt: Date; restoreDurationMs: number; containerCleanup: string; failedChecks: string[] } | null;
+  retentionCount: number;
+  drillIntervalHours: number;
+};
+
+/** Closed, secret-free projection DTO: file names (basenames), sizes, timestamps, durations, reason codes and check outcomes only (D-15). */
+export type BackupFact = {
+  configured: boolean;
+  state: BackupState;
+  lastBackup: { fileName: string; byteSize: number | null; sha256: string | null; durationMs: number; completedAt: string; status: string; offsiteStatus: string } | null;
+  backupStale: boolean;
+  lastDrill: { overall: string; completedAt: string; restoreDurationMs: number; containerCleanup: string; failedChecks: string[] } | null;
+  drillStale: boolean;
+  retentionCount: number;
+  drillIntervalHours: number;
+};
+
+/** Daily cadence + 1h grace: a successful dump older than 25h renders STALE (D-14). */
+export const BACKUP_FRESH_MS = 25 * 3_600_000;
+/** Drill interval + 24h grace: an older receipt renders drill-stale (D-14). */
+export const DRILL_GRACE_MS = 24 * 3_600_000;
+const MAX_FAILED_CHECKS = 10;
+const FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,255}$/;
+
+/** System-generated dump names are basenames by construction; anything else
+ *  collapses to "unavailable" so a directory path can never cross the boundary. */
+function safeFileName(value: string | null): string | null {
+  if (!value) return null;
+  const base = value.split(/[\\/]/).pop() ?? "";
+  return FILE_NAME.test(base) ? base : "unavailable";
+}
+
+/** Check names are safe codes (kebab/underscore identifiers and table names);
+ *  anything else is stripped so receipt JSON keys cannot smuggle data out. */
+function safeCheckName(value: string): string { return value.replace(/[^A-Za-z0-9._-]/g, "").slice(0, 64); }
+
+/** Extracts the names of every FAILED entry from the receipt checks JSON
+ *  (bounded) — evidence names only, never the underlying excerpts. */
+export function failedDrillChecks(checks: unknown): string[] {
+  const failed: string[] = [];
+  const visit = (value: unknown, path: string) => {
+    if (failed.length >= MAX_FAILED_CHECKS) return;
+    if (Array.isArray(value)) { value.forEach((item, index) => visit(item, `${path}[${index}]`)); return; }
+    if (value !== null && typeof value === "object") {
+      const record = value as Record<string, unknown>;
+      if (record.state === "FAILED") { if (path) failed.push(safeCheckName(path)); return; }
+      for (const [key, entry] of Object.entries(record)) visit(entry, path ? `${path}.${key}` : key);
+    }
+  };
+  visit(checks, "");
+  return failed;
+}
+
+/** Five-state computation, fail-closed, always at read time (T-08-15/D-14):
+ *  green is impossible without a fresh successful backup AND a passing, fresh drill. */
+export function computeBackupFact(rows: BackupRows, now: Date): BackupFact {
+  const drillIntervalMs = rows.drillIntervalHours * 3_600_000;
+  const backupStale = !rows.lastBackup || now.getTime() - rows.lastBackup.completedAt.getTime() > BACKUP_FRESH_MS;
+  const drillStale = !rows.lastDrill || now.getTime() - rows.lastDrill.completedAt.getTime() > drillIntervalMs + DRILL_GRACE_MS;
+  const state: BackupState = !rows.configured
+    ? "NOT_CONFIGURED"
+    : !rows.lastDrill
+      ? "NEVER_VERIFIED"
+      : rows.lastDrill.overall !== "VERIFIED"
+        ? "FAILED"
+        : backupStale || drillStale
+          ? "STALE"
+          : "HEALTHY";
+  return {
+    configured: rows.configured,
+    state,
+    lastBackup: rows.lastBackup ? { ...rows.lastBackup, completedAt: iso(rows.lastBackup.completedAt)! } : null,
+    backupStale,
+    lastDrill: rows.lastDrill ? { ...rows.lastDrill, completedAt: iso(rows.lastDrill.completedAt)! } : null,
+    drillStale,
+    retentionCount: rows.retentionCount,
+    drillIntervalHours: rows.drillIntervalHours,
+  };
+}
+
 export interface OperationsRepository {
   readiness(): Promise<ReadinessFact>;
   providerHealth(since: Date): Promise<ProviderHealthFact[]>;
@@ -19,6 +108,7 @@ export interface OperationsRepository {
   failures(since: Date): Promise<FailureFact[]>;
   dataQuality(since: Date): Promise<DataQualityFact[]>;
   incidents(since: Date): Promise<IncidentFact[]>;
+  backups(): Promise<BackupRows>;
 }
 
 export type OperationsQuery = Readonly<{ page?: number; pageSize?: number; windowHours?: number; impact?: "BLOCKING" | "DEGRADED"; rootCause?: string }>;
@@ -42,9 +132,10 @@ export function createOperationsProjection(repository: OperationsRepository, now
   return {
     async overview(raw: OperationsQuery) {
       const query = validateQuery(raw);
-      const since = new Date(now().getTime() - query.windowHours * 3_600_000);
-      const [readiness, providerHealth, quotas, rawFailures, dataQuality, incidents] = await Promise.all([
-        repository.readiness(), repository.providerHealth(since), repository.quotas(since), repository.failures(since), repository.dataQuality(since), repository.incidents(since),
+      const current = now();
+      const since = new Date(current.getTime() - query.windowHours * 3_600_000);
+      const [readiness, providerHealth, quotas, rawFailures, dataQuality, incidents, backupRows] = await Promise.all([
+        repository.readiness(), repository.providerHealth(since), repository.quotas(since), repository.failures(since), repository.dataQuality(since), repository.incidents(since), repository.backups(),
       ]);
       const failures = rawFailures
         .map((failure) => ({ ...failure, rootCause: safeCode(failure.rootCause), scope: safeIdentity(failure.scope), correlationId: safeCorrelation(failure.correlationId) }))
@@ -68,6 +159,9 @@ export function createOperationsProjection(repository: OperationsRepository, now
         failures: { groups: [...grouped.values()].sort((left, right) => left.rootCause.localeCompare(right.rootCause) || (left.impact === right.impact ? 0 : left.impact === "BLOCKING" ? -1 : 1) || left.scope.localeCompare(right.scope)).slice(0, MAX_GROUPS).map((group) => ({ rootCause: group.rootCause, impact: group.impact, scope: group.scope, count: group.count, firstOccurrence: iso(group.first)!, lastOccurrence: iso(group.last)!, retryable: group.retryable, correlationIds: [...group.correlations].slice(0, 5) })), jobs, pagination: { page: query.page, pageSize: query.pageSize, total, start: total === 0 ? 0 : offset + 1, end: Math.min(total, offset + query.pageSize), pages: Math.ceil(total / query.pageSize) } },
         dataQuality: dataQuality.slice(0, MAX_GROUPS).map((fact) => ({ code: safeCode(fact.code), scope: safeIdentity(fact.scope), count: fact.count, firstOccurrence: iso(fact.firstOccurrence)!, lastOccurrence: iso(fact.lastOccurrence)! })),
         incidents: incidents.slice(0, MAX_GROUPS).map((fact) => ({ id: safeIdentity(fact.id), status: fact.status, impact: fact.impact, summary: safeCode(fact.summary, "PROVIDER_DEGRADED"), startedAt: iso(fact.startedAt)!, lastUpdatedAt: iso(fact.lastUpdatedAt)!, correlationId: safeCorrelation(fact.correlationId) })),
+        // D-15: belt-and-braces redactSecrets pass — the closed BackupFact carries
+        // basenames, sizes, instants, durations and reason codes, nothing else.
+        backups: redactSecrets(computeBackupFact(backupRows, current)) as BackupFact,
       };
     },
   };
@@ -101,6 +195,22 @@ export function createPrismaOperationsRepository(database: PrismaClient, clock =
     async incidents(since) {
       const circuits = await database.providerCircuitState.findMany({ where: { state: { in: ["OPEN", "HALF_OPEN"] }, updatedAt: { gte: since } }, orderBy: [{ updatedAt: "desc" }, { id: "asc" }], take: MAX_GROUPS, select: { id: true, provider: true, endpointFamily: true, state: true, openedAt: true, updatedAt: true } });
       return circuits.map((row) => ({ id: row.id, status: "OPEN" as const, impact: row.state === "OPEN" ? "BLOCKING" as const : "DEGRADED" as const, summary: `CIRCUIT_${row.state}`, startedAt: row.openedAt ?? row.updatedAt, lastUpdatedAt: row.updatedAt, correlationId: null }));
+    },
+    async backups() {
+      // Explicit selects on closed scalars only — raw rows, metadata and logs
+      // never cross the boundary (Phase 06 projection discipline, T-08-13).
+      const config = readBackupConfig(process.env);
+      const [lastSuccess, lastReceipt] = await Promise.all([
+        database.backupRun.findFirst({ where: { status: "SUCCEEDED" }, orderBy: [{ completedAt: "desc" }, { id: "desc" }], select: { fileName: true, byteSize: true, sha256: true, durationMs: true, completedAt: true, status: true, offsiteStatus: true } }),
+        database.backupVerificationReceipt.findFirst({ orderBy: [{ completedAt: "desc" }, { id: "desc" }], select: { overall: true, completedAt: true, restoreDurationMs: true, containerCleanup: true, checks: true } }),
+      ]);
+      return {
+        configured: config.enabled && Boolean(config.dir),
+        lastBackup: lastSuccess ? { fileName: safeFileName(lastSuccess.fileName) ?? "unavailable", byteSize: lastSuccess.byteSize, sha256: lastSuccess.sha256, durationMs: lastSuccess.durationMs, completedAt: lastSuccess.completedAt, status: safeCode(lastSuccess.status, "UNKNOWN"), offsiteStatus: safeCode(lastSuccess.offsiteStatus, "NOT_CONFIGURED") } : null,
+        lastDrill: lastReceipt ? { overall: safeCode(lastReceipt.overall, "UNVERIFIED"), completedAt: lastReceipt.completedAt, restoreDurationMs: lastReceipt.restoreDurationMs, containerCleanup: safeCode(lastReceipt.containerCleanup, "FAILED"), failedChecks: failedDrillChecks(lastReceipt.checks) } : null,
+        retentionCount: config.retentionCount ?? DEFAULT_BACKUP_RETENTION_COUNT,
+        drillIntervalHours: config.drillIntervalHours ?? DEFAULT_BACKUP_DRILL_INTERVAL_HOURS,
+      };
     },
   };
 }

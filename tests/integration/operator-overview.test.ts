@@ -3,7 +3,7 @@ import { createHash, createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
 import { OperatorGuard } from "../../apps/api/src/modules/reconciliation/operator.guard.js";
-import { createOperationsProjection, OperationsService } from "../../apps/api/src/modules/operations/operations.service.js";
+import { computeBackupFact, createOperationsProjection, failedDrillChecks, OperationsService, type BackupRows } from "../../apps/api/src/modules/operations/operations.service.js";
 import { verifyIngressOperationsRequest } from "../../apps/web/app/internal-api/operations/[[...path]]/route.js";
 
 const CANARIES = [
@@ -36,6 +36,14 @@ function repository() {
     })) as never),
     dataQuality: vi.fn(async () => [{ code: "IDENTITY_AMBIGUOUS", scope: "FIXTURE", count: 2, firstOccurrence: new Date("2026-09-20T09:00:00.000Z"), lastOccurrence: new Date("2026-09-20T11:00:00.000Z"), unsafe: CANARIES }] as never),
     incidents: vi.fn(async () => [{ id: "incident-1", status: "OPEN", impact: "DEGRADED", summary: "Provider results delayed", startedAt: new Date("2026-09-20T10:00:00.000Z"), lastUpdatedAt: new Date("2026-09-20T11:00:00.000Z"), correlationId: "corr-incident", unsafe: CANARIES }] as never),
+    backups: vi.fn(async () => ({
+      configured: true,
+      lastBackup: { fileName: "football_prediction-20260920T100000Z.dump", byteSize: 4096, sha256: "d".repeat(64), durationMs: 3_200, completedAt: new Date("2026-09-20T10:00:00.000Z"), status: "SUCCEEDED", offsiteStatus: "COPIED" },
+      lastDrill: { overall: "VERIFIED", completedAt: new Date("2026-09-19T12:00:00.000Z"), restoreDurationMs: 9_000, containerCleanup: "REMOVED", failedChecks: [] },
+      retentionCount: 14,
+      drillIntervalHours: 168,
+      unsafe: CANARIES,
+    }) as never),
   };
 }
 
@@ -53,7 +61,7 @@ describe("operator overview", () => {
     const projection = createOperationsProjection(repository(), () => new Date("2026-09-20T12:00:00.000Z"));
     const overview = await projection.overview({ page: 1, pageSize: 25, windowHours: 24 });
 
-    expect(Object.keys(overview)).toEqual(["readiness", "providerHealth", "quotas", "failures", "dataQuality", "incidents"]);
+    expect(Object.keys(overview)).toEqual(["readiness", "providerHealth", "quotas", "failures", "dataQuality", "incidents", "backups"]);
     expect(overview.readiness).toEqual({ state: "DEGRADED", services: [{ name: "PostgreSQL", state: "AVAILABLE" }, { name: "Redis", state: "UNAVAILABLE" }], lastCheckedAt: "2026-09-20T12:00:00.000Z" });
     expect(overview.quotas[0]).toMatchObject({ used: 9, effectiveAllowance: 10, percentage: 90, criticalReservations: 2 });
     expect(overview.failures.groups[0]).toMatchObject({ rootCause: "UPSTREAM_5XX", impact: "BLOCKING", count: 1, retryable: true });
@@ -73,6 +81,92 @@ describe("operator overview", () => {
 
   it("keeps unauthorized callers at the uniform not-found boundary", () => {
     expect(() => new OperatorGuard("operator-secret").authorize("wrong-secret")).toThrow("Not found");
+  });
+});
+
+describe("backups read model (five-state, computed at read time)", () => {
+  const NOW = new Date("2026-09-20T12:00:00.000Z");
+  const hoursAgo = (hours: number) => new Date(NOW.getTime() - Math.round(hours * 3_600_000));
+  const rows = (overrides: Partial<BackupRows> = {}): BackupRows => ({
+    configured: true,
+    lastBackup: { fileName: "football_prediction-20260920T100000Z.dump", byteSize: 4096, sha256: "d".repeat(64), durationMs: 3_200, completedAt: hoursAgo(2), status: "SUCCEEDED", offsiteStatus: "COPIED" },
+    lastDrill: { overall: "VERIFIED", completedAt: hoursAgo(24), restoreDurationMs: 9_000, containerCleanup: "REMOVED", failedChecks: [] },
+    retentionCount: 14,
+    drillIntervalHours: 168,
+    ...overrides,
+  });
+  async function projected(backupRows: Record<string, unknown>) {
+    const repo = repository();
+    repo.backups.mockResolvedValueOnce(backupRows as never);
+    return createOperationsProjection(repo, () => NOW).overview({ page: 1, pageSize: 25, windowHours: 24 });
+  }
+
+  it("reports NOT_CONFIGURED when backups are disabled or BACKUP_DIR is absent", async () => {
+    const overview = await projected({ ...rows({ configured: false, lastBackup: null, lastDrill: null }), unsafe: CANARIES });
+    expect(overview.backups).toMatchObject({ configured: false, state: "NOT_CONFIGURED", lastBackup: null, lastDrill: null });
+    expect(flatten(overview.backups)).not.toMatch(/secret-token-canary|raw-payload-canary/);
+  });
+
+  it("reports NEVER_VERIFIED when enabled but no backup has ever run", async () => {
+    const overview = await projected(rows({ lastBackup: null, lastDrill: null }));
+    expect(overview.backups).toMatchObject({ state: "NEVER_VERIFIED", backupStale: true, drillStale: true, lastBackup: null, lastDrill: null });
+  });
+
+  it("reports NEVER_VERIFIED (non-green) when backup runs exist but zero receipts do", async () => {
+    const overview = await projected(rows({ lastDrill: null }));
+    expect(overview.backups.state).toBe("NEVER_VERIFIED");
+    expect(overview.backups.lastBackup?.status).toBe("SUCCEEDED");
+  });
+
+  it("reports HEALTHY when the backup is fresh (24h59m) and the drill passed and is fresh (191h59m)", async () => {
+    const overview = await projected(rows({ lastBackup: { ...rows().lastBackup!, completedAt: hoursAgo(24 + 59 / 60) }, lastDrill: { ...rows().lastDrill!, completedAt: hoursAgo(191 + 59 / 60) } }));
+    expect(overview.backups).toMatchObject({ state: "HEALTHY", backupStale: false, drillStale: false });
+  });
+
+  it("renders STALE when the last success is older than 25h (25h01m), even with a fresh VERIFIED drill", async () => {
+    const overview = await projected(rows({ lastBackup: { ...rows().lastBackup!, completedAt: hoursAgo(25 + 1 / 60) }, lastDrill: { ...rows().lastDrill!, completedAt: hoursAgo(1) } }));
+    expect(overview.backups).toMatchObject({ state: "STALE", backupStale: true, drillStale: false });
+  });
+
+  it("renders drill-stale STALE when the newest VERIFIED receipt exceeds interval (168h) + 24h grace (192h01m)", async () => {
+    const overview = await projected(rows({ lastDrill: { ...rows().lastDrill!, completedAt: hoursAgo(192 + 1 / 60) } }));
+    expect(overview.backups).toMatchObject({ state: "STALE", backupStale: false, drillStale: true });
+  });
+
+  it.each([["UNVERIFIED"], ["FAILED"]])("renders FAILED when the newest receipt overall is %s, even when fresh", async (overall) => {
+    const overview = await projected(rows({ lastDrill: { ...rows().lastDrill!, overall, completedAt: hoursAgo(1), failedChecks: overall === "FAILED" ? ["parity.Fixture", "fkOrphans"] : [] } }));
+    expect(overview.backups.state).toBe("FAILED");
+  });
+
+  it("emits only basenames and safe codes — no directory path and no connection-string scheme marker in the payload", async () => {
+    const overview = await projected({
+      ...rows({ lastBackup: { ...rows().lastBackup!, fileName: "football_prediction-20260920T100000Z.dump" } }),
+      dir: "D:\\Users\\Vlad\\bet-stats\\backups",
+      offsiteDir: "C:/Users/Vlad/OneDrive/backups",
+      unsafe: CANARIES,
+    });
+    const serialized = JSON.stringify(overview.backups);
+    expect(serialized).not.toMatch(/postgresql:\/\//i);
+    expect(serialized).not.toMatch(/\bredis:\/\//i);
+    expect(serialized).not.toMatch(/\bmongodb(\+srv)?:\/\//i);
+    expect(serialized).not.toMatch(/\bamqp:\/\//i);
+    expect(serialized).not.toMatch(/D:\\|C:\//);
+    expect(serialized).not.toMatch(/Users.Vlad/);
+    expect(serialized).not.toMatch(/secret-token-canary|raw-payload-canary|authorization-header-canary/);
+    expect(overview.backups.lastBackup?.fileName).toBe("football_prediction-20260920T100000Z.dump");
+  });
+
+  it("keeps the state computation read-time pure: staleness flips as the injected clock advances", () => {
+    const base = rows({ lastBackup: { ...rows().lastBackup!, completedAt: hoursAgo(24 + 59 / 60) } });
+    expect(computeBackupFact(base, NOW).state).toBe("HEALTHY");
+    expect(computeBackupFact(base, new Date(NOW.getTime() + 2 * 3_600_000)).state).toBe("STALE");
+  });
+
+  it("extracts FAILED check names from the receipt checks JSON and strips unsafe key characters", () => {
+    const checks = { restore: { state: "PASSED" }, migrations: { state: "AT_HEAD" }, chainIntegrity: true, nonEmpty: { Fixture: { state: "PASSED" } }, parity: { Fixture: { state: "FAILED", restored: 1 }, Team: { state: "FAILED", restored: 0 } }, fkOrphans: { state: "FAILED", total: 2 }, curated: { state: "PASSED" } };
+    expect(failedDrillChecks(checks)).toEqual(["parity.Fixture", "parity.Team", "fkOrphans"]);
+    expect(failedDrillChecks({ "evil\nkey": { state: "FAILED" } })).toEqual(["evilkey"]);
+    expect(failedDrillChecks({ deep: { nested: [{ state: "FAILED" }] } })).toEqual(["deep.nested0"]);
   });
 });
 

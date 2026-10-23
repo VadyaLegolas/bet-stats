@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  backupStateLabel,
   confidenceComponentLabel,
   evidenceLimitationLabel,
   financialOutcomeLabel,
@@ -11,6 +12,7 @@ import {
   MARKET_LABELS,
   oddsMarketLabel,
   oddsSelectionLabel,
+  offsiteStateLabel,
   providerReasonLabel,
   reasonLabel,
   reconciliationMethodLabel,
@@ -219,5 +221,22 @@ describe("operations labels", () => {
     expect(serviceStateLabel("MYSTERY_STATE")).toBe("MYSTERY_STATE");
     expect(impactLabel("MYSTERY_IMPACT")).toBe("MYSTERY_IMPACT");
     expect(incidentStatusLabel("MYSTERY_STATUS")).toBe("MYSTERY_STATUS");
+  });
+});
+
+describe("backup state labels", () => {
+  it("maps the five read-time backup states and the three offsite states to Russian", () => {
+    expect(backupStateLabel("NOT_CONFIGURED")).toBe("Не настроено");
+    expect(backupStateLabel("NEVER_VERIFIED")).toBe("Никогда не проверялось");
+    expect(backupStateLabel("STALE")).toBe("Устарело");
+    expect(backupStateLabel("FAILED")).toBe("Сбой");
+    expect(backupStateLabel("HEALTHY")).toBe("Здорово");
+    expect(offsiteStateLabel("NOT_CONFIGURED")).toBe("Не настроено");
+    expect(offsiteStateLabel("COPIED")).toBe("Скопировано");
+    expect(offsiteStateLabel("DEGRADED")).toBe("Деградировано");
+  });
+  it("passes unknown states through unchanged", () => {
+    expect(backupStateLabel("MYSTERY_BACKUP_STATE")).toBe("MYSTERY_BACKUP_STATE");
+    expect(offsiteStateLabel("MYSTERY_OFFSITE_STATE")).toBe("MYSTERY_OFFSITE_STATE");
   });
 });

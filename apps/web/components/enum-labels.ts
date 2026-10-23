@@ -28,6 +28,8 @@ const RECONCILIATION_METHOD_LABELS: Record<string, string> = { EXACT_EXTERNAL_RE
 const SERVICE_STATE_LABELS: Record<string, string> = { UP: "доступно", DOWN: "недоступно", DEGRADED: "деградация" };
 const IMPACT_LABELS: Record<string, string> = { BLOCKING: "блокирует", DEGRADED: "деградация" };
 const INCIDENT_STATUS_LABELS: Record<string, string> = { OPEN: "открыт", RESOLVED: "решён" };
+const BACKUP_STATE_LABELS: Record<string, string> = { NOT_CONFIGURED: "Не настроено", NEVER_VERIFIED: "Никогда не проверялось", STALE: "Устарело", FAILED: "Сбой", HEALTHY: "Здорово" };
+const OFFSITE_STATE_LABELS: Record<string, string> = { NOT_CONFIGURED: "Не настроено", COPIED: "Скопировано", DEGRADED: "Деградировано" };
 
 /** Unknown kind → the raw code. */
 export function forecastKindLabel(kind: ForecastKind): string { return FORECAST_KIND_LABELS[kind] ?? kind; }
@@ -59,6 +61,10 @@ export function serviceStateLabel(state: string): string { return SERVICE_STATE_
 export function impactLabel(impact: string): string { return IMPACT_LABELS[impact] ?? impact; }
 /** Unknown incident status → the raw code. */
 export function incidentStatusLabel(status: string): string { return INCIDENT_STATUS_LABELS[status] ?? status; }
+/** Unknown backup state → the raw code. */
+export function backupStateLabel(state: string): string { return BACKUP_STATE_LABELS[state] ?? state; }
+/** Unknown off-host replication state → the raw code. */
+export function offsiteStateLabel(state: string): string { return OFFSITE_STATE_LABELS[state] ?? state; }
 /** Unknown value reason → the lowercase-underscore transform (camelCase reasons are split into words first). */
 export function valueReasonLabel(reason: string): string {
   const fixed = VALUE_REASON_LABELS[reason];

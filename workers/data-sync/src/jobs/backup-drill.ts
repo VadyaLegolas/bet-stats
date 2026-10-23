@@ -33,6 +33,126 @@ export type DrillCheckValue = string | number | boolean | null | DrillCheckValue
 
 export type DrillSqlQuery = <T = Record<string, unknown>>(text: string, params?: readonly unknown[]) => Promise<T[]>;
 
+/**
+ * Canonical tables counted at drill start and after restore (D-09). A future
+ * migration adding a canonical table extends this list in one place; the
+ * FK-orphan scan needs no such list — it is driven by pg_constraint itself.
+ */
+export const DRILL_CANONICAL_TABLES = ["League", "Season", "Team", "Fixture", "ForecastSnapshot", "ValueReceipt", "ResultVersion", "SettlementReceipt", "ManualOddsSnapshot"] as const;
+
+/** One UNION ALL pass over every canonical table — captured against the source DB at drill start. */
+export function buildCanonicalCountQuery(): string {
+  return DRILL_CANONICAL_TABLES.map((table) => `SELECT '${table}' AS "table", count(*)::int AS "count" FROM "${table}"`).join(" UNION ALL ");
+}
+
+/** Row counts keyed by table name; a table missing from the result counts as zero. */
+export async function captureSourceCounts(query: DrillSqlQuery): Promise<Record<string, number>> {
+  const rows = await query<{ table: string; count: number }>(buildCanonicalCountQuery());
+  const counts: Record<string, number> = {};
+  for (const table of DRILL_CANONICAL_TABLES) counts[table] = 0;
+  for (const row of rows) if ((DRILL_CANONICAL_TABLES as readonly string[]).includes(row.table)) counts[row.table] = Number(row.count);
+  return counts;
+}
+
+/**
+ * Enumerates every public-schema foreign key with its equi-join predicate and
+ * a per-key IS NOT NULL guard — zero hardcoding, so the scan survives future
+ * migrations. The guard matters: a NULL FK column is not an orphan, so the
+ * naive Q5 `WHERE p.oid IS NULL` alone would false-fail on every nullable key
+ * (ForecastSnapshot.supersedesForecastId, ValueReceipt.supersedesValueReceiptId, …).
+ */
+const FK_ORPHAN_CATALOG_SQL = `SELECT c.conrelid::regclass::text AS "child", c.confrelid::regclass::text AS "parent",
+  (SELECT string_agg(format('c.%I = p.%I', ca.attname, pa.attname), ' AND ' ORDER BY k.ord)
+     FROM unnest(c.conkey, c.confkey) WITH ORDINALITY AS k(cnum, pnum, ord)
+     JOIN pg_attribute ca ON ca.attrelid = c.conrelid AND ca.attnum = k.cnum
+     JOIN pg_attribute pa ON pa.attrelid = c.confrelid AND pa.attnum = k.pnum) AS "join_pred",
+  (SELECT string_agg(format('c.%I IS NOT NULL', ca.attname), ' AND ' ORDER BY k.ord)
+     FROM unnest(c.conkey) WITH ORDINALITY AS k(cnum, ord)
+     JOIN pg_attribute ca ON ca.attrelid = c.conrelid AND ca.attnum = k.cnum) AS "not_null_pred"
+FROM pg_constraint c
+JOIN pg_namespace n ON n.oid = c.conrelid
+WHERE c.contype = 'f' AND n.nspname = 'public'
+ORDER BY "child", "parent"`;
+
+export type ChainIntegrityResult = Readonly<{ passed: boolean; checks: Record<string, DrillCheckValue> }>;
+
+/**
+ * Chain-integrity checks against the restored throwaway database (D-09):
+ * (a) canonical tables non-empty keyed on the captured source counts — source
+ *     zero records SKIPPED (never PASSED), source positive with restored zero
+ *     fails; (b) a generic FK-orphan scan driven by pg_constraint over the
+ *     public schema, recording per-relation orphan counts and failing when any
+ *     exceeds zero; (c) curated supersession-chain checks (ForecastSnapshot
+ *     supersession pointers, ValueReceipt fixture compatibility against its
+ *     snapshot and odds rows, SettlementReceipt revisions above 1 carrying a
+ *     supersedes pointer); (d) row-count parity — FAIL only when the restored
+ *     count is below the captured count (truncation is the real signal);
+ *     positive deltas are recorded without failing because live writes between
+ *   capture and dump snapshot are legitimate (Pitfall 7).
+ */
+export async function runChainIntegrityChecks(input: { query: DrillSqlQuery; sourceCounts: Readonly<Record<string, number>> }): Promise<ChainIntegrityResult> {
+  const { query, sourceCounts } = input;
+  const checks: Record<string, DrillCheckValue> = {};
+  let passed = true;
+
+  // (a)+(d) Restored counts from one pass, then non-empty and parity per table.
+  const restoredCounts = await captureSourceCounts(query);
+  const nonEmpty: Record<string, DrillCheckValue> = {};
+  const parity: Record<string, DrillCheckValue> = {};
+  for (const table of DRILL_CANONICAL_TABLES) {
+    const source = sourceCounts[table] ?? 0;
+    const restored = restoredCounts[table] ?? 0;
+    nonEmpty[table] = source === 0
+      ? { state: "SKIPPED", source, restored }
+      : restored === 0
+        ? { state: "FAILED", source, restored }
+        : { state: "PASSED", source, restored };
+    parity[table] = restored < source
+      ? { state: "FAILED", source, restored, delta: restored - source }
+      : { state: "PASSED", source, restored, delta: restored - source };
+  }
+  checks.nonEmpty = nonEmpty;
+  checks.parity = parity;
+  if (Object.values(nonEmpty).some((entry) => (entry as { state: string }).state === "FAILED")) passed = false;
+  if (Object.values(parity).some((entry) => (entry as { state: string }).state === "FAILED")) passed = false;
+
+  // (b) Generic FK-orphan scan: per public-schema foreign key, count child
+  // rows whose composite key matches no parent row (NULL keys are guarded out).
+  const relations = await query<{ child: string; parent: string; join_pred: string; not_null_pred: string }>(FK_ORPHAN_CATALOG_SQL);
+  const relationCounts: Record<string, DrillCheckValue> = {};
+  let totalOrphans = 0;
+  for (const relation of relations) {
+    const rows = await query<{ orphans: number }>(
+      `SELECT count(*)::int AS "orphans" FROM ${relation.child} c LEFT JOIN ${relation.parent} p ON ${relation.join_pred} WHERE ${relation.not_null_pred} AND p.oid IS NULL`,
+    );
+    const orphans = Number(rows[0]?.orphans ?? 0);
+    relationCounts[`${relation.child} -> ${relation.parent}`] = orphans;
+    totalOrphans += orphans;
+  }
+  checks.fkOrphans = { state: totalOrphans === 0 ? "PASSED" : "FAILED", total: totalOrphans, relations: relationCounts };
+  if (totalOrphans > 0) passed = false;
+
+  // (c) Curated supersession-chain checks — the semantics pg_constraint cannot express.
+  const [forecast] = await query<{ violations: number }>(
+    `SELECT count(*)::int AS "violations" FROM "ForecastSnapshot" f LEFT JOIN "ForecastSnapshot" p ON f."supersedesForecastId" = p.id WHERE f."supersedesForecastId" IS NOT NULL AND p.id IS NULL`,
+  );
+  const [value] = await query<{ violations: number }>(
+    `SELECT count(*)::int AS "violations" FROM "ValueReceipt" v JOIN "ForecastSnapshot" fs ON v."forecastSnapshotId" = fs.id JOIN "ManualOddsSnapshot" m ON v."oddsSnapshotId" = m.id WHERE fs."fixtureId" <> v."fixtureId" OR m."fixtureId" <> v."fixtureId"`,
+  );
+  const [settlement] = await query<{ violations: number }>(
+    `SELECT count(*)::int AS "violations" FROM "SettlementReceipt" s WHERE s.revision > 1 AND s."supersedesSettlementReceiptId" IS NULL`,
+  );
+  const violations = {
+    forecastSupersession: Number(forecast?.violations ?? 0),
+    valueReceiptFixtureLink: Number(value?.violations ?? 0),
+    settlementSupersession: Number(settlement?.violations ?? 0),
+  };
+  checks.curated = { state: Object.values(violations).every((count) => count === 0) ? "PASSED" : "FAILED", violations };
+  if (!checks.curated || (checks.curated as { state: string }).state === "FAILED") passed = false;
+
+  return { passed, checks };
+}
+
 export type DrillQuery = Readonly<{ queryRaw: DrillSqlQuery; disconnect(): Promise<void> }>;
 
 /** Throwaway-database access through the existing Prisma client — no second DB driver. */
@@ -73,7 +193,7 @@ export type RunBackupDrillInput = Readonly<{
  */
 export function redactDrillExcerpt(text: string, limit = DRILL_STDERR_EXCERPT_LIMIT): string {
   const scrubbed = text
-    .replace(/(postgres(?:ql)?:\/\/)[^\s"']+/gi, "$1[REDACTED]")
+    .replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, "[REDACTED_URL]")
     .replace(/:[^:@/\s]+@/g, ":***@")
     .replace(/(password[=:]\s*)\S+/gi, "$1[REDACTED]");
   return String(redactSecrets(scrubbed)).slice(0, limit);
@@ -188,6 +308,18 @@ export async function runBackupDrill(input: RunBackupDrillInput): Promise<Backup
   }
   if (!identity) return record({ overall: "UNVERIFIED", failureReason: "PG_IDENTITY_UNRESOLVED" });
 
+  // (2b) Parity baseline (D-09): source row counts captured at drill start,
+  // before the throwaway container starts. A failing capture is a missing
+  // precondition — UNVERIFIED, no container started.
+  let sourceCounts: Record<string, number>;
+  try {
+    sourceCounts = await captureSourceCounts((text, params) => input.database.$queryRawUnsafe(text, ...(params ?? [])));
+    checks.sourceCounts = sourceCounts;
+  } catch (error) {
+    checks.sourceCounts = { error: redactDrillExcerpt(error instanceof Error ? error.message : String(error)) };
+    return record({ overall: "UNVERIFIED", failureReason: "SOURCE_COUNTS_UNAVAILABLE" });
+  }
+
   // (3) Owned throwaway container: unique name, drill-generated password,
   // dynamic port on loopback, dump copied in (never bind-mounted). The
   // password reaches the container only through the child env — docker's
@@ -226,6 +358,10 @@ export async function runBackupDrill(input: RunBackupDrillInput): Promise<Backup
     if (!port) return { overall: "UNVERIFIED", failureReason: "DRILL_DB_NOT_READY" };
 
     const drillUrl = `postgresql://${resolvedIdentity.user}:${drillPassword}@127.0.0.1:${port}/${resolvedIdentity.db}`;
+    // Throwaway-DB access through the injected (or default Prisma) query handle;
+    // disconnected in the finally block below. Password reaches it only via the
+    // URL built from child-env material — never argv (T-08-07).
+    drillQuery = (input.createDrillQuery ?? defaultDrillQuery)(drillUrl);
 
     const version = await exec.run("docker", ["exec", containerName, "pg_restore", "--version"], { timeoutMs: SPAWN_PROBE_TIMEOUT_MS });
     if (!version.spawnError && version.code === 0) {
@@ -272,7 +408,18 @@ export async function runBackupDrill(input: RunBackupDrillInput): Promise<Backup
     }
     checks.migrations = { deployExitCode: 0, statusExitCode: 0, state: "AT_HEAD" };
 
-    // (5) Chain-integrity checks are appended here by the TDD task.
+    // (5) Chain-integrity checks (D-09) against the restored database. Any
+    // failed check flips the receipt to FAILED — the drill can never silently
+    // pass (T-08-08); the four entries land in the receipt checks JSON as the
+    // durable audit trail.
+    try {
+      const integrity = await runChainIntegrityChecks({ query: drillQuery.queryRaw, sourceCounts });
+      Object.assign(checks, integrity.checks);
+      if (!integrity.passed) return { overall: "FAILED", failureReason: "CHAIN_INTEGRITY_FAILED" };
+    } catch (error) {
+      checks.chainIntegrity = { state: "FAILED", error: redactDrillExcerpt(error instanceof Error ? error.message : String(error)) };
+      return { overall: "FAILED", failureReason: "CHAIN_INTEGRITY_FAILED" };
+    }
     return { overall: "VERIFIED" };
   };
 

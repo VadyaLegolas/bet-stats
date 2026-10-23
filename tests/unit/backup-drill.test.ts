@@ -181,8 +181,9 @@ describe("runBackupDrill fail-closed states", () => {
     expect(result.overall).toBe("FAILED");
     expect(result.failureReason).toBe("CHAIN_INTEGRITY_FAILED");
     expect(result.containerCleanup).toBe("REMOVED");
-    const checks = receipts[0]!.checks as Record<string, Record<string, { state?: string; delta?: number }>>;
-    expect(checks.nonEmpty?.Team).toMatchObject({ state: "FAILED", source: 2, restored: 1 });
+    const checks = receipts[0]!.checks as Record<string, Record<string, { state?: string; delta?: number; source?: number; restored?: number }>>;
+    // non-empty is still satisfied (Team has rows); the truncation signal lives in parity.
+    expect(checks.nonEmpty?.Team).toMatchObject({ state: "PASSED", source: 2, restored: 1 });
     expect(checks.parity?.Team).toMatchObject({ state: "FAILED", delta: -1 });
   });
 

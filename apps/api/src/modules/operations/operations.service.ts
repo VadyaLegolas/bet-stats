@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException, Optional, type OnModuleDestroy } from "@nestjs/common";
 import { DEFAULT_BACKUP_DRILL_INTERVAL_HOURS, DEFAULT_BACKUP_RETENTION_COUNT, readBackupConfig, redactSecrets } from "@bet-stats/config";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { Queue } from "bullmq";
 
 const CORRELATION = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/;
 const ROOT_CAUSE = /^[A-Z0-9][A-Z0-9_.:-]{0,127}$/;
@@ -215,15 +216,68 @@ export function createPrismaOperationsRepository(database: PrismaClient, clock =
   };
 }
 
+// --- manual backup/drill triggers (D-13) --------------------------------------
+
+export type BackupTriggerJob = "backup" | "drill";
+
+/** Minimal queue surface so tests can inject a fake without a Redis connection. */
+export type BackupTriggerQueue = { add(name: string, data: unknown, opts?: Record<string, unknown>): Promise<unknown>; close(): Promise<void> };
+
+export interface BackupTriggerEnqueuer { trigger(job: BackupTriggerJob): Promise<{ queued: true }>; close(): Promise<void> }
+
+/** Same queue name contract as workers/data-sync jobs/backup.ts (`${prefix}-backup`). */
+export function backupTriggerQueueName(prefix = "bet-stats"): string {
+  if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) throw new Error("Queue prefix contains unsupported characters");
+  return `${prefix}-backup`;
+}
+
+/**
+ * Enqueues manual runs on the existing backup queue. Job data carries only the
+ * trigger discriminator — never credentials, never a connection string in the
+ * Redis-persisted payload (T-08-17, D-15). The manual- prefix jobIds never
+ * collide with scheduler-produced jobs.
+ */
+export function createBullBackupTriggerEnqueuer(input: { redisUrl: string; prefix?: string | undefined; queue?: BackupTriggerQueue | undefined }): BackupTriggerEnqueuer {
+  const queue = input.queue ?? new Queue(backupTriggerQueueName(input.prefix ?? "bet-stats"), { connection: { url: input.redisUrl, maxRetriesPerRequest: null } });
+  return {
+    async trigger(job) {
+      await queue.add(job, { trigger: "MANUAL" }, {
+        attempts: 1,
+        jobId: `manual-${job}-${Date.now()}`,
+        removeOnComplete: { age: 86_400, count: 1_000 },
+        removeOnFail: { age: 604_800, count: 5_000 },
+      });
+      return { queued: true as const };
+    },
+    close: () => queue.close(),
+  };
+}
+
 @Injectable()
 export class OperationsService implements OnModuleDestroy {
   private readonly projection: ReturnType<typeof createOperationsProjection> | null;
   private readonly ownedClient: PrismaClient | null;
-  constructor(@Optional() database?: PrismaClient) {
+  private readonly injectedTriggers: BackupTriggerEnqueuer | null;
+  private ownedTriggers: BackupTriggerEnqueuer | null = null;
+  constructor(@Optional() database?: PrismaClient, @Optional() triggers?: BackupTriggerEnqueuer) {
     this.ownedClient = database ? null : process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null;
     const client = database ?? this.ownedClient;
     this.projection = client ? createOperationsProjection(createPrismaOperationsRepository(client)) : null;
+    this.injectedTriggers = triggers ?? null;
   }
   overview(query: OperationsQuery) { if (!this.projection) throw new NotFoundException("Not found"); return this.projection.overview(query); }
-  async onModuleDestroy() { await this.ownedClient?.$disconnect(); }
+  /** Disabled or unconfigured backups raise the same 404 as bad credentials — no configuration oracle (T-08-16). */
+  private requireBackupsConfigured() { const config = readBackupConfig(process.env); if (!config.enabled || !config.dir) throw new NotFoundException("Not found"); }
+  /** Queue is constructed lazily on the first trigger so module load never touches Redis. */
+  private backupTriggers(): BackupTriggerEnqueuer {
+    if (this.injectedTriggers) return this.injectedTriggers;
+    if (!this.ownedTriggers) {
+      if (!process.env.REDIS_URL) throw new NotFoundException("Not found");
+      this.ownedTriggers = createBullBackupTriggerEnqueuer({ redisUrl: process.env.REDIS_URL, prefix: process.env.QUEUE_PREFIX?.trim() || undefined });
+    }
+    return this.ownedTriggers;
+  }
+  triggerBackup(): Promise<{ queued: true }> { this.requireBackupsConfigured(); return this.backupTriggers().trigger("backup"); }
+  triggerDrill(): Promise<{ queued: true }> { this.requireBackupsConfigured(); return this.backupTriggers().trigger("drill"); }
+  async onModuleDestroy() { await this.ownedTriggers?.close(); await this.ownedClient?.$disconnect(); }
 }

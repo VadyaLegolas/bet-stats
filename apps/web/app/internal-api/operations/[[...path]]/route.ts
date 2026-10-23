@@ -46,8 +46,12 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path?: s
   if (path.some((segment) => !/^[A-Za-z0-9_-]{1,64}$/.test(segment))) return NextResponse.json({ message: "Not found" }, { status: 404, headers: privateHeaders });
   const upstream = new URL(`/internal/operations/${path.map(encodeURIComponent).join("/")}`, process.env.API_ORIGIN ?? "http://127.0.0.1:3001");
   upstream.search = request.nextUrl.search;
-  const response = await fetch(upstream, { method: "GET", headers: { "x-operator-credential": credential, "x-operator-actor": authorization.subject }, cache: "no-store" });
+  // The HMAC canonical string binds the method, so forwarding it adds zero
+  // secret surface: a signed GET can never become a POST (T-08-14). The manual
+  // trigger POSTs carry no body beyond the path — nothing is forwarded upstream.
+  const response = await fetch(upstream, { method: request.method.toUpperCase(), headers: { "x-operator-credential": credential, "x-operator-actor": authorization.subject }, cache: "no-store" });
   return new NextResponse(response.body, { status: response.status, headers: { "content-type": response.headers.get("content-type") === "application/json; charset=utf-8" ? "application/json; charset=utf-8" : "application/json", ...privateHeaders } });
 }
 
 export const GET = proxy;
+export const POST = proxy;

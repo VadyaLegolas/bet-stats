@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Query, UseGuards } from "@nestjs/common";
+import { Controller, Get, Header, HttpCode, HttpStatus, Post, Query, UseGuards } from "@nestjs/common";
 
 import { OperatorGuard } from "../reconciliation/operator.guard.js";
 import { OperationsService, type OperationsQuery } from "./operations.service.js";
@@ -18,4 +18,12 @@ export class OperationsController {
       page: optionalInteger(query.page), pageSize: optionalInteger(query.pageSize), windowHours: optionalInteger(query.windowHours),
     } as OperationsQuery);
   }
+
+  @Post("backups/run")
+  @HttpCode(HttpStatus.ACCEPTED)
+  backupsRun() { return this.operations.triggerBackup(); }
+
+  @Post("backups/drill")
+  @HttpCode(HttpStatus.ACCEPTED)
+  backupsDrill() { return this.operations.triggerDrill(); }
 }

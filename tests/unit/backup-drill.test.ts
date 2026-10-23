@@ -3,15 +3,17 @@ import { describe, expect, it } from "vitest";
 import { readBackupConfig } from "@bet-stats/config";
 
 import {
+  DRILL_INTERVAL_MS,
   DRILL_STDERR_EXCERPT_LIMIT,
   captureSourceCounts,
   runBackupDrill,
   runChainIntegrityChecks,
+  scheduleDrillTick,
   type BackupDrillResult,
   type DrillQuery,
   type DrillSqlQuery,
 } from "../../workers/data-sync/src/jobs/backup-drill.js";
-import { nodeBackupFs, type BackupExec, type BackupExecResult } from "../../workers/data-sync/src/jobs/backup.js";
+import { createBackupJobDispatcher, nodeBackupFs, type BackupExec, type BackupExecResult, type BackupJobData } from "../../workers/data-sync/src/jobs/backup.js";
 
 const NOW = new Date("2026-10-22T20:00:00.000Z");
 const DUMP_NAME = "football_prediction-20261022T190000Z.dump";
@@ -302,5 +304,200 @@ describe("runChainIntegrityChecks", () => {
     expect(result.passed).toBe(true);
     expect(result.checks.nonEmpty).toMatchObject({ League: { state: "PASSED", source: 2, restored: 4 }, Team: { state: "SKIPPED", source: 0, restored: 0 } });
     expect(result.checks.parity).toMatchObject({ League: { state: "PASSED", delta: 2 }, Team: { state: "PASSED", delta: 0 } });
+  });
+});
+
+describe("drill tick scheduler", () => {
+  const hourMs = 3_600_000;
+
+  function fakeReceiptDatabase(findFirst: () => Promise<{ completedAt: Date } | null>) {
+    return { backupVerificationReceipt: { findFirst } } as never;
+  }
+
+  it("arms at the idle-poll delay when no verification receipt is on record and enqueues only the trigger discriminator", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const delays: number[] = [];
+    let callback: (() => void) | undefined;
+    const enqueued: BackupJobData[] = [];
+    const scheduler = scheduleDrillTick({
+      database: fakeReceiptDatabase(async () => null),
+      enqueue: async (data) => { enqueued.push(data); },
+      now: () => now,
+      idlePollMs: 1_000,
+      setTimeout: (next, delay) => { callback = next; delays.push(delay); return 1 as never; },
+      clearTimeout: () => undefined,
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(delays).toEqual([1_000]);
+
+    callback?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    // T-08-07/Pitfall 8: the payload carries only the trigger discriminator.
+    expect(enqueued).toEqual([{ trigger: "SCHEDULED" }]);
+    expect(delays).toEqual([1_000, 1_000]);
+    scheduler.close();
+  });
+
+  it("arms at max(0, newestReceiptCompletedAt + 168h - now) with the default weekly interval", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const delays: number[] = [];
+    const scheduler = scheduleDrillTick({
+      database: fakeReceiptDatabase(async () => ({ completedAt: new Date(now.getTime() - 167 * hourMs) })),
+      enqueue: async () => undefined,
+      now: () => now,
+      idlePollMs: 1_000,
+      setTimeout: (_next, delay) => { delays.push(delay); return 1 as never; },
+      clearTimeout: () => undefined,
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(delays).toEqual([hourMs]);
+    scheduler.close();
+  });
+
+  it("arms at zero when the newest receipt is older than the configured interval", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const delays: number[] = [];
+    const scheduler = scheduleDrillTick({
+      database: fakeReceiptDatabase(async () => ({ completedAt: new Date(now.getTime() - 200 * hourMs) })),
+      enqueue: async () => undefined,
+      now: () => now,
+      setTimeout: (_next, delay) => { delays.push(delay); return 1 as never; },
+      clearTimeout: () => undefined,
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(delays).toEqual([0]);
+    scheduler.close();
+  });
+
+  it("honours an explicit intervalMs override", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const delays: number[] = [];
+    const scheduler = scheduleDrillTick({
+      database: fakeReceiptDatabase(async () => ({ completedAt: new Date(now.getTime() - 60_000) })),
+      enqueue: async () => undefined,
+      now: () => now,
+      intervalMs: hourMs,
+      setTimeout: (_next, delay) => { delays.push(delay); return 1 as never; },
+      clearTimeout: () => undefined,
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(delays).toEqual([hourMs - 60_000]);
+    scheduler.close();
+  });
+
+  it("re-arms from the newest persisted receipt after a run instead of stacking a fixed interval", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const delays: number[] = [];
+    let callback: (() => void) | undefined;
+    let queries = 0;
+    let enqueued = 0;
+    const scheduler = scheduleDrillTick({
+      database: fakeReceiptDatabase(async () => {
+        queries += 1;
+        return queries === 1 ? null : { completedAt: new Date(now.getTime() - DRILL_INTERVAL_MS + 500) };
+      }),
+      enqueue: async () => { enqueued += 1; },
+      now: () => now,
+      idlePollMs: 1_000,
+      setTimeout: (next, delay) => { callback = next; delays.push(delay); return delays.length as never; },
+      clearTimeout: () => undefined,
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(delays).toEqual([1_000]);
+
+    callback?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(enqueued).toBe(1);
+    expect(queries).toBe(2);
+    expect(delays).toEqual([1_000, 500]); // weekly from the persisted receipt minus the 500ms already elapsed
+    scheduler.close();
+  });
+
+  it("cancels the pending timer on close and enqueues nothing afterwards", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const delays: number[] = [];
+    const cleared: number[] = [];
+    let callback: (() => void) | undefined;
+    let enqueued = 0;
+    const scheduler = scheduleDrillTick({
+      database: fakeReceiptDatabase(async () => null),
+      enqueue: async () => { enqueued += 1; },
+      now: () => now,
+      idlePollMs: 1_000,
+      setTimeout: (next, delay) => { callback = next; delays.push(delay); return delays.length as never; },
+      clearTimeout: (timer) => { cleared.push(timer as unknown as number); },
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(delays).toEqual([1_000]);
+    scheduler.close();
+    expect(cleared).toEqual([1]);
+
+    callback?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(enqueued).toBe(0);
+  });
+
+  it("reports an arm query failure, schedules a retry, and resumes from persisted state", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const delays: number[] = [];
+    const errors: unknown[] = [];
+    let callback: (() => void) | undefined;
+    let queries = 0;
+    const scheduler = scheduleDrillTick({
+      database: fakeReceiptDatabase(async () => {
+        queries += 1;
+        if (queries === 1) throw new Error("transient postgres outage");
+        return null;
+      }),
+      enqueue: async () => undefined,
+      now: () => now,
+      idlePollMs: 1_000,
+      retryMs: 25,
+      setTimeout: (next, delay) => { callback = next; delays.push(delay); return delays.length as never; },
+      clearTimeout: () => undefined,
+      onError: (error) => errors.push(error),
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(errors).toHaveLength(1);
+    expect(delays).toEqual([25]);
+
+    callback?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(queries).toBe(2);
+    expect(delays).toEqual([25, 1_000]);
+    scheduler.close();
+  });
+});
+
+describe("backup worker job dispatch", () => {
+  it("routes a drill job to the drill executor exactly once and keeps backup on the backup executor", async () => {
+    const backupRuns: BackupJobData[] = [];
+    const drillRuns: BackupJobData[] = [];
+    const dispatch = createBackupJobDispatcher({
+      execute: async (data) => { backupRuns.push(data); return "backup-done"; },
+      executeDrill: async (data) => { drillRuns.push(data); return "drill-done"; },
+    });
+
+    await expect(dispatch({ name: "drill", data: { trigger: "SCHEDULED" } })).resolves.toBe("drill-done");
+    await expect(dispatch({ name: "backup", data: { trigger: "MANUAL" } })).resolves.toBe("backup-done");
+
+    expect(drillRuns).toEqual([{ trigger: "SCHEDULED" }]);
+    expect(backupRuns).toEqual([{ trigger: "MANUAL" }]);
+  });
+
+  it("fails closed on an unsupported job name and on drill dispatch without a drill executor", async () => {
+    const execute = async () => "backup-done";
+    await expect(createBackupJobDispatcher({ execute })({ name: "drill", data: { trigger: "SCHEDULED" } })).rejects.toThrow("UNSUPPORTED_BACKUP_JOB");
+    await expect(createBackupJobDispatcher({ execute })({ name: "other", data: { trigger: "SCHEDULED" } })).rejects.toThrow("UNSUPPORTED_BACKUP_JOB");
   });
 });

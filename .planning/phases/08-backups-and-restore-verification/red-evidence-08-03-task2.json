@@ -1,0 +1,31 @@
+{
+  "plan": "08-03",
+  "task": 2,
+  "gate": "RED",
+  "capturedAt": "2026-10-23T13:57:55Z",
+  "semanticAssessment": "VALID RED",
+  "classifier": "manual (gsd_run check tdd-red-evidence CLI unavailable on this host — same as plans 08-01/08-02)",
+  "behaviors": [
+    {
+      "behavior": "POST backups/run enqueues { trigger: \"MANUAL\" } with jobId manual-backup-…",
+      "result": "FAIL — TypeError: createBullBackupTriggerEnqueuer is not a function (operations.service.ts has no trigger surface yet)"
+    },
+    {
+      "behavior": "POST backups/drill enqueues { trigger: \"MANUAL\" } with jobId manual-drill-…",
+      "result": "FAIL — TypeError: createBullBackupTriggerEnqueuer is not a function"
+    },
+    {
+      "behavior": "disabled config => 404, no enqueue",
+      "result": "FAIL — TypeError: createBullBackupTriggerEnqueuer is not a function (no trigger path exists to raise the uniform 404)"
+    },
+    {
+      "behavior": "bad operator credential => 404 \"Not found\"",
+      "result": "PASS as deliberate guard case — OperatorGuard.authorize already throws NotFoundException(\"Not found\") (pre-existing fail-closed guard)"
+    },
+    {
+      "behavior": "web proxy forwards POST; method-mismatched signature denied; GET unchanged",
+      "result": "POST cases FAIL — TypeError: POST is not a function (route.ts exports only GET); GET-unchanged case PASS as deliberate guard case"
+    }
+  ],
+  "summary": "tests/integration/operator-overview.test.ts: 4 failed | 18 passed (22) — all 4 failures on the missing trigger symbols; apps/web route.test.ts: 2 failed | 57 passed (59) — both failures on the missing POST export. All existing green tests stayed green."
+}

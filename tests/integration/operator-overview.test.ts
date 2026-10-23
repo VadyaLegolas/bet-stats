@@ -1,9 +1,12 @@
 import { createHash, createHmac } from "node:crypto";
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { NotFoundException } from "../../apps/api/node_modules/@nestjs/common/index.js";
 
 import { OperatorGuard } from "../../apps/api/src/modules/reconciliation/operator.guard.js";
-import { computeBackupFact, createOperationsProjection, failedDrillChecks, OperationsService, type BackupRows } from "../../apps/api/src/modules/operations/operations.service.js";
+import { computeBackupFact, createBullBackupTriggerEnqueuer, createOperationsProjection, failedDrillChecks, OperationsService, backupTriggerQueueName, type BackupRows } from "../../apps/api/src/modules/operations/operations.service.js";
+import { OperationsController } from "../../apps/api/src/modules/operations/operations.controller.js";
 import { verifyIngressOperationsRequest } from "../../apps/web/app/internal-api/operations/[[...path]]/route.js";
 
 const CANARIES = [
@@ -167,6 +170,88 @@ describe("backups read model (five-state, computed at read time)", () => {
     expect(failedDrillChecks(checks)).toEqual(["parity.Fixture", "parity.Team", "fkOrphans"]);
     expect(failedDrillChecks({ "evil\nkey": { state: "FAILED" } })).toEqual(["evilkey"]);
     expect(failedDrillChecks({ deep: { nested: [{ state: "FAILED" }] } })).toEqual(["deep.nested0"]);
+  });
+});
+
+describe("manual backup and drill triggers", () => {
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  function fakeQueue() {
+    const adds: Array<{ name: string; data: unknown; opts?: Record<string, unknown> }> = [];
+    return {
+      adds,
+      queue: {
+        add: vi.fn(async (name: string, data: unknown, opts?: Record<string, unknown>) => { adds.push({ name, data, ...(opts ? { opts } : {}) }); return {}; }),
+        close: vi.fn(async () => undefined),
+      },
+    };
+  }
+
+  it("computes the queue name as ${prefix}-backup exactly like the worker", () => {
+    expect(backupTriggerQueueName("test-prefix")).toBe("test-prefix-backup");
+    expect(backupTriggerQueueName()).toBe("bet-stats-backup");
+  });
+
+  it("POST backups/run enqueues job backup with data exactly { trigger: MANUAL } and a manual-backup jobId", async () => {
+    vi.stubEnv("BACKUP_ENABLED", "true");
+    vi.stubEnv("BACKUP_DIR", "D:\\backups-canary");
+    const { adds, queue } = fakeQueue();
+    const service = new OperationsService({} as never, createBullBackupTriggerEnqueuer({ redisUrl: "redis://127.0.0.1:6379", prefix: "test-prefix", queue }));
+
+    const result = await service.triggerBackup();
+
+    expect(result).toEqual({ queued: true });
+    expect(queue.add).toHaveBeenCalledOnce();
+    expect(adds).toHaveLength(1);
+    expect(adds[0]!.name).toBe("backup");
+    expect(adds[0]!.data).toEqual({ trigger: "MANUAL" });
+    expect(Object.keys(adds[0]!.data as object)).toEqual(["trigger"]);
+    expect(adds[0]!.opts?.jobId).toMatch(/^manual-backup-\d+$/);
+    expect(adds[0]!.opts?.attempts).toBe(1);
+  });
+
+  it("POST backups/drill enqueues job drill with data exactly { trigger: MANUAL } and a distinct manual-drill jobId", async () => {
+    vi.stubEnv("BACKUP_ENABLED", "true");
+    vi.stubEnv("BACKUP_DIR", "D:\\backups-canary");
+    const { adds, queue } = fakeQueue();
+    const service = new OperationsService({} as never, createBullBackupTriggerEnqueuer({ redisUrl: "redis://127.0.0.1:6379", prefix: "test-prefix", queue }));
+
+    await service.triggerDrill();
+
+    expect(adds).toHaveLength(1);
+    expect(adds[0]!.name).toBe("drill");
+    expect(adds[0]!.data).toEqual({ trigger: "MANUAL" });
+    expect(Object.keys(adds[0]!.data as object)).toEqual(["trigger"]);
+    expect(adds[0]!.opts?.jobId).toMatch(/^manual-drill-\d+$/);
+
+    const backupJobId = `manual-backup-${Date.now()}`;
+    expect(adds[0]!.opts?.jobId).not.toBe(backupJobId);
+  });
+
+  it("disabled or unconfigured backups yield the uniform 404 and never enqueue (no oracle, T-08-16)", async () => {
+    vi.stubEnv("BACKUP_ENABLED", "false");
+    vi.stubEnv("BACKUP_DIR", "D:\\backups-canary");
+    const { adds, queue } = fakeQueue();
+    const service = new OperationsService({} as never, createBullBackupTriggerEnqueuer({ redisUrl: "redis://127.0.0.1:6379", prefix: "test-prefix", queue }));
+
+    await expect(service.triggerBackup()).rejects.toThrow(NotFoundException);
+    await expect(service.triggerDrill()).rejects.toThrow("Not found");
+    expect(queue.add).not.toHaveBeenCalled();
+    expect(adds).toHaveLength(0);
+  });
+
+  it("a bad operator credential on POST internal/operations/backups/run yields 404 Not found without reaching the service", () => {
+    const guard = new OperatorGuard("operator-credential-long-enough");
+    const service = { triggerBackup: vi.fn(), triggerDrill: vi.fn() };
+    const controller = new OperationsController(service as never);
+    const handle = (presented: string | undefined) => { guard.authorize(presented); return controller.backupsRun(); };
+
+    expect(() => handle("wrong-credential")).toThrow(NotFoundException);
+    expect(() => handle(undefined)).toThrow("Not found");
+    expect(service.triggerBackup).not.toHaveBeenCalled();
+    expect(service.triggerDrill).not.toHaveBeenCalled();
+
+    expect(() => guard.authorize("operator-credential-long-enough")).not.toThrow();
   });
 });
 

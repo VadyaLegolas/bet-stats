@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { impactLabel, incidentStatusLabel, serviceStateLabel } from "../../../components/enum-labels";
 import { formatInstant } from "../../../components/time-format";
+import { BackupStatusBlock, type BackupStatusFact } from "./backup-status-block";
 
 type Overview = {
   readiness: { state: "READY" | "DEGRADED" | "NOT_READY"; services: Array<{ name: string; state: string }>; lastCheckedAt: string };
@@ -12,6 +13,7 @@ type Overview = {
   failures: { groups: Array<{ rootCause: string; impact: string; scope: string; count: number; firstOccurrence: string; lastOccurrence: string; retryable: boolean; correlationIds: string[] }>; jobs: Array<{ id: string; rootCause: string; impact: string; scope: string; occurredAt: string; retryable: boolean; correlationId: string | null }>; pagination: { page: number; pageSize: number; total: number; start: number; end: number; pages: number } };
   dataQuality: Array<{ code: string; scope: string; count: number; firstOccurrence: string; lastOccurrence: string }>;
   incidents: Array<{ id: string; status: string; impact: string; summary: string; startedAt: string; lastUpdatedAt: string; correlationId: string | null }>;
+  backups: BackupStatusFact;
 };
 
 const card = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, overflowWrap: "anywhere" } as const;
@@ -39,6 +41,9 @@ export default function OperationsPage() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [triggerPending, setTriggerPending] = useState<"backup" | "drill" | null>(null);
+  const [triggerNotice, setTriggerNotice] = useState<string | null>(null);
+  const [triggerNoticeFailed, setTriggerNoticeFailed] = useState(false);
   const query = useMemo(() => typeof window === "undefined" ? "?page=1&pageSize=25&windowHours=24" : window.location.search || "?page=1&pageSize=25&windowHours=24", []);
   const load = async () => {
     setLoading(true); setError("");
@@ -49,6 +54,18 @@ export default function OperationsPage() {
     } catch { setError("Этот операционный блок недоступен. Ранее показанные безопасные сведения остаются без изменений."); }
     finally { setLoading(false); }
   };
+  const trigger = async (kind: "backup" | "drill") => {
+    setTriggerPending(kind); setTriggerNotice(null); setTriggerNoticeFailed(false);
+    try {
+      const response = await fetch(`/internal-api/operations/backups/${kind === "backup" ? "run" : "drill"}`, { method: "POST", cache: "no-store" });
+      if (!response.ok) throw new Error("TRIGGER_REJECTED");
+      setTriggerNotice(kind === "backup" ? "Резервная копия поставлена в очередь." : "Проверка восстановления поставлена в очередь.");
+      await load();
+    } catch {
+      setTriggerNoticeFailed(true);
+      setTriggerNotice(kind === "backup" ? "Не удалось создать резервную копию: операции недоступны или резервные копии не настроены." : "Не удалось запустить проверку восстановления: операции недоступны или резервные копии не настроены.");
+    } finally { setTriggerPending(null); }
+  };
   // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount: the operations overview loads once on page mount
   useEffect(() => { void load(); }, []);
 
@@ -56,6 +73,9 @@ export default function OperationsPage() {
     <header><h1 tabIndex={-1}>Центр операций</h1><p>Только безопасные операционные метаданные. Сырые полезные нагрузки, учётные данные, заголовки, трассировки стека и журналы здесь недоступны никогда.</p><button style={button} disabled={loading} onClick={() => void load()}>{loading && overview ? "Обновление…" : "Обновить операционные данные"}</button></header>
     <Block title="Готовность системы" loading={loading && !overview} error={error} empty={false} onRetry={() => void load()}>
       {overview && <><p><strong>{visibleState(overview.readiness.state)}</strong></p><p>Последняя проверка: <time dateTime={overview.readiness.lastCheckedAt}>{date(overview.readiness.lastCheckedAt)}</time></p><dl>{overview.readiness.services.map((service) => <div key={service.name}><dt>{service.name}</dt><dd>{serviceStateLabel(service.state)}</dd></div>)}</dl></>}
+    </Block>
+    <Block title="Резервные копии и проверка восстановления" loading={loading && !overview} error={error} empty={false} onRetry={() => void load()}>
+      {overview && <BackupStatusBlock backups={overview.backups} pending={triggerPending} notice={triggerNotice} noticeFailed={triggerNoticeFailed} onBackup={() => void trigger("backup")} onDrill={() => void trigger("drill")} />}
     </Block>
     <Block title="Состояние поставщиков" loading={loading && !overview} error={error} empty={overview?.providerHealth.length === 0} onRetry={() => void load()}>
       <div style={grid}>{overview?.providerHealth.map((provider) => <article key={`${provider.provider}:${provider.endpointFamily}`} style={card}><h3>{provider.provider}</h3><p>{provider.endpointFamily} · {provider.circuitState}</p><p>Последнее успешное наблюдение: <time dateTime={provider.lastSuccessfulObservationAt ?? undefined}>{date(provider.lastSuccessfulObservationAt)}</time></p><p>Безопасная причина: {provider.reason ?? "Нет"}</p></article>)}</div>

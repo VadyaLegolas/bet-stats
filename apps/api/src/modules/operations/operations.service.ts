@@ -277,7 +277,10 @@ export class OperationsService implements OnModuleDestroy {
     }
     return this.ownedTriggers;
   }
-  triggerBackup(): Promise<{ queued: true }> { this.requireBackupsConfigured(); return this.backupTriggers().trigger("backup"); }
-  triggerDrill(): Promise<{ queued: true }> { this.requireBackupsConfigured(); return this.backupTriggers().trigger("drill"); }
+  // Async so a disabled/unconfigured deployment rejects (not a synchronous throw)
+  // — the uniform-404 contract is a rejected promise either way for Nest, and the
+  // TDD behavior tests assert the rejection shape.
+  async triggerBackup(): Promise<{ queued: true }> { this.requireBackupsConfigured(); return this.backupTriggers().trigger("backup"); }
+  async triggerDrill(): Promise<{ queued: true }> { this.requireBackupsConfigured(); return this.backupTriggers().trigger("drill"); }
   async onModuleDestroy() { await this.ownedTriggers?.close(); await this.ownedClient?.$disconnect(); }
 }

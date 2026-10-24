@@ -191,6 +191,24 @@ export async function resolvePgTools(input: { config: BackupConfig; exec: Backup
   return null;
 }
 
+/**
+ * Maps a connection URL to libpq's native child-env variables. pg_dump does
+ * NOT read DATABASE_URL — without these the local branch dumps against the
+ * default unix socket as the OS user and always fails (CR-01). Credentials
+ * reach the child only through the env — never argv (T-08-01).
+ */
+export function libpqChildEnv(databaseUrl: string, base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const url = new URL(databaseUrl);
+  return {
+    ...base,
+    PGHOST: url.hostname,
+    PGPORT: url.port || "5432",
+    PGUSER: decodeURIComponent(url.username),
+    PGPASSWORD: decodeURIComponent(url.password),
+    PGDATABASE: decodeURIComponent(url.pathname.replace(/^\//, "")),
+  };
+}
+
 export type PgIdentity = Readonly<{ user: string; db: string; source: "CONFIG" | "CONTAINER_ENV" }>;
 
 function readPrintenv(result: BackupExecResult): string | undefined {
@@ -302,7 +320,8 @@ export async function runBackup(input: RunBackupInput): Promise<BackupRunResult>
   } else {
     command = tools.pgDump;
     args = ["--format=custom", "--no-password", `--file=${partialPath}`];
-    if (input.databaseUrl) childEnv = { ...process.env, DATABASE_URL: input.databaseUrl };
+    // libpq reads PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE — never DATABASE_URL.
+    if (input.databaseUrl) childEnv = libpqChildEnv(input.databaseUrl);
   }
 
   const dump = await exec.run(command, args, { timeoutMs: SPAWN_DUMP_TIMEOUT_MS, ...(childEnv ? { env: childEnv } : {}) });

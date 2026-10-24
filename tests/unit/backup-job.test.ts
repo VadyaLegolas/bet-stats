@@ -46,15 +46,15 @@ function fakeFs(seed: Record<string, Buffer> = {}) {
   return { fs, store, removals };
 }
 
-type ExecCall = Readonly<{ command: string; args: readonly string[] }>;
+type ExecCall = Readonly<{ command: string; args: readonly string[]; options?: { env?: NodeJS.ProcessEnv | undefined } | undefined }>;
 
 function fakeExec(handler: (command: string, args: readonly string[]) => BackupExecResult): { exec: BackupExec; calls: ExecCall[] } {
   const calls: ExecCall[] = [];
   return {
     calls,
     exec: {
-      async run(command, args) {
-        calls.push({ command, args });
+      async run(command, args, options) {
+        calls.push({ command, args, ...(options?.env ? { options } : {}) });
         return handler(command, args);
       },
     },
@@ -269,6 +269,64 @@ describe("backup job: retention rotation and robocopy off-host", () => {
     expect(dumpFilesIn(fake)).toHaveLength(3);
     expect(calls.some((entry) => entry.command === "robocopy")).toBe(false);
     expect(rows[0]).toMatchObject({ status: "FAILED", reason: "DUMP_FAILED" });
+  });
+});
+
+describe("backup job: local pg_dump connection env (CR-01)", () => {
+  it("passes the connection URL to local pg_dump as libpq PG* env vars, decoded, and never in argv", async () => {
+    const dir = "/tmp/bet-stats-backup-job-libpq";
+    const fake = fakeFs();
+    const rows: StoredRun[] = [];
+    const { exec, calls } = fakeExec(dumpOk(fake));
+    const databaseUrl = "postgresql://backup%20user:p%40ssword@db.example.internal:5544/football%2Ddb";
+
+    const result = await runBackup({
+      config: readBackupConfig({ BACKUP_ENABLED: "true", BACKUP_DIR: dir }),
+      database: fakeDatabase(rows),
+      databaseUrl,
+      trigger: "MANUAL",
+      exec,
+      fs: fake.fs,
+      now: () => NOW,
+    });
+
+    expect(result.status).toBe("SUCCEEDED");
+    const dumpCall = calls.find((entry) => entry.args.some((arg) => arg.startsWith("--file=")));
+    expect(dumpCall, "the local pg_dump dump invocation must exist").toBeDefined();
+    // libpq reads PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE — DATABASE_URL alone is dead (CR-01).
+    expect(dumpCall!.options?.env).toMatchObject({
+      PGHOST: "db.example.internal",
+      PGPORT: "5544",
+      PGUSER: "backup user",
+      PGPASSWORD: "p@ssword",
+      PGDATABASE: "football-db",
+    });
+    // Credentials stay out of argv entirely (T-08-01): no conninfo tokens, no URL.
+    const argv = JSON.stringify(dumpCall!.args);
+    expect(argv).not.toContain("postgresql://");
+    expect(argv).not.toContain("p@ssword");
+    expect(argv).not.toContain("backup user");
+    expect(argv).not.toMatch(/host=|user=|password=|dbname=/);
+  });
+
+  it("defaults PGPORT to 5432 when the connection URL carries no port", async () => {
+    const dir = "/tmp/bet-stats-backup-job-libpq-default-port";
+    const fake = fakeFs();
+    const rows: StoredRun[] = [];
+    const { exec, calls } = fakeExec(dumpOk(fake));
+
+    await runBackup({
+      config: readBackupConfig({ BACKUP_ENABLED: "true", BACKUP_DIR: dir }),
+      database: fakeDatabase(rows),
+      databaseUrl: "postgresql://fix:fix@127.0.0.1/fix_db",
+      trigger: "SCHEDULED",
+      exec,
+      fs: fake.fs,
+      now: () => NOW,
+    });
+
+    const dumpCall = calls.find((entry) => entry.args.some((arg) => arg.startsWith("--file=")))!;
+    expect(dumpCall.options?.env).toMatchObject({ PGHOST: "127.0.0.1", PGPORT: "5432", PGUSER: "fix", PGPASSWORD: "fix", PGDATABASE: "fix_db" });
   });
 });
 

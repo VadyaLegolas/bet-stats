@@ -112,7 +112,7 @@ export function startBackupRuntime(input: { databaseUrl: string; redisUrl: strin
   const worker = createBackupWorker({
     redisUrl: input.redisUrl,
     ...(input.prefix ? { prefix: input.prefix } : {}),
-    execute: (data) => runBackup({ config, database, trigger: data.trigger, logger: log }),
+    execute: (data) => runBackup({ config, database, databaseUrl: input.databaseUrl, trigger: data.trigger, logger: log }),
     executeDrill: () => runBackupDrill({ config, database, logger: log }),
   });
   const scheduler = scheduleBackupTick({

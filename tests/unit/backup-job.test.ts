@@ -345,17 +345,18 @@ describe("backup tick scheduler", () => {
     return { backupRun: { findFirst } } as never;
   }
 
-  it("arms at the idle-poll delay when no successful run is on record and enqueues only the trigger discriminator", async () => {
+  it("arms at the idle-poll delay when no run is on record, enqueues once, and dedupes a second tick inside the pending window", async () => {
     const now = new Date("2026-10-22T12:00:00.000Z");
     const delays: number[] = [];
     let callback: (() => void) | undefined;
     const enqueued: BackupJobData[] = [];
+    const jobIds: Array<string | undefined> = [];
     const scheduler = scheduleBackupTick({
       database: fakeDatabase(async () => null),
-      enqueue: async (data) => { enqueued.push(data); },
+      enqueue: async (data, opts) => { enqueued.push(data); jobIds.push(opts?.jobId); },
       now: () => now,
       idlePollMs: 1_000,
-      setTimeout: (next, delay) => { callback = next; delays.push(delay); return 1 as never; },
+      setTimeout: (next, delay) => { callback = next; delays.push(delay); return delays.length as never; },
       clearTimeout: () => undefined,
     });
 
@@ -367,11 +368,20 @@ describe("backup tick scheduler", () => {
     await new Promise((resolve) => setImmediate(resolve));
     // T-08-02: the payload carries only the trigger discriminator — never a credential or URL.
     expect(enqueued).toEqual([{ trigger: "SCHEDULED" }]);
-    expect(delays).toEqual([1_000, 1_000]);
+    expect(jobIds[0]).toMatch(/^scheduled-backup-\d+$/);
+
+    // CR-02: the pending window keeps ticking at idlePoll, but the deterministic
+    // bucket jobId makes every re-tick a BullMQ no-op, never a duplicate job.
+    callback?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(enqueued).toEqual([{ trigger: "SCHEDULED" }, { trigger: "SCHEDULED" }]);
+    expect(jobIds[1]).toBe(jobIds[0]);
+    expect(delays).toEqual([1_000, 1_000, 1_000]);
     scheduler.close();
   });
 
-  it("arms at max(0, lastSuccess + 24h - now) when a success is on record", async () => {
+  it("arms at max(0, newestReceipt + 24h - now) when a run is on record", async () => {
     const now = new Date("2026-10-22T12:00:00.000Z");
     const successAt = new Date(now.getTime() - 82_800_000); // 23h ago => 1h remaining
     const delays: number[] = [];
@@ -389,6 +399,60 @@ describe("backup tick scheduler", () => {
     scheduler.close();
   });
 
+  it("re-arms at the configured interval from the newest receipt of ANY status — a persistent failure never idle-polls (CR-02)", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const failureAt = new Date(now.getTime() - 3_600_000); // FAILED an hour ago
+    const delays: number[] = [];
+    const queries: Array<Record<string, unknown>> = [];
+    const scheduler = scheduleBackupTick({
+      database: { backupRun: { findFirst: async (args: Record<string, unknown>) => { queries.push(args); return { completedAt: failureAt }; } } } as never,
+      enqueue: async () => undefined,
+      now: () => now,
+      idlePollMs: 1_000,
+      setTimeout: (_next, delay) => { delays.push(delay); return 1 as never; },
+      clearTimeout: () => undefined,
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    // No SUCCEEDED-only filter — any receipt anchors the cadence (CR-02).
+    expect(queries[0]).not.toHaveProperty("where");
+    expect(delays).toEqual([dayMs - 3_600_000]);
+    scheduler.close();
+  });
+
+  it("polls at the bounded pending cadence with a deduped jobId while the enqueued run has not written its receipt yet (CR-02)", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const delays: number[] = [];
+    let callback: (() => void) | undefined;
+    const jobIds: Array<string | undefined> = [];
+    // The newest receipt is the PREVIOUS run (overdue): the freshly enqueued run
+    // has no receipt yet, so the stale anchor must not compute a 0ms re-fire loop.
+    const scheduler = scheduleBackupTick({
+      database: fakeDatabase(async () => ({ completedAt: new Date(now.getTime() - dayMs - 5_000) })),
+      enqueue: async (_data, opts) => { jobIds.push(opts?.jobId); },
+      now: () => now,
+      idlePollMs: 1_000,
+      setTimeout: (next, delay) => { callback = next; delays.push(delay); return delays.length as never; },
+      clearTimeout: () => undefined,
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(delays).toEqual([0]); // overdue: fires immediately
+
+    callback?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(jobIds).toHaveLength(1);
+    expect(delays).toEqual([0, 1_000]); // stale anchor floored to the bounded pending poll
+
+    callback?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(jobIds).toHaveLength(2);
+    expect(jobIds[1]).toBe(jobIds[0]); // same bucket — BullMQ dedupes the pending-window tick
+    scheduler.close();
+  });
+
   it("re-arms from persisted state after a run instead of stacking a fixed interval", async () => {
     const now = new Date("2026-10-22T12:00:00.000Z");
     const delays: number[] = [];
@@ -398,7 +462,9 @@ describe("backup tick scheduler", () => {
     const scheduler = scheduleBackupTick({
       database: fakeDatabase(async () => {
         queries += 1;
-        return queries === 1 ? null : { completedAt: new Date(now.getTime() - dayMs + 500) };
+        // The second query sees the receipt the run just wrote (same millisecond
+        // as the enqueue with the frozen clock).
+        return queries === 1 ? null : { completedAt: now };
       }),
       enqueue: async () => { enqueued += 1; },
       now: () => now,
@@ -415,7 +481,7 @@ describe("backup tick scheduler", () => {
     await new Promise((resolve) => setImmediate(resolve));
     expect(enqueued).toBe(1);
     expect(queries).toBe(2);
-    expect(delays).toEqual([1_000, 500]); // 24h from the persisted success minus the 500ms already elapsed
+    expect(delays).toEqual([1_000, dayMs]); // 24h anchored on the persisted receipt
     scheduler.close();
   });
 

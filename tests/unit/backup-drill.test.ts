@@ -314,17 +314,18 @@ describe("drill tick scheduler", () => {
     return { backupVerificationReceipt: { findFirst } } as never;
   }
 
-  it("arms at the idle-poll delay when no verification receipt is on record and enqueues only the trigger discriminator", async () => {
+  it("arms at the idle-poll delay when no receipt is on record, enqueues once, and dedupes a second tick inside the pending window", async () => {
     const now = new Date("2026-10-22T12:00:00.000Z");
     const delays: number[] = [];
     let callback: (() => void) | undefined;
     const enqueued: BackupJobData[] = [];
+    const jobIds: Array<string | undefined> = [];
     const scheduler = scheduleDrillTick({
       database: fakeReceiptDatabase(async () => null),
-      enqueue: async (data) => { enqueued.push(data); },
+      enqueue: async (data, opts) => { enqueued.push(data); jobIds.push(opts?.jobId); },
       now: () => now,
       idlePollMs: 1_000,
-      setTimeout: (next, delay) => { callback = next; delays.push(delay); return 1 as never; },
+      setTimeout: (next, delay) => { callback = next; delays.push(delay); return delays.length as never; },
       clearTimeout: () => undefined,
     });
 
@@ -336,7 +337,16 @@ describe("drill tick scheduler", () => {
     await new Promise((resolve) => setImmediate(resolve));
     // T-08-07/Pitfall 8: the payload carries only the trigger discriminator.
     expect(enqueued).toEqual([{ trigger: "SCHEDULED" }]);
-    expect(delays).toEqual([1_000, 1_000]);
+    expect(jobIds[0]).toMatch(/^scheduled-drill-\d+$/);
+
+    // CR-02: the pending window keeps ticking at idlePoll, but the deterministic
+    // bucket jobId makes every re-tick a BullMQ no-op, never a duplicate drill.
+    callback?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(enqueued).toEqual([{ trigger: "SCHEDULED" }, { trigger: "SCHEDULED" }]);
+    expect(jobIds[1]).toBe(jobIds[0]);
+    expect(delays).toEqual([1_000, 1_000, 1_000]);
     scheduler.close();
   });
 
@@ -390,6 +400,26 @@ describe("drill tick scheduler", () => {
     scheduler.close();
   });
 
+  it("re-arms at the interval from the newest FAILED/UNVERIFIED receipt too — any outcome resets the cadence (CR-02)", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const failureAt = new Date(now.getTime() - hourMs); // a failing drill an hour ago
+    const delays: number[] = [];
+    const queries: Array<Record<string, unknown>> = [];
+    const scheduler = scheduleDrillTick({
+      database: { backupVerificationReceipt: { findFirst: async (args: Record<string, unknown>) => { queries.push(args); return { completedAt: failureAt }; } } } as never,
+      enqueue: async () => undefined,
+      now: () => now,
+      idlePollMs: 1_000,
+      setTimeout: (_next, delay) => { delays.push(delay); return 1 as never; },
+      clearTimeout: () => undefined,
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(queries[0]).not.toHaveProperty("where");
+    expect(delays).toEqual([DRILL_INTERVAL_MS - hourMs]);
+    scheduler.close();
+  });
+
   it("re-arms from the newest persisted receipt after a run instead of stacking a fixed interval", async () => {
     const now = new Date("2026-10-22T12:00:00.000Z");
     const delays: number[] = [];
@@ -399,7 +429,9 @@ describe("drill tick scheduler", () => {
     const scheduler = scheduleDrillTick({
       database: fakeReceiptDatabase(async () => {
         queries += 1;
-        return queries === 1 ? null : { completedAt: new Date(now.getTime() - DRILL_INTERVAL_MS + 500) };
+        // The second query sees the receipt the drill just wrote (same
+        // millisecond as the enqueue with the frozen clock).
+        return queries === 1 ? null : { completedAt: now };
       }),
       enqueue: async () => { enqueued += 1; },
       now: () => now,
@@ -416,7 +448,42 @@ describe("drill tick scheduler", () => {
     await new Promise((resolve) => setImmediate(resolve));
     expect(enqueued).toBe(1);
     expect(queries).toBe(2);
-    expect(delays).toEqual([1_000, 500]); // weekly from the persisted receipt minus the 500ms already elapsed
+    expect(delays).toEqual([1_000, DRILL_INTERVAL_MS]); // weekly, anchored on the persisted receipt
+    scheduler.close();
+  });
+
+  it("re-arms past the timer clamp instead of drilling early when the interval exceeds MAX_TIMER_DELAY (WR-02)", async () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const maxTimerDelay = 2 ** 31 - 1;
+    const yearMs = 8_760 * hourMs; // the validated maximum BACKUP_DRILL_INTERVAL_HOURS
+    const delays: number[] = [];
+    let callback: (() => void) | undefined;
+    let queries = 0;
+    let enqueued = 0;
+    const scheduler = scheduleDrillTick({
+      database: fakeReceiptDatabase(async () => {
+        queries += 1;
+        return { completedAt: new Date(now.getTime() - hourMs) };
+      }),
+      enqueue: async () => { enqueued += 1; },
+      now: () => now,
+      intervalMs: yearMs,
+      setTimeout: (next, delay) => { callback = next; delays.push(delay); return delays.length as never; },
+      clearTimeout: () => undefined,
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    // The real remainder (~8759h) exceeds the 32-bit timer ceiling and is clamped.
+    expect(delays).toEqual([maxTimerDelay]);
+
+    // The clamp-boundary tick must re-arm (recompute the remaining delay), never
+    // run() — no drill fires ~25 days early, repeatedly.
+    callback?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(enqueued).toBe(0);
+    expect(queries).toBe(2);
+    expect(delays).toEqual([maxTimerDelay, maxTimerDelay]);
     scheduler.close();
   });
 

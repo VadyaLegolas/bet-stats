@@ -239,6 +239,77 @@ describe("backup job: retention rotation and robocopy off-host", () => {
     expect(rows[0]).toMatchObject({ status: "SUCCEEDED", offsiteStatus: "NOT_CONFIGURED" });
   });
 
+  it("rotates off-host copies by the same retention window after a successful robocopy, oldest first (WR-03)", async () => {
+    const dir = "/tmp/bet-stats-backup-job-offsite-rotate";
+    const destination = "/mnt/offsite-rotate";
+    const seed: Record<string, Buffer> = {};
+    for (let day = 1; day <= 3; day += 1) {
+      seed[join(destination, `football_prediction-2026100${day}T000000Z.dump`)] = Buffer.from(`offsite-${day}`);
+    }
+    seed[join(destination, "operator-notes.txt")] = Buffer.from("not a dump, never touched");
+    const fake = fakeFs(seed);
+    const rows: StoredRun[] = [];
+    const { exec } = fakeExec((command, args) => {
+      if (command === "robocopy") {
+        // simulate the copy: the new dump lands in the off-host directory
+        fake.store.set(join(destination, NEW_DUMP), Buffer.from("PGDMP fake archive"));
+        return { code: 1, stdout: Buffer.alloc(0), stderr: "" };
+      }
+      return dumpOk(fake)(command, args);
+    });
+
+    const result = await runBackup({
+      config: readBackupConfig({ BACKUP_ENABLED: "true", BACKUP_DIR: dir, BACKUP_OFFSITE_DIR: destination, BACKUP_RETENTION_COUNT: "2" }),
+      database: fakeDatabase(rows),
+      trigger: "SCHEDULED",
+      exec,
+      fs: fake.fs,
+      now: () => NOW,
+    });
+
+    expect(result.status).toBe("SUCCEEDED");
+    expect(result.offsiteStatus).toBe("COPIED");
+    const normalized = (path: string) => path.replaceAll("\\", "/");
+    const inDir = (path: string, dir: string) => normalized(path).startsWith(`${normalized(dir)}/`);
+    // Exactly the newest retentionCount matching dumps remain off-host…
+    const offsiteDumps = [...fake.store.keys()].filter((key) => inDir(key, destination) && key.endsWith(".dump")).sort();
+    expect(offsiteDumps).toEqual([join(destination, "football_prediction-20261003T000000Z.dump"), join(destination, NEW_DUMP)].sort());
+    // …the two beyond the window were removed strictly oldest-first…
+    expect(fake.removals.filter((path) => inDir(path, destination))).toEqual([
+      join(destination, "football_prediction-20261001T000000Z.dump"),
+      join(destination, "football_prediction-20261002T000000Z.dump"),
+    ]);
+    // …and non-matching files are never touched (no mirror, no purge).
+    expect(fake.removals).not.toContain(join(destination, "operator-notes.txt"));
+    // The local dir holds only this run's dump — local retention removes nothing.
+    expect(fake.removals.filter((path) => inDir(path, dir))).toHaveLength(0);
+  });
+
+  it("never prunes the off-host directory when the copy degraded (WR-03)", async () => {
+    const dir = "/tmp/bet-stats-backup-job-offsite-degraded-prune";
+    const destination = "/mnt/offsite-degraded-prune";
+    const seed: Record<string, Buffer> = {};
+    for (let day = 1; day <= 3; day += 1) {
+      seed[join(destination, `football_prediction-2026100${day}T000000Z.dump`)] = Buffer.from(`offsite-${day}`);
+    }
+    const fake = fakeFs(seed);
+    const rows: StoredRun[] = [];
+    const { exec } = fakeExec((command, args) => (command === "robocopy" ? { code: 16, stdout: Buffer.alloc(0), stderr: "" } : dumpOk(fake)(command, args)));
+
+    const result = await runBackup({
+      config: readBackupConfig({ BACKUP_ENABLED: "true", BACKUP_DIR: dir, BACKUP_OFFSITE_DIR: destination, BACKUP_RETENTION_COUNT: "1" }),
+      database: fakeDatabase(rows),
+      trigger: "SCHEDULED",
+      exec,
+      fs: fake.fs,
+      now: () => NOW,
+    });
+
+    expect(result.status).toBe("SUCCEEDED");
+    expect(result.offsiteStatus).toBe("DEGRADED");
+    expect(fake.removals.filter((path) => path.replaceAll("\\", "/").startsWith(`${destination.replaceAll("\\", "/")}/`))).toHaveLength(0);
+  });
+
   it("invokes no pruning and deletes no dumps when the dump itself fails", async () => {
     const dir = "/tmp/bet-stats-backup-job-dump-failure";
     const seed: Record<string, Buffer> = {};

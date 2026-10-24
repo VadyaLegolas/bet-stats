@@ -362,7 +362,9 @@ export async function runBackup(input: RunBackupInput): Promise<BackupRunResult>
       offsiteStatus,
       trigger: input.trigger,
       fileName,
-      byteSize,
+      // @db.BigInt column (WR-01): a JS number would overflow int4 for dumps
+      // >= 2 GiB — the receipt insert must survive any realistic dump size.
+      byteSize: BigInt(byteSize),
       sha256,
       ...(offsiteError ? { offsiteError } : {}),
       ...(tools.version ? { dbVersion: tools.version } : {}),

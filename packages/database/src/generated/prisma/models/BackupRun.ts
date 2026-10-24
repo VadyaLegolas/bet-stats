@@ -33,7 +33,7 @@ export type BackupRunAvgAggregateOutputType = {
 
 export type BackupRunSumAggregateOutputType = {
   durationMs: number | null
-  byteSize: number | null
+  byteSize: bigint | null
 }
 
 export type BackupRunMinAggregateOutputType = {
@@ -46,7 +46,7 @@ export type BackupRunMinAggregateOutputType = {
   trigger: string | null
   reason: string | null
   fileName: string | null
-  byteSize: number | null
+  byteSize: bigint | null
   sha256: string | null
   offsiteError: string | null
   dbVersion: string | null
@@ -63,7 +63,7 @@ export type BackupRunMaxAggregateOutputType = {
   trigger: string | null
   reason: string | null
   fileName: string | null
-  byteSize: number | null
+  byteSize: bigint | null
   sha256: string | null
   offsiteError: string | null
   dbVersion: string | null
@@ -247,7 +247,7 @@ export type BackupRunGroupByOutputType = {
   trigger: string
   reason: string | null
   fileName: string | null
-  byteSize: number | null
+  byteSize: bigint | null
   sha256: string | null
   offsiteError: string | null
   dbVersion: string | null
@@ -287,7 +287,7 @@ export type BackupRunWhereInput = {
   trigger?: Prisma.StringFilter<"BackupRun"> | string
   reason?: Prisma.StringNullableFilter<"BackupRun"> | string | null
   fileName?: Prisma.StringNullableFilter<"BackupRun"> | string | null
-  byteSize?: Prisma.IntNullableFilter<"BackupRun"> | number | null
+  byteSize?: Prisma.BigIntNullableFilter<"BackupRun"> | bigint | number | null
   sha256?: Prisma.StringNullableFilter<"BackupRun"> | string | null
   offsiteError?: Prisma.StringNullableFilter<"BackupRun"> | string | null
   dbVersion?: Prisma.StringNullableFilter<"BackupRun"> | string | null
@@ -324,7 +324,7 @@ export type BackupRunWhereUniqueInput = Prisma.AtLeast<{
   trigger?: Prisma.StringFilter<"BackupRun"> | string
   reason?: Prisma.StringNullableFilter<"BackupRun"> | string | null
   fileName?: Prisma.StringNullableFilter<"BackupRun"> | string | null
-  byteSize?: Prisma.IntNullableFilter<"BackupRun"> | number | null
+  byteSize?: Prisma.BigIntNullableFilter<"BackupRun"> | bigint | number | null
   sha256?: Prisma.StringNullableFilter<"BackupRun"> | string | null
   offsiteError?: Prisma.StringNullableFilter<"BackupRun"> | string | null
   dbVersion?: Prisma.StringNullableFilter<"BackupRun"> | string | null
@@ -366,7 +366,7 @@ export type BackupRunScalarWhereWithAggregatesInput = {
   trigger?: Prisma.StringWithAggregatesFilter<"BackupRun"> | string
   reason?: Prisma.StringNullableWithAggregatesFilter<"BackupRun"> | string | null
   fileName?: Prisma.StringNullableWithAggregatesFilter<"BackupRun"> | string | null
-  byteSize?: Prisma.IntNullableWithAggregatesFilter<"BackupRun"> | number | null
+  byteSize?: Prisma.BigIntNullableWithAggregatesFilter<"BackupRun"> | bigint | number | null
   sha256?: Prisma.StringNullableWithAggregatesFilter<"BackupRun"> | string | null
   offsiteError?: Prisma.StringNullableWithAggregatesFilter<"BackupRun"> | string | null
   dbVersion?: Prisma.StringNullableWithAggregatesFilter<"BackupRun"> | string | null
@@ -383,7 +383,7 @@ export type BackupRunCreateInput = {
   trigger: string
   reason?: string | null
   fileName?: string | null
-  byteSize?: number | null
+  byteSize?: bigint | number | null
   sha256?: string | null
   offsiteError?: string | null
   dbVersion?: string | null
@@ -400,7 +400,7 @@ export type BackupRunUncheckedCreateInput = {
   trigger: string
   reason?: string | null
   fileName?: string | null
-  byteSize?: number | null
+  byteSize?: bigint | number | null
   sha256?: string | null
   offsiteError?: string | null
   dbVersion?: string | null
@@ -417,7 +417,7 @@ export type BackupRunUpdateInput = {
   trigger?: Prisma.StringFieldUpdateOperationsInput | string
   reason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  byteSize?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  byteSize?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   offsiteError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dbVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -434,7 +434,7 @@ export type BackupRunUncheckedUpdateInput = {
   trigger?: Prisma.StringFieldUpdateOperationsInput | string
   reason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  byteSize?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  byteSize?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   offsiteError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dbVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -451,7 +451,7 @@ export type BackupRunCreateManyInput = {
   trigger: string
   reason?: string | null
   fileName?: string | null
-  byteSize?: number | null
+  byteSize?: bigint | number | null
   sha256?: string | null
   offsiteError?: string | null
   dbVersion?: string | null
@@ -468,7 +468,7 @@ export type BackupRunUpdateManyMutationInput = {
   trigger?: Prisma.StringFieldUpdateOperationsInput | string
   reason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  byteSize?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  byteSize?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   offsiteError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dbVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -485,7 +485,7 @@ export type BackupRunUncheckedUpdateManyInput = {
   trigger?: Prisma.StringFieldUpdateOperationsInput | string
   reason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  byteSize?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  byteSize?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
   sha256?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   offsiteError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   dbVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -551,6 +551,14 @@ export type BackupRunMinOrderByAggregateInput = {
 export type BackupRunSumOrderByAggregateInput = {
   durationMs?: Prisma.SortOrder
   byteSize?: Prisma.SortOrder
+}
+
+export type NullableBigIntFieldUpdateOperationsInput = {
+  set?: bigint | number | null
+  increment?: bigint | number
+  decrement?: bigint | number
+  multiply?: bigint | number
+  divide?: bigint | number
 }
 
 
@@ -638,7 +646,11 @@ export type $BackupRunPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     trigger: string
     reason: string | null
     fileName: string | null
-    byteSize: number | null
+    /**
+     * BigInt: int4 overflowed for dumps >= 2 GiB, and only after the dump was
+     * already renamed into place (review WR-01).
+     */
+    byteSize: bigint | null
     sha256: string | null
     offsiteError: string | null
     dbVersion: string | null
@@ -1075,7 +1087,7 @@ export interface BackupRunFieldRefs {
   readonly trigger: Prisma.FieldRef<"BackupRun", 'String'>
   readonly reason: Prisma.FieldRef<"BackupRun", 'String'>
   readonly fileName: Prisma.FieldRef<"BackupRun", 'String'>
-  readonly byteSize: Prisma.FieldRef<"BackupRun", 'Int'>
+  readonly byteSize: Prisma.FieldRef<"BackupRun", 'BigInt'>
   readonly sha256: Prisma.FieldRef<"BackupRun", 'String'>
   readonly offsiteError: Prisma.FieldRef<"BackupRun", 'String'>
   readonly dbVersion: Prisma.FieldRef<"BackupRun", 'String'>

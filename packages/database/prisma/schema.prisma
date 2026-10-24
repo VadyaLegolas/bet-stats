@@ -773,7 +773,9 @@ model BackupRun {
   trigger       String
   reason        String?   @db.VarChar(128)
   fileName      String?   @db.VarChar(256)
-  byteSize      Int?
+  /// BigInt: int4 overflowed for dumps >= 2 GiB, and only after the dump was
+  /// already renamed into place (review WR-01).
+  byteSize      BigInt?   @db.BigInt
   sha256        String?   @db.VarChar(128)
   offsiteError  String?   @db.VarChar(256)
   dbVersion     String?   @db.VarChar(128)

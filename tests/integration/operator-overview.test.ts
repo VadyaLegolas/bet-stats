@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NotFoundException } from "../../apps/api/node_modules/@nestjs/common/index.js";
 
 import { OperatorGuard } from "../../apps/api/src/modules/reconciliation/operator.guard.js";
-import { computeBackupFact, createBullBackupTriggerEnqueuer, createOperationsProjection, failedDrillChecks, OperationsService, backupTriggerQueueName, type BackupRows } from "../../apps/api/src/modules/operations/operations.service.js";
+import { computeBackupFact, createBullBackupTriggerEnqueuer, createOperationsProjection, createPrismaOperationsRepository, failedDrillChecks, OperationsService, backupTriggerQueueName, type BackupRows } from "../../apps/api/src/modules/operations/operations.service.js";
 import { OperationsController } from "../../apps/api/src/modules/operations/operations.controller.js";
 import { verifyIngressOperationsRequest } from "../../apps/web/app/internal-api/operations/[[...path]]/route.js";
 
@@ -163,6 +163,25 @@ describe("backups read model (five-state, computed at read time)", () => {
     const base = rows({ lastBackup: { ...rows().lastBackup!, completedAt: hoursAgo(24 + 59 / 60) } });
     expect(computeBackupFact(base, NOW).state).toBe("HEALTHY");
     expect(computeBackupFact(base, new Date(NOW.getTime() + 2 * 3_600_000)).state).toBe("STALE");
+  });
+
+  it("serializes the @db.BigInt byteSize across the repository boundary as a plain number (WR-01)", async () => {
+    const threeGiB = 3_221_225_472n; // beyond int4 — the column is BIGINT since WR-01
+    const fakeDatabase = {
+      backupRun: {
+        findFirst: vi.fn(async () => ({ fileName: "football_prediction-20260920T100000Z.dump", byteSize: threeGiB, sha256: "d".repeat(64), durationMs: 3_200, completedAt: new Date("2026-09-20T10:00:00.000Z"), status: "SUCCEEDED", offsiteStatus: "COPIED" })),
+      },
+      backupVerificationReceipt: {
+        findFirst: vi.fn(async () => ({ overall: "VERIFIED", completedAt: new Date("2026-09-19T12:00:00.000Z"), restoreDurationMs: 9_000, containerCleanup: "REMOVED", checks: {} })),
+      },
+    } as never;
+
+    const rows = await createPrismaOperationsRepository(fakeDatabase).backups();
+
+    // bigint never crosses into the closed DTO — the API boundary stays JSON-safe.
+    expect(rows.lastBackup?.byteSize).toBe(Number(threeGiB));
+    expect(typeof rows.lastBackup?.byteSize).toBe("number");
+    expect(JSON.stringify(computeBackupFact(rows, new Date("2026-09-20T12:00:00.000Z")))).toContain("3221225472");
   });
 
   it("extracts FAILED check names from the receipt checks JSON and strips unsafe key characters", () => {

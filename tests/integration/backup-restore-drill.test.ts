@@ -116,7 +116,7 @@ describe("backup dump and receipt drill", () => {
       offsiteStatus: "NOT_CONFIGURED",
       trigger: "MANUAL",
       fileName: dumps[0],
-      byteSize: size,
+      byteSize: BigInt(size),
       reason: null,
     });
     const recomputed = createHash("sha256").update(readFileSync(dumpPath)).digest("hex");

@@ -207,7 +207,7 @@ export function createPrismaOperationsRepository(database: PrismaClient, clock =
       ]);
       return {
         configured: config.enabled && Boolean(config.dir),
-        lastBackup: lastSuccess ? { fileName: safeFileName(lastSuccess.fileName) ?? "unavailable", byteSize: lastSuccess.byteSize, sha256: lastSuccess.sha256, durationMs: lastSuccess.durationMs, completedAt: lastSuccess.completedAt, status: safeCode(lastSuccess.status, "UNKNOWN"), offsiteStatus: safeCode(lastSuccess.offsiteStatus, "NOT_CONFIGURED") } : null,
+        lastBackup: lastSuccess ? { fileName: safeFileName(lastSuccess.fileName) ?? "unavailable", byteSize: lastSuccess.byteSize === null ? null : Number(lastSuccess.byteSize), sha256: lastSuccess.sha256, durationMs: lastSuccess.durationMs, completedAt: lastSuccess.completedAt, status: safeCode(lastSuccess.status, "UNKNOWN"), offsiteStatus: safeCode(lastSuccess.offsiteStatus, "NOT_CONFIGURED") } : null,
         lastDrill: lastReceipt ? { overall: safeCode(lastReceipt.overall, "UNVERIFIED"), completedAt: lastReceipt.completedAt, restoreDurationMs: lastReceipt.restoreDurationMs, containerCleanup: safeCode(lastReceipt.containerCleanup, "FAILED"), failedChecks: failedDrillChecks(lastReceipt.checks) } : null,
         retentionCount: config.retentionCount ?? DEFAULT_BACKUP_RETENTION_COUNT,
         drillIntervalHours: config.drillIntervalHours ?? DEFAULT_BACKUP_DRILL_INTERVAL_HOURS,

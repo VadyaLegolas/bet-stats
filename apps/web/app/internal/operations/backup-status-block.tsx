@@ -24,7 +24,9 @@ const card = { border: "1px solid var(--color-border)", borderRadius: 4, backgro
 const button = { minHeight: 44, padding: "8px 14px" } as const;
 
 const DRILL_OVERALL_LABELS: Record<string, string> = { VERIFIED: "Пройдена", FAILED: "Сбой", UNVERIFIED: "Не подтверждена" };
-const CONTAINER_CLEANUP_LABELS: Record<string, string> = { REMOVED: "Контейнер удалён", RETAINED: "Контейнер оставлен" };
+// Exactly the DrillCleanupState enum (backup-drill.ts) — every occurring value
+// is mapped, so non-green drills never leak raw English codes (IN-01).
+const CONTAINER_CLEANUP_LABELS: Record<string, string> = { REMOVED: "Контейнер удалён", FAILED: "Не удалось удалить контейнер", NOT_STARTED: "Контейнер не запускался" };
 
 function drillOverallLabel(overall: string): string { return DRILL_OVERALL_LABELS[overall] ?? overall; }
 function containerCleanupLabel(value: string): string { return CONTAINER_CLEANUP_LABELS[value] ?? value; }

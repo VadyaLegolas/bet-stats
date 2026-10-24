@@ -61,11 +61,21 @@ describe("BackupStatusBlock backup and drill details", () => {
   });
 
   it("renders the last drill overall and the failed-check list", () => {
-    const markup = render(fact({ state: "FAILED", lastDrill: { overall: "FAILED", completedAt: "2026-10-22T12:00:00.000Z", restoreDurationMs: 9_000, containerCleanup: "RETAINED", failedChecks: ["parity.Fixture", "fkOrphans"] } }));
+    const markup = render(fact({ state: "FAILED", lastDrill: { overall: "FAILED", completedAt: "2026-10-22T12:00:00.000Z", restoreDurationMs: 9_000, containerCleanup: "FAILED", failedChecks: ["parity.Fixture", "fkOrphans"] } }));
     expect(markup).toContain("Сбой");
     expect(markup).toContain("parity.Fixture");
     expect(markup).toContain("fkOrphans");
-    expect(markup).toContain("Контейнер оставлен");
+    expect(markup).toContain("Не удалось удалить контейнер");
+  });
+
+  it.each([
+    ["REMOVED", "Контейнер удалён"],
+    ["FAILED", "Не удалось удалить контейнер"],
+    ["NOT_STARTED", "Контейнер не запускался"],
+  ] as const)("renders the Russian container-cleanup label for %s, never the raw English code", (cleanup, label) => {
+    const markup = render(fact({ lastDrill: { overall: "FAILED", completedAt: "2026-10-22T12:00:00.000Z", restoreDurationMs: 9_000, containerCleanup: cleanup, failedChecks: [] } }));
+    expect(markup).toContain(label);
+    expect(markup).not.toContain(cleanup);
   });
 
   it("never renders a directory path — fixtures and output carry basenames only", () => {

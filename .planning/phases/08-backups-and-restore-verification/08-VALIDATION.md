@@ -3,9 +3,9 @@ phase: "8"
 slug: "backups-and-restore-verification"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 # audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-10-22"
 ---
 
@@ -38,32 +38,32 @@ created: "2026-10-22"
 
 ## Per-Task Verification Map
 
-| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 08-xx-xx | 01 | 1 | BAK-01 | T-08-NN | `readBackupConfig` fail-closed (disabled/dir-missing/invalid retention) | unit | `pnpm vitest run --project unit packages/config` | ❌ W0 (extend) | ⬜ pending |
-| 08-xx-xx | 01 | 1 | BAK-01 | — | retention rotation prunes to N after success only; never delete-before-success | unit | `pnpm vitest run --project unit` | ❌ W0 (`backup.test.ts`) | ⬜ pending |
-| 08-xx-xx | 01 | 1 | BAK-01 | — | robocopy exit-bitmask (0,1,3,7 pass; 8,16,ENOENT → DEGRADED) | unit | `pnpm vitest run --project unit` | ❌ W0 (`backup.test.ts`) | ⬜ pending |
-| 08-xx-xx | 01 | 1 | BAK-01 | — | real `pg_dump -Fc` roundtrip + atomic rename + rotation on throwaway container | integration | `pnpm test:integration` | ❌ W0 (`backup-restore-drill.test.ts`) | ⬜ pending |
-| 08-xx-xx | 02 | 2 | BAK-02 | T-08-NN | full drill: container → restore → deploy → status-at-head → checks → receipt → cleanup | integration | `pnpm test:integration` | ❌ W0 (`backup-restore-drill.test.ts`) | ⬜ pending |
-| 08-xx-xx | 02 | 2 | BAK-02 | — | drill fail-closed: Docker unavailable ⇒ FAILED receipt (never green) | integration | `pnpm test:integration` | ❌ W0 (`backup-restore-drill.test.ts`) | ⬜ pending |
-| 08-xx-xx | 02 | 2 | BAK-02 | — | receipt immutability: UPDATE/DELETE rejected (`P0001`) | integration | `pnpm test:integration` | ❌ W0 (extend `mutation-rejection.test.ts`) | ⬜ pending |
-| 08-xx-xx | 03 | 3 | BAK-03 | T-08-NN | overview `backups` states (NOT_CONFIGURED / NEVER_VERIFIED / STALE / FAILED / HEALTHY, 25h staleness) | unit | `pnpm vitest run --project unit` | ❌ W0 (extend operations tests) | ⬜ pending |
-| 08-xx-xx | 03 | 3 | BAK-03 | T-08-NN | no secrets in payload (no `postgresql://`, no credential substrings) | unit+integration | `pnpm test` | ❌ W0 (extend `operator-overview.test.ts`) | ⬜ pending |
-| 08-xx-xx | 03 | 3 | BAK-03 | — | manual trigger endpoints enqueue jobs; unsigned/bad-credential ⇒ 404 | integration | `pnpm test:integration` | ❌ W0 (extend `operator-overview.test.ts`) | ⬜ pending |
-| 08-xx-xx | 03 | 3 | BAK-03 | — | web proxy POST passthrough + method-in-signature rejection | unit (route) | `pnpm --filter web test` | ❌ W0 (extend operations route test) | ⬜ pending |
-| 08-xx-xx | 03 | 3 | BAK-03 | — | UI Block renders 5 states (Russian labels, non-green honesty) | web unit | `pnpm --filter web test` | ❌ W0 (web component test) | ⬜ pending |
+| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File | Status |
+|---------|------|------|-------------|------------|-----------------|-----------|-------------------|------|--------|
+| 08-01-t1 | 01 | 1 | BAK-01 | T-08-01 | `readBackupConfig` fail-closed (disabled/dir-missing/invalid retention, PG identity keys) | unit | `pnpm vitest run --project unit packages/config` | `packages/config/src/index.test.ts` | ✅ green |
+| 08-01-t2 | 01 | 1 | BAK-01 | — | retention rotation prunes to N after success only; never delete-before-success | unit | `pnpm vitest run --project unit tests/unit/backup-job.test.ts` | `tests/unit/backup-job.test.ts` | ✅ green |
+| 08-01-t2 | 01 | 1 | BAK-01 | — | robocopy exit-bitmask (0,1,3,7 pass; 8,16,ENOENT → DEGRADED); no /MIR//PURGE | unit | `pnpm vitest run --project unit tests/unit/backup-job.test.ts` | `tests/unit/backup-job.test.ts` | ✅ green |
+| 08-01-t3 | 01 | 1 | BAK-01 | — | real `pg_dump -Fc` roundtrip + atomic rename + rotation on throwaway container | integration | `pnpm vitest run --project integration tests/integration/backup-restore-drill.test.ts` | `tests/integration/backup-restore-drill.test.ts` | ✅ green |
+| 08-02-t1 | 02 | 2 | BAK-02 | T-08-07..12 | full drill: container → restore → deploy → status-at-head → checks → receipt → cleanup | integration | `pnpm vitest run --project integration tests/integration/backup-restore-drill.test.ts` | `tests/integration/backup-restore-drill.test.ts` | ✅ green |
+| 08-02-t2 | 02 | 2 | BAK-02 | T-08-08 | drill fail-closed: Docker unavailable ⇒ UNVERIFIED; parity/restore failure ⇒ FAILED; never green | unit | `pnpm vitest run --project unit tests/unit/backup-drill.test.ts` | `tests/unit/backup-drill.test.ts` | ✅ green |
+| 08-02-t2 | 02 | 2 | BAK-02 | T-08-11 | receipt immutability: UPDATE/DELETE rejected (`/immutable/i`) for both receipt tables | integration | `pnpm vitest run --project integration tests/integration/mutation-rejection.test.ts` | `tests/integration/mutation-rejection.test.ts` | ✅ green |
+| 08-03-t1 | 03 | 3 | BAK-03 | T-08-13,15 | overview `backups` states (NOT_CONFIGURED / NEVER_VERIFIED / STALE / FAILED / HEALTHY, 25h staleness, read-time) | integration | `pnpm vitest run --project integration tests/integration/operator-overview.test.ts` | `tests/integration/operator-overview.test.ts` | ✅ green |
+| 08-03-t1 | 03 | 3 | BAK-03 | T-08-13 | no secrets in payload (no connection-string scheme marker, no directory path) | integration | `pnpm vitest run --project integration tests/integration/operator-overview.test.ts` | `tests/integration/operator-overview.test.ts` | ✅ green |
+| 08-03-t2 | 03 | 3 | BAK-03 | T-08-14,16,17 | manual trigger endpoints enqueue {trigger:"MANUAL"} only; disabled/bad-credential ⇒ uniform 404 | integration | `pnpm vitest run --project integration tests/integration/operator-overview.test.ts` | `tests/integration/operator-overview.test.ts` | ✅ green |
+| 08-03-t2 | 03 | 3 | BAK-03 | T-08-14 | web proxy POST passthrough + method-in-signature rejection; GET unchanged | web unit | `pnpm --filter web test` | `apps/web/app/internal-api/operations/[[...path]]/route.test.ts` | ✅ green |
+| 08-03-t3 | 03 | 3 | BAK-03 | — | UI Block renders 5 states (Russian labels, non-green honesty, trigger buttons) | web unit | `pnpm --filter web test` | `apps/web/app/internal/operations/backup-status-block.test.ts` | ✅ green |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky · W0 = to create in Wave 0*
+*Status legend: ✅ green · ❌ red · ⚠️ flaky. Audit 2026-10-24: all rows verified green on the executed tree (unit 58/58, integration 36/36, web 79/79).*
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `tests/integration/backup-restore-drill.test.ts` — new owned-container harness test (Docker; follows `verify-release-integration.mjs` shape).
-- [ ] `tests/unit/backup-job.test.ts` + `tests/unit/backup-drill.test.ts` — unit orchestration with injected `docker`/`execFile` fakes (jobs must accept injected exec functions, like `scheduleRetentionPurge` injects timers — testability symmetry).
-- [ ] Extend `tests/integration/mutation-rejection.test.ts` with the two new append-only receipt tables.
-- [ ] Add operations-POST cases to the web route test (`internal-api/privacy` route-test pattern is proven).
-- [ ] No framework installs needed (stdlib + robocopy + docker CLI + existing stack — Package Legitimacy Audit clean).
+- [x] `tests/integration/backup-restore-drill.test.ts` — new owned-container harness test (Docker; follows `verify-release-integration.mjs` shape).
+- [x] `tests/unit/backup-job.test.ts` + `tests/unit/backup-drill.test.ts` — unit orchestration with injected `docker`/`execFile` fakes (jobs accept injected exec functions, like `scheduleRetentionPurge` injects timers — testability symmetry).
+- [x] Extend `tests/integration/mutation-rejection.test.ts` with the two new append-only receipt tables.
+- [x] Add operations-POST cases to the web route test (`internal-api/privacy` route-test pattern is proven).
+- [x] No framework installs needed (stdlib + robocopy + docker CLI + existing stack — Package Legitimacy Audit clean; no package.json/lockfile hunks across all three plans).
 
 ---
 
@@ -79,11 +79,19 @@ created: "2026-10-22"
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 240s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 240s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** audited 2026-10-24 — 12/12 Per-Task rows green (unit 58/58, integration 36/36 on an isolated throwaway Postgres with both phase migrations deployed, web 79/79); manual-only items remain operator-environment verifications by design.
+
+## Validation Audit 2026-10-24
+
+| Metric | Count |
+|---|---|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |

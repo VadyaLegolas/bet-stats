@@ -4,17 +4,17 @@ milestone: v1.1
 current_phase: 8
 current_phase_name: Backups and Restore Verification
 status: executing
-stopped_at: Completed 08-02-PLAN.md (restore drill) — next: 08-03 operations visibility
-last_updated: "2026-10-23T13:35:00.000Z"
-last_activity: 2026-10-23
-last_activity_desc: Phase 8 plan 08-02 (restore drill) complete
-state_head: 8b5aa5bb1718a47b08b88abc6600069ac7a3ef54
+stopped_at: Completed 08-03-PLAN.md (operations visibility) — phase 8 all 3 plans executed; awaiting wave/phase gates
+last_updated: "2026-10-24T11:45:00.000Z"
+last_activity: 2026-10-24
+last_activity_desc: Phase 8 plan 08-03 (operations visibility) complete
+state_head: 21ec7d568a9d0c0d0d9f23c71e855713c255fbc0
 progress:
   total_phases: 10
   completed_phases: 1
   total_plans: 6
-  completed_plans: 5
-  percent: 12
+  completed_plans: 6
+  percent: 15
 milestone_name: Reliability, Model Quality and Value Experience
 ---
 
@@ -29,18 +29,18 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 
 ## Current Position
 
-Phase: 8 (Backups and Restore Verification) — EXECUTING
-Plan: 3 of 3 (08-01 backup engine and 08-02 restore drill complete)
-Status: Executing Phase 8
-Last activity: 2026-10-23 — 08-02 complete: append-only BackupVerificationReceipt, fail-closed runBackupDrill (throwaway container restore, migrations at head, chain-integrity checks recorded in the receipt), weekly persisted-state drill scheduler and "drill" worker dispatch (7 commits across two sessions)
+Phase: 8 (Backups and Restore Verification) — all plans EXECUTED
+Plan: 3 of 3 (08-01 backup engine, 08-02 restore drill, 08-03 operations visibility complete)
+Status: Executing Phase 8 — awaiting wave/phase verification gates
+Last activity: 2026-10-24 — 08-03 complete: backups() read model with read-time five-state computation (secret-free, basename-only, redactSecrets pass), POST backups/run + backups/drill behind OperatorGuard (uniform 404, job data exactly { trigger: MANUAL }), proxy POST passthrough with method-bound HMAC, Russian «Резервные копии и проверка восстановления» block with honest non-green states and the two manual trigger buttons (6 commits incl. one finalization Rule-1 fix)
 
-Progress: [██░░░░░░░░] 12%
+Progress: [██░░░░░░░░] 15%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 93
+- Total plans completed: 94
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -55,7 +55,7 @@ Progress: [██░░░░░░░░] 12%
 | 05 | 16 | - | - |
 | 06 | 11 | - | - |
 | 7 | 3 | - | - |
-| 08 | 2 | - | - |
+| 08 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -125,6 +125,7 @@ Progress: [██░░░░░░░░] 12%
 | Phase 07-ci-pipeline-quality-gates P07-02 | 74min | 5 tasks | 6 files |
 | Phase 08 P01 | 70min | 3 tasks | 18 files |
 | Phase 08 P02 | 40min | 3 tasks | 8 files |
+| Phase 08 P03 | 30min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -246,6 +247,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 08]: `SOURCE_COUNTS_UNAVAILABLE` (UNVERIFIED, no container) distinguishes failed source capture from `CHAIN_INTEGRITY_FAILED` (FAILED) for restored-DB check failures — parity signal lives in the checks JSON (08-02)
 - [Phase 08]: FK-orphan scan uses per-key `IS NOT NULL` guards — nullable `supersedes*Id` FKs would false-fail the naive predicate (hardened beyond research Q5) (08-02)
 - [Phase 08]: Receipt checks JSON is the immutable audit trail — verified by UPDATE/DELETE rejection tests against a throwaway Postgres, not by sampling (08-02)
+- [Phase 08]: Five-state precedence NOT_CONFIGURED > NEVER_VERIFIED > FAILED > STALE > HEALTHY; HEALTHY requires a fresh successful backup AND a passing, fresh drill; staleness is always recomputed at read time so worker downtime can never freeze green (D-14, 08-03)
+- [Phase 08]: BackupFact is a closed secret-free DTO — basename-only file names, sanitized check names, bounded failed-check extraction, plus a redactSecrets pass; the serialized payload test forbids connection-string scheme markers and directory paths (D-15, T-08-13, 08-03)
+- [Phase 08]: Manual trigger endpoints reuse the uniform NotFoundException("Not found") for disabled/unconfigured backups — indistinguishable from bad credentials, no configuration oracle; the trigger methods are async so the 404 is a rejected promise (T-08-16, 08-03)
+- [Phase 08]: Web proxy forwards only the request method (the HMAC canonical string already binds the method, so a signed GET can never become a POST) and never a request body; enqueued job data is exactly { trigger: "MANUAL" } with manual-<job>-<ts> jobIds (T-08-14/T-08-17, 08-03)
 
 ### Pending Todos
 

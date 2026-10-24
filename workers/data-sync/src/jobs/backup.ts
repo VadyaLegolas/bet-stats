@@ -390,16 +390,19 @@ export function backupQueue(prefix = "bet-stats"): string {
   return `${prefix}-backup`;
 }
 
+export type BackupJobEnqueueOpts = Readonly<{ jobId?: string | undefined }>;
+
 export function createBackupQueue(input: { redisUrl: string; prefix?: string }) {
   const queue = new Queue<BackupJobData>(backupQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
-  const add = (name: string, data: BackupJobData) => queue.add(name, data, {
+  const add = (name: string, data: BackupJobData, opts?: BackupJobEnqueueOpts) => queue.add(name, data, {
     attempts: 1,
+    ...(opts?.jobId ? { jobId: opts.jobId } : {}),
     removeOnComplete: { age: 86_400, count: 1_000 },
     removeOnFail: { age: 604_800, count: 5_000 },
   });
   return {
-    enqueue: (data: BackupJobData) => add("backup", data),
-    enqueueDrill: (data: BackupJobData) => add("drill", data),
+    enqueue: (data: BackupJobData, opts?: BackupJobEnqueueOpts) => add("backup", data, opts),
+    enqueueDrill: (data: BackupJobData, opts?: BackupJobEnqueueOpts) => add("drill", data, opts),
     close: () => queue.close(),
   };
 }
@@ -431,18 +434,31 @@ export function createBackupWorker(input: { redisUrl: string; prefix?: string; e
 export const BACKUP_INTERVAL_MS = 86_400_000;
 const MAX_TIMER_DELAY = 2 ** 31 - 1;
 
+/**
+ * Deterministic dedup bucket for SCHEDULED enqueues (CR-02): every tick within
+ * one interval window shares a BullMQ jobId, so repeated ticks while a run is
+ * pending become queue no-ops instead of duplicate jobs. Manual triggers keep
+ * their random `manual-` jobIds and can never collide with this namespace.
+ */
+export function scheduledJobId(kind: "backup" | "drill", nowMs: number, intervalMs: number): string {
+  return `scheduled-${kind}-${Math.floor(nowMs / intervalMs)}`;
+}
+
 export type BackupTickScheduler = Readonly<{ close(): void; refresh(): Promise<void> }>;
 
 /**
- * Arms each backup tick from persisted state (the latest SUCCEEDED BackupRun
- * completedAt + 24h), not a self-anchored interval — the pattern is
- * self-healing across restarts with no cron library and no BullMQ v5 repeat
- * option (removed in v6). No success on record ⇒ arm at idlePollMs so the
- * first backup happens soon after worker start.
+ * Arms each backup tick from persisted state (the newest BackupRun of ANY
+ * status — a FAILED receipt is still the latest run, so a persistent failure
+ * retries at the configured interval, never 1 Hz — CR-02), not a
+ * self-anchored interval: the pattern is self-healing across restarts with no
+ * cron library and no BullMQ v5 repeat option (removed in v6). No receipt on
+ * record ⇒ arm at idlePollMs so the first backup happens soon after worker
+ * start; while that run is pending, re-ticks share the dedup jobId above so
+ * the window enqueues exactly one job.
  */
 export function scheduleBackupTick(input: {
   database: Pick<PrismaClient, "backupRun">;
-  enqueue: (data: BackupJobData) => Promise<unknown>;
+  enqueue: (data: BackupJobData, opts?: BackupJobEnqueueOpts) => Promise<unknown>;
   now?: () => Date;
   setTimeout?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout>;
   clearTimeout?: (timer: ReturnType<typeof setTimeout>) => void;
@@ -455,22 +471,33 @@ export function scheduleBackupTick(input: {
   const setTimer = input.setTimeout ?? setTimeout;
   const clearTimer = input.clearTimeout ?? clearTimeout;
   const intervalMs = input.intervalMs ?? BACKUP_INTERVAL_MS;
+  const pendingPollMs = input.idlePollMs ?? 1_000;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let closed = false;
+  let lastEnqueuedAtMs: number | undefined;
 
   const arm = async (): Promise<void> => {
     if (closed) return;
     if (timer) clearTimer(timer);
     try {
       const row = await input.database.backupRun.findFirst({
-        where: { status: "SUCCEEDED" },
         orderBy: { completedAt: "desc" },
         select: { completedAt: true },
       });
       if (closed) return;
-      const rawDelay = row?.completedAt ? Math.max(0, row.completedAt.getTime() + intervalMs - now().getTime()) : (input.idlePollMs ?? 1_000);
-      const delay = Math.min(MAX_TIMER_DELAY, rawDelay);
-      timer = setTimer(() => { void run().catch(input.onError); }, delay);
+      const anchorMs = row?.completedAt?.getTime();
+      let rawDelay = anchorMs === undefined ? pendingPollMs : Math.max(0, anchorMs + intervalMs - now().getTime());
+      // A just-enqueued run has no receipt yet; the stale anchor would compute
+      // a 0ms re-fire loop. Poll at the bounded pending cadence instead — the
+      // dedup jobId makes every poll enqueue a Redis no-op (CR-02).
+      if (lastEnqueuedAtMs !== undefined && (anchorMs === undefined || anchorMs < lastEnqueuedAtMs)) {
+        rawDelay = Math.max(rawDelay, pendingPollMs);
+      }
+      // A delay above the 32-bit timer ceiling re-arms arm() to recompute the
+      // remainder instead of firing run() early (WR-02 class; 24h cannot reach
+      // the clamp today, the guard keeps it that way).
+      const capped = rawDelay > MAX_TIMER_DELAY;
+      timer = setTimer(() => { void (capped ? arm() : run().catch(input.onError)); }, Math.min(MAX_TIMER_DELAY, rawDelay));
     } catch (error) {
       input.onError?.(error);
       if (!closed) timer = setTimer(() => { void arm(); }, input.retryMs ?? 1_000);
@@ -480,7 +507,9 @@ export function scheduleBackupTick(input: {
   const run = async (): Promise<void> => {
     if (closed) return;
     try {
-      await input.enqueue({ trigger: "SCHEDULED" });
+      const enqueuedAtMs = now().getTime();
+      await input.enqueue({ trigger: "SCHEDULED" }, { jobId: scheduledJobId("backup", enqueuedAtMs, intervalMs) });
+      lastEnqueuedAtMs = enqueuedAtMs;
       await arm();
     } catch (error) {
       input.onError?.(error);

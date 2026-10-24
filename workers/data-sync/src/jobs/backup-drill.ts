@@ -10,12 +10,14 @@ import {
   BACKUP_DUMP_FILE_PATTERN,
   nodeBackupFs,
   resolvePgIdentity,
+  scheduledJobId,
   spawnBackupExec,
   SPAWN_DUMP_TIMEOUT_MS,
   SPAWN_PROBE_TIMEOUT_MS,
   type BackupExec,
   type BackupFs,
   type BackupJobData,
+  type BackupJobEnqueueOpts,
   type PgIdentity,
 } from "./backup.js";
 
@@ -452,15 +454,19 @@ export type DrillTickScheduler = Readonly<{ close(): void; refresh(): Promise<vo
  * Arms each drill tick from persisted state (D-03): the newest
  * BackupVerificationReceipt completedAt + drillIntervalMs — any drill outcome
  * (VERIFIED, FAILED, UNVERIFIED) resets the cadence, so a failing deployment
- * drills again weekly rather than never. No receipt on record ⇒ idlePollMs, so
- * a never-verified deployment drills soon after worker start without operator
- * action. The callback enqueues the "drill" job with the trigger discriminator
- * only (Pitfall 8 — never a credential or URL) and re-arms from persisted
- * state. Structural copy of scheduleBackupTick/scheduleRetentionPurge.
+ * drills again at the interval rather than looping at 1 Hz (CR-02). No receipt
+ * on record ⇒ idlePollMs, so a never-verified deployment drills soon after
+ * worker start without operator action; re-ticks inside that pending window
+ * share a deterministic dedup jobId, so exactly one drill job lands (CR-02).
+ * The callback enqueues the "drill" job with the trigger discriminator only
+ * (Pitfall 8 — never a credential or URL) and re-arms from persisted state.
+ * A delay beyond the 32-bit timer ceiling re-arms arm() instead of firing
+ * run(), so intervals above ~596h (up to the validated 8760h max) never
+ * drill early (WR-02). Structural copy of scheduleBackupTick.
  */
 export function scheduleDrillTick(input: {
   database: Pick<PrismaClient, "backupVerificationReceipt">;
-  enqueue: (data: BackupJobData) => Promise<unknown>;
+  enqueue: (data: BackupJobData, opts?: BackupJobEnqueueOpts) => Promise<unknown>;
   now?: () => Date;
   setTimeout?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout>;
   clearTimeout?: (timer: ReturnType<typeof setTimeout>) => void;
@@ -473,8 +479,10 @@ export function scheduleDrillTick(input: {
   const setTimer = input.setTimeout ?? setTimeout;
   const clearTimer = input.clearTimeout ?? clearTimeout;
   const intervalMs = input.intervalMs ?? DRILL_INTERVAL_MS;
+  const pendingPollMs = input.idlePollMs ?? 1_000;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let closed = false;
+  let lastEnqueuedAtMs: number | undefined;
 
   const arm = async (): Promise<void> => {
     if (closed) return;
@@ -482,9 +490,18 @@ export function scheduleDrillTick(input: {
     try {
       const row = await input.database.backupVerificationReceipt.findFirst({ orderBy: { completedAt: "desc" }, select: { completedAt: true } });
       if (closed) return;
-      const rawDelay = row?.completedAt ? Math.max(0, row.completedAt.getTime() + intervalMs - now().getTime()) : (input.idlePollMs ?? 1_000);
-      const delay = Math.min(MAX_TIMER_DELAY, rawDelay);
-      timer = setTimer(() => { void run().catch(input.onError); }, delay);
+      const anchorMs = row?.completedAt?.getTime();
+      let rawDelay = anchorMs === undefined ? pendingPollMs : Math.max(0, anchorMs + intervalMs - now().getTime());
+      // A just-enqueued drill has no receipt yet; the stale anchor would
+      // compute a 0ms re-fire loop. Poll at the bounded pending cadence — the
+      // dedup jobId makes every poll a Redis no-op (CR-02).
+      if (lastEnqueuedAtMs !== undefined && (anchorMs === undefined || anchorMs < lastEnqueuedAtMs)) {
+        rawDelay = Math.max(rawDelay, pendingPollMs);
+      }
+      // WR-02: a capped delay re-arms arm() to recompute the remaining delay
+      // instead of run() — an interval above ~596h must never drill early.
+      const capped = rawDelay > MAX_TIMER_DELAY;
+      timer = setTimer(() => { void (capped ? arm() : run().catch(input.onError)); }, Math.min(MAX_TIMER_DELAY, rawDelay));
     } catch (error) {
       input.onError?.(error);
       if (!closed) timer = setTimer(() => { void arm(); }, input.retryMs ?? 1_000);
@@ -494,7 +511,9 @@ export function scheduleDrillTick(input: {
   const run = async (): Promise<void> => {
     if (closed) return;
     try {
-      await input.enqueue({ trigger: "SCHEDULED" });
+      const enqueuedAtMs = now().getTime();
+      await input.enqueue({ trigger: "SCHEDULED" }, { jobId: scheduledJobId("drill", enqueuedAtMs, intervalMs) });
+      lastEnqueuedAtMs = enqueuedAtMs;
       await arm();
     } catch (error) {
       input.onError?.(error);

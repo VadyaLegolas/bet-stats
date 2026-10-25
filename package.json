@@ -9,7 +9,7 @@
     "pnpm": "10.34.5"
   },
   "scripts": {
-    "build": "turbo run build",
+    "build": "node scripts/build.mjs",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "vitest run --project unit && pnpm --filter @bet-stats/web test",

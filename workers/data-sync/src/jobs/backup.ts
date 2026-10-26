@@ -127,7 +127,9 @@ export async function copyOffsite(input: { exec: BackupExec; sourceDir: string; 
     "/XJ",
     "/COPY:DAT",
     "/NP",
-    `/LOG+:${join(input.sourceDir, OFFSITE_ROBOCOPY_LOG_FILE)}`,
+    // IN-02: /LOG: truncates per run — /LOG+ would append forever into a file
+    // inside BACKUP_DIR that the retention pattern never matches.
+    `/LOG:${join(input.sourceDir, OFFSITE_ROBOCOPY_LOG_FILE)}`,
   ];
   const result = await input.exec.run("robocopy", args, { timeoutMs: input.timeoutMs ?? SPAWN_DUMP_TIMEOUT_MS });
   if (result.spawnError) return { status: "DEGRADED", error: result.spawnError };

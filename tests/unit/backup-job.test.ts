@@ -181,11 +181,42 @@ describe("backup job: retention rotation and robocopy off-host", () => {
     expect(call!.args[1]).toBe(destination);
     expect(call!.args[2]).toBe(NEW_DUMP);
     expect(call!.args.slice(3, 9)).toEqual(["/R:2", "/W:5", "/Z", "/XJ", "/COPY:DAT", "/NP"]);
-    expect(call!.args[9]).toMatch(/^\/LOG\+:/);
+    // IN-02: /LOG: truncates per run — /LOG+ would append forever into a file
+    // inside BACKUP_DIR that retention never touches.
+    expect(call!.args[9]).toMatch(/^\/LOG:/);
+    expect(call!.args[9]).not.toMatch(/^\/LOG\+/);
     expect(call!.args[9]).toContain(basename(dir));
     const joined = JSON.stringify(call!.args);
     expect(joined).not.toContain("/MIR");
     expect(joined).not.toContain("/PURGE");
+  });
+
+  it("keeps the robocopy log a per-run file across two consecutive runs (IN-02)", async () => {
+    const dir = "/tmp/bet-stats-backup-job-log";
+    const destination = "/mnt/offsite-log";
+    const fake = fakeFs();
+    const rows: StoredRun[] = [];
+    const { exec, calls } = fakeExec((command, args) => (command === "robocopy" ? { code: 1, stdout: Buffer.alloc(0), stderr: "" } : dumpOk(fake)(command, args)));
+
+    for (let run = 0; run < 2; run += 1) {
+      await runBackup({
+        config: readBackupConfig({ BACKUP_ENABLED: "true", BACKUP_DIR: dir, BACKUP_OFFSITE_DIR: destination }),
+        database: fakeDatabase(rows),
+        trigger: "MANUAL",
+        exec,
+        fs: fake.fs,
+        now: () => new Date(NOW.getTime() + run * 1_000),
+      });
+    }
+
+    const robocopyCalls = calls.filter((entry) => entry.command === "robocopy");
+    expect(robocopyCalls).toHaveLength(2);
+    for (const call of robocopyCalls) {
+      const logArg = call.args.find((arg) => arg.startsWith("/LOG"));
+      expect(logArg, "every robocopy run must carry an explicit log flag").toBeDefined();
+      expect(logArg).toMatch(/^\/LOG:/); // overwrite, never append
+      expect(logArg).not.toMatch(/^\/LOG\+/);
+    }
   });
 
   it("records NOT_CONFIGURED and never invokes the copy when BACKUP_OFFSITE_DIR is unset", async () => {

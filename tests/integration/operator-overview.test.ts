@@ -225,8 +225,31 @@ describe("manual backup and drill triggers", () => {
     expect(adds[0]!.name).toBe("backup");
     expect(adds[0]!.data).toEqual({ trigger: "MANUAL" });
     expect(Object.keys(adds[0]!.data as object)).toEqual(["trigger"]);
-    expect(adds[0]!.opts?.jobId).toMatch(/^manual-backup-\d+$/);
+    expect(adds[0]!.opts?.jobId).toMatch(/^manual-backup-\d+-[0-9a-f-]{36}$/);
     expect(adds[0]!.opts?.attempts).toBe(1);
+  });
+
+  it("two triggers in the same millisecond enqueue distinct jobIds, so BullMQ dedup can never swallow the second (IN-03)", async () => {
+    vi.stubEnv("BACKUP_ENABLED", "true");
+    vi.stubEnv("BACKUP_DIR", "D:\\backups-canary");
+    const fixedMs = 1_700_000_000_000;
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(fixedMs);
+    try {
+      const { adds, queue } = fakeQueue();
+      const service = new OperationsService({} as never, createBullBackupTriggerEnqueuer({ redisUrl: "redis://127.0.0.1:6379", prefix: "test-prefix", queue }));
+
+      await service.triggerBackup();
+      await service.triggerBackup();
+
+      expect(adds).toHaveLength(2);
+      const first = adds[0]!.opts?.jobId as string;
+      const second = adds[1]!.opts?.jobId as string;
+      expect(first).toMatch(/^manual-backup-\d+-[0-9a-f-]{36}$/);
+      expect(first).toContain(String(fixedMs));
+      expect(second).not.toBe(first);
+    } finally {
+      nowSpy.mockRestore();
+    }
   });
 
   it("POST backups/drill enqueues job drill with data exactly { trigger: MANUAL } and a distinct manual-drill jobId", async () => {
@@ -241,10 +264,7 @@ describe("manual backup and drill triggers", () => {
     expect(adds[0]!.name).toBe("drill");
     expect(adds[0]!.data).toEqual({ trigger: "MANUAL" });
     expect(Object.keys(adds[0]!.data as object)).toEqual(["trigger"]);
-    expect(adds[0]!.opts?.jobId).toMatch(/^manual-drill-\d+$/);
-
-    const backupJobId = `manual-backup-${Date.now()}`;
-    expect(adds[0]!.opts?.jobId).not.toBe(backupJobId);
+    expect(adds[0]!.opts?.jobId).toMatch(/^manual-drill-\d+-[0-9a-f-]{36}$/);
   });
 
   it("disabled or unconfigured backups yield the uniform 404 and never enqueue (no oracle, T-08-16)", async () => {

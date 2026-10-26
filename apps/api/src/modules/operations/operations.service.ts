@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { BadRequestException, Injectable, NotFoundException, Optional, type OnModuleDestroy } from "@nestjs/common";
 import { DEFAULT_BACKUP_DRILL_INTERVAL_HOURS, DEFAULT_BACKUP_RETENTION_COUNT, readBackupConfig, redactSecrets } from "@bet-stats/config";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
@@ -235,7 +237,9 @@ export function backupTriggerQueueName(prefix = "bet-stats"): string {
  * Enqueues manual runs on the existing backup queue. Job data carries only the
  * trigger discriminator — never credentials, never a connection string in the
  * Redis-persisted payload (T-08-17, D-15). The manual- prefix jobIds never
- * collide with scheduler-produced jobs.
+ * collide with scheduler-produced jobs, and the randomUUID suffix (IN-03)
+ * keeps two triggers landing in the same millisecond from deduplicating into
+ * a silently dropped enqueue.
  */
 export function createBullBackupTriggerEnqueuer(input: { redisUrl: string; prefix?: string | undefined; queue?: BackupTriggerQueue | undefined }): BackupTriggerEnqueuer {
   const queue = input.queue ?? new Queue(backupTriggerQueueName(input.prefix ?? "bet-stats"), { connection: { url: input.redisUrl, maxRetriesPerRequest: null } });
@@ -243,7 +247,7 @@ export function createBullBackupTriggerEnqueuer(input: { redisUrl: string; prefi
     async trigger(job) {
       await queue.add(job, { trigger: "MANUAL" }, {
         attempts: 1,
-        jobId: `manual-${job}-${Date.now()}`,
+        jobId: `manual-${job}-${Date.now()}-${randomUUID()}`,
         removeOnComplete: { age: 86_400, count: 1_000 },
         removeOnFail: { age: 604_800, count: 5_000 },
       });

@@ -137,16 +137,19 @@ export async function copyOffsite(input: { exec: BackupExec; sourceDir: string; 
 }
 
 /**
- * Keeps the newest retentionCount dumps in BACKUP_DIR and deletes the rest.
- * System-generated names only (BACKUP_DUMP_FILE_PATTERN), so an operator file
- * or the robocopy log can never be deleted; names embed UTC timestamps, so a
- * lexicographic sort is chronological. Runs strictly after the new dump is
- * renamed into place, so a failed dump can never shrink the retention window.
+ * Keeps the newest retentionCount dumps in the given directory and deletes the
+ * rest — used for BACKUP_DIR after a succeeded run and for BACKUP_OFFSITE_DIR
+ * after a confirmed COPIED run (WR-03), so both copies share one retention
+ * window. System-generated names only (BACKUP_DUMP_FILE_PATTERN), so an
+ * operator file or the robocopy log can never be deleted; names embed UTC
+ * timestamps, so a lexicographic sort is chronological. Runs strictly after
+ * the new dump is renamed into place, so a failed dump can never shrink the
+ * retention window.
  */
 export async function pruneBackupRetention(input: { fs: BackupFs; dir: string; retentionCount: number; logger?: ((event: Readonly<Record<string, unknown>>) => void) | undefined }): Promise<{ deleted: string[] }> {
   const entries = await input.fs.list(input.dir);
   const dumps = entries.filter((name) => BACKUP_DUMP_FILE_PATTERN.test(name)).sort().reverse();
-  const excess = dumps.slice(input.retentionCount);
+  const excess = dumps.slice(input.retentionCount).reverse();
   const deleted: string[] = [];
   for (const name of excess) {
     await input.fs.remove(join(input.dir, name));
@@ -344,10 +347,22 @@ export async function runBackup(input: RunBackupInput): Promise<BackupRunResult>
   // the off-host copy to carry the final offsiteStatus (COPIED/DEGRADED).
   let offsiteStatus: BackupOffsiteStatus = "NOT_CONFIGURED";
   let offsiteError: string | undefined;
+  const retentionCount = config.retentionCount ?? DEFAULT_BACKUP_RETENTION_COUNT;
   if (config.offsiteDir) {
     const offsite = await copyOffsite({ exec, sourceDir: config.dir, destinationDir: config.offsiteDir, fileName });
     offsiteStatus = offsite.status;
     offsiteError = offsite.error;
+    // WR-03: off-host copies rotate by the same window as local ones — the
+    // same system-name pattern filter, oldest first, never a mirror/purge
+    // flag. Only a confirmed COPIED run prunes; a degraded copy must not
+    // touch the share, and a prune failure never flips the succeeded backup.
+    if (offsiteStatus === "COPIED") {
+      try {
+        await pruneBackupRetention({ fs, dir: config.offsiteDir, retentionCount, logger: log });
+      } catch (error) {
+        log({ event: "backup.offsite_prune_failed", runId, message: error instanceof Error ? error.message : String(error) });
+      }
+    }
   }
 
   const completedAt = now();
@@ -375,7 +390,7 @@ export async function runBackup(input: RunBackupInput): Promise<BackupRunResult>
   // Retention rotates only after this run's receipt is durable; a prune failure
   // never retroactively flips a succeeded backup.
   try {
-    await pruneBackupRetention({ fs, dir: config.dir, retentionCount: config.retentionCount ?? DEFAULT_BACKUP_RETENTION_COUNT, logger: log });
+    await pruneBackupRetention({ fs, dir: config.dir, retentionCount, logger: log });
   } catch (error) {
     log({ event: "backup.prune_failed", runId, message: error instanceof Error ? error.message : String(error) });
   }

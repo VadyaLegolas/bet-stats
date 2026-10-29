@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 08-backups-and-restore-verification
 source: [08-VERIFICATION.md]
 started: 2026-10-27T00:00:00.000Z
-updated: 2026-10-29T14:02:49.208Z
+updated: 2026-10-29T15:20:00.000Z
 ---
 
 ## Current Test
@@ -70,14 +70,20 @@ blocked: 0
   reason: "User reported: все недоступно (все блоки /internal/operations показывают «Этот операционный блок недоступен», кнопки триггеров недоступны)"
   severity: major
   test: 6
+  root_cause: "AND-gate ingress-обвязки (Bohrbug, 404 детерминирован): (1) [code] infra/operator-gateway/security.mjs:3,6-8 — isProtectedReplayPath подписывает только /internal*/pipeline/replay*; пути /internal*/operations* проходят через шлюз unsigned и добивают в fail-closed 404 прокси route.ts:44 (dev-обхода нет by design, 02-19-PLAN); (2) [topology] шлюз вообще не запущен в штатной dev-топологии — app-lifecycle.ps1 и infra/docker-compose.yml не содержат ни сервиса, ни лаунча operator-gateway (grep 0 упоминаний gateway/8080), так что у человека нет источника HMAC-подписи ни для каких защищённых путей. Обе причины одновременно необходимы. Требование 08-03-PLAN («operator through the gateway → signed web proxy → OperatorGuard») было недостижимо при реализованном replay-only шлюзе — расширение скоупа не входило ни в задачи плана, ни в дизайн-скоуп (design doc lines 9-14). Подписанный доступ существует только у программных драйверов, синтезирующих HMAC in-process (e2e setExtraHTTPHeaders, capture-faq-screenshots.mjs, UAT-драйвер) — человек в это множество не попадает; функция бэкапов/дриллов исправна (тест 1 pass)."
   artifacts:
     - "apps/web/app/internal-api/operations/[[...path]]/route.ts:25-44 — fail-closed HMAC для /internal-api/operations*, dev-обхода нет"
-    - "infra/operator-gateway/security.mjs — isProtectedReplayPath покрывает только /internal*/pipeline/replay*"
+    - "infra/operator-gateway/security.mjs:3,6-8 — isProtectedReplayPath покрывает только /internal*/pipeline/replay*"
+    - "infra/operator-gateway/server.mjs:114-125 — подпись применяется только при protectedPath"
+    - "scripts/app-lifecycle.ps1, infra/docker-compose.yml — шлюз не запускается ни в dev, ни в compose; grep gateway/8080 = 0"
     - "docs/superpowers/specs/2026-08-31-docker-basic-auth-operator-gateway-design.md:9-14 — шлюз по дизайну подписывает только replay"
+    - "08-03-PLAN.md:32 — UAT-критерий предполагал «through the gateway», но расширение gateway-скоупа не было задачей плана"
     - "tests/e2e/operator-overview.spec.ts — UI проверяется только с внедрённой подписью (setExtraHTTPHeaders)"
   missing:
-    - "Расширить подписываемые пути шлюза на /internal*/operations* (тем же OPERATOR_PROXY_SIGNING_SECRET) + тесты isProtectedReplayPath"
-    - "Штатный ingress для человека: либо поднять operator-gateway в dev-лаунчере (браузер через :8080 с Basic auth), либо иной документированный путь доступа к операциям"
+    - "Расширить классификацию защищённых путей шлюза на /internal*/operations* (тем же OPERATOR_PROXY_SIGNING_SECRET) + unit-тесты на новый скоуп"
+    - "Штатный human ingress в документированной топологии: поднять operator-gateway в dev-лаунчере/app-lifecycle (браузер через :8080 с Basic auth) либо иной документированный путь"
+    - "e2e-тест «оператор через шлюз видит блоки операций и жмёт обе кнопки триггеров»"
+  debug_session: .planning/debug/operations-ingress-hmac-gap.md
   updated: 2026-10-29
 - gap_id: G-08-5
   truth: "Сбой очистки контейнера фиксируется честно: containerCleanup = 'FAILED' в неизменяемом чеке, overall остаётся заработанным (тест 5, D-11/T-08-10)."
@@ -85,10 +91,14 @@ blocked: 0
   reason: "Agent finding: на Docker 29.9.2 `docker rm -f` идемпотентен (exit 0 на несуществующем контейнере) — rename-гонка во время живого дрилла дала containerCleanup = 'REMOVED' при живой сироте-контейнере; ветка FAILED на живом хосте достижима только падением демона"
   severity: minor
   test: 5
+  root_cause: "Вердикт очистки выводится только по exit-коду `docker rm --force` — backup-drill.ts:438-439 (containerCleanup = removal.spawnError || removal.code !== 0 ? \"FAILED\" : \"REMOVED\") без проверки, что контейнер реально исчез (docker inspect в файле отсутствует, grep = 0). На Docker server 29.9.2 rm -f идемпотентен (живо: по несуществующему имени → exit 0), поэтому при потере идентичности до cleanup (rename-гонка) rm по старому имени возвращает 0 и чек пишет ложный REMOVED при живой сироте bet-stats-drill-pg-20168-1793203629163. AND-gate: (а) вердикт по exit-коду без верификации объекта + (б) идемпотентность rm -f под rename-потерей имени — каждое в одиночку ложного REMOVED не даёт. Ветка FAILED живьём достижима только spawn-ошибкой (ENOENT на docker CLI / EXEC_TIMEOUT) или падением демона; в tests/unit/backup-drill.test.ts:78 стаб exec всегда возвращает OK на rm, ветка FAILED не покрыта. Правду-части тест 5 код выполняет: overall не перекрашивается очисткой (record(outcome) пишет независимо), формат имени bet-stats-drill-pg-<pid>-<ts> корректен — дефект только в маскировке утечки."
   artifacts:
-    - "workers/data-sync/src/jobs/backup.ts:438-440 — containerCleanup лишь по exit-коду rm; идемпотентный rm -f даёт ложный REMOVED"
+    - "workers/data-sync/src/jobs/backup-drill.ts:438-439 — вердикт лишь по exit-коду rm; идемпотентный rm -f даёт ложный REMOVED (UAT-артефакт ранее неточно указывал backup.ts — containerCleanup отсутствует в backup.ts)"
     - "лог 2026-10-28: backup_drill.verified fa2baded containerCleanup REMOVED при переименованном контейнере bet-stats-drill-pg-20168-1793203629163 (сирота удалена вручную)"
-    - "эксперименты: rm -f по несуществующему и по paused контейнеру → exit 0 (Docker server 29.9.2)"
+    - "эксперименты: rm -f по несуществующему и по paused контейнеру → exit 0 (Docker server 29.9.2); rename → rm старого имени exit 0 при живом новом"
+    - "tests/unit/backup-drill.test.ts:78 — стаб rm всегда exit 0, grep тестов на cleanup-FAILED = 0"
   missing:
-    - "Проверка после rm: `docker inspect <name>` должен падать с ошибкой, иначе containerCleanup = 'FAILED' — закрывает маскировку утечки"
-    - "Интеграционный тест ветки FAILED (stub exec: rm exit 0 + inspect отвечает → FAILED; overall не перекрашивается)"
+    - "Верификация объекта вместо exit-кода: пре-rm docker inspect <name> должен находить контейнер (потеря/переименование до cleanup ⇒ FAILED — ловит rename-гонку), затем rm, затем пост-rm inspect должен падать «not found», иначе FAILED (ловит «rm сказал 0, но контейнер остался»)"
+    - "Интеграционный тест ветки FAILED (stub exec: rm exit 0 + inspect «контейнер существует» → FAILED; overall не перекрашивается); желательно сохранять containerName в receipt checks для аудита"
+  debug_session: .planning/debug/container-cleanup-false-reMOVED.md
+  updated: 2026-10-29

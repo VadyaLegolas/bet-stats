@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 08-backups-and-restore-verification
 source: [08-VERIFICATION.md]
 started: 2026-10-27T00:00:00.000Z
-updated: 2026-10-29T00:00:00.000Z
+updated: 2026-10-29T14:02:49.208Z
 ---
 
 ## Current Test
 
-number: 2
-name: Реальный off-host robocopy — осталась негативная половина (недоступный шар → «Деградировано»)
-expected: |
-  При недоступном `BACKUP_OFFSITE_DIR` блок показывает «Деградировано» с кодом robocopy, локальный бэкап остаётся `SUCCEEDED`. Позитивная половина уже подтверждена (COPIED + «Скопировано»).
-awaiting: agent execution — негативная половина требует рестарта стека для смены `BACKUP_OFFSITE_DIR`
+[testing complete]
 
 ## Tests
 

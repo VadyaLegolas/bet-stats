@@ -51,11 +51,13 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   3. The operations center shows backup and restore-verification status (last success, age, failures) without exposing secrets; never-verified and stale backups render as explicit non-green states.
 
 **Notes / research flags**: Operator decisions needed before planning — RPO target (daily dump vs WAL shipping) and off-host storage destination for the actual single-Windows-host deployment. Redis is never backed up. No pgBackRest/Barman/SaaS (overkill, paid).
-**Plans**: 3 plans
+**Plans**: 5 plans (3 + 2 gap-closure)
 **Plan list**:
 - [x] 08-01-PLAN.md — Backup engine: fail-closed config, pg_dump -Fc + BackupRun receipt, rotation after success, robocopy off-host, daily persisted-state scheduler
 - [x] 08-02-PLAN.md — Restore drill: throwaway container restore, migrations at head, chain-integrity checks, immutable BackupVerificationReceipt, weekly scheduler
 - [x] 08-03-PLAN.md — Operations visibility: backups() read model with 5-state honesty, secret-free projection, manual triggers behind OperatorGuard, Russian UI block
+- [ ] 08-04-PLAN.md — Gap closure G-08-6: operator-gateway signs /internal*/operations* paths and runs in the dev launcher; e2e proves browser-through-gateway operations access
+- [ ] 08-05-PLAN.md — Gap closure G-08-5: containerCleanup verdict verified by pre/post-rm docker inspect instead of rm exit code; FAILED branch test-covered
 **UI hint**: no
 
 ### Phase 9: Degradation Alerting

@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { createHash, createHmac } from "node:crypto";
 import { createServer, get as getHttp, type IncomingHttpHeaders, type Server } from "node:http";
 import { once } from "node:events";
 import { resolve } from "node:path";
@@ -132,6 +133,53 @@ describe("operator gateway HTTP boundary", () => {
       expect(forwarded[0]?.headers["x-operator-subject"]).toBeUndefined();
       expect(forwarded[1]?.headers["x-operator-subject"]).toBe("local-test-operator");
       expect(forwarded[1]?.headers["x-operator-signature"]).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    } finally {
+      await stop(gateway.process);
+      await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));
+    }
+  });
+
+  it("refuses unsigned operations requests at the ingress and signs authenticated ones verifiably", async () => {
+    const requests: Array<{ path: string; headers: IncomingHttpHeaders }> = [];
+    const upstream = createServer((request, response) => {
+      requests.push({ path: request.url ?? "", headers: request.headers });
+      request.resume();
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ ok: true }));
+    });
+    const upstreamOrigin = await listen(upstream);
+    const gateway = await startGateway(upstreamOrigin);
+
+    try {
+      // Unsigned: refused at the ingress with 401 — it never reaches the
+      // upstream at all, so no unsigned operations request can traverse the
+      // chain (the web proxy's fail-closed 404 for direct unsigned requests
+      // is proven separately by the release e2e negative assertions).
+      const before = requests.filter((request) => request.path !== "/health").length;
+      const unsigned = await fetch(`${gateway.origin}/internal-api/operations/overview`);
+      expect(unsigned.status).toBe(401);
+      expect(requests.filter((request) => request.path !== "/health")).toHaveLength(before);
+      // Valid Basic auth: arrives with a signature the Next proxy canonical
+      // string accepts.
+      const authenticated = await fetch(`${gateway.origin}/internal-api/operations/overview`, {
+        headers: { authorization: `Basic ${Buffer.from("operator:test-password").toString("base64")}` },
+      });
+      expect(authenticated.status).toBe(200);
+
+      const forwarded = requests.filter((request) => request.path !== "/health");
+      expect(forwarded).toHaveLength(1);
+      const subject = forwarded[0]?.headers["x-operator-subject"];
+      const timestamp = forwarded[0]?.headers["x-operator-timestamp"];
+      const signature = forwarded[0]?.headers["x-operator-signature"];
+      expect(subject).toBe("local-test-operator");
+      expect(timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      expect(signature).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      // Recompute the exact canonical string the Next proxy builds:
+      // subject\ntimestamp\nMETHOD\npathname\nqueryDigest (empty query here).
+      const queryDigest = createHash("sha256").update("", "utf8").digest("base64url");
+      const payload = `local-test-operator\n${timestamp}\nGET\n/internal-api/operations/overview\n${queryDigest}`;
+      const expected = createHmac("sha256", testSecret).update(payload, "utf8").digest("base64url");
+      expect(signature).toBe(expected);
     } finally {
       await stop(gateway.process);
       await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));

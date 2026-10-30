@@ -1,9 +1,14 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
-const protectedPrefixes = ["/internal/pipeline/replay", "/internal-api/pipeline/replay"];
+const protectedPrefixes = [
+  "/internal/pipeline/replay",
+  "/internal-api/pipeline/replay",
+  "/internal/operations",
+  "/internal-api/operations",
+];
 const operatorHeaders = new Set(["x-operator-subject", "x-operator-timestamp", "x-operator-signature"]);
 
-export function isProtectedReplayPath(pathname) {
+export function isProtectedPath(pathname) {
   return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 

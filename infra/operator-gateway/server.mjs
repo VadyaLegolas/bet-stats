@@ -3,7 +3,7 @@ import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { pipeline } from "node:stream";
 
-import { authenticateBasic, isProtectedReplayPath, signedOperatorHeaders } from "./security.mjs";
+import { authenticateBasic, isProtectedPath, signedOperatorHeaders } from "./security.mjs";
 
 const hopByHopHeaders = new Set([
   "connection",
@@ -111,7 +111,7 @@ function createGateway(config) {
     const target = requestTarget(incoming.url, config.webOrigin);
     if (!target) return invalidTarget(response);
 
-    const protectedPath = isProtectedReplayPath(target.pathname);
+    const protectedPath = isProtectedPath(target.pathname);
     if (protectedPath && !authenticateBasic(incoming.headers.authorization, config.username, config.password)) return unauthorized(response);
 
     const headers = forwardHeaders(incoming.headers, ["host", "authorization"]);

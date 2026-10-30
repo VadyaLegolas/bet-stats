@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 
 import {
   authenticateBasic,
-  isProtectedReplayPath,
+  isProtectedPath,
   signedOperatorHeaders,
   stripOperatorHeaders,
 } from "../../infra/operator-gateway/security.mjs";
@@ -15,7 +15,10 @@ describe("operator gateway security", () => {
     "/internal/pipeline/replay",
     "/internal/pipeline/replay/abc",
     "/internal-api/pipeline/replay/preview",
-  ])("protects %s", (path) => expect(isProtectedReplayPath(path)).toBe(true));
+    "/internal/operations",
+    "/internal/operations/backups/run",
+    "/internal-api/operations/overview",
+  ])("protects %s", (path) => expect(isProtectedPath(path)).toBe(true));
 
   it.each([
     "/",
@@ -24,9 +27,11 @@ describe("operator gateway security", () => {
     "/internal/reconciliation",
     "/internal/pipeline/replayer",
     "/internal-api/pipeline/replay-preview",
+    "/internal/operation",
+    "/internal-api/operations-backup",
   ])(
     "leaves %s public",
-    (path) => expect(isProtectedReplayPath(path)).toBe(false),
+    (path) => expect(isProtectedPath(path)).toBe(false),
   );
 
   it("accepts only the exact Basic credentials", () => {

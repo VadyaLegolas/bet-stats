@@ -1,5 +1,7 @@
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
-import { resolve } from "node:path";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { createPrismaClient } from "../../packages/database/src/client.js";
 import { createPrismaForecastRepository, createProviderRoutingRepository } from "../../packages/database/src/index.js";
 import { ForecastOrchestrator, currentForecastConfigHash } from "../../packages/domain/src/index.js";
@@ -13,7 +15,7 @@ export const PROVIDER_API_ORIGIN = "http://127.0.0.1:3241";
 export const PROVIDER_WEB_ORIGIN = "http://127.0.0.1:3240";
 const OPERATOR_TEST_ENV = { OPERATOR_CREDENTIAL: "phase-06-operator-credential", OPERATOR_PROXY_SIGNING_SECRET: "phase-06-operations-signing-secret-32-bytes", OPERATOR_AUTHORIZED_SUBJECTS: "release-operator" } as const;
 const PRIVACY_TEST_ENV = { PRIVACY_SUBJECT_PROVIDER_MODE: "signed", PRIVACY_SUBJECT_SIGNING_SECRET: "phase-06-privacy-signing-secret-32-bytes", AUTH_SESSION_SIGNING_SECRET: "phase-06-auth-session-secret-32-bytes", PRIVACY_SESSION_SIGNING_SECRET: "phase-06-privacy-session-secret-32-bytes", PRIVACY_RETENTION_DURATION_DAYS: "30", PRIVACY_RETENTION_POLICY_VERSION: "privacy-test-v1", PRIVACY_RETENTION_EFFECTIVE_AT: "2026-09-01T00:00:00.000Z" } as const;
-type Runtime = { pg: string; redis: string; api?: ChildProcess; web?: ChildProcess; supervision?: ReturnType<typeof superviseLiveChildren>; worker?: ReturnType<typeof startReplayWorker>; databaseUrl?: string; redisUrl?: string };
+type Runtime = { pg: string; redis: string; api?: ChildProcess; web?: ChildProcess; supervision?: ReturnType<typeof superviseLiveChildren>; worker?: ReturnType<typeof startReplayWorker>; databaseUrl?: string; redisUrl?: string; backupDir?: string };
 let owned: Runtime | null = null;
 const diagnosticTails = new WeakMap<object, string>();
 export const LIVE_FIXTURES = {
@@ -76,6 +78,7 @@ export async function startLiveProviderStack() {
     await waitForPostgres(pg);
     const databaseUrl=`postgresql://postgres:postgres@127.0.0.1:${docker("port",pg,"5432/tcp").split(":").at(-1)}/bet_stats`, redisUrl=`redis://127.0.0.1:${docker("port",redis,"6379/tcp").split(":").at(-1)}`;
     owned.databaseUrl=databaseUrl; owned.redisUrl=redisUrl;
+    const backupDir=mkdtempSync(join(tmpdir(),"bet-stats-e2e-backups-")); owned.backupDir=backupDir;
     applyMigrations(databaseUrl);
     const db=createPrismaClient(databaseUrl);
     for(const [id,name,fd,api] of [["pl","Premier League","PL","39"],["uel","Europa League",null,"78"],["uecl","Conference League",null,"848"]] as const){const leagueId=`live-${id}`,seasonId=`live-${id}-2026`;await db.league.create({data:{id:leagueId,name,countryCode:"EU"}});await db.season.create({data:{id:seasonId,leagueId,label:"2026",startsOn:new Date("2026-01-01"),endsOn:new Date("2026-12-31")}});if(fd){await db.leagueExternalRef.create({data:{leagueId,provider:"football-data.org",externalId:fd}});await db.seasonExternalRef.create({data:{seasonId,leagueId,provider:"football-data.org",externalId:"2026"}});}await db.leagueExternalRef.create({data:{leagueId,provider:"api-football",externalId:api}});await db.seasonExternalRef.create({data:{seasonId,leagueId,provider:"api-football",externalId:"2026"}});}
@@ -85,7 +88,7 @@ export async function startLiveProviderStack() {
     const worker=startReplayWorker({databaseUrl,redisUrl,footballDataApiToken:"deterministic",apiFootballApiKey:"deterministic",providerFactories:deterministic}); owned.worker=worker; await worker.waitUntilReady();
     const run=(args:string[],env:NodeJS.ProcessEnv)=>{const executable=process.platform==="win32"?"cmd.exe":"corepack";const commandArgs=process.platform==="win32"?["/d","/s","/c","corepack",...args]:args;return spawn(executable,commandArgs,{cwd:process.cwd(),env:{...process.env,...env},stdio:["ignore","pipe","pipe"],windowsHide:true,detached:process.platform!=="win32"});};
     corepackSync(["pnpm","--filter","@bet-stats/api...","build"]);
-    const api=observe(run(["pnpm","--filter","@bet-stats/api","dev"],{DATABASE_URL:databaseUrl,REDIS_URL:redisUrl,POSTGRES_READY:"true",REDIS_READY:"true",API_HOST:"127.0.0.1",API_PORT:"3241",NODE_ENV:"test",ELIGIBILITY_ALLOWED_REGIONS:"PL",...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV}),"api"); owned.api=api; await wait(`${PROVIDER_API_ORIGIN}/health/ready`);
+    const api=observe(run(["pnpm","--filter","@bet-stats/api","dev"],{DATABASE_URL:databaseUrl,REDIS_URL:redisUrl,POSTGRES_READY:"true",REDIS_READY:"true",API_HOST:"127.0.0.1",API_PORT:"3241",NODE_ENV:"test",ELIGIBILITY_ALLOWED_REGIONS:"PL",BACKUP_ENABLED:"true",BACKUP_DIR:backupDir,...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV}),"api"); owned.api=api; await wait(`${PROVIDER_API_ORIGIN}/health/ready`);
     corepackSync(["pnpm","--filter","@bet-stats/web","build"],{...process.env,API_ORIGIN:PROVIDER_API_ORIGIN,...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV});
     const web=observe(run(["pnpm","--filter","@bet-stats/web","exec","next","start","--hostname","127.0.0.1","--port","3240"],{API_ORIGIN:PROVIDER_API_ORIGIN,ELIGIBILITY_REGION:"PL",ELIGIBILITY_AGE_ACKNOWLEDGED:"true",ELIGIBILITY_CHECKED_AT:new Date().toISOString(),...OPERATOR_TEST_ENV,...PRIVACY_TEST_ENV}),"web"); owned.web=web;
     const supervision=superviseLiveChildren([{label:"api",child:api},{label:"web",child:web}]);
@@ -170,6 +173,6 @@ async function issueProductionForecasts(db: ReturnType<typeof createPrismaClient
     if (kind === "LINEUP_CONFIRMED" && forecast.officialLineupObservationId !== lineupId) throw new Error("PRODUCTION_LINEUP_FORECAST_MISMATCH");
   }
 }
-export async function stopLiveProviderStack(partial?:{pg:string;redis:string}) { const state=owned; if(state){state.supervision?.dispose();await stop(state.web);await stop(state.api);await state.worker?.close();} for(const name of [partial?.redis??state?.redis,partial?.pg??state?.pg])if(name)try{docker("rm","-f",name)}catch{} owned=null; }
+export async function stopLiveProviderStack(partial?:{pg:string;redis:string}) { const state=owned; if(state){state.supervision?.dispose();await stop(state.web);await stop(state.api);await state.worker?.close();if(state.backupDir)try{rmSync(state.backupDir,{recursive:true,force:true})}catch{}} for(const name of [partial?.redis??state?.redis,partial?.pg??state?.pg])if(name)try{docker("rm","-f",name)}catch{} owned=null; }
 
 export default async function setup() { await startLiveProviderStack(); return async () => stopLiveProviderStack(); }

@@ -435,8 +435,33 @@ export async function runBackupDrill(input: RunBackupDrillInput): Promise<Backup
   } finally {
     if (drillQuery) await drillQuery.disconnect().catch(() => { log({ event: "backup_drill.query_disconnect_failed", drillId }); });
     // (6) Exact owned cleanup, best effort, recorded not hidden (T-08-10, D-11).
+    // The verdict is object-verified, never exit-code-guessed (G-08-5): on
+    // Docker server 29.x `rm --force` is idempotent (exit 0 for a name that no
+    // longer resolves), so a rename race would otherwise be recorded as an
+    // honest REMOVED while an orphan container stays alive. Sequence, all by
+    // the exact recorded containerName: pre-rm inspect (identity still present
+    // under the recorded name — a miss means the identity was lost before
+    // cleanup, but the rm is still attempted best-effort), rm, post-rm inspect
+    // (exit 0 means the object survived the rm). REMOVED therefore requires
+    // positive inspect evidence twice; every other path fails closed to FAILED.
+    const preInspect = await exec.run("docker", ["inspect", containerName], { timeoutMs: SPAWN_PROBE_TIMEOUT_MS });
     const removal = await exec.run("docker", ["rm", "--force", containerName], { timeoutMs: SPAWN_PROBE_TIMEOUT_MS });
-    containerCleanup = removal.spawnError || removal.code !== 0 ? "FAILED" : "REMOVED";
+    const postInspect = await exec.run("docker", ["inspect", containerName], { timeoutMs: SPAWN_PROBE_TIMEOUT_MS });
+    const identityLostBeforeRm = Boolean(preInspect.spawnError) || preInspect.code !== 0;
+    const rmFailed = Boolean(removal.spawnError) || removal.code !== 0;
+    const survivedRm = !postInspect.spawnError && postInspect.code === 0;
+    containerCleanup = identityLostBeforeRm || rmFailed || survivedRm ? "FAILED" : "REMOVED";
+    // Durable audit trail in the immutable receipt checks JSON: container name
+    // plus per-stage exit codes ("spawn_error" when the CLI could not spawn).
+    // The name is system-generated (bet-stats-drill-pg-<pid>-<ts>) and flows
+    // through redactSecrets + the closed BackupFact DTO (T-08-22).
+    checks.containerCleanup = {
+      containerName,
+      preInspect: preInspect.code ?? "spawn_error",
+      rmExitCode: removal.code ?? "spawn_error",
+      postInspect: postInspect.code ?? "spawn_error",
+      verdict: containerCleanup,
+    };
     if (containerCleanup === "FAILED") log({ event: "backup_drill.container_cleanup_failed", drillId, containerName });
   }
 

@@ -285,7 +285,8 @@ describe("runBackupDrill container cleanup verdict is inspect-verified (G-08-5)"
 
     expect(result.containerCleanup).toBe("REMOVED");
     const cleanupCalls = calls.filter((call) => call.command === "docker" && (call.args[0] === "inspect" || call.args[0] === "rm"));
-    expect(cleanupCalls.map((call) => `${call.args[0]}:${call.args[1]}`)).toEqual([`inspect:${DRILL_NAME}`, `rm:${DRILL_NAME}`, `inspect:${DRILL_NAME}`]);
+    // The container name is the final argv of both verbs (inspect <name>; rm --force <name>).
+    expect(cleanupCalls.map((call) => `${call.args[0]}:${call.args.at(-1)}`)).toEqual([`inspect:${DRILL_NAME}`, `rm:${DRILL_NAME}`, `inspect:${DRILL_NAME}`]);
     expect(cleanupAudit(receipts)).toMatchObject({ containerName: DRILL_NAME, preInspect: 0, rmExitCode: 0, postInspect: 1, verdict: "REMOVED" });
   });
 

@@ -1,20 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.1
-current_phase: 8
+current_phase: 08
 current_phase_name: Backups and Restore Verification
 status: executing
-stopped_at: Completed 08-03-PLAN.md (operations visibility) — phase 8 all 3 plans executed; awaiting wave/phase gates
-last_updated: "2026-10-24T11:45:00.000Z"
-last_activity: 2026-10-24
-last_activity_desc: Phase 8 plan 08-03 (operations visibility) complete
-state_head: 21ec7d568a9d0c0d0d9f23c71e855713c255fbc0
+stopped_at: Completed 08-04-PLAN.md (gap closure G-08-6 — operator ingress); 4 of 5 phase-8 plans done; next 08-05
+last_updated: "2026-10-31T06:40:00.000Z"
+last_activity: 2026-10-31
+last_activity_desc: Phase 08 plan 04 executed (gap G-08-6 closed, pending operator UAT re-test)
+state_head: 5da9972
 progress:
   total_phases: 10
-  completed_phases: 1
-  total_plans: 6
-  completed_plans: 6
-  percent: 15
+  completed_phases: 2
+  total_plans: 8
+  completed_plans: 7
+  percent: 20
 milestone_name: Reliability, Model Quality and Value Experience
 ---
 
@@ -25,16 +25,16 @@ milestone_name: Reliability, Model Quality and Value Experience
 See: .planning/PROJECT.md (updated 2026-09-08)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Phase 8 — Backups and Restore Verification
+**Current focus:** Phase 08 — Backups and Restore Verification
 
 ## Current Position
 
-Phase: 8 (Backups and Restore Verification) — all plans EXECUTED
-Plan: 3 of 3 (08-01 backup engine, 08-02 restore drill, 08-03 operations visibility complete)
-Status: Executing Phase 8 — awaiting wave/phase verification gates
-Last activity: 2026-10-24 — 08-03 complete: backups() read model with read-time five-state computation (secret-free, basename-only, redactSecrets pass), POST backups/run + backups/drill behind OperatorGuard (uniform 404, job data exactly { trigger: MANUAL }), proxy POST passthrough with method-bound HMAC, Russian «Резервные копии и проверка восстановления» block with honest non-green states and the two manual trigger buttons (6 commits incl. one finalization Rule-1 fix)
+Phase: 08 (Backups and Restore Verification) — EXECUTING
+Plan: 5 of 5
+Status: Executing Phase 08
+Last activity: 2026-10-31 — Phase 08 plan 04 (gap closure G-08-6) executed
 
-Progress: [██░░░░░░░░] 15%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
@@ -126,6 +126,7 @@ Progress: [██░░░░░░░░] 15%
 | Phase 08 P01 | 70min | 3 tasks | 18 files |
 | Phase 08 P02 | 40min | 3 tasks | 8 files |
 | Phase 08 P03 | 30min | 3 tasks | 10 files |
+| Phase 08 P04 | 15h 35m (2 sessions) | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -251,6 +252,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 08]: BackupFact is a closed secret-free DTO — basename-only file names, sanitized check names, bounded failed-check extraction, plus a redactSecrets pass; the serialized payload test forbids connection-string scheme markers and directory paths (D-15, T-08-13, 08-03)
 - [Phase 08]: Manual trigger endpoints reuse the uniform NotFoundException("Not found") for disabled/unconfigured backups — indistinguishable from bad credentials, no configuration oracle; the trigger methods are async so the 404 is a rejected promise (T-08-16, 08-03)
 - [Phase 08]: Web proxy forwards only the request method (the HMAC canonical string already binds the method, so a signed GET can never become a POST) and never a request body; enqueued job data is exactly { trigger: "MANUAL" } with manual-<job>-<ts> jobIds (T-08-14/T-08-17, 08-03)
+- [Phase 08]: Gateway protected-path list (isProtectedPath) covers /internal/operations and /internal-api/operations with exact-or-slash segment boundaries — same Basic auth + HMAC signing secret as replay; /internal/operation and /internal-api/operations-backup stay public (08-04)
+- [Phase 08]: The gateway spawns best-effort in app-lifecycle.ps1 after stack readiness (15s probe, warn-and-continue on missing OPERATOR_* config) and logs to a sibling %TEMP% bet-stats-gateway.log — the stack daemon holds the shared log append-locked, so a second writer throws a sharing violation (08-04)
+- [Phase 08]: Under Playwright test.use({ httpCredentials }), request.newContext() silently inherits the credentials (runBeforeCreateRequestContext merges _combinedContextOptions) — anonymous fail-closed probes must use plain Node fetch, never a request context (08-04)
+- [Phase 08]: E2E negative half asserts gateway 401 (no upstream hop) and uniform web 404 for unsigned /internal-api/operations — the plan's literal "reaches upstream unsigned" was superseded once operations prefixes joined the protected set (strictly stronger fail-closed) (08-04)
 
 ### Pending Todos
 

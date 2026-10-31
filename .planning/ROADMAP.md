@@ -56,7 +56,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 - [x] 08-01-PLAN.md — Backup engine: fail-closed config, pg_dump -Fc + BackupRun receipt, rotation after success, robocopy off-host, daily persisted-state scheduler
 - [x] 08-02-PLAN.md — Restore drill: throwaway container restore, migrations at head, chain-integrity checks, immutable BackupVerificationReceipt, weekly scheduler
 - [x] 08-03-PLAN.md — Operations visibility: backups() read model with 5-state honesty, secret-free projection, manual triggers behind OperatorGuard, Russian UI block
-- [ ] 08-04-PLAN.md — Gap closure G-08-6: operator-gateway signs /internal*/operations* paths and runs in the dev launcher; e2e proves browser-through-gateway operations access
+- [x] 08-04-PLAN.md — Gap closure G-08-6: operator-gateway signs /internal*/operations* paths and runs in the dev launcher; e2e proves browser-through-gateway operations access
 - [ ] 08-05-PLAN.md — Gap closure G-08-5: containerCleanup verdict verified by pre/post-rm docker inspect instead of rm exit code; FAILED branch test-covered
 **UI hint**: no
 
@@ -193,7 +193,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 7. CI Pipeline & Quality Gates | 3/3 | Complete    | 2026-10-22 |
-| 8. Backups and Restore Verification | 3/3 | Complete    | 2026-10-24 |
+| 8. Backups and Restore Verification | 4/5 | In progress | 2026-10-31 |
 | 9. Degradation Alerting | 0/0 | Not started | - |
 | 10. Performance Audit and Budgets | 0/0 | Not started | - |
 | 11. Dixon-Coles Model Version | 0/0 | Not started | - |

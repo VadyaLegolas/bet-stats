@@ -42,14 +42,18 @@ function tempDir(): string {
   return dir;
 }
 
-type RecordedCall = Readonly<{ command: string; args: readonly string[] }>;
+type RecordedCall = Readonly<{ command: string; args: readonly string[]; code?: number | undefined; spawnError?: string | undefined }>;
 
 /**
- * Records every real invocation while keeping resolution deterministic on any
- * host: bare `pg_dump` PATH probes fail (forcing the docker-exec fallback the
- * plan verifies) and `printenv` can be blocked to prove the fail-closed path.
+ * Records every real invocation (argv plus the observed exit code) while
+ * keeping resolution deterministic on any host: bare `pg_dump` PATH probes fail
+ * (forcing the docker-exec fallback the plan verifies), `printenv` can be
+ * blocked to prove the fail-closed path, and the pre-rm cleanup inspect can be
+ * forced to miss (exit 1) to reproduce the G-08-5 rename race at the exec
+ * boundary on a live daemon.
  */
-function recordingExec(options: { record: RecordedCall[]; blockPathProbe?: boolean; blockPrintenv?: boolean }): BackupExec {
+function recordingExec(options: { record: RecordedCall[]; blockPathProbe?: boolean; blockPrintenv?: boolean; failPreRmInspect?: boolean }): BackupExec {
+  let inspectCount = 0;
   return {
     async run(command, args, execOptions) {
       if (command === "pg_dump" && options.blockPathProbe) {
@@ -58,8 +62,16 @@ function recordingExec(options: { record: RecordedCall[]; blockPathProbe?: boole
       if (command === "docker" && args[2] === "printenv" && options.blockPrintenv) {
         return { code: 1, stdout: Buffer.alloc(0), stderr: "env: no such variable" };
       }
-      options.record.push({ command, args });
-      return spawnBackupExec.run(command, args, execOptions);
+      if (command === "docker" && args[0] === "inspect" && options.failPreRmInspect && inspectCount === 0) {
+        inspectCount += 1;
+        const forced = { code: 1, stdout: Buffer.alloc(0), stderr: `Error response from daemon: No such container: ${String(args[1] ?? "")}` };
+        options.record.push({ command, args, code: forced.code });
+        return forced;
+      }
+      if (command === "docker" && args[0] === "inspect") inspectCount += 1;
+      const result = await spawnBackupExec.run(command, args, execOptions);
+      options.record.push({ command, args, code: result.code, ...(result.spawnError ? { spawnError: result.spawnError } : {}) });
+      return result;
     },
   };
 }
@@ -226,6 +238,48 @@ describe("backup dump and receipt drill", () => {
     expect(startCall, "the drill must start its own uniquely named container").toBeDefined();
     const drillContainer = startCall!.args[startCall!.args.indexOf("--name") + 1]!;
     expect(drillContainer.startsWith(DRILL_CONTAINER_PREFIX)).toBe(true);
+    expect(docker("ps", "--all", "--filter", `name=${drillContainer}`, "--format", "{{.Names}}")).toBe("");
+
+    // The REMOVED verdict must be earned by inspect evidence on the live daemon
+    // (G-08-5): inspect → rm → inspect by the exact recorded name, with the
+    // pre-rm inspect really exiting 0 (object present) and the post-rm inspect
+    // really exiting non-zero (object verifiably absent).
+    const cleanupAudit = (rows[0]!.checks as Record<string, Record<string, unknown>>).containerCleanup;
+    const inspectCalls = record.filter((call) => call.command === "docker" && call.args[0] === "inspect" && call.args.at(-1) === drillContainer);
+    const rmCallIndex = record.findIndex((call) => call.command === "docker" && call.args[0] === "rm" && call.args.at(-1) === drillContainer);
+    expect(inspectCalls.length, "one pre-rm and one post-rm inspect by the recorded name").toBeGreaterThanOrEqual(2);
+    expect(rmCallIndex, "the rm must target the same recorded name").toBeGreaterThan(-1);
+    expect(record.indexOf(inspectCalls[0]!)).toBeLessThan(rmCallIndex);
+    expect(record.indexOf(inspectCalls.at(-1)!)).toBeGreaterThan(rmCallIndex);
+    expect(inspectCalls[0]!.code, "the container must be verified present before rm").toBe(0);
+    expect(inspectCalls.at(-1)!.code, "the container must be verified absent after rm").not.toBe(0);
+    expect(cleanupAudit).toMatchObject({ containerName: drillContainer, preInspect: 0, verdict: "REMOVED" });
+    expect(cleanupAudit!.rmExitCode).toBe(0);
+    expect(cleanupAudit!.postInspect, "the receipt must persist the real post-rm exit code").not.toBe(0);
+  }, 120_000);
+
+  it("persists FAILED containerCleanup with the drill overall untouched when the pre-rm identity check fails on a live daemon", async () => {
+    const record: RecordedCall[] = [];
+    const config = readBackupConfig({ BACKUP_ENABLED: "true", BACKUP_DIR: backupDir, BACKUP_PG_CONTAINER: postgresName });
+    const before = await database.backupVerificationReceipt.count();
+
+    // The rename race reproduced at the exec boundary: the recorded name stops
+    // resolving before cleanup, while `rm --force` stays idempotent (exit 0).
+    const result = await runBackupDrill({ config, database, exec: recordingExec({ record, failPreRmInspect: true }) });
+
+    expect(result.overall, "cleanup outcome must never recolor the earned overall (D-11)").toBe("VERIFIED");
+    expect(result.containerCleanup).toBe("FAILED");
+
+    const rows = await database.backupVerificationReceipt.findMany({ orderBy: { createdAt: "asc" } });
+    expect(rows).toHaveLength(before + 1);
+    expect(rows.at(-1)).toMatchObject({ overall: "VERIFIED", containerCleanup: "FAILED" });
+    const audit = (rows.at(-1)!.checks as Record<string, Record<string, unknown>>).containerCleanup;
+    expect(audit).toMatchObject({ preInspect: 1, rmExitCode: 0, verdict: "FAILED" });
+
+    // The best-effort rm still ran against the real daemon — no orphan is left behind.
+    const startCall = record.find((call) => call.command === "docker" && call.args[0] === "run" && call.args.some((arg) => String(arg).startsWith(DRILL_CONTAINER_PREFIX)));
+    expect(startCall, "the drill must start its own uniquely named container").toBeDefined();
+    const drillContainer = startCall!.args[startCall!.args.indexOf("--name") + 1]!;
     expect(docker("ps", "--all", "--filter", `name=${drillContainer}`, "--format", "{{.Names}}")).toBe("");
   }, 120_000);
 

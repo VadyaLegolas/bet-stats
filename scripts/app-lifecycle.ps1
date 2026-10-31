@@ -1,5 +1,6 @@
 ﻿# One-file launcher/stopper for the bet-stats dev stack (PostgreSQL + Redis via docker,
-# migrations, league seeding, then web :3000 + API :3001 + data-sync worker).
+# migrations, league seeding, then web :3000 + API :3001 + data-sync worker + the
+# operator gateway :8080 that signs /internal/operations and replay requests).
 #
 #   scripts\app-lifecycle.ps1               start everything and open the browser
 #   scripts\app-lifecycle.ps1 -Action Stop  stop the running stack
@@ -11,14 +12,19 @@ param(
   [ValidateSet("Start", "Stop", "Status")]
   [string]$Action = "Start",
   [switch]$Daemon,
+  [switch]$Gateway,
   [switch]$NoBrowser
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 $log = Join-Path $env:TEMP "bet-stats-stack.log"
+# The gateway logs to a sibling file: the stack daemon holds $log open for
+# append, and a second concurrent writer to $log fails with a sharing violation.
+$gatewayLog = Join-Path $env:TEMP "bet-stats-gateway.log"
 $webPort = 3000
 $apiPort = 3001
+$gatewayPort = 8080
 
 function Load-Env {
   # The API/worker read process.env only, so .env must be loaded into this process.
@@ -32,6 +38,12 @@ function Load-Env {
   if (-not $env:REDIS_URL) { $env:REDIS_URL = "redis://127.0.0.1:6379" }
   $env:DATA_PROVIDER_MODE = "live"
   if (-not $env:DISPLAY_TIME_ZONE) { $env:DISPLAY_TIME_ZONE = "Europe/Warsaw" }
+  # The operator gateway (infra/operator-gateway/server.mjs) fails closed on
+  # missing configuration; give the dev launcher sane defaults so the browser
+  # entry point exists without extra steps.
+  if (-not $env:GATEWAY_PORT) { $env:GATEWAY_PORT = "8080" }
+  if (-not $env:WEB_ORIGIN) { $env:WEB_ORIGIN = "http://127.0.0.1:3000" }
+  $script:gatewayPort = [int]$env:GATEWAY_PORT
 }
 
 function Test-Http([int]$port, [string]$path = "/") {
@@ -48,18 +60,20 @@ function Wait-Http([int]$port, [string]$path, [int]$timeoutSec) {
 }
 
 # PIDs of the whole dev stack: the hidden daemon (app-lifecycle.ps1 -Daemon), the turbo
-# "run dev" tree it spawns, plus anything listening on the web/api ports (stale leftovers).
+# "run dev" tree it spawns, the operator gateway (-Gateway launcher + its node process),
+# plus anything listening on the web/api/gateway ports (stale leftovers).
 function Get-StackPids {
   $all = Get-CimInstance Win32_Process
   $roots = @()
   foreach ($p in $all) {
     $cl = $p.CommandLine
     if (-not $cl -or $p.ProcessId -eq $PID) { continue }
-    if ($cl -match 'app-lifecycle\.ps1.*-Daemon' -or ($cl -match 'turbo' -and $cl -match 'run' -and $cl -match 'dev')) {
+    if ($cl -match 'app-lifecycle\.ps1.*-Daemon' -or ($cl -match 'turbo' -and $cl -match 'run' -and $cl -match 'dev') -or
+        $cl -match 'app-lifecycle\.ps1.*-Gateway' -or ($cl -match 'operator-gateway' -and $cl -match 'server\.mjs')) {
       $roots += $p.ProcessId
     }
   }
-  foreach ($port in @($webPort, $apiPort)) {
+  foreach ($port in @($webPort, $apiPort, $gatewayPort)) {
     foreach ($c in (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)) {
       if ($c.OwningProcess -ne $PID -and $c.OwningProcess -notin $roots) { $roots += $c.OwningProcess }
     }
@@ -88,9 +102,9 @@ function Stop-Stack {
   Write-Host "Останавливаю процессы стека ($($pids.Count))..."
   foreach ($p in ($pids | Sort-Object -Descending)) { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue }
   Start-Sleep -Seconds 2
-  $left = Get-NetTCPConnection -LocalPort $webPort, $apiPort -State Listen -ErrorAction SilentlyContinue
+  $left = Get-NetTCPConnection -LocalPort $webPort, $apiPort, $gatewayPort -State Listen -ErrorAction SilentlyContinue
   if ($left) { Write-Host "Порты ещё заняты: $(($left | ForEach-Object LocalPort) -join ', ') — проверьте вручную." }
-  else { Write-Host "Стек остановлен, порты $webPort/$apiPort свободны." }
+  else { Write-Host "Стек остановлен, порты $webPort/$apiPort/$gatewayPort свободны." }
 }
 
 if ($Daemon) {
@@ -100,11 +114,24 @@ if ($Daemon) {
   exit $LASTEXITCODE
 }
 
+if ($Gateway) {
+  # Child of Start-Process: inherits the launcher's loaded environment (Load-Env
+  # already ran there); the re-run is defensive parity with the -Daemon branch.
+  Load-Env
+  # The daemon holds $log open for append (FileShare.Read) for its whole life,
+  # so a second *>> $log writer throws a sharing violation — the gateway gets
+  # its own sibling log in %TEMP% instead (banner + «Missing required
+  # configuration: ...» stderr land there).
+  Write-Host "[$(Get-Date -Format o)] operator gateway starting on :$gatewayPort" *>> $gatewayLog
+  node infra/operator-gateway/server.mjs *>> $gatewayLog
+  exit $LASTEXITCODE
+}
+
 if ($Action -eq "Stop") { Stop-Stack; exit 0 }
 
 if ($Action -eq "Status") {
-  $web = Test-Http $webPort "/"; $api = Test-Http $apiPort "/fixtures/quota"
-  Write-Host "web(:$webPort)=$(if ($web) { 'up' } else { 'down' }) api(:$apiPort)=$(if ($api) { 'up' } else { 'down' })"
+  $web = Test-Http $webPort "/"; $api = Test-Http $apiPort "/fixtures/quota"; $gateway = Test-Http $gatewayPort "/"
+  Write-Host "web(:$webPort)=$(if ($web) { 'up' } else { 'down' }) api(:$apiPort)=$(if ($api) { 'up' } else { 'down' }) gateway(:$gatewayPort)=$(if ($gateway) { 'up' } else { 'down' })"
   exit 0
 }
 
@@ -112,6 +139,9 @@ if ($Action -eq "Status") {
 Load-Env
 if ((Test-Http $webPort "/") -and (Test-Http $apiPort "/fixtures/quota")) {
   Write-Host "Стек уже запущен — открываю http://127.0.0.1:$webPort"
+  $gatewayUp = Test-Http $gatewayPort "/"
+  Write-Host "gateway(:$gatewayPort)=$(if ($gatewayUp) { 'up' } else { 'down' })"
+  if ($gatewayUp) { Write-Host "Центр операций: http://127.0.0.1:$gatewayPort/internal/operations" }
   if (-not $NoBrowser) { Start-Process "http://127.0.0.1:$webPort" }
   exit 0
 }
@@ -122,7 +152,7 @@ if ($stale) {
   Start-Sleep -Seconds 2
 }
 
-Write-Host "1/4 Docker: PostgreSQL + Redis..."
+Write-Host "1/5 Docker: PostgreSQL + Redis..."
 docker compose -f infra\docker-compose.yml --env-file .env up -d | Out-Null
 $deadline = (Get-Date).AddSeconds(60)
 do {
@@ -132,22 +162,36 @@ do {
 } until ($ready -or (Get-Date) -gt $deadline)
 if (-not $ready) { throw "PostgreSQL не поднялся за 60 с" }
 
-Write-Host "2/4 Миграции и каталог лиг (идемпотентно)..."
+Write-Host "2/5 Миграции и каталог лиг (идемпотентно)..."
 corepack pnpm --filter @bet-stats/database exec prisma migrate deploy | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Миграции завершились с ошибкой (код $LASTEXITCODE)" }
 node scripts\seed-configured-leagues.mjs | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Сид каталога лиг завершился с ошибкой (код $LASTEXITCODE)" }
 
-Write-Host "3/4 Сборка проекта (кэш Turbo — повторные запуски быстрые)..."
+Write-Host "3/5 Сборка проекта (кэш Turbo — повторные запуски быстрые)..."
 corepack pnpm build | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Сборка проекта завершилась с ошибкой (код $LASTEXITCODE)" }
 
-Write-Host "4/4 Запуск web (:$webPort), API (:$apiPort) и воркера (фоном, лог: $log)..."
+Write-Host "4/5 Запуск web (:$webPort), API (:$apiPort) и воркера (фоном, лог: $log)..."
 Start-Process -FilePath "pwsh" -WindowStyle Hidden -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`"", "-Daemon"
 
 Write-Host "Жду готовности web и API (до 150 с)..."
 $webOk = Wait-Http $webPort "/" 150
 $apiOk = Wait-Http $apiPort "/fixtures/quota" 150
 if (-not ($webOk -and $apiOk)) { throw "Стек не поднялся за отведённое время. Лог: $log" }
+
+# Шлюз оператора подписывает /internal/operations* и replay-запросы для браузера
+# оператора. Запуск best-effort: сбой конфигурации (нет OPERATOR_BASIC_PASSWORD /
+# OPERATOR_PROXY_SIGNING_SECRET в .env) не должен ронять стек — предупреждаем и
+# продолжаем (функциональность сайта от шлюза не зависит).
+Write-Host "5/5 Шлюз оператора (:$gatewayPort, фоном, лог: $gatewayLog)..."
+Start-Process -FilePath "pwsh" -WindowStyle Hidden -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`"", "-Gateway"
+$gatewayOk = Wait-Http $gatewayPort "/" 15
+if ($gatewayOk) {
+  Write-Host "Центр операций оператора: http://127.0.0.1:$gatewayPort/internal/operations"
+} else {
+  Write-Host "Предупреждение: шлюз оператора (:$gatewayPort) не ответил за 15 с — стек запущен без него."
+  Write-Host "  Обычная причина: в .env нет OPERATOR_BASIC_PASSWORD или OPERATOR_PROXY_SIGNING_SECRET («Missing required configuration: ...» в $gatewayLog)."
+}
 Write-Host "Готово: http://127.0.0.1:$webPort"
 if (-not $NoBrowser) { Start-Process "http://127.0.0.1:$webPort" }

@@ -61,21 +61,37 @@ function fakeDatabase(input: { receipts?: ReceiptRow[]; sourceCounts?: Record<st
 }
 
 const OK: BackupExecResult = { code: 0, stdout: Buffer.alloc(0), stderr: "" };
+const INSPECT_FOUND: BackupExecResult = { code: 0, stdout: Buffer.from("[]"), stderr: "" };
+const INSPECT_MISSING: BackupExecResult = { code: 1, stdout: Buffer.alloc(0), stderr: "Error response from daemon: No such container" };
 
 /** Full happy-path drill exec; individual outcomes overridden per test. */
-function drillExec(options: { dockerRun?: Partial<BackupExecResult>; restore?: Partial<BackupExecResult>; blockPrintenv?: boolean } = {}) {
+function drillExec(options: {
+  dockerRun?: Partial<BackupExecResult>;
+  restore?: Partial<BackupExecResult>;
+  rm?: Partial<BackupExecResult>;
+  blockPrintenv?: boolean;
+  /** Per-invocation `docker inspect` results consumed in order (pre-rm first, post-rm second); the last entry repeats if more inspects arrive. */
+  inspects?: readonly Partial<BackupExecResult>[];
+} = {}) {
   const calls: ExecCall[] = [];
+  const inspectResults: readonly Partial<BackupExecResult>[] = options.inspects ?? [INSPECT_FOUND, INSPECT_MISSING];
+  let inspectIndex = 0;
   const exec: BackupExec = {
     async run(command, args) {
       calls.push({ command, args });
       if (command === "docker" && args[0] === "run") return { ...OK, ...options.dockerRun };
       if (command === "docker" && args.includes("printenv")) return options.blockPrintenv ? { code: 1, stdout: Buffer.alloc(0), stderr: "env: no such variable" } : { ...OK, stdout: Buffer.from("drill_user\n") };
+      if (args[0] === "inspect") {
+        const result = inspectResults[Math.min(inspectIndex, inspectResults.length - 1)] ?? {};
+        inspectIndex += 1;
+        return { ...OK, ...result };
+      }
       if (args.includes("pg_isready")) return OK;
       if (args[0] === "port") return { ...OK, stdout: Buffer.from("127.0.0.1:49152\n") };
       if (args.includes("pg_restore") && args.includes("--version")) return { ...OK, stdout: Buffer.from("pg_restore (PostgreSQL) 18.6") };
       if (args.includes("pg_restore")) return { ...OK, ...options.restore };
       if (args[0] === "cp") return OK;
-      if (args[0] === "rm") return OK;
+      if (args[0] === "rm") return { ...OK, ...options.rm };
       return OK; // migrate deploy / status
     },
   };
@@ -233,6 +249,69 @@ describe("runBackupDrill fail-closed states", () => {
     expect(checks.parity).toBeDefined();
     expect(checks.restore).toMatchObject({ exitCode: 0 });
     expect(checks.migrations).toMatchObject({ state: "AT_HEAD" });
+  });
+});
+
+describe("runBackupDrill container cleanup verdict is inspect-verified (G-08-5)", () => {
+  const DRILL_NAME = "bet-stats-drill-pg-unit-test";
+
+  type CleanupAudit = { containerName?: string; preInspect?: number | string; rmExitCode?: number | string; postInspect?: number | string; verdict?: string };
+
+  function cleanupAudit(receipts: ReceiptRow[]): CleanupAudit {
+    return (receipts[0]!.checks as Record<string, CleanupAudit>).containerCleanup ?? {};
+  }
+
+  it("A: records FAILED when the container identity is lost before cleanup, still attempts rm best-effort, and records the audit evidence", async () => {
+    const { result, receipts, calls } = await runDrill({ execOptions: { inspects: [INSPECT_MISSING, INSPECT_MISSING] } });
+
+    expect(result.overall).toBe("VERIFIED");
+    expect(result.containerCleanup).toBe("FAILED");
+    // The pre-rm miss must never skip the best-effort rm attempt.
+    expect(calls.some((call) => call.command === "docker" && call.args[0] === "rm")).toBe(true);
+    expect(receipts).toHaveLength(1);
+    expect(cleanupAudit(receipts)).toMatchObject({ containerName: DRILL_NAME, preInspect: 1, rmExitCode: 0, postInspect: 1, verdict: "FAILED" });
+  });
+
+  it("B: records FAILED when rm exits 0 but the container survives (post-rm inspect still finds it)", async () => {
+    const { result, receipts } = await runDrill({ execOptions: { inspects: [INSPECT_FOUND, INSPECT_FOUND] } });
+
+    expect(result.overall).toBe("VERIFIED");
+    expect(result.containerCleanup).toBe("FAILED");
+    expect(cleanupAudit(receipts)).toMatchObject({ containerName: DRILL_NAME, preInspect: 0, rmExitCode: 0, postInspect: 0, verdict: "FAILED" });
+  });
+
+  it("C: records REMOVED only on inspect evidence — inspect, rm, inspect by the exact recorded name", async () => {
+    const { result, receipts, calls } = await runDrill({});
+
+    expect(result.containerCleanup).toBe("REMOVED");
+    const cleanupCalls = calls.filter((call) => call.command === "docker" && (call.args[0] === "inspect" || call.args[0] === "rm"));
+    expect(cleanupCalls.map((call) => `${call.args[0]}:${call.args[1]}`)).toEqual([`inspect:${DRILL_NAME}`, `rm:${DRILL_NAME}`, `inspect:${DRILL_NAME}`]);
+    expect(cleanupAudit(receipts)).toMatchObject({ containerName: DRILL_NAME, preInspect: 0, rmExitCode: 0, postInspect: 1, verdict: "REMOVED" });
+  });
+
+  it("D: records FAILED when rm itself exits non-zero (existing semantics preserved)", async () => {
+    const { result, receipts } = await runDrill({ execOptions: { rm: { code: 1, stderr: "rm: cannot remove container" } } });
+
+    expect(result.containerCleanup).toBe("FAILED");
+    expect(cleanupAudit(receipts).verdict).toBe("FAILED");
+  });
+
+  it("E: never recolors the earned overall — a VERIFIED drill with post-rm survival keeps overall VERIFIED with cleanup FAILED in the same immutable receipt", async () => {
+    const { result, receipts } = await runDrill({ execOptions: { inspects: [INSPECT_FOUND, INSPECT_FOUND] } });
+
+    expect(result.overall).toBe("VERIFIED");
+    expect(result.containerCleanup).toBe("FAILED");
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]).toMatchObject({ overall: "VERIFIED", containerCleanup: "FAILED" });
+  });
+
+  it("F: records FAILED without crashing out of the finally block when the pre-rm inspect cannot spawn", async () => {
+    const spawnGone: Partial<BackupExecResult> = { code: undefined, stdout: Buffer.alloc(0), stderr: "", spawnError: "ENOENT" };
+    const { result, receipts } = await runDrill({ execOptions: { inspects: [spawnGone, INSPECT_MISSING] } });
+
+    expect(result.overall).toBe("VERIFIED");
+    expect(result.containerCleanup).toBe("FAILED");
+    expect(cleanupAudit(receipts)).toMatchObject({ preInspect: "spawn_error", rmExitCode: 0, postInspect: 1, verdict: "FAILED" });
   });
 });
 

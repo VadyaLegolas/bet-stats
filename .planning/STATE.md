@@ -4,11 +4,11 @@ milestone: v1.1
 current_phase: 08
 current_phase_name: Backups and Restore Verification
 status: executing
-stopped_at: Completed 08-04-PLAN.md (gap closure G-08-6 — operator ingress); 4 of 5 phase-8 plans done; next 08-05
-last_updated: "2026-10-31T06:40:00.000Z"
+stopped_at: Completed 08-05-PLAN.md (gap closure G-08-5 — inspect-verified containerCleanup verdict); all 5 phase-8 plans done; ready for phase verification / UAT re-test
+last_updated: "2026-10-31T07:06:00.000Z"
 last_activity: 2026-10-31
-last_activity_desc: Phase 08 plan 04 executed (gap G-08-6 closed, pending operator UAT re-test)
-state_head: 5da9972
+last_activity_desc: Phase 08 plan 05 executed (gap G-08-5 closed, pending operator UAT re-test)
+state_head: 657fb6f
 progress:
   total_phases: 10
   completed_phases: 2
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 
 ## Current Position
 
-Phase: 08 (Backups and Restore Verification) — EXECUTING
-Plan: 5 of 5
-Status: Executing Phase 08
-Last activity: 2026-10-31 — Phase 08 plan 04 (gap closure G-08-6) executed
+Phase: 08 (Backups and Restore Verification) — EXECUTING (all plans complete, pending verification)
+Plan: 5 of 5 — complete
+Status: Phase 08 plans 01-05 all complete; ready for /gsd-verify-work and G-08-5/G-08-6 UAT re-test
+Last activity: 2026-10-31 — Phase 08 plan 05 (gap closure G-08-5) executed
 
 Progress: [██░░░░░░░░] 20%
 
@@ -127,6 +127,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 08 P02 | 40min | 3 tasks | 8 files |
 | Phase 08 P03 | 30min | 3 tasks | 10 files |
 | Phase 08 P04 | 15h 35m (2 sessions) | 3 tasks | 9 files |
+| Phase 08 P05 | 18min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -256,6 +257,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 08]: The gateway spawns best-effort in app-lifecycle.ps1 after stack readiness (15s probe, warn-and-continue on missing OPERATOR_* config) and logs to a sibling %TEMP% bet-stats-gateway.log — the stack daemon holds the shared log append-locked, so a second writer throws a sharing violation (08-04)
 - [Phase 08]: Under Playwright test.use({ httpCredentials }), request.newContext() silently inherits the credentials (runBeforeCreateRequestContext merges _combinedContextOptions) — anonymous fail-closed probes must use plain Node fetch, never a request context (08-04)
 - [Phase 08]: E2E negative half asserts gateway 401 (no upstream hop) and uniform web 404 for unsigned /internal-api/operations — the plan's literal "reaches upstream unsigned" was superseded once operations prefixes joined the protected set (strictly stronger fail-closed) (08-04)
+- [Phase 08]: containerCleanup verdict is object-verified, never exit-code-guessed: pre-rm docker inspect (identity present under the recorded name), rm --force (best-effort even after a pre-rm miss), post-rm inspect (object verifiably absent); REMOVED requires positive inspect evidence twice and every other path fails closed to FAILED — Docker 29.x idempotent rm -f can no longer mask a rename race as a false REMOVED (G-08-5) (08-05)
+- [Phase 08]: The immutable receipt checks JSON gains checks.containerCleanup = { containerName, preInspect, rmExitCode, postInspect, verdict } (exit codes or "spawn_error") as the durable cleanup audit trail; record() still writes containerCleanup and overall independently, so the earned overall is structurally untouched by cleanup outcome (D-11/T-08-10) (08-05)
 
 ### Pending Todos
 

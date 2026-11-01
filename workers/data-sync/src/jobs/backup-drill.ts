@@ -15,6 +15,7 @@ import {
   SPAWN_DUMP_TIMEOUT_MS,
   SPAWN_PROBE_TIMEOUT_MS,
   type BackupExec,
+  type BackupExecResult,
   type BackupFs,
   type BackupJobData,
   type BackupJobEnqueueOpts,
@@ -465,9 +466,20 @@ export async function runBackupDrill(input: RunBackupDrillInput): Promise<Backup
     // (no spawnError), reached the daemon, exited non-zero, and carries no
     // daemon-unreachable indicator — every other path fails closed to FAILED.
     // (WR-01: a post-rm spawnError or a daemon error is NOT absence evidence.)
-    const preInspect = await exec.run("docker", ["inspect", containerName], { timeoutMs: SPAWN_PROBE_TIMEOUT_MS });
-    const removal = await exec.run("docker", ["rm", "--force", containerName], { timeoutMs: SPAWN_PROBE_TIMEOUT_MS });
-    const postInspect = await exec.run("docker", ["inspect", containerName], { timeoutMs: SPAWN_PROBE_TIMEOUT_MS });
+    // IN-02: each cleanup stage is individually guarded so a throwing BackupExec
+    // can never escape the finally block and skip record(). A throw maps to that
+    // stage's spawn_error; the fail-closed verdict records FAILED and the
+    // receipt still lands. The trio continues independently of any one stage.
+    const safeCleanupRun = async (args: readonly string[]): Promise<BackupExecResult> => {
+      try {
+        return await exec.run("docker", args, { timeoutMs: SPAWN_PROBE_TIMEOUT_MS });
+      } catch (error) {
+        return { code: undefined, stdout: Buffer.alloc(0), stderr: String(error), spawnError: String(error) };
+      }
+    };
+    const preInspect = await safeCleanupRun(["inspect", containerName]);
+    const removal = await safeCleanupRun(["rm", "--force", containerName]);
+    const postInspect = await safeCleanupRun(["inspect", containerName]);
     const identityLostBeforeRm = Boolean(preInspect.spawnError) || preInspect.code !== 0;
     const rmFailed = Boolean(removal.spawnError) || removal.code !== 0;
     // Fail-closed absence proof (WR-01): only a post-rm inspect that actually

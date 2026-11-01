@@ -333,6 +333,35 @@ describe("runBackupDrill container cleanup verdict is inspect-verified (G-08-5)"
     expect(result.containerCleanup).toBe("FAILED");
     expect(cleanupAudit(receipts)).toMatchObject({ containerName: DRILL_NAME, preInspect: 0, rmExitCode: 0, postInspect: 1, verdict: "FAILED" });
   });
+
+  it("I: a throwing cleanup exec still lands exactly one receipt with FAILED cleanup and the earned overall intact (IN-02)", async () => {
+    const { exec } = drillExec({});
+    const throwingExec: BackupExec = {
+      async run(command, args, options) {
+        // The cleanup verbs (rm + both inspects) throw; the drill body stays healthy.
+        if (command === "docker" && (args[0] === "inspect" || args[0] === "rm")) throw new Error("exec blew up");
+        return exec.run(command, args, options);
+      },
+    };
+    const fake = fakeDatabase({});
+    const drillQuery = fakeDrillQuery(SOURCE_COUNTS);
+    const result = await runBackupDrill({
+      config: drillConfig({}),
+      database: fake.database,
+      exec: throwingExec,
+      fs: { ...nodeBackupFs, list: async () => [DUMP_NAME] },
+      now: () => NOW,
+      prismaProjectRoot: PRISMA_ROOT,
+      containerSuffix: "unit-test",
+      createDrillQuery: () => drillQuery.query,
+    });
+
+    expect(result.overall).toBe("VERIFIED");
+    expect(result.containerCleanup).toBe("FAILED");
+    expect(fake.receipts).toHaveLength(1);
+    expect(fake.receipts[0]).toMatchObject({ overall: "VERIFIED", containerCleanup: "FAILED" });
+    expect(cleanupAudit(fake.receipts)).toMatchObject({ containerName: DRILL_NAME, preInspect: "spawn_error", rmExitCode: "spawn_error", postInspect: "spawn_error", verdict: "FAILED" });
+  });
 });
 
 describe("captureSourceCounts", () => {

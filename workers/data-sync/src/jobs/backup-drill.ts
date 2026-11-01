@@ -220,6 +220,24 @@ export function resolvePrismaProjectRoot(input?: { env?: NodeJS.ProcessEnv | und
   return null;
 }
 
+/**
+ * Classifies the Docker connection-failure family within an exec stderr (WR-01).
+ * A post-rm `docker inspect` that exits non-zero because the daemon became
+ * unreachable is indistinguishable by exit code from the canonical "No such
+ * object" absence, so it must never count as absence evidence. Deliberately
+ * narrow so the canonical absence messages — which literally contain the word
+ * "daemon" ("Error response from daemon: No such container") — never match:
+ * only the connection-failure phrases are treated as a daemon fault.
+ */
+function isDockerUnreachableError(stderr: string): boolean {
+  const normalized = stderr.toLowerCase();
+  return (
+    normalized.includes("cannot connect") ||
+    normalized.includes("error during connect") ||
+    normalized.includes("is the docker daemon running")
+  );
+}
+
 async function waitDrillReady(exec: BackupExec, containerName: string, identity: PgIdentity): Promise<boolean> {
   for (let attempt = 0; attempt < DRILL_READY_ATTEMPTS; attempt += 1) {
     const probe = await exec.run("docker", ["exec", containerName, "pg_isready", "-h", "127.0.0.1", "-U", identity.user, "-d", identity.db], { timeoutMs: SPAWN_PROBE_TIMEOUT_MS });
@@ -441,16 +459,23 @@ export async function runBackupDrill(input: RunBackupDrillInput): Promise<Backup
     // honest REMOVED while an orphan container stays alive. Sequence, all by
     // the exact recorded containerName: pre-rm inspect (identity still present
     // under the recorded name — a miss means the identity was lost before
-    // cleanup, but the rm is still attempted best-effort), rm, post-rm inspect
-    // (exit 0 means the object survived the rm). REMOVED therefore requires
-    // positive inspect evidence twice; every other path fails closed to FAILED.
+    // cleanup, but the rm is still attempted best-effort), rm, post-rm inspect.
+    // REMOVED therefore requires positive inspect evidence twice: the container
+    // present at the pre-rm inspect, AND a post-rm inspect that actually ran
+    // (no spawnError), reached the daemon, exited non-zero, and carries no
+    // daemon-unreachable indicator — every other path fails closed to FAILED.
+    // (WR-01: a post-rm spawnError or a daemon error is NOT absence evidence.)
     const preInspect = await exec.run("docker", ["inspect", containerName], { timeoutMs: SPAWN_PROBE_TIMEOUT_MS });
     const removal = await exec.run("docker", ["rm", "--force", containerName], { timeoutMs: SPAWN_PROBE_TIMEOUT_MS });
     const postInspect = await exec.run("docker", ["inspect", containerName], { timeoutMs: SPAWN_PROBE_TIMEOUT_MS });
     const identityLostBeforeRm = Boolean(preInspect.spawnError) || preInspect.code !== 0;
     const rmFailed = Boolean(removal.spawnError) || removal.code !== 0;
-    const survivedRm = !postInspect.spawnError && postInspect.code === 0;
-    containerCleanup = identityLostBeforeRm || rmFailed || survivedRm ? "FAILED" : "REMOVED";
+    // Fail-closed absence proof (WR-01): only a post-rm inspect that actually
+    // reached the daemon and exited non-zero proves the container is gone. A
+    // spawnError (the CLI never ran) or a daemon fault (indistinguishable by
+    // exit code from "No such object") is not evidence of absence.
+    const absentPerInspect = !postInspect.spawnError && postInspect.code !== 0 && !isDockerUnreachableError(postInspect.stderr);
+    containerCleanup = identityLostBeforeRm || rmFailed || !absentPerInspect ? "FAILED" : "REMOVED";
     // Durable audit trail in the immutable receipt checks JSON: container name
     // plus per-stage exit codes ("spawn_error" when the CLI could not spawn).
     // The name is system-generated (bet-stats-drill-pg-<pid>-<ts>) and flows

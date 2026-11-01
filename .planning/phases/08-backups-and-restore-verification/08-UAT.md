@@ -84,6 +84,10 @@ blocked: 0
     - "Штатный human ingress в документированной топологии: поднять operator-gateway в dev-лаунчере/app-lifecycle (браузер через :8080 с Basic auth) либо иной документированный путь"
     - "e2e-тест «оператор через шлюз видит блоки операций и жмёт обе кнопки триггеров»"
   debug_session: .planning/debug/operations-ingress-hmac-gap.md
+  status: resolved
+  resolved_by: .planning/phases/08-backups-and-restore-verification/08-04-PLAN.md
+  resolved_at: 2026-11-01
+  resolved_evidence: "Коммиты ad57d8b (подпись operations-путей), 0ea8210 (запуск шлюза в dev-лаунчере), 5da9972 (e2e operations-gateway.spec 4/4), 2e41fb4 (SUMMARY) — юнит 17/17, интеграционный 12/12, e2e 4/4 зелёные"
   updated: 2026-10-29
 - gap_id: G-08-5
   truth: "Сбой очистки контейнера фиксируется честно: containerCleanup = 'FAILED' в неизменяемом чеке, overall остаётся заработанным (тест 5, D-11/T-08-10)."
@@ -101,4 +105,8 @@ blocked: 0
     - "Верификация объекта вместо exit-кода: пре-rm docker inspect <name> должен находить контейнер (потеря/переименование до cleanup ⇒ FAILED — ловит rename-гонку), затем rm, затем пост-rm inspect должен падать «not found», иначе FAILED (ловит «rm сказал 0, но контейнер остался»)"
     - "Интеграционный тест ветки FAILED (stub exec: rm exit 0 + inspect «контейнер существует» → FAILED; overall не перекрашивается); желательно сохранять containerName в receipt checks для аудита"
   debug_session: .planning/debug/container-cleanup-false-reMOVED.md
+  status: resolved
+  resolved_by: .planning/phases/08-backups-and-restore-verification/08-05-PLAN.md
+  resolved_at: 2026-11-01
+  resolved_evidence: "Коммиты b99e75e (TDD RED, 6 тестов A–F), 5dcca8e (GREEN, 29/29 unit), 657fb6f (live-docker интеграционный 7/7), 4be8bb1 (SUMMARY) — вердикт по двойному docker inspect, чек {containerName, preInspect, rmExitCode, postInspect, verdict}, overall независим. Остаточный fail-open пост-rm spawnError вынесен отдельным gap'ом верификации (WR-01) в 08-VERIFICATION.md"
   updated: 2026-10-29

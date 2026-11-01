@@ -63,6 +63,8 @@ function fakeDatabase(input: { receipts?: ReceiptRow[]; sourceCounts?: Record<st
 const OK: BackupExecResult = { code: 0, stdout: Buffer.alloc(0), stderr: "" };
 const INSPECT_FOUND: BackupExecResult = { code: 0, stdout: Buffer.from("[]"), stderr: "" };
 const INSPECT_MISSING: BackupExecResult = { code: 1, stdout: Buffer.alloc(0), stderr: "Error response from daemon: No such container" };
+/** Post-rm inspect that never reached the daemon (the CLI could not spawn) — the WR-01 fail-open counterexample. */
+const POST_SPAWN_GONE: BackupExecResult = { code: undefined, stdout: Buffer.alloc(0), stderr: "", spawnError: "ENOENT" };
 
 /** Full happy-path drill exec; individual outcomes overridden per test. */
 function drillExec(options: {
@@ -313,6 +315,23 @@ describe("runBackupDrill container cleanup verdict is inspect-verified (G-08-5)"
     expect(result.overall).toBe("VERIFIED");
     expect(result.containerCleanup).toBe("FAILED");
     expect(cleanupAudit(receipts)).toMatchObject({ preInspect: "spawn_error", rmExitCode: 0, postInspect: 1, verdict: "FAILED" });
+  });
+
+  it("G: records FAILED without crashing when the post-rm inspect cannot spawn (the WR-01 fail-open counterexample, mirror of F)", async () => {
+    const { result, receipts } = await runDrill({ execOptions: { inspects: [INSPECT_FOUND, POST_SPAWN_GONE] } });
+
+    expect(result.overall).toBe("VERIFIED");
+    expect(result.containerCleanup).toBe("FAILED");
+    expect(cleanupAudit(receipts)).toMatchObject({ containerName: DRILL_NAME, preInspect: 0, rmExitCode: 0, postInspect: "spawn_error", verdict: "FAILED" });
+  });
+
+  it("H: records FAILED when the post-rm inspect fails because the Docker daemon is unreachable", async () => {
+    const daemonUnreachable: Partial<BackupExecResult> = { code: 1, stdout: Buffer.alloc(0), stderr: "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?" };
+    const { result, receipts } = await runDrill({ execOptions: { inspects: [INSPECT_FOUND, daemonUnreachable] } });
+
+    expect(result.overall).toBe("VERIFIED");
+    expect(result.containerCleanup).toBe("FAILED");
+    expect(cleanupAudit(receipts)).toMatchObject({ containerName: DRILL_NAME, preInspect: 0, rmExitCode: 0, postInspect: 1, verdict: "FAILED" });
   });
 });
 

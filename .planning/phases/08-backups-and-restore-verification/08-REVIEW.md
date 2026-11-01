@@ -1,164 +1,116 @@
 ---
 phase: 08-backups-and-restore-verification
-reviewed: 2026-10-24T12:09:46Z
+reviewed: 2026-11-01T01:45:57Z
 depth: standard
-files_reviewed: 23
+files_reviewed: 12
 files_reviewed_list:
-  - packages/config/src/index.ts
-  - packages/database/prisma/schema.prisma
-  - packages/database/prisma/migrations/20261022_phase08_backup_runs/migration.sql
-  - packages/database/prisma/migrations/20261022_phase08_backup_verification_receipts/migration.sql
-  - workers/data-sync/src/jobs/backup.ts
-  - workers/data-sync/src/jobs/backup-drill.ts
-  - workers/data-sync/src/main.ts
-  - apps/api/src/modules/operations/operations.service.ts
-  - apps/api/src/modules/operations/operations.controller.ts
-  - apps/web/app/internal-api/operations/[[...path]]/route.ts
-  - apps/web/app/internal-api/operations/[[...path]]/route.test.ts
-  - apps/web/app/internal/operations/backup-status-block.tsx
-  - apps/web/app/internal/operations/backup-status-block.test.ts
-  - apps/web/app/internal/operations/page.tsx
-  - apps/web/components/enum-labels.ts
-  - apps/web/components/enum-labels.test.ts
-  - tests/unit/backup-job.test.ts
-  - tests/unit/backup-drill.test.ts
+  - .env.example
+  - infra/operator-gateway/security.mjs
+  - infra/operator-gateway/server.mjs
+  - package.json
+  - scripts/app-lifecycle.ps1
+  - tests/e2e/live-provider-stack.ts
+  - tests/e2e/operations-gateway.spec.ts
   - tests/integration/backup-restore-drill.test.ts
-  - tests/integration/mutation-rejection.test.ts
-  - tests/integration/operator-overview.test.ts
-  - vitest.config.ts
-  - README.md
+  - tests/integration/operator-gateway.test.ts
+  - tests/unit/operator-gateway.test.ts
+  - workers/data-sync/src/jobs/backup-drill.ts
+  - tests/unit/backup-drill.test.ts
 findings:
-  critical: 2
-  warning: 3
+  critical: 0
+  warning: 4
   info: 3
-  total: 8
+  total: 7
 status: issues_found
 ---
 
-# Phase 8: Code Review Report
+# Phase 8: Code Review Report (incremental re-review since 6c6c98a)
 
-**Reviewed:** 2026-10-24T12:09:46Z
+**Reviewed:** 2026-11-01T01:45:57Z
 **Depth:** standard
-**Files Reviewed:** 23
+**Files Reviewed:** 12
 **Status:** issues_found
 
 ## Summary
 
-Phase 8 delivers opt-in PostgreSQL backups, a weekly restore drill, and operator visibility. The security posture is genuinely strong: append-only triggers are frozen at the database level, credentials reach pg/docker only through child env (never argv), drill stderr excerpts are credential-scrubbed and length-bounded, the HMAC ingress binds method + path + query with `timingSafeEqual`, disabled/unconfigured deployments fail closed with a uniform 404, and the enqueue payload is exactly `{ trigger: "MANUAL" }`. **T-08-SC is clean**: `git diff a33342d..HEAD` shows zero changes to any `package.json` or `pnpm-lock.yaml` in the phase.
-
-However, two critical defects were found and verified against source (one empirically, via the project's own pinned `postgres:18-alpine` image): (1) the local `pg_dump` branch of `runBackup` passes the connection string only via `DATABASE_URL` in the child env, which libpq does not read — so the entire PG_BIN/PATH tool-resolution path can never produce a dump; and (2) both persisted-state tick schedulers re-arm from a receipt table the in-flight job has not written to yet, causing a guaranteed duplicate-job storm on every fresh deployment and an unbounded 1 Hz enqueue loop with unbounded append-only `BackupRun` growth when backups persistently fail.
-
-## Critical Issues
-
-### CR-01: Local `pg_dump` branch is dead — libpq ignores `DATABASE_URL`, so PG_BIN/PATH-resolved backups always fail
-
-**File:** `workers/data-sync/src/jobs/backup.ts:302-306`
-**Issue:** The non-docker branch of `runBackup` invokes the resolved local `pg_dump` with only `--format=custom --no-password --file=...` and passes the connection string exclusively as `DATABASE_URL` in the child environment:
-
-```ts
-command = tools.pgDump;
-args = ["--format=custom", "--no-password", `--file=${partialPath}`];
-if (input.databaseUrl) childEnv = { ...process.env, DATABASE_URL: input.databaseUrl };
-```
-
-libpq (and therefore `pg_dump`) does **not** read `DATABASE_URL` — it reads `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE` or a conninfo argument. This was verified empirically against the project's own pinned image:
-
-```
-docker run --rm -e DATABASE_URL=postgres://bogus-host-xyz.invalid:5432/nope postgres:18-alpine pg_dump --no-password
-→ pg_dump: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
-```
-
-`resolvePgTools` tries PG_BIN first, then PATH, then docker (backup.ts:175-192) — so on any host where `pg_dump` is actually installed (the intended primary deployment mode documented via `PG_BIN` in README.md:480-490), every backup run dumps against the default unix socket as the OS user, fails, and records `DUMP_FAILED`. Only the docker-exec branch works. The defect slipped through because the unit tests use a fake exec that ignores env entirely, and the integration test deliberately forces the docker fallback (`recordingExec({ blockPathProbe: true })`, tests/integration/backup-restore-drill.test.ts:101), so the local branch is exercised by no test. Combined with WR-class scheduler behavior (see CR-02), a `SUCCEEDED` receipt is then never written and the failure loop becomes self-sustaining.
-**Fix:** Map the URL to libpq's native child-env variables in the non-docker branch (keeps credentials out of argv per T-08-01):
-
-```ts
-if (input.databaseUrl) {
-  const url = new URL(input.databaseUrl);
-  childEnv = {
-    ...process.env,
-    PGHOST: url.hostname,
-    PGPORT: url.port || "5432",
-    PGUSER: decodeURIComponent(url.username),
-    PGPASSWORD: decodeURIComponent(url.password),
-    PGDATABASE: url.pathname.replace(/^\//, ""),
-  };
-}
-```
-
-Also add an integration test that exercises the local branch with a real `pg_dump` instead of forcing the docker path.
-
-### CR-02: Tick schedulers enqueue a fresh job every second until a receipt lands — duplicate-job storm on every fresh boot and unbounded 1 Hz loop (plus unbounded append-only table growth) on persistent failure
-
-**File:** `workers/data-sync/src/jobs/backup.ts:442-470`; `workers/data-sync/src/jobs/backup-drill.ts:479-503`
-**Issue:** `scheduleBackupTick.arm()` reads the latest **SUCCEEDED** `BackupRun.completedAt`; when none exists it arms at `idlePollMs` (default 1000 ms), and the timer callback `run()` immediately enqueues `{ trigger: "SCHEDULED" }` and re-arms from the same table. But the table only gains a `SUCCEEDED` row **after** the queued job completes — which takes one full dump/offsite copy (seconds to minutes). Consequences, verified against `createBackupQueue` (no `jobId` ⇒ no BullMQ dedup, backup.ts:376-380) and `createBackupWorker` (concurrency 1):
-
-1. **Fresh deployment (no `SUCCEEDED` row): every worker start enqueues one backup job per second for the entire duration of the first dump.** The worker then serially executes the whole backlog — dozens of redundant full dumps, offsite copies, retention prunes, and immutable `BackupRun` receipts. The drill scheduler has the identical pattern, so a fresh boot also queues dozens of sequential restore drills (each spinning a throwaway container) behind the first one.
-2. **Persistent failure (e.g., CR-01 on a host with pg tools installed): a FAILED receipt never satisfies `findFirst({ where: { status: "SUCCEEDED" } })`**, so the loop runs at 1 Hz forever — each tick spawns pg tooling probes and appends another row to the append-only `BackupRun` table, which has no purge anywhere. Unbounded disk/DB growth plus constant host load, from a design that explicitly anticipates fail-closed misconfiguration.
-
-The unit tests encode the re-arm-after-run behavior with a fake DB that returns a completed receipt on the second query, so the storm is invisible to them.
-**Fix:** Do not re-enqueue while a run is pending. Minimal change: give scheduled jobs a deterministic dedup `jobId` (e.g. `scheduled-backup-<epochBucket>`/receipt-anchored bucket) in `createBackupQueue.add`, and/or track an in-flight promise in the scheduler so `run()` only re-arms after the dispatcher completes (pass the worker's execute result back into the scheduler). For the failure path, anchor on the newest receipt of **any** status with an escalating backoff (capped), so a permanently broken deployment retries at a bounded rate instead of 1 Hz.
+Incremental adversarial review of what changed since `6c6c98a` — the G-08-6 operations-ingress closure (gateway protected-path extension to `/internal*/operations*`, dev-launcher gateway integration, real-browser e2e with fail-closed negatives) and the G-08-5 inspect-verified container-cleanup verdict (pre-rm inspect → rm → post-rm inspect with a durable audit entry). Both gaps are substantively addressed: path classification is segment-boundary-correct with unit cases for near-miss neighbors, the e2e negative probe correctly bypasses Playwright credential injection via plain `fetch`, credentials stay out of argv in the drill, and `record()` structurally keeps `overall` independent of the cleanup verdict (test-guarded). No critical issues found. The warnings concentrate on two residual fail-open corners in the new cleanup verdict (post-rm inspect failures and the mutable container *name* as identity — both contradict the fail-closed invariant written in the adjacent comment), plus dev-launcher config-consistency gaps when `GATEWAY_PORT` is overridden and the gateway's pre-existing `0.0.0.0` bind now carrying the operations surface.
 
 ## Warnings
 
-### WR-01: `BackupRun.byteSize` is `INTEGER` (int4) — dumps ≥ 2 GiB make the receipt insert throw after the dump is already renamed into place
+### WR-01: Post-rm inspect failure is recorded as REMOVED — fail-open against the stated G-08-5 invariant
 
-**File:** `packages/database/prisma/schema.prisma:776` (`byteSize Int?`); `packages/database/prisma/migrations/20261022_phase08_backup_runs/migration.sql:14`; consumed at `workers/data-sync/src/jobs/backup.ts:315-322,336-351`
-**Issue:** `fs.size()` returns a JS number, but the column is int4 (max 2,147,483,647). For a dump ≥ 2 GiB, Prisma rejects the insert with a range error **after** `fs.rename(partialPath, finalPath)` has already committed the file. `runBackup` then throws instead of returning a result — no `FAILED` receipt either — the dump sits on disk unrecorded, and the scheduler never sees a `SUCCEEDED` row (feeding CR-02's retry loop). Backups are infrastructure that must survive database growth; 2 GiB is reachable well before the feature's useful life ends.
-**Fix:** Change the column to `BigInt` (`@db.BigInt`) in schema + migration, and let Prisma return a `bigint` for `byteSize` (the closed DTO in `BackupFact` should serialize it via `Number(...)` or string before the API boundary).
-
-### WR-02: `MAX_TIMER_DELAY` capping makes configured drill intervals above ~596 hours drill early and repeatedly
-
-**File:** `workers/data-sync/src/jobs/backup-drill.ts:447,485-487`; config allows up to 8760 h at `packages/config/src/index.ts:156-158`
-**Issue:** `rawDelay` is clamped to `2 ** 31 - 1` ms (≈ 596.5 h ≈ 24.9 days) before arming the timer, and the timer callback goes straight to `run()`, which **enqueues a drill** without re-checking whether the interval has actually elapsed. Any operator setting `BACKUP_DRILL_INTERVAL_HOURS` between ~597 and the validated maximum of 8760 gets a full restore drill every ~24.9 days instead of the configured cadence (e.g., 8760 h ⇒ weekly-ish drills every 25 days, spinning containers and restoring production data far more often than intended). The backup tick shares the clamp but its interval is a fixed 24 h, so only the drill path is affected today.
-**Fix:** When the computed delay exceeds `MAX_TIMER_DELAY`, arm the timer to re-invoke `arm()` (not `run()`) so the remaining delay is recomputed without enqueuing:
+**File:** `workers/data-sync/src/jobs/backup-drill.ts:447-453`
+**Issue:** The verdict is `identityLostBeforeRm || rmFailed || survivedRm ? "FAILED" : "REMOVED"`. `survivedRm = !postInspect.spawnError && postInspect.code === 0`, so a post-rm inspect that **could not run at all** (`spawnError`) — or that failed because the Docker daemon became unreachable (exit≠0 with a "Cannot connect" stderr, indistinguishable by exit code from "No such object") — falls through to `REMOVED`. This directly contradicts the comment block at lines 444-446 ("REMOVED therefore requires positive inspect evidence twice; every other path fails closed to FAILED") and G-08-5's fail-closed requirement: the receipt asserts «Контейнер удалён» with zero positive absence evidence. The pre-rm side handles this correctly (`spawnError` → FAILED, unit test F), but no unit test covers postInspect `spawnError` (`inspects: [INSPECT_FOUND, spawnGone]` is absent), so the fail-open branch is unguarded.
+**Fix:** Require the post-rm inspect to have actually reached the daemon and reported absence before recording REMOVED, e.g.:
 
 ```ts
-const capped = rawDelay > MAX_TIMER_DELAY;
-timer = setTimer(() => { void (capped ? arm() : run().catch(input.onError)); }, Math.min(MAX_TIMER_DELAY, rawDelay));
+const postInspectRan = !postInspect.spawnError;
+const daemonErrorOnPost = /cannot connect|daemon/i.test(postInspect.stderr);
+const absentPerInspect = postInspectRan && postInspect.code !== 0 && !daemonErrorOnPost;
+containerCleanup = identityLostBeforeRm || rmFailed || !absentPerInspect ? "FAILED" : "REMOVED";
 ```
 
-### WR-03: Off-host copies are never rotated — personal-data dumps accumulate on `BACKUP_OFFSITE_DIR` forever, contradicting the documented retention claim
+Add a unit case `inspects: [INSPECT_FOUND, spawnGone]` expecting `FAILED` (mirroring existing test F).
 
-**File:** `workers/data-sync/src/jobs/backup.ts:146-157` (`pruneBackupRetention` cleans `dir` only), `328-332` (`copyOffsite`); `README.md:493`
-**Issue:** Retention pruning applies solely to the local `BACKUP_DIR`. `copyOffsite` copies each new dump to the off-host destination, and nothing ever deletes anything there (deliberately no `/MIR`/`/PURGE`, correctly, for safety). README.md:493 tells operators that dumps "остаются восстановимыми вплоть до `BACKUP_RETENTION_COUNT` дней" after a deletion request — but off-host copies persist indefinitely, which the README's own privacy note does not cover. Given the project's explicit retention/privacy constraints (dumps contain personal domain data), an ever-growing off-host copy of historical data that local policy says should age out is a real retention gap, not just storage growth.
-**Fix:** After a successful copy, run the same system-name-pattern-filtered prune against the off-host directory (delete only files matching `BACKUP_DUMP_FILE_PATTERN` beyond `retentionCount`, oldest first — never a mirror/purge flag, keeping the existing safety property). Update the README privacy note to state the off-host retention window.
+### WR-02: Cleanup verdict keys on the mutable container NAME although the immutable container ID is already captured — residual rename window still yields a false REMOVED
+
+**File:** `workers/data-sync/src/jobs/backup-drill.ts:331-345, 447-449`
+**Issue:** `docker run -d` prints the container ID on stdout (`spawnBackupExec` captures stdout), but `containerStart.stdout` is discarded and all three cleanup calls use `containerName`. The exact UAT failure mode (G-08-5: Docker 29.x `rm --force` idempotent, exit 0 for an unresolvable name) is only closed for renames that land **before** the pre-rm inspect. A rename landing in the window between the pre-rm inspect and the rm — or at the rm itself — produces: pre-inspect exit 0 → rm exit 0 (idempotent miss) → post-inspect exit≠0 (name miss) → `REMOVED` while the renamed container lives on as an orphan. The identity actually at issue (the name) is the one mutable input in the verification chain.
+**Fix:** Use the container ID as the verification identity and keep the name for the audit record:
+
+```ts
+const containerId = containerStart.stdout.toString("utf8").trim().split(/\s+/)[0];
+// pre-inspect / rm --force / post-inspect by containerId; checks.containerCleanup
+// keeps { containerName, containerId, ... } for the audit trail.
+```
+
+(Renames become invisible to the whole chain; the orphan-removal guarantee holds because rm-by-ID targets the same object.) Update the integration/unit assertions that match inspect/rm argv against the name.
+
+### WR-03: Status/Stop never load `.env`, so a non-default GATEWAY_PORT diverges between Start and Status/Stop
+
+**File:** `scripts/app-lifecycle.ps1:27, 130-136, 148`
+**Issue:** `$gatewayPort = 8080` is a script-scope default (line 27); `Load-Env` — which reads `.env` and reassigns `$script:gatewayPort` from `$env:GATEWAY_PORT` (lines 44-46) — runs only in the `-Daemon`/`-Gateway` branches and at line 139 of the Start flow. The `-Action Stop` (line 130) and `-Action Status` (lines 132-136) branches exit before any `Load-Env` call. With `GATEWAY_PORT=9090` in `.env`, Start correctly launches and probes 9090, but Status reports `gateway(:8080)=down`, and Stop's "ports free" confirmation (line 105) checks 8080. The stale-port pre-clean at line 148 also omits the gateway port entirely, so a stale listener on the configured gateway port makes the best-effort gateway spawn fail with only the 15-second warning as evidence. Process-tree kill still catches the gateway via the CommandLine regex, so Stop mostly works — but the reported state is wrong.
+**Fix:** Call `Load-Env` at the top of the Stop and Status branches (after `Set-Location`), and include `$gatewayPort` in the stale-port check at line 148:
+
+```powershell
+if ($Action -eq "Stop") { Load-Env; Stop-Stack; exit 0 }
+if ($Action -eq "Status") { Load-Env; ... }
+```
+
+### WR-04: Operator gateway binds 0.0.0.0 — cleartext Basic credentials and signed operations triggers reachable from the LAN
+
+**File:** `infra/operator-gateway/server.mjs:163` (bind line pre-dates this phase; this phase elevates its exposure)
+**Issue:** `gateway.listen(config.port, "0.0.0.0")` was pre-existing when the gateway only signed replay-preview paths, but this phase extends the protected surface to `/internal/operations*` (backup and restore-drill trigger buttons), documents the gateway as the human operator ingress in the dev topology, and launches it by default. Basic auth over plain HTTP on all interfaces means any LAN host can reach the challenge, brute-force or sniff the operator password, and fire backup/drill triggers against the operator's machine. The web/API in the same launcher bind loopback (`127.0.0.1`), so the gateway is the odd exposure.
+**Fix:** Default to loopback and make the bind explicit and configurable:
+
+```js
+gateway.listen(config.port, environment.GATEWAY_BIND ?? "127.0.0.1");
+```
+
+(documenting `GATEWAY_BIND` in `.env.example` only if a non-loopback bind is genuinely needed).
 
 ## Info
 
-### IN-01: Dead `RETAINED` cleanup label; real `FAILED`/`NOT_STARTED` values leak raw English codes into the Russian-only UI
+### IN-01: Gateway readiness probe conflates "gateway down" with "upstream down"
 
-**File:** `apps/web/app/internal/operations/backup-status-block.tsx:27,30`
-**Issue:** `CONTAINER_CLEANUP_LABELS` maps `REMOVED` and a `RETAINED` value that cannot occur (the enum in `backup-drill.ts:29` is `REMOVED | FAILED | NOT_STARTED`), while the two values that actually occur on non-green drills — `FAILED` and `NOT_STARTED` — are unmapped and render as raw English codes (`"FAILED"`) in an interface whose convention (AGENTS.md) is Russian-only user-facing text.
-**Fix:** Replace the map with `{ REMOVED: "Контейнер удалён", FAILED: "Не удалось удалить контейнер", NOT_STARTED: "Контейнер не запускался" }` and drop `RETAINED`.
+**File:** `scripts/app-lifecycle.ps1:49-54, 133`
+**Issue:** `Test-Http` treats any exception (including the 502 `Invoke-WebRequest` throws for a gateway whose upstream web is unreachable) as "down", and the Status line probes `gateway :/` — which the gateway proxies to the web origin. If web is down while the gateway is healthy, Status reports `gateway(:8080)=down`.
+**Fix:** Probe a path that answers at the gateway itself — e.g. `/internal/operations` and count the 401 challenge as "up" (same approach the e2e `waitForGateway` uses).
 
-### IN-02: Robocopy `/LOG+` appends to a single ever-growing log inside `BACKUP_DIR` that retention never touches
+### IN-02: Unguarded exec calls in the finally block can skip `record()` entirely — no receipt at all
 
-**File:** `workers/data-sync/src/jobs/backup.ts:130`
-**Issue:** Every off-host copy appends to `football-prediction-offsite.log` in the backup directory. The file never matches `BACKUP_DUMP_FILE_PATTERN`, so `pruneBackupRetention` never truncates or removes it — unbounded (slow) growth in the directory the README asks operators to ACL. It also accumulates one line per copied file forever, which over years becomes a nontrivial record of backup activity sitting next to the dumps.
-**Fix:** Truncate the log (`/LOG:` instead of `/LOG+:`, or delete it before each copy), or rotate it when it exceeds a fixed size during the retention pass.
+**File:** `workers/data-sync/src/jobs/backup-drill.ts:447-449`
+**Issue:** The three cleanup `exec.run` calls in the `finally` block (now three where there was one) are not wrapped in try/catch. A throwing `BackupExec` implementation (as opposed to one returning `spawnError`) propagates out of the finally, the original `outcome` is lost, and `record()` at line 469 never runs — the drill produces **no receipt**, failing open on the audit trail and leaving the cadence anchor stale. `spawnBackupExec` and the test doubles return `spawnError` instead of throwing, so this is latent rather than active.
+**Fix:** Wrap the cleanup trio in a try/catch that maps a throw to `{ code: undefined, spawnError: String(error) }` for each stage so the FAILED verdict and receipt always land.
 
-### IN-03: Manual-trigger `jobId` collision within one millisecond silently drops the enqueue while still reporting `{ queued: true }`
+### IN-03: Unit test asserts gateway source text instead of behavior
 
-**File:** `apps/api/src/modules/operations/operations.service.ts:246`
-**Issue:** `jobId: \`manual-${job}-${Date.now()}\`` — BullMQ deduplicates identical job IDs, so two triggers landing in the same millisecond (double-fire, retried proxy, or two operators) make the second `queue.add` a no-op while `trigger()` still returns `{ queued: true }` and the UI shows "поставлена в очередь". Impact is minor (buttons are disabled while pending and the worker serializes runs), but the success report can be false.
-**Fix:** Append `randomUUID()` (or a monotonic counter) to the jobId, e.g. `manual-${job}-${Date.now()}-${randomUUID()}`.
-
----
-
-## Security-focus verification (STRIDE T-08-01..17, T-08-SC)
-
-All enumerated threats were checked against source and are mitigated as designed — no findings beyond the items above:
-
-- **T-08-01 (secrets via env, never argv):** ✔ drill password via bare `--env POSTGRES_PASSWORD` with child env (backup-drill.ts:328-343); drill/migrate URLs only in `DATABASE_URL` env (backup-drill.ts:396-404); `docker exec printenv` reads variable names only (backup.ts:214-218). Note: CR-01's fix must keep credentials out of argv (use `PG*` env vars, not a positional conninfo).
-- **T-08-02 (frozen triggers):** ✔ `guard_backup_run` / `guard_backup_verification_receipt` BEFORE UPDATE/DELETE raise; integration-proven in mutation-rejection.test.ts:156-174.
-- **T-08-03 (atomic dumps):** ✔ dump-to-`.partial` then `rename` (backup.ts:289-322); partial removed on failure.
-- **T-08-04 (robocopy bitmask):** ✔ `code >= 8` ⇒ DEGRADED, 0-7 ⇒ COPIED, `/R:2 /W:5`, no `/MIR`/`/PURGE` (backup.ts:119-137; test-asserted).
-- **T-08-07..12 (drill fail-closed):** ✔ explicit `-U`/`-d` on `pg_restore`/`pg_isready`; every exit path appends exactly one receipt; `docker rm --force` in `finally` with cleanup state defaulting to FAILED; stderr excerpts scrubbed (`redactDrillExcerpt`) and bounded to 500 chars.
-- **T-08-13..17 (operator surface):** ✔ `BackupFact` is a closed secret-free projection (basename-only via `safeFileName`, `redactSecrets` belt pass); HMAC canonical binds subject/timestamp/method/path/query digest; disabled/unconfigured ⇒ uniform `NotFoundException`; manual payload exactly `{ trigger: "MANUAL" }` (asserted in operator-overview.test.ts:195-229).
-- **T-08-SC (no new dependencies):** ✔ `git diff --stat a33342d..HEAD` across all `package.json` files and `pnpm-lock.yaml` is empty; the phase uses only `node:` built-ins plus already-present `bullmq`/`zod`/Prisma.
+**File:** `tests/unit/operator-gateway.test.ts:72-76`
+**Issue:** The "compares the complete Basic credential pair" test greps `security.mjs` source for an exact code snippet (`expect(source).toContain("return equalText(decoded, `${expectedUsername}:${expectedPassword}`);")`). It breaks on any harmless reformat and duplicates coverage the spawned-gateway integration tests already provide behaviorally (wrong-password → 401, no upstream hop).
+**Fix:** Prefer a behavioral assertion (e.g. `authenticateBasic` with a correct username + wrong password vs. wrong username + correct password, both false) or drop the test as redundant.
 
 ---
 
-_Reviewed: 2026-10-24T12:09:46Z_
+_Reviewed: 2026-11-01T01:45:57Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_

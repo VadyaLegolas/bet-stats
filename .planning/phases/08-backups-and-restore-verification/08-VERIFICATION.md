@@ -1,15 +1,20 @@
 ---
 phase: 08-backups-and-restore-verification
-verified: 2026-10-26T13:55:57Z
-status: human_needed
-score: 16/17 must-haves verified
+verified: 2026-11-01T01:13:27Z
+status: gaps_found
+score: 20/23 must-haves verified
 covered_files:
+  - ".env.example"
   - ".planning/phases/08-backups-and-restore-verification/08-01-PLAN.md"
   - ".planning/phases/08-backups-and-restore-verification/08-01-SUMMARY.md"
   - ".planning/phases/08-backups-and-restore-verification/08-02-PLAN.md"
   - ".planning/phases/08-backups-and-restore-verification/08-02-SUMMARY.md"
   - ".planning/phases/08-backups-and-restore-verification/08-03-PLAN.md"
   - ".planning/phases/08-backups-and-restore-verification/08-03-SUMMARY.md"
+  - ".planning/phases/08-backups-and-restore-verification/08-04-PLAN.md"
+  - ".planning/phases/08-backups-and-restore-verification/08-04-SUMMARY.md"
+  - ".planning/phases/08-backups-and-restore-verification/08-05-PLAN.md"
+  - ".planning/phases/08-backups-and-restore-verification/08-05-SUMMARY.md"
   - "README.md"
   - "apps/api/src/modules/operations/operations.controller.ts"
   - "apps/api/src/modules/operations/operations.service.ts"
@@ -20,173 +25,218 @@ covered_files:
   - "apps/web/app/internal/operations/page.tsx"
   - "apps/web/components/enum-labels.test.ts"
   - "apps/web/components/enum-labels.ts"
+  - "infra/operator-gateway/security.mjs"
+  - "infra/operator-gateway/server.mjs"
+  - "package.json"
   - "packages/config/src/index.test.ts"
   - "packages/config/src/index.ts"
   - "packages/database/prisma/migrations/20261022_phase08_backup_runs/migration.sql"
   - "packages/database/prisma/migrations/20261022_phase08_backup_verification_receipts/migration.sql"
   - "packages/database/prisma/migrations/20261024_phase08_backup_byte_size_bigint/migration.sql"
   - "packages/database/prisma/schema.prisma"
+  - "scripts/app-lifecycle.ps1"
+  - "tests/e2e/live-provider-stack.ts"
+  - "tests/e2e/operations-gateway.spec.ts"
   - "tests/integration/backup-restore-drill.test.ts"
   - "tests/integration/mutation-rejection.test.ts"
+  - "tests/integration/operator-gateway.test.ts"
   - "tests/integration/operator-overview.test.ts"
   - "tests/unit/backup-drill.test.ts"
   - "tests/unit/backup-job.test.ts"
+  - "tests/unit/operator-gateway.test.ts"
   - "workers/data-sync/src/jobs/backup-drill.ts"
   - "workers/data-sync/src/jobs/backup.ts"
   - "workers/data-sync/src/main.ts"
-covered_digest: "v3:sha256:996d67cb37a536b3a1a6bd8bbf7df52afd99d180cc9f7a19072cc05c9f0d8319"
-behavior_unverified: 1
+covered_digest: "v3:sha256:2baecddee37293a748cee9a1af0a9c7d1805b80c229f88f0baccae78baa211bb"
+behavior_unverified: 2
 overrides_applied: 0
+gaps:
+  - truth: "(08-05) containerCleanup = 'REMOVED' now means the container was verifiably present before rm and verifiably absent after rm — not merely that rm exited 0."
+    status: failed
+    reason: "Вердикт fail-closed не универсален: backup-drill.ts:450-453 — `survivedRm = !postInspect.spawnError && postInspect.code === 0`, verdict = identityLost || rmFailed || survivedRm ? FAILED : REMOVED. Если ПОСТ-rm inspect не смог выполниться (spawnError) или упал с ошибкой демона (exit≠0, «Cannot connect», неотличимой по коду от «No such object»), все три условия ложны → REMOVED без позитивного доказательства отсутствия. Это прямо противоречит комментарию backup-drill.ts:445-446 («REMOVED therefore requires positive inspect evidence twice; every other path fails closed to FAILED») и инварианту G-08-5/T-08-21. Независимо подтверждено 08-REVIEW.md (WR-01, open). Покрытия нет: в tests/unit/backup-drill.test.ts нет кейса с post-rm spawnError (тест F покрывает только ПРЕ-rm spawnError). Детерминированно выводимый контрпример — не требует рантайма."
+    artifacts:
+      - path: "workers/data-sync/src/jobs/backup-drill.ts"
+        issue: "строки 450-453: post-rm spawnError / ошибка демона не включены в условия FAILED — fall-through к REMOVED; комментарий 445-446 описывает поведение, которого нет"
+      - path: "tests/unit/backup-drill.test.ts"
+        issue: "grep-0 на кейс `inspects: [INSPECT_FOUND, postSpawnGone]` — fail-open ветка не охраняется тестом (совпадает с WR-01)"
+    missing:
+      - "Требовать для REMOVED успешный (не spawn_error) пост-rm inspect, дошедший до демона, с exit≠0 и без признаков ошибки демона («cannot connect»), иначе FAILED — патч WR-01 из 08-REVIEW.md"
+      - "Юнит-тест: pre-rm inspect OK, rm OK, post-rm inspect spawnError → FAILED (зеркало теста F) — и, по желанию, пост-rm «daemon unreachable» → FAILED"
 behavior_unverified_items:
-  - truth: "A cleanup failure is recorded in the receipt rather than hidden; the container name is owned-unique and removal runs in a finally block (08-02 truth 3)"
-    test: "Запустить drill так, чтобы `docker rm --force` завершился ошибкой (например, временно заблокировать удаление контейнера или оборвать docker-демон во время финальной очистки) и прочитать строку `BackupVerificationReceipt`"
-    expected: "Строка содержит `containerCleanup = 'FAILED'` (а не 'REMOVED'/'NOT_STARTED'), при этом `overall` не поднимается до 'VERIFIED' из-за неудачной очистки; имя контейнера — `bet-stats-drill-pg-<pid>-<ts>` и отсутствует в `docker ps --all` либо остаётся с зафиксированной неудачей"
-    why_human: "Код присутствует и подключён (backup-drill.ts: `containerCleanup` инициализируется 'FAILED' до вызова `rm` в блоке `finally`, затем перезаписывается результатом), но ни один тест не исполняет ветку падающего `rm` — существующие тесты покрывают только 'REMOVED' и 'NOT_STARTED'. Grep по коду доказывает наличие перехода, но не его поведение в рантайме"
-human_verification:
-  - test: "Живой прогон реального бэкапа: оператор выставляет `BACKUP_ENABLED=true` и `BACKUP_DIR` в секретном `.env`, жмёт «Создать резервную копию сейчас» на странице операций (VALIDATION §Manual-Only, строка 1)"
-    expected: "В `BACKUP_DIR` появляется файл `football_prediction-<UTC>.dump` ненулевого размера, в `BackupRun` — ровно одна строка `SUCCEEDED`, блок операций показывает свежую резервную копию"
-    why_human: "Требуется реальный `DATABASE_URL` продакшн-базы оператора и запись в файловую систему хоста; тестовый контур использует только throwaway-контейнер"
-  - test: "Реальный off-host копию: указать `BACKUP_OFFSITE_DIR` на существующий SMB-/sync-каталог и выполнить бэкап (VALIDATION §Manual-Only, строка 2)"
-    expected: "Файл копируется, `offsiteStatus = 'COPIED'`, в блоке операций строка «Хранение вне сервера» показывает «Скопировано»; при недоступном шаре — «Деградировано» с кодом, локальный бэкап остаётся `SUCCEEDED`"
-    why_human: "Нужен реальный сетевой шар/синк-каталог, который нельзя смоделировать в герметичном тесте"
-  - test: "Проверить недельную (168 ч) каденцию drill на живом хосте оператора (VALIDATION §Manual-Only, строка 3)"
-    expected: "После старта worker'а тик расписания запускается от последнего `BackupVerificationReceipt`, drill отрабатывает по расписанию, блок остаётся зелёным (HEALTHY) после каждой успешной проверки"
-    why_human: "Каденция привязана к реальному времени работы хоста и реальному Redis/BullMQ — проверяемо только наблюдением"
-  - test: "Срабатывание ветки «миграции не на head»: создать ситуацию, когда в промежуточной БД есть незакоммиченная миграция (например, добавить локальную миграцию после последнего деплоя) и запустить drill"
-    expected: "`BackupVerificationReceipt.overall = 'UNVERIFIED'`, `failureReason = 'MIGRATIONS_NOT_AT_HEAD'`, drill никогда не даёт `VERIFIED` при pending-миграциях"
-    why_human: "Ветка `backup-drill.ts:406-411` присутствует и подключена, но не имеет выделенного теста; остальные три fail-closed ветки (DOCKER_UNAVAILABLE / RESTORE_FAILED / CHAIN_INTEGRITY_FAILED) покрыты зелёными тестами"
-  - test: "Сценарий сбоя очистки контейнера (см. behavior_unverified_items) — принудительно сломать `docker rm` во время drill"
-    expected: "В чеке `containerCleanup = 'FAILED'` фиксируется, а не скрывается; `overall` остаётся прежним (заработанным) значением и не подкрашивается в зелёное из-за (не)успешной очистки"
-    why_human: "Отсутствует тест, воспроизводящий отказ `docker rm`; проверка кода доказывает только наличие логики"
-  - test: "Живой UI-прогон: открыть http://localhost:3000/internal/operations и нажать обе кнопки триггеров при включённых бэкапах"
-    expected: "Кнопки дают role=status обратную связь, после завершения страница обновляется через `load()`; при выключенных бэкапах — одинаковый 404 без утечки информации о конфигурации; русские подписи пяти состояний на месте, «Здорово» не показывается ни в одном не-зелёном состоянии"
-    why_human: "Визуальный вид, поведение кнопок и поток пользователя в живом приложении не проверяются grep-тестами"
+  - truth: "(08-04) An operator opens http://127.0.0.1:8080/internal/operations in a normal browser, authenticates once with Basic auth, and every operations block renders with real data instead of «Этот операционный блок недоступен»."
+    test: "Открыть http://127.0.0.1:8080/internal/operations в обычном браузере после scripts\app-lifecycle.ps1 -Action Start, авторизоваться Basic-кредами из .env"
+    expected: "«Центр операций» и все блоки операций рендерятся с реальными данными; «Этот операционный блок недоступен» не показывается"
+    why_human: "Артефакты на месте и подключены (security.mjs защищает пути, шлюз живёт на :8080 — live 401, интеграционный тест подписи 12/12), e2e specs tests/e2e/operations-gateway.spec.ts существует (заявлено 4/4 исполнителем и просмотрено ревью), но мной он не запускался: readLiveReleaseState() требует поднятого owned release-стека (файл состояния отсутствует), а поднимать сервисы в верификации запрещено. Полноценный браузерный прогон цепочки не упражнён ни одним тестом в моём процессе — это предмет UAT-ретеста G-08-6"
+  - truth: "(08-04) Both trigger buttons («Создать резервную копию сейчас» и «Запустить проверку восстановления сейчас») work for the operator through the gateway and report «поставлена в очередь…» via role=status."
+    test: "В живом браузере через шлюз нажать обе кнопки триггеров"
+    expected: "role=status «Резервная копия поставлена в очередь…» и «Проверка восстановления поставлена в очередь…», страница обновляется через load()"
+    why_human: "Составные части проверены (подпись gateway→proxy — интеграционно, enqueue/202 — operator-overview 24/24, рендер кнопок и status — веб-тесты 82/82), но сквозное нажатие браузером исполняется только в незапущенном мной e2e (см. п. 1); визуальный поток и живой 202 — предмет UAT-ретеста G-08-6"
 ---
 
 # Phase 8: Backups and Restore Verification — Отчёт верификации
 
 **Цель фазы (ROADMAP):** An operator can enable automated PostgreSQL backups and trust them because a scheduled restore drill proves every backup actually restores — with never-verified and stale states rendered honestly in the operations center.
-**Верифицировано:** 2026-10-26T13:55:57Z
-**Статус:** human_needed
-**Re-verification:** Нет — первичная верификация (файла `08-VERIFICATION.md` до этого не существовало)
+**Верифицировано:** 2026-11-01T01:13:27Z
+**Статус:** gaps_found
+**Режим:** предыдущий `08-VERIFICATION.md` не содержал `gaps:` (human_needed, 16/17) — формально первичный режим, но данная верификация выполнена как свежий goal-backward проход ВСЕЙ фазы (планы 08-01..08-05) после UAT (`08-UAT.md`, gaps G-08-6/G-08-5) и их закрывающих планов 08-04/08-05, с особым вниманием к gap-closure-поставкам.
 
 ## Достижение цели (Goal Achievement)
 
-Цель фазы разложена на 3 success criteria ROADMAP + 17 must-have истин из трёх PLAN-ов (7 + 5 + 5). Все три требования (BAK-01..03) сведены к планам: 08-01 → BAK-01, 08-02 → BAK-02, 08-03 → BAK-03; в `.planning/REQUIREMENTS.md` все три ID отнесены к Phase 8 (строки 18-20, 102-104) — осиротевших требований нет.
+Цель разложена на 3 success criteria ROADMAP и 23 must-have-истины из пяти PLAN-ов (7 + 5 + 5 + 3 + 3). Требования сведены к планам: BAK-01 → 08-01; BAK-02 → 08-02 + 08-05 (gap-closure честности вердикта); BAK-03 → 08-03 + 08-04 (gap-closure ingress). В `.planning/REQUIREMENTS.md` все три ID отнесены к Phase 8 (строки 18-20, 102-104) — осиротевших требований нет, и каждый ID закреплён в frontmatter соответствующего плана.
 
 ### Observable Truths
 
 | # | Истина | Статус | Доказательство |
 | --- | --- | --- | --- |
-| 1 | (08-01) Настоящий `pg_dump -Fc` даёт непустой файл + ровно одну строку `BackupRun SUCCEEDED`; сбойный дамп → `FAILED`, без `.dump`, ничего не удаляется | ✓ VERIFIED | Интеграционный `tests/integration/backup-restore-drill.test.ts` (it 97 и 135) прогнан мной: 1 файл >0 байт, 0 `.partial`, sha256 совпадает с пересчётом, `FAILED`-строка `DUMP_FAILED` без файлов |
-| 2 | (08-01) Ротация оставляет ровно новейшие `BACKUP_RETENTION_COUNT` (14) и запускается только после успеха | ✓ VERIFIED | `tests/unit/backup-job.test.ts`: «prunes to the retention count after the new dump lands» + «invokes no pruning and deletes no dumps when the dump itself fails» — в составе 62 зелёных unit-тестов |
-| 3 | (08-01) Не заданный `BACKUP_OFFSITE_DIR` → `NOT_CONFIGURED`; сбой robocopy → локальный `SUCCEEDED` + off-host `DEGRADED` с кодом | ✓ VERIFIED | `it.each([0,1,3,7]) → COPIED`, `it.each([8,16]) → DEGRADED`, spawn ENOENT → `offsiteError: "ENOENT"`, «never invokes the copy when BACKUP_OFFSITE_DIR is unset» — все зелёные |
-| 4 | (08-01) Ежесуточный тик вооружается из состояния `BackupRun` по паттерну setTimeout retention-purge — без BullMQ v5 repeat-опций | ✓ VERIFIED | `scheduleBackupTick` в `workers/data-sync/src/jobs/backup.ts`; юнит-кейсы idle-poll / anchor 24h / re-arm от persisted state / close(); опции `repeat:` в файле нет; тик подключён в `main.ts` (`startBackupRuntime`) |
-| 5 | (08-01) Учётные данные — только через child env; payload BullMQ несёт только дискриминатор trigger | ✓ VERIFIED | CR-01 тест: argv без conninfo, `PGHOST/PGPASSWORD/...` только в `options.env`; `expect(enqueued).toEqual([{ trigger: "SCHEDULED" }])`; операторский тест: data ровно `{ trigger: "MANUAL" }` |
-| 6 | (08-01) docker-exec fallback берёт роль/БД из `BACKUP_PG_USER/BACKUP_PG_DB` или env контейнера, иначе fail-closed `PG_IDENTITY_UNRESOLVED` | ✓ VERIFIED | Интеграционный тест фиксирует argv `["exec", …, "-U", "postgres", "-d", "bet_stats"]`; fail-closed кейс: `FAILED PG_IDENTITY_UNRESOLVED`, дамп не вызывается (it 157) |
-| 7 | (08-01) `sha256` считается с `.partial` до rename — идентификатор файла дампа | ✓ VERIFIED | Интеграционный тест пересчитывает hash от файла и сравнивает со строкой чека и с результатом `runBackup` (строки 122-124) |
-| 8 | (08-02) Drill восстанавливает новейший дамп в throwaway-контейнер, доводит миграции до head, проходит chain-integrity, удаляет контейнер и добавляет один `BackupVerificationReceipt` | ✓ VERIFIED | Интеграционный it 180 прогнан мной: `overall VERIFIED`, `migrations AT_HEAD`, `restoreDurationMs > 0`, `containerCleanup REMOVED`, `docker ps --all --filter name=…` пуст |
-| 9 | (08-02) Недоступный Docker / pending-миграция / ошибка restore / проваленный чек → `FAILED` или `UNVERIFIED`; drill не может молча пройти | ✓ VERIFIED | `tests/unit/backup-drill.test.ts` зелёный: DOCKER_UNAVAILABLE (137), PG_IDENTITY_UNRESOLVED (148), RESTORE_FAILED с редакцией stderr (163), CHAIN_INTEGRITY_FAILED (179); интеграционно NO_BACKUP_FOUND (232). Ветка pending-миграции (`MIGRATIONS_NOT_AT_HEAD`, backup-drill.ts:406-411) присутствует и подключена, но отдельного теста нет — вынесена в human-верификацию |
-| 10 | (08-02) Сбой очистки фиксируется в чеке, а не скрывается; имя контейнера owned-unique; удаление в `finally` | ⚠️ PRESENT_BEHAVIOR_UNVERIFIED | Код на месте: `containerCleanup` инициализируется `'FAILED'` до `rm` в `finally`, имя `bet-stats-drill-pg-<pid>-<ts>`, owned-uniq подтверждён интеграционной проверкой `docker ps`; но ветка падающего `rm` не исполняется ни одним тестом (тесты видят только `REMOVED`/`NOT_STARTED`) — см. behavior_unverified_items |
-| 11 | (08-02) Паритет: FAIL только при restored < captured, позитивные дельты записываются, таблицы с нулевым source → SKIPPED | ✓ VERIFIED | Юнит-кейсы 179 / 192 / 203 / 295 зелёные |
-| 12 | (08-02) Обе таблицы чеков отвергают UPDATE и DELETE на уровне БД | ✓ VERIFIED | Прогнал интеграционно на выделенном throwaway Postgres 18 (миграции применены, контейнер удалён после): `tests/integration/mutation-rejection.test.ts` 8/8, включая `BackupRun` и `BackupVerificationReceipt` с `/immutable/i` |
-| 13 | (08-03) Секция `backups` в overview со state, считаемым при чтении: NOT_CONFIGURED / NEVER_VERIFIED / STALE / FAILED / HEALTHY; зелёный только при свежем бэкапе + прошедшем + не устаревшем drill | ✓ VERIFIED | `computeBackupFact` в `operations.service.ts` (read-time, clock injected); тесты 107-168 в `operator-overview.test.ts` зелёные, включая «staleness flips as the injected clock advances» |
-| 14 | (08-03) Бэкап старше 25 ч → STALE, drill старше интервала + grace → drill-stale, оба не-зелёные даже при последнем VERIFIED | ✓ VERIFIED | Тесты границ 24h59m → HEALTHY / 25h01m → STALE / 192h01m → drill-stale; веб-тест «never renders green «Здорово»» для STALE при VERIFIED-чеке |
-| 15 | (08-03) Payload overview не содержит connection string, кредов и директорий — только имена файлов, размеры, времена, коды и исходы чеков | ✓ VERIFIED | Тест 144 (нет scheme marker, нет пути каталога) + `redactSecrets(computeBackupFact(...))` + `safeFileName()` (basename, иначе `unavailable`); веб-тест «never renders a directory path» |
-| 16 | (08-03) Триггеры «Backup now»/«Drill now» идут через gateway → подписанный proxy → OperatorGuard; неверный кред → унифицированный 404 без оракула | ✓ VERIFIED | Контроллер `@UseGuards(OperatorGuard)` + `@Post("backups/run"|"backups/drill")`; `route.ts` форвардит метод, HMAC-канон включает метод; тесты enqueue / disabled-404 / bad-credential-404 / ingress зелёные; `route.test.ts` входит в зелёный веб-набор |
-| 17 | (08-03) Русский блок «Резервные копии и проверка восстановления» с двумя кнопками; never-verified / stale / failed / not-configured — явные не-зелёные состояния | ✓ VERIFIED | `backup-status-block.tsx` + `enum-labels.ts` (5 + 3 русских лейбла) смонтированы в `page.tsx:77-78`; веб-тесты (14 кейсов) зелёные: ни один не-зелёный state не рендерит «Здорово» |
+| 1 | (08-01) Настоящий `pg_dump -Fc` даёт непустой файл + ровно одну строку `BackupRun SUCCEEDED`; сбойный дамп → `FAILED`, без `.dump`, ничего не удаляется | ✓ VERIFIED | Интеграционный `tests/integration/backup-restore-drill.test.ts` прогнан мной: кейсы «one real non-empty dump…sha256», «FAILED и без дампа при недоступной БД», «PG_IDENTITY_UNRESOLVED без вызова дампа» — 7/7 |
+| 2 | (08-01) Ротация оставляет ровно новейшие `BACKUP_RETENTION_COUNT` (14) и только после успеха | ✓ VERIFIED | `tests/unit/backup-job.test.ts` прогнан мной (в составе 37/37 с config): prune-after-success, no-prune-on-dump-failure |
+| 3 | (08-01) Незаданный `BACKUP_OFFSITE_DIR` → `NOT_CONFIGURED`; сбой robocopy → локальный `SUCCEEDED` + off-host `DEGRADED` с кодом | ✓ VERIFIED | `backup-job.test.ts`: COPIED/DEGRADED-кейсы, spawn ENOENT, offsite без настройки не вызывается; UAT-тест 2 (живой robocopy обе половины) — pass |
+| 4 | (08-01) Ежесуточный тик вооружается из persisted-состояния `BackupRun` (паттерн setTimeout), без BullMQ repeat-опций | ✓ VERIFIED | `scheduleBackupTick` + юнит-кейсы idle/anchor/re-arm/close; `main.ts` `startBackupRuntime`; UAT-тест 3 (живая каденция) — pass |
+| 5 | (08-01) Креды только через child env; payload BullMQ несёт только trigger-дискриминатор | ✓ VERIFIED | `backup-job.test.ts`: argv без conninfo, conn-поля только в `options.env`, job data ровно `{trigger}` |
+| 6 | (08-01) docker-exec fallback берёт роль/БД из конфига или env контейнера, иначе fail-closed `PG_IDENTITY_UNRESOLVED` | ✓ VERIFIED | Интеграционный кейс `PG_IDENTITY_UNRESOLVED` без вызова дампа (прогнан); argv `-U postgres -d bet_stats` из резолвленной идентичности |
+| 7 | (08-01) `sha256` считается с `.partial` до rename | ✓ VERIFIED | Интеграционный кейс пересчитывает hash от файла и сравнивает со строкой чека (прогнан) |
+| 8 | (08-02) Drill восстанавливает новейший дамп в throwaway-контейнер, доводит миграции до head, проходит chain-integrity, удаляет контейнер, пишет один `BackupVerificationReceipt` | ✓ VERIFIED | Интеграционный «VERIFIED verification receipt» (прогнан мной, реальный Docker): `containerCleanup REMOVED`, аудит `checks.containerCleanup` с реальными exit-кодами, контейнер отсутствует в `docker ps -a` |
+| 9 | (08-02) Docker недоступен / pending-миграция / ошибка restore / проваленный чек → FAILED или UNVERIFIED; drill не может молча пройти | ✓ VERIFIED | Юнит `backup-drill.test.ts` (29/29 прогнаны): DOCKER_UNAVAILABLE, PG_IDENTITY_UNRESOLVED, RESTORE_FAILED, CHAIN_INTEGRITY_FAILED; ветка `MIGRATIONS_NOT_AT_HEAD` (backup-drill.ts:406-411) — живо доказана UAT-тестом 4 (pass: `UNVERIFIED/MIGRATIONS_NOT_AT_HEAD`) |
+| 10 | (08-02) Сбой очистки фиксируется в чеке, а не скрывается; имя owned-unique; удаление в `finally` | ✓ VERIFIED | Теперь поведенчески: юнит A-F (FAILED-ветки, включая потерю идентичности и spawnError) + интеграционный негатив (pre-rm inspect exit 1 → `containerCleanup FAILED` при `overall VERIFIED` в той же immutable-строке) — прогнаны мной. Апгрейд с ⚠️ round-1: ветка падения больше не «только на присутствии кода» |
+| 11 | (08-02) Паритет: FAIL только при restored < captured, позитивные дельты пишутся, таблицы с нулевым source → SKIPPED | ✓ VERIFIED | Юнит-кейсы паритета/дельт/SKIPPED прогнаны (29/29) |
+| 12 | (08-02) Обе таблицы чеков отвергают UPDATE и DELETE на уровне БД | ✓ VERIFIED | Прогнано мной на свежем throwaway `postgres:18-alpine` (миграции применены, контейнер удалён после): `tests/integration/mutation-rejection.test.ts` 8/8, включая `BackupRun`/`BackupVerificationReceipt` с `/immutable/i` |
+| 13 | (08-03) Секция `backups` со state, считаемым при чтении: NOT_CONFIGURED / NEVER_VERIFIED / STALE / FAILED / HEALTHY; зелёный только при свежем бэкапе + прошедшем + неустаревшем drill | ✓ VERIFIED | `tests/integration/operator-overview.test.ts` прогнан мной: 24/24, `computeBackupFact` read-time с инжектированным clock |
+| 14 | (08-03) Бэкап >25 ч → STALE, drill старше интервала+grace → drill-stale, оба не-зелёные даже при последнем VERIFIED | ✓ VERIFIED | Границы 24h59m/25h01m/192h01m в operator-overview (24/24) + веб-тест «never renders green «Здорово»» (82/82) |
+| 15 | (08-03) Payload overview без connection string, кредов и директорий — только имена файлов, размеры, времена, коды, исходы чеков | ✓ VERIFIED | operator-overview: нет scheme-marker/пути каталога; `redactSecrets` + `safeFileName`; веб «never renders a directory path». Новая аудит-запись `checks.containerCleanup` несёт только системное имя `bet-stats-drill-pg-<pid>-<ts>` и exit-коды (без секретов) |
+| 16 | (08-03) Триггеры идут gateway → подписанный proxy → OperatorGuard; неверный кред → унифицированный 404 без оракула | ✓ VERIFIED | Куски цепочки поведенчески зелёные: интеграционный шлюз (подпись против канонической строки Next-прокси), route.test (метод в подписи), operator-overview (enqueue/404). Live-прогнано: `GET :3000/internal-api/operations/overview` без подписи → ровно `404 {"message":"Not found"}`; шлюз на :8080 → `401` на незащищённый путь. Сквозной браузерный прогон — истины 18-19 ниже |
+| 17 | (08-03) Русский блок «Резервные копии и проверка восстановления» с двумя кнопками; never-verified / stale / failed / not-configured — явные не-зелёные состояния | ✓ VERIFIED | `backup-status-block.tsx` + `enum-labels.ts` смонтированы в `page.tsx`; веб-набор 82/82 прогнан мной (в т.ч. оба cleanup-лейбла «Контейнер удалён»/«Не удалось удалить контейнер») |
+| 18 | (08-04) Оператор открывает :8080/internal/operations в обычном браузере, один раз проходит Basic auth, все блоки рендерятся с реальными данными | ⚠️ PRESENT_BEHAVIOR_UNVERIFIED | Артефакты на месте и подключены: `security.mjs` (protectedPrefixes включает `/internal/operations`, `/internal-api/operations`, segment-boundary), `server.mjs:114-125` (Basic-гейт + подпись с методом), шлюз живёт на :8080 (live 401). Юнит 17/17 и интеграционный 12/12 прогнаны. E2E `operations-gateway.spec.ts` существует (исполнитель: 4/4, ревью просмотрело), но мной не запускался (нет owned release-стека; поднимать сервисы запрещено) — см. behavior_unverified_items |
+| 19 | (08-04) Обе кнопки триггеров работают у оператора через шлюз и отвечают «поставлена в очередь…» через role=status | ⚠️ PRESENT_BEHAVIOR_UNVERIFIED | Составные звенья зелёные (подпись, enqueue 202, рендер кнопок), live-стек: шлюз отвечает 401-челленджем; сквозное нажатие браузером — только в незапущенном e2e/UAT — см. behavior_unverified_items |
+| 20 | (08-04) Fail-closed 404 прокси для неподписанных `/internal-api/operations` не изменён — dev-обхода нет | ✓ VERIFIED | Live: `fetch http://127.0.0.1:3000/internal-api/operations/overview` → `404 {"message":"Not found"}`; негативные e2e-пробы (401 на шлюзе / 404 на web) написаны plain-`fetch` (без инъекции кредов Playwright); route.test зелёный в веб-наборе 82/82 |
+| 21 | (08-05) Drill, у которого throwaway-контейнер переименован/удалён ДО очистки, пишет containerCleanup = 'FAILED', никогда ложный 'REMOVED' | ✓ VERIFIED | Юнит A (pre-rm inspect exit 1 → FAILED даже при rm=0 и post=1) + интеграционный негатив на живом демоне (forced pre-rm miss → `FAILED` в результате и в персистентной строке при `overall VERIFIED`) — прогнаны мной. Остаточное окно rename МЕЖДУ pre-inspect и rm — WR-02 (см. Anti-Patterns), за пределами данной истины («до очистки») |
+| 22 | (08-05) containerCleanup = 'REMOVED' теперь означает verifiably present до rm и verifiably absent после rm — не merely exit-код rm | ✗ FAILED | Контрпример в коде: `backup-drill.ts:450-453` — post-rm `spawnError` (inspect не выполнился) или exit≠0 с ошибкой демона → все условия FAILED ложны → REMOVED без позитивного доказательства отсутствия; противоречит комментарию 445-446 и требованию G-08-5. Подтверждено 08-REVIEW.md WR-01 (open); тестовой охраны нет (grep-0 на post-spawnError). См. `gaps:` |
+| 23 | (08-05) Исход очистки никогда не перекрашивает заработанный overall drill | ✓ VERIFIED | Юнит E (VERIFIED + post-rm survival → `overall VERIFIED` c `containerCleanup FAILED` в той же immutable-строке) + интеграционный негатив — прогнаны мной; `record()` структурно пишет оба поля независимо |
 
-**Score:** 16/17 истин верифицировано (1 — present, behavior-unverified)
+**Score:** 20/23 истин верифицировано (2 — present, behavior-unverified; 1 — провал → gap)
 
 ### Required Artifacts
 
 | Артефакт | Ожидание | Статус | Детали |
 | --- | --- | --- | --- |
-| `packages/config/src/index.ts` | `readBackupConfig` + `BackupConfig` fail-closed | ✓ VERIFIED | 143 строк; только явные входы, `BACKUP_*` вне superRefine, дефолты 14/168 |
-| `…/20261022_phase08_backup_runs/migration.sql` | `BackupRun` + sha256 + guard-триггер | ✓ VERIFIED | `grep guarded_append_only` ≥ 1, чек-constraint'ы на status/offsite/trigger |
-| `…/20261022_phase08_backup_verification_receipts/migration.sql` | `BackupVerificationReceipt` + guard-триггер | ✓ VERIFIED | `guard_backup_verification_receipt()`, констрейнты `VERIFIED/FAILED/UNVERIFIED` |
-| `…/20261024_phase08_backup_byte_size_bigint/migration.sql` | исправление WR-01 (int4 → bigint) | ✓ VERIFIED | схема `byteSize BigInt? @db.BigInt` синхронна с миграциями (`pnpm verify:release:schema` exit 0, прогнан мной) |
-| `workers/data-sync/src/jobs/backup.ts` | `runBackup`, `resolvePgTools`, `resolvePgIdentity`, `pruneBackupRetention`, `copyOffsite`, `scheduleBackupTick`, queue-фабрики | ✓ VERIFIED | 493 строки, полностью реализовано; подключено в `main.ts` |
-| `workers/data-sync/src/jobs/backup-drill.ts` | `runBackupDrill`, `captureSourceCounts`, `runChainIntegrityChecks`, `scheduleDrillTick` | ✓ VERIFIED | 483 строки; generic FK-orphan по `pg_constraint`, curated-чеки, редакция stderr через `redactSecrets` |
-| `tests/integration/backup-restore-drill.test.ts` | герметичный dump + FAILED-путь | ✓ VERIFIED | 6 кейсов, прогнан мной: зелёный |
-| `README.md` | заметка оператору о персональных данных в дампах (RESEARCH Q7) | ✓ VERIFIED | раздел «Резервные копии…», `BACKUP_DIR`/`BACKUP_OFFSITE_DIR`, ACL и шифрование |
-| `operations.service.ts` | `backups()`, `BackupFact`, 5-state read-time, `triggerBackup/triggerDrill` | ✓ VERIFIED | 290 строк, явные Prisma-select'ы, `redactSecrets` на выходе |
-| `operations.controller.ts` | два POST-эндпоинта под OperatorGuard | ✓ VERIFIED | 23 строки, `@HttpCode(202)` |
-| `…/internal-api/operations/[[...path]]/route.ts` | POST-прокси с методом в подписи | ✓ VERIFIED | `export const POST = proxy`, upstream-`fetch` с `request.method` |
-| `…/internal/operations/backup-status-block.tsx` | операторский блок | ✓ VERIFIED | 72 строки, русские подписи, две кнопки, role=status/alert |
-| `page.tsx`, `enum-labels.ts` | монтирование блока + лейблы | ✓ VERIFIED | `Block title="Резервные копии и проверка восстановления"`, 5+3 маппинга |
-| Тесты (`backup-job`, `backup-drill`, `operator-overview`, `mutation-rejection`, `route.test`, `backup-status-block.test`, `enum-labels.test`) | покрытие по планам | ✓ VERIFIED | все существуют и зелёные в прогоне (см. Behavioral Spot-Checks) |
+| `packages/config/src/index.ts` | `readBackupConfig` + `BackupConfig` fail-closed | ✓ VERIFIED | 143 строки; дефолты 14/168; юнит-тест прогнан |
+| `…/20261022_phase08_backup_runs/migration.sql` | `BackupRun` + sha256 + guard-триггер | ✓ VERIFIED | `guarded_append_only`, чек-constraint'ы |
+| `…/20261022_phase08_backup_verification_receipts/migration.sql` | `BackupVerificationReceipt` + guard-триггер | ✓ VERIFIED | `guard_backup_verification_receipt()`, immutable-тесты 8/8 прогнаны |
+| `…/20261024_phase08_backup_byte_size_bigint/migration.sql` | int4 → bigint | ✓ VERIFIED | схема синхронна (prisma validate в ходе schema-gate) |
+| `workers/data-sync/src/jobs/backup.ts` | `runBackup`, `resolvePgTools/Identity`, `pruneBackupRetention`, `copyOffsite`, `scheduleBackupTick`, queue-фабрики | ✓ VERIFIED | 493 строки; подключён в `main.ts` |
+| `workers/data-sync/src/jobs/backup-drill.ts` | `runBackupDrill`, `captureSourceCounts`, `runChainIntegrityChecks`, `scheduleDrillTick` + (08-05) pre/rm/post inspect-верификация и `checks.containerCleanup` | ✓ VERIFIED (с gap по истине 22) | 3-step вердикт (строки 447-465) реализован и подключён; аудит `{containerName, preInspect, rmExitCode, postInspect, verdict}` пишется в immutable-чек — но fail-open-угол (WR-01) ломает истину 22 |
+| `tests/integration/backup-restore-drill.test.ts` | герметичный dump + FAILED-путь + (08-05) inspect-последовательность и негатив | ✓ VERIFIED | 7/7 прогнан на реальном Docker |
+| `README.md` | заметка оператору о персональных данных в дампах | ✓ VERIFIED | раздел про `BACKUP_DIR`/`BACKUP_OFFSITE_DIR`, ACL/шифрование |
+| `operations.service.ts` | `backups()`, `BackupFact`, 5-state read-time, `triggerBackup/triggerDrill` | ✓ VERIFIED | 290 строк; `redactSecrets` на выходе; 24/24 теста |
+| `operations.controller.ts` | два POST под OperatorGuard | ✓ VERIFIED | `@HttpCode(202)`, guard на классе |
+| `…/internal-api/operations/[[...path]]/route.ts` | POST-прокси с методом в подписи | ✓ VERIFIED | live fail-closed 404 + route.test |
+| `…/internal/operations/backup-status-block.tsx` | операторский блок | ✓ VERIFIED | русские подписи, две кнопки, role=status/alert |
+| `page.tsx`, `enum-labels.ts` | монтирование блока + лейблы | ✓ VERIFIED | 5+3 маппинга |
+| `infra/operator-gateway/security.mjs` (08-04) | protected-path покрывает `/internal*/operations*` | ✓ VERIFIED | `protectedPrefixes` включает оба operations-префикса, segment-boundary (11-12); юнит protects/public-кейсы 17/17 |
+| `infra/operator-gateway/server.mjs` (08-04) | Basic-гейт + HMAC-подпись для всех protected-путей | ✓ VERIFIED | строки 114-125: `authenticateBasic` → отказ 401 без upstream-хопа; подпись с `method` |
+| `scripts/app-lifecycle.ps1` (08-04) | dev-лаунчер поднимает/останавливает/показывает шлюз | ✓ VERIFIED | `-Gateway` ветка (117-128), спавн 5/5 (187-194), `Get-StackPids` ловит gateway (71-72), Stop гасит, Status показывает; best-effort не валит стек. Live: шлюз на :8080 отвечает. Оговорка WR-03 — Status/Stop без Load-Env при нестандартном `GATEWAY_PORT` |
+| `.env.example` (08-04) | `GATEWAY_PORT=8080` документирован | ✓ VERIFIED | строка 11 |
+| `tests/e2e/operations-gateway.spec.ts` (08-04) | браузер через шлюз без синтезированных HMAC-заголовков + негативы | ⚠️ PRESENT (не запускался мной) | 118 строк, 2 теста (desktop+mobile по заявлению — 4/4); wired в `verify:release` (package.json). Поведение не упражнено в моём процессе — ист. 18-19 |
+| `tests/e2e/live-provider-stack.ts` (08-04) | owned API получает `BACKUP_ENABLED=true` + mkdtemp `BACKUP_DIR` | ✓ VERIFIED | строка 91 |
+| `tests/unit/backup-drill.test.ts` (08-05) | FAILED-ветка (A-F) | ✓ VERIFIED | describe «inspect-verified (G-08-5)» с 6 кейсами; 29/29 прогнан; остаточный пробел — post-rm spawnError (gap) |
+| `tests/unit/operator-gateway.test.ts` (08-04) | protects/public-кейсы сегментной границы | ✓ VERIFIED | 17/17 прогнан |
+| `tests/integration/operator-gateway.test.ts` (08-04) | signed-operations boundary через спавн-шлюз | ✓ VERIFIED | 12/12 прогнан: unsigned → 401 без upstream, Basic → подпись, пересчитанная канонической строкой Next-прокси |
 
 ### Key Link Verification
 
 | From | To | Via | Статус | Детали |
 | --- | --- | --- | --- | --- |
-| `readBackupConfig` | `runBackup` → `BackupRun` | `startBackupRuntime` в `main.ts` передаёт `readBackupConfig(process.env)` в `runBackup` | WIRED | отсутствующая конфигурация → `FAILED BACKUP_NOT_CONFIGURED` / `backup.disabled`, никогда не молча |
-| `PG_BIN` → PATH → docker exec | `resolvePgTools` → `resolvePgIdentity` → fail-closed | цепочка в `backup.ts:180-246`, drill импортирует `resolvePgIdentity` | WIRED | явные `-U`/`-d` из резолвленной идентичности; `PG_IDENTITY_UNRESOLVED` без вызова pg_dump/pg_restore |
-| `scheduleBackupTick` → `bet-stats-backup` → `createBackupWorker` → `runBackup` | тик → `queue.enqueue` → воркер `execute` | `main.ts:118-122` | WIRED | concurrency 1, jobId `scheduled-<kind>-<bucket>`, без `repeat:` |
-| `scheduleDrillTick` → тот же `runBackupDrill` | тик → `queue.enqueueDrill` → `executeDrill` | `main.ts:124-129`, dispatch `createBackupJobDispatcher` | WIRED | «drill» и «backup» делят один воркер |
-| новейший дамп → throwaway-контейнер → `migrate deploy/status` → chain-integrity → `BackupVerificationReceipt` | весь конвейер в `runBackupDrill` | `backup-drill.ts:242-445` | WIRED | порядок совпадает с D-08; `finally`-очистка |
-| `BackupRun` + `BackupVerificationReceipt` → `backups()` → overview payload → веб-блок | Prisma `findFirst` → `computeBackupFact` → `backups:` в JSON → `fetch` в `page.tsx` → `BackupStatusBlock` | `operations.service.ts` + `page.tsx` | WIRED | см. Data-Flow |
-| read-time staleness (25h / interval+24h) | `computeBackupFact(rows, current)` с инжектированным clock | `operations.service.ts:82-105` | WIRED | значение не сохраняется в БД |
-| HMAC (метод в канонической строке) → web POST proxy → API OperatorGuard → BullMQ enqueue | `route.ts` → `x-operator-credential` → `OperatorGuard` → `queue.add` | цепочка замкнута | WIRED | подпись для другого метода отклоняется; disabled и неверный кред — одинаковый 404 |
+| `readBackupConfig` | `runBackup` → `BackupRun` | `startBackupRuntime` в `main.ts` | WIRED | нет конфига → `FAILED BACKUP_NOT_CONFIGURED` / `backup.disabled`, никогда молча |
+| `resolvePgTools` → `resolvePgIdentity` → fail-closed | `pg_dump`/`pg_restore` с явными `-U`/`d` | `backup.ts` + импорт в drill | WIRED | `PG_IDENTITY_UNRESOLVED` без вызова инструментов (прогнано) |
+| `scheduleBackupTick` → `bet-stats-backup` → `createBackupWorker` → `runBackup` | тик → enqueue → execute | `main.ts` | WIRED | concurrency 1, jobId-бакеты, без `repeat:` |
+| `scheduleDrillTick` → `runBackupDrill` | тик → `executeDrill` | `main.ts`, тот же воркер | WIRED | dispatch «drill»/«backup» |
+| новейший дамп → throwaway → `migrate deploy/status` → chain-integrity → `BackupVerificationReceipt` | весь конвейер | `backup-drill.ts` | WIRED | порядок совпадает с D-08; `finally`-очистка; прогнано 7/7 |
+| pre-rm `docker inspect` → `rm --force` → post-rm `docker inspect` → `containerCleanup` → `checks.containerCleanup` в immutable-чек | вердикт очистки (08-05) | `backup-drill.ts:447-464` | WIRED | последовательность по одному имени, аудит пишется; поведение доказано юнит+интеграционно. **Но семантика REMOVED ломается в spawnError-угле — gap (ист. 22)** |
+| `BackupRun` + `BackupVerificationReceipt` → `backups()` → overview payload → веб-блок | Prisma findFirst → `computeBackupFact` → `backups:` → `fetch` в `page.tsx` → `BackupStatusBlock` | service + page | WIRED | см. Data-Flow |
+| read-time staleness (25h / interval+24h) | `computeBackupFact(rows, current)` с инжектированным clock | `operations.service.ts` | WIRED | значение не сохраняется |
+| шлюз: Basic → `signedOperatorHeaders` (метод в каноне) → web POST-proxy → `OperatorGuard` → BullMQ | ingress-цепочка (08-04) | `security.mjs` → `server.mjs:114-125` → `route.ts` → controller | WIRED | интеграционно: подпись верифицируется канонической строкой прокси; unsigned → 401 на шлюзе; live: 401/404 |
+| `scripts/app-lifecycle.ps1 -Gateway` → `infra/operator-gateway/server.mjs` на :8080 | documented dev topology (08-04) | спавн после readiness, `Get-StackPids`/Stop/Status | WIRED | live-факт: шлюз слушает :8080 и отдаёт 401-челлендж |
 
 ### Data-Flow Trace (Level 4)
 
 | Артефакт | Переменная | Источник | Реальные данные | Статус |
 | --- | --- | --- | --- | --- |
-| Блок «Последняя резервная копия» | `lastBackup` | `database.backupRun.findFirst({where:{status:"SUCCEEDED"}})` + явные select'ы | да — реальные строки `BackupRun` | ✓ FLOWING |
-| Блок «Последняя проверка восстановления» + failed checks | `lastDrill`, `failedDrillChecks(checks)` | `database.backupVerificationReceipt.findFirst(…)` | да — реальные строки чека, имена чеков вытащены из JSON | ✓ FLOWING |
-| Общее состояние / stale-флаги | `state`, `backupStale`, `drillStale` | вычисляется при чтении из строк + `readBackupConfig(process.env)` | да — конфиг и времена из БД, не хардкод | ✓ FLOWING |
-| Триггеры | `queued` | `queue.add(job, {trigger:"MANUAL"}, …)` на `${prefix}-backup` | да — реальный BullMQ enqueue | ✓ FLOWING |
-| Резервный дамп | `fileName`, `sha256`, `byteSize` | реальный `pg_dump` + стримовый sha256 по `.partial` | да — файл на диске, проверено интеграционно | ✓ FLOWING |
+| «Последняя резервная копия» | `lastBackup` | `database.backupRun.findFirst({status:"SUCCEEDED"})` + явные select'ы | да — реальные строки `BackupRun` | ✓ FLOWING |
+| «Последняя проверка восстановления» + failed checks | `lastDrill`, `failedDrillChecks(checks)` | `backupVerificationReceipt.findFirst` | да — реальные строки чека, имена чеков из JSON | ✓ FLOWING |
+| Общее состояние / stale-флаги | `state`, `backupStale`, `drillStale` | read-time из строк + `readBackupConfig(process.env)` | да — конфиг и времена из БД | ✓ FLOWING |
+| Аудит очистки (08-05) | `checks.containerCleanup` | реальные exit-коды `docker inspect/rm` в `runBackupDrill` | да — пишется в immutable-строку, проходит `redactSecrets` и закрытый DTO; лейблы «Контейнер удалён»/«Не удалось удалить контейнер» покрыты веб-тестами | ✓ FLOWING (семантика REMOVED — gap см. ист. 22) |
+| Триггеры | `queued` | `queue.add(job, {trigger:"MANUAL"})` | да — реальный BullMQ enqueue (24/24) | ✓ FLOWING |
+| Резервный дамп | `fileName`, `sha256`, `byteSize` | реальный `pg_dump` + стримовый sha256 по `.partial` | да — файл на диске, интеграционно | ✓ FLOWING |
 
 ### Behavioral Spot-Checks
 
 | Поведение | Команда | Результат | Статус |
 | --- | --- | --- | --- |
-| Phase-unit (config, backup-job, backup-drill, worker-entry-guard) | `pnpm vitest run --project unit packages/config/src/index.test.ts tests/unit/backup-job.test.ts tests/unit/backup-drill.test.ts tests/unit/worker-entry-guard.test.ts` | 4 файла, **62 теста passed** | ✓ PASS |
-| Веб (блок, proxy-route, enum-labels, страница) | `pnpm --filter web test` | 9 файлов, **82 теста passed** | ✓ PASS |
-| Полный drill + overview | `pnpm vitest run --project integration tests/integration/backup-restore-drill.test.ts tests/integration/operator-overview.test.ts` | **30 тестов passed** (42 c) | ✓ PASS |
-| Неизменяемость обеих таблиц чеков | throwaway `postgres:18-alpine` + `prisma migrate deploy` + `vitest --project integration tests/integration/mutation-rejection.test.ts` | **8 тестов passed**, контейнер `rm --force` удалён после (проверено: `docker ps -a` пуст) | ✓ PASS |
-| Схема ↔ миграции согласованы | `pnpm verify:release:schema` | exit 0, «The schema at prisma\schema.prisma is valid» | ✓ PASS |
-| Типизация монорепо | `pnpm typecheck` | 7/7 задач успешны | ✓ PASS |
-| Антипаттерны в файлах фазы | `grep -E "TBD\|FIXME\|XXX\|PLACEHOLDER\|not yet implemented"` по 14 файлам фазы | 0 совпадений | ✓ PASS |
-| Остаточные контейнеры фазы | `docker ps -a --filter "name=bet-stats-"` | пусто (ни один throwaway не остался) | ✓ PASS |
+| Юнит: drill-вердикт + шлюз | `pnpm vitest run --project unit tests/unit/backup-drill.test.ts tests/unit/operator-gateway.test.ts` | 2 файла, **46 passed**, 2.3s | ✓ PASS |
+| Юнит: backup-job + config (BAK-01) | `pnpm vitest run --project unit tests/unit/backup-job.test.ts packages/config/src/index.test.ts` | 2 файла, **37 passed**, 1.4s | ✓ PASS |
+| Интеграционный: шлюз (спавн, подпись, 401) | `pnpm vitest run --project integration tests/integration/operator-gateway.test.ts` | **12 passed**, 13.9s | ✓ PASS |
+| Полный drill + негатив cleanup (реальный Docker) | `pnpm vitest run --project integration tests/integration/backup-restore-drill.test.ts` | **7 passed**, 63.6s | ✓ PASS |
+| 5-state overview | `pnpm vitest run --project integration tests/integration/operator-overview.test.ts` | **24 passed**, 4.8s | ✓ PASS |
+| Веб (блок, proxy-route, enum-labels, страница) | `pnpm --filter "@bet-stats/web" test` | 9 файлов, **82 passed** | ✓ PASS |
+| Неизменяемость чек-таблиц | throwaway `postgres:18-alpine` (`-P`) + `prisma migrate deploy` + `vitest --project integration tests/integration/mutation-rejection.test.ts` | **8 passed**, контейнер `rm --force` удалён (проверено: пусто) | ✓ PASS |
+| Полный юнит+веб гейт (единственный полный прогон) | `pnpm test` | 46/47 файлов, **444/451 passed**; единственный отказ — известный предсуществующий `tests/unit/fixtures-sync.test.ts` (7 failed, live-DB auth `user`) — вне scope фазы | ✓ PASS (с известным исключением) |
+| Типизация | `pnpm typecheck` | 7/7 задач | ✓ PASS |
+| Live: fail-closed прокси | `fetch http://127.0.0.1:3000/internal-api/operations/overview` | `404 {"message":"Not found"}` | ✓ PASS |
+| Live: шлюз защищает operations-путь | `GET http://127.0.0.1:8080/internal/operations` | `401` (Basic-челлендж; шлюз живёт в документированной топологии) | ✓ PASS |
+| Коммиты gap-closure | `gsd_run query verify.commits ad57d8b 0ea8210 5da9972 b99e75e 5dcca8e 657fb6f 2e41fb4 4be8bb1` | 8/8 valid, exit 0 | ✓ PASS |
+| Антипаттерны/задолженность | `grep -E "TBD\|FIXME\|XXX\|PLACEHOLDER\|not yet implemented"` по 12 файлам gap-closure | 0 совпадений | ✓ PASS |
+| E2E браузер через шлюз | `playwright test -c playwright.phase06.config.ts tests/e2e/operations-gateway.spec.ts` | **SKIP** — требует поднятого owned release-стека (`readLiveReleaseState()` без файла состояния); поднимать сервисы в верификации запрещено → см. Behavior-unverified / UAT-ретест | ? SKIP |
 
 ### Probe Execution
 
-Пробы (`scripts/*/tests/probe-*.sh`) в этой фазе не объявлены ни в PLAN, ни в ROADMAP — раздел неприменим.
+Пробы (`scripts/*/tests/probe-*.sh`) в этой фазе не объявлены ни в одном из 5 PLAN, ни в ROADMAP — раздел неприменим.
 
 ### Requirements Coverage
 
-| Требование | План | Описание | Статус | Доказательство |
+| Требование | План(ы) | Описание | Статус | Доказательство |
 | --- | --- | --- | --- | --- |
-| BAK-01 | 08-01 | Оператор может включить автоматические PostgreSQL-бэкапы (`pg_dump` custom) с настраиваемым retention и ротацией | ✓ SATISFIED | `readBackupConfig` (opt-in `BACKUP_ENABLED`), `runBackup` c atomic rename + `BackupRun`, `pruneBackupRetention`, robocopy off-host, дневной persisted-state тик; юнит 62 + интеграционный реальный дамп зелёные |
-| BAK-02 | 08-02 | Периодический restore-drill восстанавливает последний бэкап в throwaway-контейнер, применяет миграции, запускает chain-integrity чеки и пишет verification-чек | ✓ SATISFIED | `runBackupDrill` (restore → `migrate deploy/status` → 4 группы чеков → `BackupVerificationReceipt`), недельный `scheduleDrillTick`, обе таблицы append-only (прогнано: 8/8) |
-| BAK-03 | 08-03 | Статус бэкапов и верификации виден в operations center без секретов; never-verified и stale — явные не-зелёные состояния | ✓ SATISFIED | 5-state read-time `backups()`, секрето-/path-free payload (тесты), русский блок с 5 состояниями и двумя триггерами (веб-тесты 82/82) |
+| BAK-01 | 08-01 | Оператор может включить автоматические PostgreSQL-бэкапы (`pg_dump` custom) с настраиваемым retention и ротацией | ✓ SATISFIED | `readBackupConfig` (opt-in), `runBackup` atomic rename + `BackupRun`, `pruneBackupRetention`, robocopy off-host, persisted-state тик; юнит 37 + интеграционный 7/7 + live UAT-тесты 1-2 (pass) |
+| BAK-02 | 08-02, 08-05 | Периодический restore-drill восстанавливает последний бэкап в throwaway-контейнер, применяет миграции, запускает chain-integrity и пишет verification-чек | ✓ SATISFIED (с gap в суб-инварианте честности cleanup-вердикта) | Текст требования выполнен: полный конвейер доказан интеграционно 7/7, обе таблицы append-only 8/8, недельный тик. Gap касается честности поля `containerCleanup` в corner-случае (ист. 22) — отражён в `gaps:`, требование не заблокировано |
+| BAK-03 | 08-03, 08-04 | Статус бэкапов и верификации виден в operations center без секретов; never-verified и stale — явные не-зелёные состояния | ✓ SATISFIED | 5-state read-time `backups()` (24/24), секрето-/path-free payload (тесты), русский блок с 5 состояниями и двумя кнопками (веб 82/82), ingress: шлюз подписывает operations-пути (17/17 + 12/12), прокси fail-closed live 404; сквозной браузерный ретест — UAT G-08-6 |
 
-Осиротевших требований нет: в REQUIREMENTS.md фазе отнесены ровно BAK-01..03, и каждое закреплено за планом в его frontmatter.
+Осиротевших требований нет: REQUIREMENTS.md относит к Phase 8 ровно BAK-01..03, каждый закреплён в frontmatter планов (08-01 → BAK-01; 08-02, 08-05 → BAK-02; 08-03, 08-04 → BAK-03).
 
 ### Anti-Patterns Found
 
 | Файл | Паттерн | Серьёзность | Влияние |
 | --- | --- | --- | --- |
-| — | Задолженных маркеров (TBD/FIXME/XXX/PLACEHOLDER), `return null`-заглушек, пустых обработчиков и консольных-only реализаций в 14 проверенных файлах фазы не найдено | ℹ️ Info | Отсутствует |
+| `workers/data-sync/src/jobs/backup-drill.ts:450-453` | **WR-01** (08-REVIEW, open): post-rm inspect spawnError / ошибка демона → fall-through к REMOVED без позитивного доказательства отсутствия; противоречит комментарию 445-446 и G-08-5 | 🛑 BLOCKER | Является основанием gap по истине 22 (см. `gaps:`) |
+| `workers/data-sync/src/jobs/backup-drill.ts:331-345,447-449` | **WR-02** (open): вердикт ключуется на изменяемом ИМЕНИ контейнера, хотя ID доступен из stdout `docker run`; rename в окне между pre-inspect и rm может дать ложный REMOVED (остаточная гонка внутри последовательности очистки) | ⚠️ Warning | Истина 21 (rename ДО очистки) не затронута и доказана тестами; окно — миллисекунды внутри cleanup. Рекомендация: ключевать по container ID |
+| `scripts/app-lifecycle.ps1:27,130-148` | **WR-03** (open): Stop/Status не вызывают `Load-Env` — при нестандартном `GATEWAY_PORT` Status/Stop репортят/проверяют 8080 | ⚠️ Warning | При документированном дефолте 8080 корректно; Stop и так убивает шлюз по CommandLine-regex (71-72). Must-have «лаунчер запускает/останавливает шлюз» выполнен |
+| `infra/operator-gateway/server.mjs:163` | **WR-04** (open): шлюз слушает `0.0.0.0` — cleartext Basic и подписанные operations-триггеры доступны с LAN | ⚠️ Warning (security) | Bind существовал до фазы; фаза повысила экспозицию (operations поверх replay). Рекомендация: default `127.0.0.1` + `GATEWAY_BIND`. Ни одно must-have истиной bind не покрыто |
+| `scripts/app-lifecycle.ps1:49-54,133` | **IN-01** (open): probe готовности шлюза путём `/` конфлюит «шлюз down» с «upstream down» | ℹ️ Info | В штатной топологии (стек поднят) Status корректен |
+| `workers/data-sync/src/jobs/backup-drill.ts:447-449` | **IN-02** (open): три exec-вызова в `finally` не обёрнуты try/catch — бросающий exec мог бы пропустить `record()` (без чека) | ℹ️ Info | Латентно: `spawnBackupExec`/тестовые дубли возвращают `spawnError`, не бросают. Чек-отсутствие ≠ «молча пройти» (never-verified рендерится честно) |
+| `tests/unit/operator-gateway.test.ts:72-76` | **IN-03** (open): тест ассертит исходный текст `security.mjs`, а не поведение | ℹ️ Info | Хрупкость реформата; поведение покрыто спавн-интеграционными тестами |
+| — | Задолженных маркеров (TBD/FIXME/XXX/PLACEHOLDER), `return null`-заглушек, пустых обработчиков в 12 gap-closure-файлах и остальных файлах фазы не найдено | ℹ️ Info | Отсутствует |
+
+Все 7 находок ревью записаны `open` в `08-REVIEW-DISPOSITION.md`; выше они взвешены по отношению к must-haves: только WR-01 ломает истину, остальные — advisory.
 
 ### Human Verification Required
 
-1. **Живой реальный бэкап** (VALIDATION §Manual-Only) — выставить `BACKUP_ENABLED=true` + `BACKUP_DIR` в секретном `.env` и нажать «Создать резервную копию сейчас». *Ожидание:* появляется непустой `football_prediction-<UTC>.dump` и строка `SUCCEEDED` в `BackupRun`.
-2. **Реальный off-host robocopy** — `BACKUP_OFFSITE_DIR` на настоящий шар/синк-каталог. *Ожидание:* `COPIED` и «Скопировано» в блоке; при недоступности — `DEGRADED` с кодом, локальный бэкап остаётся успешным.
-3. **Недельная каденция drill на живом хосте** — тик запускается от последнего чека, блок остаётся зелёным после успешного drill.
-4. **Ветка pending-миграций** — дрill при незакоммиченной миграции обязан дать `UNVERIFIED / MIGRATIONS_NOT_AT_HEAD` (ветка есть в коде, выделенного теста нет).
-5. **Сбой очистки контейнера** — см. `behavior_unverified_items`: падающий `docker rm` обязан зафиксировать `containerCleanup = 'FAILED'` в чеке.
-6. **Живой UI-прогон** обеих кнопок триггеров и отрисовки пяти русских состояний на http://localhost:3000/internal/operations.
+(Статус `gaps_found`: раздел фиксирует остаточные human-пункты; фронтmatter `human_verification` по контракту заполняется только при `human_needed`.)
+
+1. **UAT-ретест G-08-6 — живой браузер оператора** (покрывает истины 18-19): `scripts\app-lifecycle.ps1 -Action Start`, открыть **http://127.0.0.1:8080/internal/operations**, авторизоваться Basic-кредами из `.env`.
+   *Ожидание:* «Центр операций» и все блоки с реальными данными (без «Этот операционный блок недоступен»); обе кнопки отвечают «поставлена в очередь…»; `-Action Status` показывает `gateway(:8080)=up`.
+   *Почему человек:* сквозной браузерный путь исполняется только e2e на owned release-стеке (мной не запускался) и живым прогоном; визуал и поток не проверяются grep-тестами.
+2. **UAT-ретест G-08-5 — живой чек очистки**: выполнить drill и прочитать строку `BackupVerificationReceipt`.
+   *Ожидание:* `checks.containerCleanup = { containerName, preInspect: 0, rmExitCode: 0, postInspect: ≠0, verdict: "REMOVED" }`; переименование контейнера до окна очистки даёт `FAILED` при нетронутом `overall`; UI показывает «Контейнер удалён»/«Не удалось удалить контейнер» соответственно.
+   *Почему человек:* подпись живого receipt и UI-лейблов на реальном хосте.
+
+(Успешно пройденные UAT-тесты 1-4 — живой бэкап, off-host robocopy, недельная каденция, ветка `MIGRATIONS_NOT_AT_HEAD` — ранее подтверждены и в human-пункты не возвращаются.)
 
 ### Gaps Summary
 
-Проваленных истин, отсутствующих/заглушечных артефактов и неподключённых key-link'ов не обнаружено — структурированных gaps нет (`gaps:` во frontmatter отсутствует). Автоматически проверяемая часть цели достигнута: бэкапы opt-in и герметично доказаны на настоящем `pg_dump`, drill проходит полный цикл с immutable-чеками, статус в operations center считается при чтении и честно рендерит все не-зелёные состояния без секретов. Статус `human_needed` обусловлен (а) одной истиной о сбое очистки контейнера, чьё поведение не исполняется ни одним тестом, и (б) шестью позициями живой/визуальной проверки, которые принципиально не проверяются grep- и юнит-тестами (реальный продакшн-дамп, реальный off-host шар, недельная каденция, UI-поток).
+Автоматически проверяемая часть цели достигнута существенно: бэкапы opt-in доказаны на настоящем `pg_dump` (7/7 + юниты), drill проходит полный цикл с immutable-чеками на реальном Docker, обе таблицы append-only (8/8), 5-state read-time честно рендерит все не-зелёные состояния без секретов (24/24 + веб 82/82), ingress-закрытие G-08-6 реализовано и подключено (шлюз подписывает `/internal*/operations*`, живёт в dev-топологии — live 401, неподписанный прокси — live 404), закрытие G-08-5 заменило exit-код на inspect-последовательность с юнит A-F и интеграционным негативом.
+
+Статус `gaps_found` обусловлен ровно одной проваленной истиной (22): новый вердикт очистки остаётся fail-open в двух corner-случаях пост-rm inspect (spawnError и недоступный демон → REMOVED без доказательства отсутствия), что противоречит собственному комментарию кода и инварианту G-08-5/T-08-21, и не покрыто тестом (WR-01, grep-0). Исправление локально описано в 08-REVIEW.md (предложен патч + зеркальный юнит-кейс). Две истины (18-19) — browser-цепочка 08-04 — присутствуют и подключены, но их сквозное поведение не упражнено ни одним тестом в моём процессе (e2e требует owned release-стека), поэтому они вынесены в `behavior_unverified_items` и на UAT-ретест.
+
+Отклонённых в более поздние фазы пунктов нет: ни одна поздняя фаза roadmap не покрывает cleanup-вердикт drill'а (следующая — observability/алерты, не эти corner-случаи).
 
 ---
 
-_Verified: 2026-10-26T13:55:57Z_
+_Verified: 2026-11-01T01:13:27Z_
 _Verifier: the agent (gsd-verifier)_

@@ -58,7 +58,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 - [x] 08-03-PLAN.md — Operations visibility: backups() read model with 5-state honesty, secret-free projection, manual triggers behind OperatorGuard, Russian UI block
 - [x] 08-04-PLAN.md — Gap closure G-08-6: operator-gateway signs /internal*/operations* paths and runs in the dev launcher; e2e proves browser-through-gateway operations access
 - [x] 08-05-PLAN.md — Gap closure G-08-5: containerCleanup verdict verified by pre/post-rm docker inspect instead of rm exit code; FAILED branch test-covered
-- [ ] 08-06-PLAN.md — Gap closure WR-01 (verifier truth 22): REMOVED requires daemon-clean post-rm inspect evidence — post-rm spawnError / daemon-unreachable fails closed to FAILED; cleanup exec trio guarded so record() always lands (IN-02)
+- [x] 08-06-PLAN.md — Gap closure WR-01 (verifier truth 22): REMOVED requires daemon-clean post-rm inspect evidence — post-rm spawnError / daemon-unreachable fails closed to FAILED; cleanup exec trio guarded so record() always lands (IN-02)
 **UI hint**: no
 
 ### Phase 9: Degradation Alerting

@@ -1,62 +1,58 @@
 ---
 phase: 08-backups-and-restore-verification
-reviewed: 2026-11-01T01:45:57Z
+reviewed: 2026-11-02T14:35:50Z
 depth: standard
-files_reviewed: 12
+files_reviewed: 2
 files_reviewed_list:
-  - .env.example
-  - infra/operator-gateway/security.mjs
-  - infra/operator-gateway/server.mjs
-  - package.json
-  - scripts/app-lifecycle.ps1
-  - tests/e2e/live-provider-stack.ts
-  - tests/e2e/operations-gateway.spec.ts
-  - tests/integration/backup-restore-drill.test.ts
-  - tests/integration/operator-gateway.test.ts
-  - tests/unit/operator-gateway.test.ts
   - workers/data-sync/src/jobs/backup-drill.ts
   - tests/unit/backup-drill.test.ts
 findings:
   critical: 0
-  warning: 4
+  warning: 2
   info: 3
-  total: 7
+  total: 5
 status: issues_found
 ---
 
-# Phase 8: Code Review Report (incremental re-review since 6c6c98a)
+# Phase 8: Code Review Report (incremental re-review since b626569)
 
-**Reviewed:** 2026-11-01T01:45:57Z
+**Reviewed:** 2026-11-02T14:35:50Z
 **Depth:** standard
-**Files Reviewed:** 12
+**Files Reviewed:** 2
 **Status:** issues_found
+
+## Narrative Findings (AI reviewer)
 
 ## Summary
 
-Incremental adversarial review of what changed since `6c6c98a` — the G-08-6 operations-ingress closure (gateway protected-path extension to `/internal*/operations*`, dev-launcher gateway integration, real-browser e2e with fail-closed negatives) and the G-08-5 inspect-verified container-cleanup verdict (pre-rm inspect → rm → post-rm inspect with a durable audit entry). Both gaps are substantively addressed: path classification is segment-boundary-correct with unit cases for near-miss neighbors, the e2e negative probe correctly bypasses Playwright credential injection via plain `fetch`, credentials stay out of argv in the drill, and `record()` structurally keeps `overall` independent of the cleanup verdict (test-guarded). No critical issues found. The warnings concentrate on two residual fail-open corners in the new cleanup verdict (post-rm inspect failures and the mutable container *name* as identity — both contradict the fail-closed invariant written in the adjacent comment), plus dev-launcher config-consistency gaps when `GATEWAY_PORT` is overridden and the gateway's pre-existing `0.0.0.0` bind now carrying the operations surface.
+Delta scope: plan 08-06's gap closure (fail-closed post-rm cleanup verdict per WR-01 + guarded cleanup trio per IN-02) in exactly the two scoped files, reviewed against `git diff b626569 HEAD`. The core fix is substantive. `REMOVED` now requires three positive conditions — pre-rm inspect hit, `rm --force` exit 0, and a post-rm inspect that ran (`!spawnError`), exited non-zero, and carries none of the three connection-failure phrases (`backup-drill.ts:483-490`) — so both verifier counterexamples (post-rm spawnError, "Cannot connect to the Docker daemon" stderr) fail closed. The classifier (`isDockerUnreachableError`, lines 233-240) avoids false positives on every canonical absence wording: "No such object", "No such container", and "Error response from daemon: No such container" match none of the three phrases (only the word "daemon" appears, which is deliberately not a phrase), and test C still earns `REMOVED` on that stderr. `safeCleanupRun` (lines 473-479) wraps each cleanup call in its own try/catch, maps a throw to the existing `BackupExecResult` shape with `spawnError` set (evidence preserved as the audit's `spawn_error` marker, not swallowed), keeps the trio independent, and guarantees the verdict block completes so `record()` at line 506 always runs for exec failures. Tests G/H/I pin these behaviors through the full drill harness (receipt-level assertions, not source text), and the audit shape `{containerName, preInspect, rmExitCode, postInspect, verdict}`, the `DrillCleanupState` enum, the `backup_drill.container_cleanup_failed` log event, and `record()`'s `overall` independence are untouched (re-asserted by A–E/G/H/I). Unit suite re-run during this review: 32/32 green. No critical issues.
+
+One residual fail-open remains inside the new condition: a post-rm inspect result with `code: undefined` but no `spawnError` property passes the "exited non-zero" test because `undefined !== 0` (WR-05) — a narrower corner of the very invariant this delta claims closed, and it produces an internally contradictory receipt (`postInspect: "spawn_error"` beside `verdict: "REMOVED"`). Prior-finding disposition for these two files: **WR-01 — resolved** by this delta (modulo WR-05's residual corner); **IN-02 — resolved** (modulo the non-exec logger escape noted in IN-06); **WR-02 — still applies** to `backup-drill.ts` and is carried below; **WR-03, WR-04, IN-01, IN-03 — do not apply** to these two files (they target `scripts/app-lifecycle.ps1`, `infra/operator-gateway/server.mjs`, and `tests/unit/operator-gateway.test.ts`) and remain tracked in `08-REVIEW-DISPOSITION.md`.
 
 ## Warnings
 
-### WR-01: Post-rm inspect failure is recorded as REMOVED — fail-open against the stated G-08-5 invariant
+### WR-05: Post-rm inspect with an undefined exit code and no spawnError still records REMOVED — the last fall-through without absence evidence (residual of prior WR-01)
 
-**File:** `workers/data-sync/src/jobs/backup-drill.ts:447-453`
-**Issue:** The verdict is `identityLostBeforeRm || rmFailed || survivedRm ? "FAILED" : "REMOVED"`. `survivedRm = !postInspect.spawnError && postInspect.code === 0`, so a post-rm inspect that **could not run at all** (`spawnError`) — or that failed because the Docker daemon became unreachable (exit≠0 with a "Cannot connect" stderr, indistinguishable by exit code from "No such object") — falls through to `REMOVED`. This directly contradicts the comment block at lines 444-446 ("REMOVED therefore requires positive inspect evidence twice; every other path fails closed to FAILED") and G-08-5's fail-closed requirement: the receipt asserts «Контейнер удалён» with zero positive absence evidence. The pre-rm side handles this correctly (`spawnError` → FAILED, unit test F), but no unit test covers postInspect `spawnError` (`inspects: [INSPECT_FOUND, spawnGone]` is absent), so the fail-open branch is unguarded.
-**Fix:** Require the post-rm inspect to have actually reached the daemon and reported absence before recording REMOVED, e.g.:
+**File:** `workers/data-sync/src/jobs/backup-drill.ts:489`
+**Issue:** `absentPerInspect = !postInspect.spawnError && postInspect.code !== 0 && !isDockerUnreachableError(postInspect.stderr)`. When the post-rm inspect yields `code: undefined` **without** the `spawnError` property, all three conjuncts hold — `undefined !== 0` evaluates to `true` — so with a pre-rm hit and `rm` exit 0 the verdict records `REMOVED` although the inspect never exited with any code and reported no absence whatsoever. The state is reachable in production: `spawnBackupExec` sets `spawnError` only from the timeout timer or the spawn `error` event; a child killed by a signal (docker CLI crash, external kill, OOM) settles via `close(code ?? undefined)` at `backup.ts:60` with `code: undefined` and no `spawnError`, and any injected `BackupExec` (input type allows arbitrary implementations) may return the same shape. The receipt is then self-contradicting: the audit at line 499 keys on `postInspect.code ?? "spawn_error"`, so it writes `{ postInspect: "spawn_error", verdict: "REMOVED" }` — the audit says the inspect never produced an exit code while the verdict claims its "non-zero exit" as absence evidence. This violates plan 08-06's must-have truth ("exited non-zero … every other post-rm state records `FAILED`") and re-diverges from the invariant comment at lines 464-467 ("actually ran … exited non-zero") — the exact comment/behavior split that was WR-01's core complaint. Probability is low (abnormal exec result, and a *factually false* REMOVED additionally needs the WR-02 rename race), but this is the failure class the delta exists to eliminate.
+**Fix:** Require a numeric non-zero exit code, aligning the verdict with the audit's own `spawn_error` marker:
 
 ```ts
-const postInspectRan = !postInspect.spawnError;
-const daemonErrorOnPost = /cannot connect|daemon/i.test(postInspect.stderr);
-const absentPerInspect = postInspectRan && postInspect.code !== 0 && !daemonErrorOnPost;
+const absentPerInspect =
+  typeof postInspect.code === "number" &&
+  postInspect.code !== 0 &&
+  !postInspect.spawnError &&
+  !isDockerUnreachableError(postInspect.stderr);
 containerCleanup = identityLostBeforeRm || rmFailed || !absentPerInspect ? "FAILED" : "REMOVED";
 ```
 
-Add a unit case `inspects: [INSPECT_FOUND, spawnGone]` expecting `FAILED` (mirroring existing test F).
+Add a unit case beside G: `inspects: [INSPECT_FOUND, { code: undefined, stdout: Buffer.alloc(0), stderr: "" }]` (no `spawnError`) → `containerCleanup = "FAILED"` with audit `{ postInspect: "spawn_error", verdict: "FAILED" }`.
 
-### WR-02: Cleanup verdict keys on the mutable container NAME although the immutable container ID is already captured — residual rename window still yields a false REMOVED
+### WR-02: Cleanup verdict keys on the mutable container NAME although the immutable container ID is already captured (carried from review at b626569)
 
-**File:** `workers/data-sync/src/jobs/backup-drill.ts:331-345, 447-449`
-**Issue:** `docker run -d` prints the container ID on stdout (`spawnBackupExec` captures stdout), but `containerStart.stdout` is discarded and all three cleanup calls use `containerName`. The exact UAT failure mode (G-08-5: Docker 29.x `rm --force` idempotent, exit 0 for an unresolvable name) is only closed for renames that land **before** the pre-rm inspect. A rename landing in the window between the pre-rm inspect and the rm — or at the rm itself — produces: pre-inspect exit 0 → rm exit 0 (idempotent miss) → post-inspect exit≠0 (name miss) → `REMOVED` while the renamed container lives on as an orphan. The identity actually at issue (the name) is the one mutable input in the verification chain.
-**Fix:** Use the container ID as the verification identity and keep the name for the audit record:
+**File:** `workers/data-sync/src/jobs/backup-drill.ts:350-364, 480-490`
+**Issue:** `docker run -d` prints the container ID on `containerStart.stdout`, but it is discarded and all three cleanup calls (`safeCleanupRun` trio) still use `containerName`. A rename landing in the window between the pre-rm inspect and the `rm` — or at the `rm` itself, where Docker 29.x `rm --force` exits 0 for an unresolvable name (the exact G-08-5 UAT failure mode) — yields pre-inspect 0 → rm 0 → post-inspect name-miss non-zero → `REMOVED` while the renamed container lives on as an orphan. The identity at issue (the name) is the one mutable input in the verification chain; 08-06 touched this code block but did not change the identity, so the finding remains open on this file (correctly scoped as out of 08-06's gap set).
+**Fix:** Use the container ID as verification identity, keep the name for the audit record:
 
 ```ts
 const containerId = containerStart.stdout.toString("utf8").trim().split(/\s+/)[0];
@@ -64,53 +60,30 @@ const containerId = containerStart.stdout.toString("utf8").trim().split(/\s+/)[0
 // keeps { containerName, containerId, ... } for the audit trail.
 ```
 
-(Renames become invisible to the whole chain; the orphan-removal guarantee holds because rm-by-ID targets the same object.) Update the integration/unit assertions that match inspect/rm argv against the name.
-
-### WR-03: Status/Stop never load `.env`, so a non-default GATEWAY_PORT diverges between Start and Status/Stop
-
-**File:** `scripts/app-lifecycle.ps1:27, 130-136, 148`
-**Issue:** `$gatewayPort = 8080` is a script-scope default (line 27); `Load-Env` — which reads `.env` and reassigns `$script:gatewayPort` from `$env:GATEWAY_PORT` (lines 44-46) — runs only in the `-Daemon`/`-Gateway` branches and at line 139 of the Start flow. The `-Action Stop` (line 130) and `-Action Status` (lines 132-136) branches exit before any `Load-Env` call. With `GATEWAY_PORT=9090` in `.env`, Start correctly launches and probes 9090, but Status reports `gateway(:8080)=down`, and Stop's "ports free" confirmation (line 105) checks 8080. The stale-port pre-clean at line 148 also omits the gateway port entirely, so a stale listener on the configured gateway port makes the best-effort gateway spawn fail with only the 15-second warning as evidence. Process-tree kill still catches the gateway via the CommandLine regex, so Stop mostly works — but the reported state is wrong.
-**Fix:** Call `Load-Env` at the top of the Stop and Status branches (after `Set-Location`), and include `$gatewayPort` in the stale-port check at line 148:
-
-```powershell
-if ($Action -eq "Stop") { Load-Env; Stop-Stack; exit 0 }
-if ($Action -eq "Status") { Load-Env; ... }
-```
-
-### WR-04: Operator gateway binds 0.0.0.0 — cleartext Basic credentials and signed operations triggers reachable from the LAN
-
-**File:** `infra/operator-gateway/server.mjs:163` (bind line pre-dates this phase; this phase elevates its exposure)
-**Issue:** `gateway.listen(config.port, "0.0.0.0")` was pre-existing when the gateway only signed replay-preview paths, but this phase extends the protected surface to `/internal/operations*` (backup and restore-drill trigger buttons), documents the gateway as the human operator ingress in the dev topology, and launches it by default. Basic auth over plain HTTP on all interfaces means any LAN host can reach the challenge, brute-force or sniff the operator password, and fire backup/drill triggers against the operator's machine. The web/API in the same launcher bind loopback (`127.0.0.1`), so the gateway is the odd exposure.
-**Fix:** Default to loopback and make the bind explicit and configurable:
-
-```js
-gateway.listen(config.port, environment.GATEWAY_BIND ?? "127.0.0.1");
-```
-
-(documenting `GATEWAY_BIND` in `.env.example` only if a non-loopback bind is genuinely needed).
+Update the unit/integration assertions that match inspect/rm argv against the name (test C's `cleanupCalls` map and `cleanupAudit` `containerName` expectations).
 
 ## Info
 
-### IN-01: Gateway readiness probe conflates "gateway down" with "upstream down"
+### IN-04: `isDockerUnreachableError` is a phrase blacklist — the comment claims "reached the daemon", but any unlisted daemon-fault wording counts as absence evidence
 
-**File:** `scripts/app-lifecycle.ps1:49-54, 133`
-**Issue:** `Test-Http` treats any exception (including the 502 `Invoke-WebRequest` throws for a gateway whose upstream web is unreachable) as "down", and the Status line probes `gateway :/` — which the gateway proxies to the web origin. If web is down while the gateway is healthy, Status reports `gateway(:8080)=down`.
-**Fix:** Probe a path that answers at the gateway itself — e.g. `/internal/operations` and count the 401 challenge as "up" (same approach the e2e `waitForGateway` uses).
+**File:** `workers/data-sync/src/jobs/backup-drill.ts:233-240, 464-467, 489`
+**Issue:** The verdict proves "the CLI spawned and stderr contains none of three phrases", not "the inspect reached the daemon" as the comments at 464-467 and 485-488 state. A connection fault phrased outside the list (e.g. `permission denied while trying to connect to the Docker daemon socket`, missing docker context, TLS/context errors — all exit 1) is treated as positive absence evidence → false `REMOVED`. Realistic daemon-down phrasings on Linux/macOS/Windows ("Cannot connect to the Docker daemon…", "error during connect…", "Is the docker daemon running?") are all covered and timeouts fail closed via `EXEC_TIMEOUT`, so residual risk is low; but note `08-06-SUMMARY.md` decision 1 overstates the guarantee: "error-shape drift … can never flip back to a false REMOVED" holds only for drift of the canonical *absence* wording — drift of *connection-failure* wording flips the other way (classifier miss → false `REMOVED`).
+**Fix:** Prefer positive absence evidence over a fault blacklist: require the canonical absence text in the post-rm stderr, e.g. `/\bno such (object|container)\b/i.test(postInspect.stderr)` as an additional conjunct (or as the condition itself), keeping the blacklist as defense in depth.
 
-### IN-02: Unguarded exec calls in the finally block can skip `record()` entirely — no receipt at all
+### IN-05: Two of three classifier branches and the "No such object" absence variant are unpinned by tests
 
-**File:** `workers/data-sync/src/jobs/backup-drill.ts:447-449`
-**Issue:** The three cleanup `exec.run` calls in the `finally` block (now three where there was one) are not wrapped in try/catch. A throwing `BackupExec` implementation (as opposed to one returning `spawnError`) propagates out of the finally, the original `outcome` is lost, and `record()` at line 469 never runs — the drill produces **no receipt**, failing open on the audit trail and leaving the cadence anchor stale. `spawnBackupExec` and the test doubles return `spawnError` instead of throwing, so this is latent rather than active.
-**Fix:** Wrap the cleanup trio in a try/catch that maps a throw to `{ code: undefined, spawnError: String(error) }` for each stage so the FAILED verdict and receipt always land.
+**File:** `tests/unit/backup-drill.test.ts:65, 285-293, 328-335`
+**Issue:** Test H's single stderr ("Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?") redundantly contains phrases 1 and 3, so deleting either branch keeps the suite green, and the plan-mandated Windows variant `error during connect` (08-06 plan, Task 1 action: "MUST match … the Windows 'error during connect' variant") is never exercised by any test. Symmetrically, test C pins only `Error response from daemon: No such container`; the other canonical absence wording `No such object` (older/Windows docker) appears in no test, so an over-broad future classifier change against it would go undetected. The behaviors the plan must-haves name (G/H/C) are pinned; these adjacent branches are not.
+**Fix:** Parametrize H over the three phrases individually (one test per phrase → FAILED) and add a C-variant asserting `REMOVED` when the post-rm stderr is `Error: No such object: <name>`.
 
-### IN-03: Unit test asserts gateway source text instead of behavior
+### IN-06: `record()` guarantee covers cleanup-exec throws only — a throwing injected logger still escapes the finally block
 
-**File:** `tests/unit/operator-gateway.test.ts:72-76`
-**Issue:** The "compares the complete Basic credential pair" test greps `security.mjs` source for an exact code snippet (`expect(source).toContain("return equalText(decoded, `${expectedUsername}:${expectedPassword}`);")`). It breaks on any harmless reformat and duplicates coverage the spawned-gateway integration tests already provide behaviorally (wrong-password → 401, no upstream hop).
-**Fix:** Prefer a behavioral assertion (e.g. `authenticateBasic` with a correct username + wrong password vs. wrong username + correct password, both false) or drop the test as redundant.
+**File:** `workers/data-sync/src/jobs/backup-drill.ts:455, 502-506`
+**Issue:** IN-02 is closed for `BackupExec` failures (all three cleanup calls go through `safeCleanupRun`), but two unguarded `log(...)` calls remain inside the finally: line 502 and the `log` inside the awaited `.catch()` at line 455 (if that callback throws, the awaited promise rejects and the exception propagates out of the finally). A throwing injected logger (`input.logger`) would then skip `record()` at line 506 — no receipt — the same audit-trail failure mode IN-02 described, on a non-exec path. Latent: the default logger is a no-op and pino-style loggers rarely throw; the plan deliberately scoped IN-02 to the cleanup trio and left line 455 untouched.
+**Fix:** Wrap the two `log` call sites in try/catch (or move `return record(outcome)` into a nested try/finally around the cleanup block) so no logging side effect can prevent the receipt from landing.
 
 ---
 
-_Reviewed: 2026-11-01T01:45:57Z_
+_Reviewed: 2026-11-02T14:35:50Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_

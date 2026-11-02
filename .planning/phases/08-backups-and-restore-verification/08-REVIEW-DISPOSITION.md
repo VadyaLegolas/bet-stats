@@ -3,14 +3,30 @@ phase: 08
 review: 08-REVIEW.md
 titles: json
 findings:
-  - id: WR-01
+  - id: WR-05
     severity: warning
     disposition: open
-    title: "Post-rm inspect failure is recorded as REMOVED — fail-open against the stated G-08-5 invariant"
+    title: "Post-rm inspect with an undefined exit code and no spawnError still records REMOVED — the last fall-through without absence evidence (residual of prior WR-01)"
   - id: WR-02
     severity: warning
     disposition: open
-    title: "Cleanup verdict keys on the mutable container NAME although the immutable container ID is already captured — residual rename window still yields a false REMOVED"
+    title: "Cleanup verdict keys on the mutable container NAME although the immutable container ID is already captured (carried from review at b626569)"
+  - id: IN-04
+    severity: info
+    disposition: open
+    title: "`isDockerUnreachableError` is a phrase blacklist — the comment claims \"reached the daemon\", but any unlisted daemon-fault wording counts as absence evidence"
+  - id: IN-05
+    severity: info
+    disposition: open
+    title: "Two of three classifier branches and the \"No such object\" absence variant are unpinned by tests"
+  - id: IN-06
+    severity: info
+    disposition: open
+    title: "`record()` guarantee covers cleanup-exec throws only — a throwing injected logger still escapes the finally block"
+  - id: WR-01
+    severity: warning
+    disposition: fixed
+    title: "Post-rm inspect failure is recorded as REMOVED — fail-open against the stated G-08-5 invariant"
   - id: WR-03
     severity: warning
     disposition: open
@@ -25,28 +41,32 @@ findings:
     title: "Gateway readiness probe conflates \"gateway down\" with \"upstream down\""
   - id: IN-02
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Unguarded exec calls in the finally block can skip `record()` entirely — no receipt at all"
   - id: IN-03
     severity: info
     disposition: open
     title: "Unit test asserts gateway source text instead of behavior"
-open: 7
-total: 7
-recorded: 2026-11-01T00:50:00.384Z
+open: 9
+total: 11
+recorded: 2026-11-02T14:45:41.630Z
 ---
 
 # Phase 08: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
+| WR-05 | warning | open | - |
 | WR-02 | warning | open | - |
-| WR-03 | warning | open | - |
-| WR-04 | warning | open | - |
-| IN-01 | info | open | - |
-| IN-02 | info | open | - |
-| IN-03 | info | open | - |
+| IN-04 | info | open | - |
+| IN-05 | info | open | - |
+| IN-06 | info | open | - |
+| WR-01 | warning | fixed | Closed by plan 08-06 Task 1 — commits 86f801c (RED cases G/H), 8eb37e3 (GREEN fail-closed verdict); unit 32/32 |
+| WR-03 | warning | open | - (not in the current review) |
+| WR-04 | warning | open | - (not in the current review) |
+| IN-01 | info | open | - (not in the current review) |
+| IN-02 | info | fixed | Closed by plan 08-06 Task 2 — commits 5085314 (RED case I), 8d2eab1 (GREEN safeCleanupRun guard); `record()` always lands |
+| IN-03 | info | open | - (not in the current review) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.

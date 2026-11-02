@@ -52,8 +52,17 @@ created: "2026-10-22"
 | 08-03-t2 | 03 | 3 | BAK-03 | T-08-14,16,17 | manual trigger endpoints enqueue {trigger:"MANUAL"} only; disabled/bad-credential ⇒ uniform 404 | integration | `pnpm vitest run --project integration tests/integration/operator-overview.test.ts` | `tests/integration/operator-overview.test.ts` | ✅ green |
 | 08-03-t2 | 03 | 3 | BAK-03 | T-08-14 | web proxy POST passthrough + method-in-signature rejection; GET unchanged | web unit | `pnpm --filter web test` | `apps/web/app/internal-api/operations/[[...path]]/route.test.ts` | ✅ green |
 | 08-03-t3 | 03 | 3 | BAK-03 | — | UI Block renders 5 states (Russian labels, non-green honesty, trigger buttons) | web unit | `pnpm --filter web test` | `apps/web/app/internal/operations/backup-status-block.test.ts` | ✅ green |
+| 08-04-t1 | 04 | 1 | BAK-03 | T-08-18..20 | gateway HMAC-signs `/internal*`/`/operations*` ingress; unsigned/foreign signature fails closed (unit 17/17, integration 12/12) | unit + integration | `pnpm vitest run --project unit tests/unit/operator-gateway.test.ts` + `pnpm vitest run --project integration tests/integration/operator-gateway.test.ts` | `tests/unit/operator-gateway.test.ts`, `tests/integration/operator-gateway.test.ts` | ✅ green |
+| 08-04-t2 | 04 | 1 | BAK-03 | T-08-19 | dev launcher starts the operator gateway in the documented topology | script check | `pwsh -NoProfile -Command "[System.Management.Automation.Language.Parser]::ParseFile('scripts/app-lifecycle.ps1', [ref]`$null, [ref]`$errors) \| Out-Null; if (`$errors.Count) { exit 1 }"` | `scripts/app-lifecycle.ps1` | ✅ green |
+| 08-04-t3 | 04 | 1 | BAK-03 | T-08-18 | real browser reaches the operations blocks through the gateway and presses both trigger buttons (4/4) | e2e | `playwright test -c playwright.phase06.config.ts tests/e2e/operations-gateway.spec.ts` | `tests/e2e/operations-gateway.spec.ts` | ✅ green |
+| 08-05-t1 | 05 | 1 | BAK-02 | T-08-21,22 | inspect-verified cleanup verdict `{containerName, preInspect, rmExitCode, postInspect, verdict}`; `overall` structurally independent | unit | `pnpm vitest run --project unit tests/unit/backup-drill.test.ts` | `tests/unit/backup-drill.test.ts` | ✅ green |
+| 08-05-t2 | 05 | 1 | BAK-02 | T-08-21 | live-docker proof of the inspect-verified verdict (7/7 on a real daemon) | integration | `pnpm vitest run --project integration tests/integration/backup-restore-drill.test.ts` | `tests/integration/backup-restore-drill.test.ts` | ✅ green |
+| 08-06-t1 | 06 | 1 | BAK-02 | T-08-23 | fail-closed post-rm verdict: spawnError/daemon-unreachable stderr ⇒ `FAILED`, canonical "No such container" ⇒ `REMOVED` (cases G/H + test-C guard) | unit | `pnpm vitest run --project unit tests/unit/backup-drill.test.ts` | `tests/unit/backup-drill.test.ts` | ✅ green |
+| 08-06-t2 | 06 | 1 | BAK-02 | T-08-23 | a throwing cleanup exec can never skip `record()` (case I); wave gates green | unit | `pnpm vitest run --project unit tests/unit/backup-drill.test.ts` | `tests/unit/backup-drill.test.ts` | ✅ green |
 
 *Status legend: ✅ green · ❌ red · ⚠️ flaky. Audit 2026-10-24: all rows verified green on the executed tree (unit 58/58, integration 36/36, web 79/79).*
+
+*Gap-closure rows (plans 08-04/05/06) added by the 2026-11-02 re-audit: green on the executed tree — unit backup-drill 32/32 and unit operator-gateway 17/17, integration operator-gateway 12/12, integration backup-restore-drill 7/7 (live daemon at 657fb6f), e2e operations-gateway 4/4, full `pnpm test` 447/454 with only the documented pre-existing `tests/unit/fixtures-sync.test.ts` failure.*
 
 ---
 
@@ -87,6 +96,8 @@ created: "2026-10-22"
 - [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** audited 2026-10-24 — 12/12 Per-Task rows green (unit 58/58, integration 36/36 on an isolated throwaway Postgres with both phase migrations deployed, web 79/79); manual-only items remain operator-environment verifications by design.
+
+**Re-audit 2026-11-02 (verify:post nyquist hook, gap-closure plans 08-04/05/06):** 19/19 Per-Task rows green — no new MISSING/PARTIAL requirements, no escalations to Manual-Only; `status: validated`, `nyquist_compliant: true` retained.
 
 ## Validation Audit 2026-10-24
 

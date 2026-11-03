@@ -463,9 +463,15 @@ export async function runBackupDrill(input: RunBackupDrillInput): Promise<Backup
     // cleanup, but the rm is still attempted best-effort), rm, post-rm inspect.
     // REMOVED therefore requires positive inspect evidence twice: the container
     // present at the pre-rm inspect, AND a post-rm inspect that actually ran
-    // (no spawnError), reached the daemon, exited non-zero, and carries no
-    // daemon-unreachable indicator — every other path fails closed to FAILED.
-    // (WR-01: a post-rm spawnError or a daemon error is NOT absence evidence.)
+    // (no spawnError) and returned a numeric non-zero exit code — the field is
+    // `number | undefined`, so a result carrying no exit code at all (e.g. a
+    // signal-killed docker CLI) is not absence evidence — with no
+    // daemon-unreachable phrase in stderr. Every other post-rm state records
+    // FAILED.
+    // (WR-01: a post-rm spawnError or a daemon-error phrase is NOT absence
+    // evidence; WR-05: neither is a result with no exit code. The stderr test
+    // is a deliberately narrow phrase blacklist that proves nothing about
+    // daemon contact itself — IN-04 stays open.)
     // IN-02: each cleanup stage is individually guarded so a throwing BackupExec
     // can never escape the finally block and skip record(). A throw maps to that
     // stage's spawn_error; the fail-closed verdict records FAILED and the
@@ -482,11 +488,19 @@ export async function runBackupDrill(input: RunBackupDrillInput): Promise<Backup
     const postInspect = await safeCleanupRun(["inspect", containerName]);
     const identityLostBeforeRm = Boolean(preInspect.spawnError) || preInspect.code !== 0;
     const rmFailed = Boolean(removal.spawnError) || removal.code !== 0;
-    // Fail-closed absence proof (WR-01): only a post-rm inspect that actually
-    // reached the daemon and exited non-zero proves the container is gone. A
-    // spawnError (the CLI never ran) or a daemon fault (indistinguishable by
-    // exit code from "No such object") is not evidence of absence.
-    const absentPerInspect = !postInspect.spawnError && postInspect.code !== 0 && !isDockerUnreachableError(postInspect.stderr);
+    // Fail-closed absence proof (WR-01, WR-05): only a post-rm inspect that
+    // actually ran (no spawnError) and returned a numeric non-zero exit code
+    // proves the container is gone. `typeof postInspect.code === "number" &&
+    // postInspect.code !== 0` gates the test because `undefined !== 0` would
+    // otherwise pass for a result that never exited at all — a codeless result
+    // proves nothing (the audit keys it as "spawn_error"), a spawnError means
+    // the CLI never ran, and a daemon fault (indistinguishable by exit code
+    // from "No such object") is not evidence of absence.
+    const absentPerInspect =
+      typeof postInspect.code === "number" &&
+      postInspect.code !== 0 &&
+      !postInspect.spawnError &&
+      !isDockerUnreachableError(postInspect.stderr);
     containerCleanup = identityLostBeforeRm || rmFailed || !absentPerInspect ? "FAILED" : "REMOVED";
     // Durable audit trail in the immutable receipt checks JSON: container name
     // plus per-stage exit codes ("spawn_error" when the CLI could not spawn).

@@ -4,11 +4,11 @@ milestone: v1.1
 current_phase: 08
 current_phase_name: Backups and Restore Verification
 status: executing
-stopped_at: Completed 08-06-PLAN.md (gap closure WR-01 - fail-closed post-rm cleanup verdict + IN-02 record() guard); all 6 phase-8 plans done; ready for phase verification / UAT re-test
-last_updated: "2026-11-01T02:00:00.000Z"
-last_activity: 2026-11-01
-last_activity_desc: Phase 08 plan 06 executed (gap WR-01 closed, pending operator UAT re-test)
-state_head: 8d2eab1
+stopped_at: Completed 08-07-PLAN.md (gap closure WR-05 - numeric post-rm exit-code guard + IN-05 classifier pins); all 7 phase-8 plans done; ready for phase verification / UAT re-test
+last_updated: "2026-11-03T15:24:00.000Z"
+last_activity: 2026-11-03
+last_activity_desc: Phase 08 plan 07 executed (gap WR-05 closed, pending operator UAT re-test)
+state_head: 649918f
 progress:
   total_phases: 10
   completed_phases: 2
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 08 (Backups and Restore Verification) — EXECUTING (all plans complete, pending verification)
-Plan: 6 of 6 — complete
-Status: Phase 08 plans 01-06 all complete (gap closure WR-01 done); ready for /gsd-verify-work and G-08-5/G-08-6/WR-01 UAT re-test
-Last activity: 2026-11-01 — Phase 08 plan 06 (gap closure WR-01, fail-closed post-rm cleanup verdict + IN-02 record() guard) executed
+Plan: 7 of 7 — complete
+Status: Phase 08 plans 01-07 all complete (gap closures WR-01 + WR-05 done); ready for /gsd-verify-work and G-08-5/G-08-6/WR-01/WR-05 UAT re-test
+Last activity: 2026-11-03 — Phase 08 plan 07 (gap closure WR-05, numeric post-rm exit-code guard + IN-05 classifier pins) executed
 
 Progress: [██░░░░░░░░] 20%
 
@@ -129,6 +129,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 08 P04 | 15h 35m (2 sessions) | 3 tasks | 9 files |
 | Phase 08 P05 | 18min | 2 tasks | 3 files |
 | Phase 08 P06 | 11min | 2 tasks | 2 files |
+| Phase 08 P07 | 13min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -262,6 +263,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 08]: The immutable receipt checks JSON gains checks.containerCleanup = { containerName, preInspect, rmExitCode, postInspect, verdict } (exit codes or "spawn_error") as the durable cleanup audit trail; record() still writes containerCleanup and overall independently, so the earned overall is structurally untouched by cleanup outcome (D-11/T-08-10) (08-05)
 - [Phase 08]: Post-rm cleanup verdict is fully fail-closed (WR-01, truth 22): REMOVED now also requires the post-rm docker inspect to have actually reached Docker (no spawnError, no daemon-unreachable stderr via isDockerUnreachableError matching only "cannot connect"/"error during connect"/"is the docker daemon running"); any spawn error or unreachable-daemon output records FAILED - deliberate narrow classifier scope so error-shape drift can never flip FAILED back to REMOVED (08-06)
 - [Phase 08]: The cleanup exec trio (pre-rm inspect, rm --force, post-rm inspect) runs through safeCleanupRun which maps a thrown exec error to the BackupExecResult shape (empty stdout, error text in stderr, spawnError set), so record() always lands and a cleanup crash can no longer leave drill_cleanup NULL (IN-02); REMOVED/FAILED/NOT_STARTED enum, audit shape and overall-verdict independence unchanged (08-06)
+- [Phase 08]: containerCleanup REMOVED additionally requires a numeric non-zero post-rm inspect exit code — `typeof postInspect.code === "number" && code !== 0` (the field is `number | undefined`, so `undefined !== 0` used to pass): a codeless result from a signal-killed docker CLI now records FAILED, and the receipt can never carry the self-contradicting { postInspect: "spawn_error", verdict: "REMOVED" } pair (WR-05, truth 22 residual) (08-07)
+- [Phase 08]: Invariant + absence-proof comments state only what the code proves (an inspect that ran and returned a numeric non-zero exit code, with no daemon-unreachable phrase in stderr) and note the phrase blacklist proves nothing about daemon contact itself — IN-04 stays open, no "reached the daemon" claim (08-07)
+- [Phase 08]: IN-05 classifier pins isolate one phrase each: Windows `error during connect` stderr (H's stderr carries the other two phrases, so a deleted branch keeps H green) → FAILED, and `Error: No such object: <name>` absence wording → REMOVED; IN-05's residual H-parametrization stays open in 08-REVIEW-DISPOSITION.md (08-07)
 
 ### Pending Todos
 

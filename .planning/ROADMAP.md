@@ -59,7 +59,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 - [x] 08-04-PLAN.md — Gap closure G-08-6: operator-gateway signs /internal*/operations* paths and runs in the dev launcher; e2e proves browser-through-gateway operations access
 - [x] 08-05-PLAN.md — Gap closure G-08-5: containerCleanup verdict verified by pre/post-rm docker inspect instead of rm exit code; FAILED branch test-covered
 - [x] 08-06-PLAN.md — Gap closure WR-01 (verifier truth 22): REMOVED requires daemon-clean post-rm inspect evidence — post-rm spawnError / daemon-unreachable fails closed to FAILED; cleanup exec trio guarded so record() always lands (IN-02)
-- [ ] 08-07-PLAN.md — Gap closure WR-05: numeric-exit-code guard so post-rm inspect {code: undefined} without spawnError fails closed to FAILED instead of recording REMOVED; TDD case J + IN-05 classifier pins
+- [x] 08-07-PLAN.md — Gap closure WR-05: numeric-exit-code guard so post-rm inspect {code: undefined} without spawnError fails closed to FAILED instead of recording REMOVED; TDD case J + IN-05 classifier pins
 **UI hint**: no
 
 ### Phase 9: Degradation Alerting

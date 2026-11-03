@@ -84,6 +84,26 @@ Update the unit/integration assertions that match inspect/rm argv against the na
 
 ---
 
-_Reviewed: 2026-11-02T14:35:50Z_
+## Round 4: incremental re-review since d32173d (gap-closure plan 08-07)
+
+**Reviewed:** 2026-11-03T15:40:00Z
+**Scope:** `git diff d32173d..HEAD` — code files only: `workers/data-sync/src/jobs/backup-drill.ts` (30 lines), `tests/unit/backup-drill.test.ts` (42 lines). Planning artifacts excluded.
+**Depth:** standard
+**Result:** **no new findings** (no WR-06+/IN-07+ raised).
+
+Conformance verified against plan 08-07 and the ready patch at WR-05 (lines 38-49 above):
+
+1. **WR-05 closed as specified** — `absentPerInspect` (backup-drill.ts:499-503) now leads with `typeof postInspect.code === "number" &&` ahead of `code !== 0`, with `!spawnError` and `!isDockerUnreachableError(stderr)` unchanged; strictly a strengthening — `identityLostBeforeRm`, `rmFailed`, the verdict ternary, `safeCleanupRun` and the classifier are untouched context lines. The self-contradicting `{ postInspect: "spawn_error", verdict: "REMOVED" }` pair is no longer producible.
+2. **Case J is a genuine RED/GREEN** — pre-fix it asserts FAILED against a REMOVED result (the exact counterexample: `undefined !== 0` passes all three old conjuncts); commit order RED `7c2ec70` → GREEN `4f200ef` holds. The fixture has no `spawnError` key and does not reuse POST_SPAWN_GONE; provenance matches `backup.ts:60` (`close(code ?? undefined)`).
+3. **Both IN-05 pins assert real branches with the plan's exact literals** — IN-05a's Windows stderr literal isolates only the `error during connect` branch (contains neither other classifier phrase; deleting that branch flips the pin to REMOVED and fails it); IN-05b pins `Error: No such object` → REMOVED against classifier over-match. Unit 35/35.
+4. **No comment overclaim** — the restated invariant block states the numeric-exit-code requirement and explicitly disclaims daemon-contact proof (IN-04 stays open; the one carried-over sentence from 08-06 is unchanged, not worsened).
+5. **Frozen contracts intact** — audit shape `{containerName, preInspect, rmExitCode, postInspect, verdict}`, `DrillCleanupState` enum, `backup_drill.container_cleanup_failed` log event and `record()` independence are outside the diff hunks; `tests/integration/backup-restore-drill.test.ts` untouched; no unrelated files in the code diff.
+6. **Gates re-run during review:** unit backup-drill 35/35; `pnpm typecheck` 7/7.
+
+Prior-finding status after this delta: **WR-05 → fixed** (this round). WR-02, WR-03, WR-04, IN-01, IN-03, IN-04, IN-06 remain open and untouched by this diff. **IN-05 → fixed at the two delivered pins**; its residual sub-item (parametrizing case H over the three classifier phrases individually) is deliberately NOT delivered by plan 08-07 and stays recorded open — see 08-REVIEW-DISPOSITION.md.
+
+---
+
+_Reviewed: 2026-11-02T14:35:50Z (round 2) / 2026-11-03T15:40:00Z (round 4)_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_

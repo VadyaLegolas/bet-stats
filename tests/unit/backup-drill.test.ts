@@ -362,6 +362,21 @@ describe("runBackupDrill container cleanup verdict is inspect-verified (G-08-5)"
     expect(fake.receipts[0]).toMatchObject({ overall: "VERIFIED", containerCleanup: "FAILED" });
     expect(cleanupAudit(fake.receipts)).toMatchObject({ containerName: DRILL_NAME, preInspect: "spawn_error", rmExitCode: "spawn_error", postInspect: "spawn_error", verdict: "FAILED" });
   });
+
+  it("J: records FAILED when the post-rm inspect carries no exit code at all and no spawnError (WR-05 — code: undefined must not pass code !== 0)", async () => {
+    // The signal-killed docker CLI shape: backup.ts settles `close(code ?? undefined)`
+    // with spawnError unset. Deliberately NOT POST_SPAWN_GONE — that fixture's
+    // spawnError already takes the fixed G path; this one has no spawnError key.
+    const codelessPostInspect: Partial<BackupExecResult> = { code: undefined, stdout: Buffer.alloc(0), stderr: "" };
+    const { result, receipts } = await runDrill({ execOptions: { inspects: [INSPECT_FOUND, codelessPostInspect] } });
+
+    expect(result.overall).toBe("VERIFIED");
+    expect(result.containerCleanup).toBe("FAILED");
+    expect(receipts).toHaveLength(1);
+    // The audit keys on `code ?? "spawn_error"`, so the pre-fix receipt would have
+    // read { postInspect: "spawn_error", verdict: "REMOVED" } — self-contradicting.
+    expect(cleanupAudit(receipts)).toMatchObject({ containerName: DRILL_NAME, preInspect: 0, rmExitCode: 0, postInspect: "spawn_error", verdict: "FAILED" });
+  });
 });
 
 describe("captureSourceCounts", () => {

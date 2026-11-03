@@ -59,10 +59,14 @@ created: "2026-10-22"
 | 08-05-t2 | 05 | 1 | BAK-02 | T-08-21 | live-docker proof of the inspect-verified verdict (7/7 on a real daemon) | integration | `pnpm vitest run --project integration tests/integration/backup-restore-drill.test.ts` | `tests/integration/backup-restore-drill.test.ts` | ✅ green |
 | 08-06-t1 | 06 | 1 | BAK-02 | T-08-23 | fail-closed post-rm verdict: spawnError/daemon-unreachable stderr ⇒ `FAILED`, canonical "No such container" ⇒ `REMOVED` (cases G/H + test-C guard) | unit | `pnpm vitest run --project unit tests/unit/backup-drill.test.ts` | `tests/unit/backup-drill.test.ts` | ✅ green |
 | 08-06-t2 | 06 | 1 | BAK-02 | T-08-23 | a throwing cleanup exec can never skip `record()` (case I); wave gates green | unit | `pnpm vitest run --project unit tests/unit/backup-drill.test.ts` | `tests/unit/backup-drill.test.ts` | ✅ green |
+| 08-07-t1 | 07 | 2 | BAK-02 | T-08-24 | numeric post-rm exit-code guard: `code: undefined` without spawnError ⇒ `FAILED` (case J); receipt never carries `{postInspect: "spawn_error", verdict: "REMOVED"}` | unit | `pnpm vitest run --project unit tests/unit/backup-drill.test.ts` | `tests/unit/backup-drill.test.ts` | ✅ green |
+| 08-07-t2 | 07 | 2 | BAK-02 | T-08-24 | IN-05 classifier pins: Windows "error during connect" ⇒ `FAILED`, "Error: No such object" absence ⇒ `REMOVED`; wave gates green | unit | `pnpm vitest run --project unit tests/unit/backup-drill.test.ts` | `tests/unit/backup-drill.test.ts` | ✅ green |
 
 *Status legend: ✅ green · ❌ red · ⚠️ flaky. Audit 2026-10-24: all rows verified green on the executed tree (unit 58/58, integration 36/36, web 79/79).*
 
 *Gap-closure rows (plans 08-04/05/06) added by the 2026-11-02 re-audit: green on the executed tree — unit backup-drill 32/32 and unit operator-gateway 17/17, integration operator-gateway 12/12, integration backup-restore-drill 7/7 (live daemon at 657fb6f), e2e operations-gateway 4/4, full `pnpm test` 447/454 with only the documented pre-existing `tests/unit/fixtures-sync.test.ts` failure.*
+
+*Gap-closure rows (plan 08-07) added by the 2026-11-03 verify:post re-audit: green on the executed tree at 604a2eb — unit backup-drill 35/35, `pnpm typecheck` 7/7, `pnpm build` 7/7, full `pnpm test` 450/457 with only the documented `tests/unit/fixtures-sync.test.ts` 7 failures (web suite run separately: 82/82).*
 
 ---
 
@@ -97,7 +101,9 @@ created: "2026-10-22"
 
 **Approval:** audited 2026-10-24 — 12/12 Per-Task rows green (unit 58/58, integration 36/36 on an isolated throwaway Postgres with both phase migrations deployed, web 79/79); manual-only items remain operator-environment verifications by design.
 
-**Re-audit 2026-11-02 (verify:post nyquist hook, gap-closure plans 08-04/05/06):** 19/19 Per-Task rows green — no new MISSING/PARTIAL requirements, no escalations to Manual-Only; `status: validated`, `nyquist_compliant: true` retained.
+**Re-audit 2026-11-02 (verify:post nyquist hook, gap-closure plans 08-04/05/06):** 19/19 Per-Task rows green - no new MISSING/PARTIAL requirements, no escalations to Manual-Only; `status: validated`, `nyquist_compliant: true` retained.
+
+**Re-audit 2026-11-03 (verify:post nyquist hook, gap-closure plan 08-07):** 21/21 Per-Task rows green (the two new 08-07 rows verified on the executed tree at 604a2eb: unit backup-drill 35/35, typecheck 7/7, build 7/7, `pnpm test` only the documented fixtures-sync 7 failures) - no new MISSING/PARTIAL requirements, no escalations to Manual-Only; `status: validated`, `nyquist_compliant: true` retained.
 
 ## Validation Audit 2026-10-24
 

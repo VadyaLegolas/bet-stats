@@ -377,6 +377,33 @@ describe("runBackupDrill container cleanup verdict is inspect-verified (G-08-5)"
     // read { postInspect: "spawn_error", verdict: "REMOVED" } — self-contradicting.
     expect(cleanupAudit(receipts)).toMatchObject({ containerName: DRILL_NAME, preInspect: 0, rmExitCode: 0, postInspect: "spawn_error", verdict: "FAILED" });
   });
+
+  it("IN-05a: fails closed on the Windows 'error during connect' daemon-unreachable variant (classifier branch pin)", async () => {
+    // H's stderr redundantly carries the "Cannot connect" and "Is the docker
+    // daemon running?" phrases, so deleting the "error during connect" branch
+    // keeps H green. This literal contains neither of those two phrases — it
+    // fails if that branch is removed.
+    const windowsConnectFailure: Partial<BackupExecResult> = { code: 1, stdout: Buffer.alloc(0), stderr: 'error during connect: Get "\\\\.\\pipe\\docker_engine": The system cannot find the file specified' };
+    const { result, receipts } = await runDrill({ execOptions: { inspects: [INSPECT_FOUND, windowsConnectFailure] } });
+
+    expect(result.overall).toBe("VERIFIED");
+    expect(result.containerCleanup).toBe("FAILED");
+    expect(receipts).toHaveLength(1);
+    expect(cleanupAudit(receipts)).toMatchObject({ containerName: DRILL_NAME, preInspect: 0, rmExitCode: 0, postInspect: 1, verdict: "FAILED" });
+  });
+
+  it("IN-05b: still records REMOVED for the 'Error: No such object' absence wording (classifier over-match pin)", async () => {
+    // The other canonical absence wording (older/Windows docker) contains none
+    // of the three connection-failure phrases, so it must remain absence
+    // evidence even though it starts with "Error:".
+    const noSuchObject: Partial<BackupExecResult> = { code: 1, stdout: Buffer.alloc(0), stderr: "Error: No such object: bet-stats-drill-pg-unit-test" };
+    const { result, receipts } = await runDrill({ execOptions: { inspects: [INSPECT_FOUND, noSuchObject] } });
+
+    expect(result.overall).toBe("VERIFIED");
+    expect(result.containerCleanup).toBe("REMOVED");
+    expect(receipts).toHaveLength(1);
+    expect(cleanupAudit(receipts)).toMatchObject({ containerName: DRILL_NAME, preInspect: 0, rmExitCode: 0, postInspect: 1, verdict: "REMOVED" });
+  });
 });
 
 describe("captureSourceCounts", () => {

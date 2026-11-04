@@ -16,6 +16,7 @@ const hopByHopHeaders = new Set([
   "upgrade",
 ]);
 const operatorHeaders = new Set(["x-operator-subject", "x-operator-timestamp", "x-operator-signature"]);
+const wwwAuthenticateHeader = 'Basic realm="Bet Stats Operator", charset="UTF-8"';
 const subjectPattern = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/;
 const upstreamTimeoutMs = 10_000;
 const requestTimeoutMs = 20_000;
@@ -84,7 +85,7 @@ function unauthorized(response) {
   response.writeHead(401, {
     "content-type": "application/json",
     "cache-control": "private, no-store, max-age=0",
-    "www-authenticate": 'Basic realm="Bet Stats Operator", charset="UTF-8"',
+    "www-authenticate": wwwAuthenticateHeader,
   });
   response.end(JSON.stringify({ message: "Authentication required" }));
 }
@@ -106,8 +107,48 @@ function upstreamTimeout(response) {
   response.end(JSON.stringify({ message: "Upstream timed out" }));
 }
 
+// Raw socket writes for the 'upgrade' path: that handler has no ServerResponse,
+// so status lines and bodies are serialized straight onto the TCP socket.
+function rawSocketResponse(socket, statusLine, body, extraHeaders = {}) {
+  const payload = JSON.stringify(body);
+  const headers = {
+    "content-type": "application/json",
+    "cache-control": "no-store",
+    "content-length": String(Buffer.byteLength(payload)),
+    connection: "close",
+    ...extraHeaders,
+  };
+  let raw = `HTTP/1.1 ${statusLine}\r\n`;
+  for (const [name, value] of Object.entries(headers)) raw += `${name}: ${value}\r\n`;
+  raw += `\r\n${payload}`;
+  socket.end(raw);
+}
+
+// Unlike forwardHeaders, this deliberately KEEPS the hop-by-hop headers a
+// WebSocket handshake requires (connection, upgrade, sec-websocket-*); it only
+// removes the identity the HTTP path rewrites: host, authorization, and the
+// spoofable x-operator-* headers (T-mv2-03).
+function upgradeForwardHeaders(headers) {
+  const blocked = new Set(["host", "authorization", ...operatorHeaders]);
+  const output = {};
+  for (const [name, value] of Object.entries(headers)) {
+    if (value !== undefined && !blocked.has(name.toLowerCase())) output[name] = value;
+  }
+  return output;
+}
+
+function rawHeaderBlock(rawHeaders, excluded = []) {
+  const blocked = new Set(excluded);
+  let block = "";
+  for (let index = 0; index < rawHeaders.length; index += 2) {
+    if (blocked.has(String(rawHeaders[index]).toLowerCase())) continue;
+    block += `${rawHeaders[index]}: ${rawHeaders[index + 1]}\r\n`;
+  }
+  return block;
+}
+
 function createGateway(config) {
-  return createServer((incoming, response) => {
+  const server = createServer((incoming, response) => {
     const target = requestTarget(incoming.url, config.webOrigin);
     if (!target) return invalidTarget(response);
 
@@ -152,6 +193,90 @@ function createGateway(config) {
     });
     incoming.pipe(upstreamRequest);
   });
+
+  // WebSocket upgrades (e.g. Next dev's HMR/debug-channel socket) traverse the
+  // same target + Basic-auth gates as the HTTP path before any upstream socket
+  // is opened (T-mv2-01, T-mv2-02), then the handshake is relayed verbatim.
+  server.on("upgrade", (incoming, socket, head) => {
+    // A reset during a raw handshake must never crash the gateway process.
+    socket.on("error", () => socket.destroy());
+
+    const target = requestTarget(incoming.url, config.webOrigin);
+    if (!target) {
+      return rawSocketResponse(socket, "400 Bad Request", { message: "Invalid request target" });
+    }
+
+    const protectedPath = isProtectedPath(target.pathname);
+    if (protectedPath && !authenticateBasic(incoming.headers.authorization, config.username, config.password)) {
+      return rawSocketResponse(socket, "401 Unauthorized", { message: "Authentication required" }, { "www-authenticate": wwwAuthenticateHeader });
+    }
+
+    const headers = upgradeForwardHeaders(incoming.headers);
+    const upstreamRequest = (target.protocol === "https:" ? httpsRequest : httpRequest)(target, { method: "GET", headers });
+
+    let settled = false;
+    let handshakeTimer;
+    const settle = () => {
+      settled = true;
+      clearTimeout(handshakeTimer);
+    };
+
+    handshakeTimer = setTimeout(() => {
+      if (settled) return;
+      settle();
+      socket.destroy();
+      if (!upstreamRequest.destroyed) upstreamRequest.destroy();
+    }, upstreamTimeoutMs);
+
+    socket.once("close", () => {
+      if (settled) return;
+      settle();
+      if (!upstreamRequest.destroyed) upstreamRequest.destroy();
+    });
+
+    // Node emits 'upgrade' only for a real 101 from the upstream.
+    upstreamRequest.on("upgrade", (upstreamResponse, upstreamSocket, upstreamHead) => {
+      if (settled) {
+        upstreamSocket.destroy();
+        return;
+      }
+      settle();
+      socket.write(`HTTP/1.1 ${upstreamResponse.statusCode} ${upstreamResponse.statusMessage}\r\n${rawHeaderBlock(upstreamResponse.rawHeaders)}\r\n`);
+      if (head.length > 0) upstreamSocket.write(head);
+      if (upstreamHead.length > 0) socket.write(upstreamHead);
+      const destroyPeer = (peer) => {
+        if (!peer.destroyed) peer.destroy();
+      };
+      socket.once("error", () => destroyPeer(upstreamSocket));
+      socket.once("close", () => destroyPeer(upstreamSocket));
+      upstreamSocket.once("error", () => destroyPeer(socket));
+      upstreamSocket.once("close", () => destroyPeer(socket));
+      socket.pipe(upstreamSocket);
+      upstreamSocket.pipe(socket);
+    });
+
+    // The upstream refused the upgrade (e.g. a plain 404): relay its answer
+    // verbatim and end the socket — never a partial 101 (fail closed).
+    upstreamRequest.on("response", (upstreamResponse) => {
+      if (settled) {
+        upstreamResponse.resume();
+        return;
+      }
+      settle();
+      socket.write(`HTTP/1.1 ${upstreamResponse.statusCode} ${upstreamResponse.statusMessage}\r\n${rawHeaderBlock(upstreamResponse.rawHeaders, ["transfer-encoding", "connection"])}\r\n`);
+      upstreamResponse.pipe(socket);
+    });
+
+    upstreamRequest.on("error", () => {
+      if (settled) return;
+      settle();
+      socket.destroy();
+    });
+
+    upstreamRequest.end();
+  });
+
+  return server;
 }
 
 function main() {

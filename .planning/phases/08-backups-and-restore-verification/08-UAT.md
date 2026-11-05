@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: passed
 phase: 08-backups-and-restore-verification
 source: [08-VERIFICATION.md]
 started: 2026-10-27T00:00:00.000Z
-updated: 2026-10-29T15:20:00.000Z
+updated: 2026-11-05T15:40:00.000Z
 ---
 
 ## Current Test
@@ -39,25 +39,29 @@ evidence: |
 
 ### 5. Сбой очистки контейнера (behavior_unverified)
 expected: В чеке `containerCleanup = 'FAILED'` фиксируется, а не скрывается; `overall` остаётся прежним (заработанным) значением и не подкрашивается в зелёное из-за (не)успешной очистки; имя контейнера — `bet-stats-drill-pg-<pid>-<ts>`.
-result: issue
+result: pass
 reported: "агентский вывод: ветка FAILED недостижима live на Docker 29.9.2 (идемпотентный `docker rm -f`), эксперимент rename-гонкой оставил сироту при containerCleanup = 'REMOVED'"
 severity: minor
 diagnosis: |
-  Подтверждено live: формат имени контейнера `bet-stats-drill-pg-20168-1793203629163` (pid + ts); `overall` не перекрашивается очисткой (при аномалии очистки drill остался VERIFIED — заработанное значение сохранено); поле и UI-лейблы существуют («Контейнер удалён» / «Не удалось удалить контейнер» / «Контейнер не запускался», юнит-тесты backup-status-block). Недостижимо live: сам `FAILED` — на Docker server 29.9.2 `docker rm -f` идемпотентен (exit 0 и по несуществующему, и по paused контейнеру), поэтому rename контейнера во время дрилла дал ложный `REMOVED` при живой сироте (удалена вручную); надёжно вызвать отказ rm можно только падением демона, что недопустимо для живого стека. Слепое место: утечка «контейнер исчез/переименован до rm» маскируется в честный записанный факт.
+  Подтверждено live: формат имени контейнера `bet-stats-drill-pg-20168-1793203629163` (pid + ts); `overall` не перекрашивается очисткой (при аномалии очистки drill остался VERIFIED — заработанное значение сохранено); поле и UI-лейблы существуют («Контейнер удалён» / «Не удалось удалить контейнер» / «Контейнер не запускался», юнит-тесты backup-status-block). Недостижимо live: сам `FAILED` — на Docker server 29.9.2 `docker rm -f` идемпотентен (exit 0 и по несуществующему, и по paused контейнеру), поэтому rename контейнера во время дрилла дал ложный `REMOVED` при живой сироте (удалена вручную); надёжно вызвать отказ rm можно только падением демона, что недопустимо для живого стека. Слепое место: утечка «контейнер исчез/переименован до rm» маскируется в честный записанный факт. Latent gap G-08-5 resolved 2026-11-01 (двойной inspect-вердикт).
+pass_evidence: |
+  Live 2026-11-05, повторное rename-состязание watchdog'ом против исправленного кода (08-05-PLAN, коммиты b99e75e/5dcca8e/657fb6f): watchdog детектирует pg_restore (`--no-owner`) через `docker top`, переименовывает контейнер bet-stats-drill-pg-13492-1793891009592 → …-uat-rename через 15.9 с после первого наблюдения процесса (exit 0). Квитанция drill `d92fbdf6-7336-4041-915b-5e1ec2f8d5c7` (started 15:03:29.59Z, completed 15:04:04.06Z, restoreDurationMs 16145): `overall = VERIFIED` (заработанное значение не перекрашено), `containerCleanup = FAILED`, checks.containerCleanup = {preInspect: 1, rmExitCode: 0, postInspect: 1, verdict: FAILED, containerName: bet-stats-drill-pg-13492-1793891009592} — rm -f идемпотентен по потерянному имени (exit 0), вердикт по двойному inspect ловит утечку: pre-rm inspect не находит контейнер (identityLostBeforeRm). UI после refresh: «Последняя проверка восстановления — Пройдена · восстановление 16.1 с · Не удалось удалить контейнер». Сирота-контейнер удалён вручную после прогона (docker rm), стек-контейнеры не тронуты.
 
 ### 6. Живой UI-прогон обеих кнопок триггеров
 expected: Кнопки дают role=status обратную связь, после завершения страница обновляется через `load()`; при выключенных бэкапах — одинаковый 404 без утечки информации о конфигурации; русские подписи пяти состояний на месте, «Здорово» не показывается ни в одном не-зелёном состоянии.
-result: issue
+result: pass
 reported: "все недоступно"
 severity: major
 diagnosis: |
-  Обычный браузер не проходит HMAC-верификацию прокси `/internal-api/operations`: `apps/web/app/internal-api/operations/[[...path]]/route.ts:25-44` — fail-closed 404 для запросов без подписи, dev-обхода нет («Do not accept … a permissive development bypass», 02-19-PLAN). Операторский шлюз `infra/operator-gateway/security.mjs` подписывает только replay-пути (`isProtectedReplayPath` = `/internal*/pipeline/replay*`), пути операций — нет; в dev-топологии (`app-lifecycle.ps1`) шлюз вообще не запущен. Итог: все блоки `/internal/operations` показывают «Этот операционный блок недоступен…», обе кнопки триггеров недоступны оператору. Логика самого блока и кнопок проверена через подписанный драйвер (тест 1: данные рендерятся, триггер POST → 202), поэтому это gap ingress-обвязки, а не функции бэкапов.
+  Обычный браузер не проходит HMAC-верификацию прокси `/internal-api/operations`: `apps/web/app/internal-api/operations/[[...path]]/route.ts:25-44` — fail-closed 404 для запросов без подписи, dev-обхода нет («Do not accept … a permissive development bypass», 02-19-PLAN). Операторский шлюз `infra/operator-gateway/security.mjs` подписывает только replay-пути (`isProtectedReplayPath` = `/internal*/pipeline/replay*`), пути операций — нет; в dev-топологии (`app-lifecycle.ps1`) шлюз вообще не запущен. Итог: все блоки `/internal/operations` показывают «Этот операционный блок недоступен…», обе кнопки триггеров недоступны оператору. Логика самого блока и кнопок проверена через подписанный драйвер (тест 1: данные рендерятся, триггер POST → 202), поэтому это gap ingress-обвязки, а не функции бэкапов. Latent gap G-08-6 resolved 2026-11-01 (подпись operations-путей + шлюз в dev-лаунчере + e2e).
+pass_evidence: |
+  Live 2026-11-05 через штатный human ingress (шлюз :8080, Basic auth, app-lifecycle Start): страница «Центр операций» гидрируется и живёт — h1, блок backup-status (state=HEALTHY, «Здорово»), русские подписи пяти состояний. Плейбук UAT-6 24/24 PASS (скрипт-агент, Playwright через :8080, screenshot `uat6-operations.png`, «no page JS errors»): (а) обе кнопки триггеров кликабельны и дают role=status («Резервная копия поставлена в очередь», «Проверка восстановления поставлена в очередь»), после завершения `load()` показывает свежие факты: backup — дамп SUCCEEDED свежее окна, drill — receipt; на экране «Последняя проверка восстановления — Пройдена · … · Не удалось удалить контейнер», refresh-лейблы PASS; (б) текст «Этот операционный блок недоступен» отсутствует, продуктовых role=alert нет (count=0 в section; ранее ложный count=1 — скрытый `#__next-route-announcer__` Next.js, артефакт скрипта, не продукт); (в) файлы должны появляться и без подписанных драйверов — страничный polling получил 200 по подписанному прокси. Гидрация через шлюз стала возможной после дофиксинга quick-задачи 261104-mv2 (коммиты cc03a71/66af450): `server.on("upgrade")` релеит WebSocket-хендшейк `/_next/hmr` — до этого dev-HMR-стрим не закрывался и hydrating страница молча замирала (баг продукта, исправлен).
 
 ## Summary
 
 total: 6
-passed: 4
-issues: 2
+passed: 6
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0

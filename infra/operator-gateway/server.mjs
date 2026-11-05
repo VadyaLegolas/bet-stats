@@ -248,6 +248,10 @@ function createGateway(config) {
         if (!peer.destroyed) peer.destroy();
       };
       socket.once("error", () => destroyPeer(upstreamSocket));
+      // 'close' alone is not enough: http.Server sockets are allowHalfOpen, so
+      // a client FIN defers 'close' indefinitely and the upstream would be
+      // orphaned — the plan's "one side's reset cannot orphan the other".
+      socket.once("end", () => destroyPeer(upstreamSocket));
       socket.once("close", () => destroyPeer(upstreamSocket));
       upstreamSocket.once("error", () => destroyPeer(socket));
       upstreamSocket.once("close", () => destroyPeer(socket));
@@ -263,6 +267,7 @@ function createGateway(config) {
         return;
       }
       settle();
+      upstreamResponse.on("error", () => socket.destroy());
       socket.write(`HTTP/1.1 ${upstreamResponse.statusCode} ${upstreamResponse.statusMessage}\r\n${rawHeaderBlock(upstreamResponse.rawHeaders, ["transfer-encoding", "connection"])}\r\n`);
       upstreamResponse.pipe(socket);
     });

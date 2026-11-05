@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { createHash, createHmac } from "node:crypto";
 import { createServer, get as getHttp, type IncomingHttpHeaders, type Server } from "node:http";
 import { once } from "node:events";
+import { connect, type Socket } from "node:net";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -325,4 +326,246 @@ describe("operator gateway HTTP boundary", () => {
       await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));
     }
   });
+});
+
+function upgradeHandshake(path: string, extraHeaders: Record<string, string> = {}) {
+  const lines = [
+    `GET ${path} HTTP/1.1`,
+    "Host: 127.0.0.1",
+    "Connection: Upgrade",
+    "Upgrade: websocket",
+    "Sec-WebSocket-Key: dGVzdC1rZXk=",
+    "Sec-WebSocket-Version: 13",
+  ];
+  for (const [name, value] of Object.entries(extraHeaders)) lines.push(`${name}: ${value}`);
+  return `${lines.join("\r\n")}\r\n\r\n`;
+}
+
+// Accumulates every raw byte a socket receives so assertions can inspect the
+// literal status line + headers the gateway writes, and polls for a condition
+// (a satisfied predicate always wins over a later socket close).
+function capture(socket: Socket) {
+  const chunks: Buffer[] = [];
+  let closed = false;
+  socket.on("data", (chunk) => chunks.push(chunk));
+  socket.on("error", () => undefined);
+  socket.on("close", () => { closed = true; });
+  const text = () => Buffer.concat(chunks).toString("latin1");
+  const waitUntil = (predicate: (value: string) => boolean, timeoutMs = 5_000) =>
+    new Promise<void>((waitResolve, waitReject) => {
+      const deadline = Date.now() + timeoutMs;
+      const poll = () => {
+        const value = text();
+        if (predicate(value)) return waitResolve();
+        if (closed || Date.now() > deadline) {
+          return waitReject(new Error(`Condition not met; received: ${JSON.stringify(value.slice(0, 300))}`));
+        }
+        setTimeout(poll, 20);
+      };
+      poll();
+    });
+  return { text, waitUntil, isClosed: () => closed };
+}
+
+// The connect promise is created eagerly: awaiting `once(socket, "connect")`
+// after a previous socket's exchange can attach after the event already fired,
+// which hangs forever. capture() also attaches before any byte can arrive.
+function connectRaw(gatewayOrigin: string) {
+  const socket = connect({ port: Number(new URL(gatewayOrigin).port), host: "127.0.0.1" });
+  return { socket, received: capture(socket), connected: once(socket, "connect") };
+}
+
+// http.Server sockets are allowHalfOpen: once the peer sends FIN the test
+// server must end its own side or server.close() waits forever, and a reset
+// from a destroyed peer must not crash the run.
+function upgradePeer(socket: Socket) {
+  socket.on("error", () => undefined);
+  socket.on("end", () => socket.end());
+  return socket;
+}
+
+describe("operator gateway WebSocket upgrade boundary", () => {
+  it("proxies a completed upgrade and keeps echoing bytes across a multi-second hold", async () => {
+    const upstream = createServer((request, response) => {
+      if (request.url === "/health") return response.end("ok");
+      request.resume();
+      response.writeHead(404);
+      response.end();
+    });
+    upstream.on("upgrade", (_request, socket) => {
+      upgradePeer(socket);
+      socket.write("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: echo\r\n\r\n");
+      socket.on("data", (chunk) => socket.write(chunk));
+    });
+    const gateway = await startGateway(await listen(upstream));
+    const client = connectRaw(gateway.origin);
+    const received = client.received;
+
+    try {
+      await client.connected;
+      client.socket.write(upgradeHandshake("/_next/hmr?id=self-next-react-debug-channel"));
+      await received.waitUntil((value) => value.includes("101 Switching Protocols"));
+      expect(received.text()).not.toContain("404");
+
+      client.socket.write("ping-immediate");
+      await received.waitUntil((value) => value.includes("ping-immediate"));
+
+      // Hold the upgraded connection open for multiple seconds: the pipe must
+      // outlive any gateway request/header timeout (Node detaches upgraded
+      // sockets from them), which is exactly what Next's debug-channel readable
+      // needs before /internal/operations hydration can complete.
+      await new Promise((holdResolve) => setTimeout(holdResolve, 3_000));
+      client.socket.write("ping-after-hold");
+      await received.waitUntil((value) => value.includes("ping-after-hold"));
+
+      expect(gateway.process.exitCode).toBeNull();
+      // The peer may already have closed the socket (clean relay teardown);
+      // awaiting 'close' on an already-closed socket would hang forever.
+      const closing = received.isClosed() ? Promise.resolve() : once(client.socket, "close").catch(() => undefined);
+      client.socket.destroy();
+      await closing;
+      expect(received.isClosed()).toBe(true);
+    } finally {
+      client.socket.destroy();
+      await stop(gateway.process);
+      await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));
+    }
+  }, 15_000);
+
+  it("relays an upstream refusal as a raw non-101 answer and stays healthy", async () => {
+    const upstream = createServer((request, response) => {
+      if (request.url === "/health") return response.end("ok");
+      request.resume();
+      response.writeHead(404, { "content-type": "text/plain" });
+      response.end("no upgrade here");
+    });
+    const gateway = await startGateway(await listen(upstream));
+    const client = connectRaw(gateway.origin);
+    const received = client.received;
+
+    try {
+      await client.connected;
+      client.socket.write(upgradeHandshake("/_next/hmr?id=no-listener"));
+      await received.waitUntil((value) => value.includes("404"));
+      expect(received.text()).not.toContain("Switching Protocols");
+      expect(gateway.process.exitCode).toBeNull();
+      expect((await fetch(`${gateway.origin}/health`)).status).toBe(200);
+    } finally {
+      client.socket.destroy();
+      await stop(gateway.process);
+      await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));
+    }
+  }, 15_000);
+
+  it("refuses a protected-path upgrade without credentials before contacting the upstream", async () => {
+    let upgradeAttempts = 0;
+    const upstream = createServer((request, response) => {
+      if (request.url === "/health") return response.end("ok");
+      request.resume();
+      response.writeHead(404);
+      response.end();
+    });
+    upstream.on("upgrade", (_request, socket) => {
+      upgradeAttempts += 1;
+      upgradePeer(socket);
+      socket.write("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: echo\r\n\r\n");
+    });
+    const gateway = await startGateway(await listen(upstream));
+    const client = connectRaw(gateway.origin);
+    const received = client.received;
+
+    try {
+      await client.connected;
+      client.socket.write(upgradeHandshake("/internal/operations"));
+      await received.waitUntil((value) => value.includes("401"));
+      expect(received.text()).not.toContain("Switching Protocols");
+      expect(received.text()).toMatch(/www-authenticate: Basic realm="Bet Stats Operator", charset="UTF-8"/i);
+      expect(upgradeAttempts).toBe(0);
+    } finally {
+      client.socket.destroy();
+      await stop(gateway.process);
+      await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));
+    }
+  }, 15_000);
+
+  it("forwards an authenticated protected-path upgrade upstream and relays the 101", async () => {
+    let upgradeAttempts = 0;
+    let upgradePath: string | undefined;
+    let upstreamAuthorization: string | undefined;
+    const upstream = createServer((request, response) => {
+      if (request.url === "/health") return response.end("ok");
+      request.resume();
+      response.writeHead(404);
+      response.end();
+    });
+    upstream.on("upgrade", (request, socket) => {
+      upgradeAttempts += 1;
+      upgradePath = request.url;
+      upstreamAuthorization = request.headers.authorization;
+      upgradePeer(socket);
+      socket.write("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: echo\r\n\r\n");
+    });
+    const gateway = await startGateway(await listen(upstream));
+    const client = connectRaw(gateway.origin);
+    const received = client.received;
+
+    try {
+      await client.connected;
+      client.socket.write(upgradeHandshake("/internal/operations", {
+        authorization: `Basic ${Buffer.from("operator:test-password").toString("base64")}`,
+      }));
+      await received.waitUntil((value) => value.includes("101 Switching Protocols"));
+      expect(upgradeAttempts).toBe(1);
+      expect(upgradePath).toBe("/internal/operations");
+      // The gateway consumed the credentials itself; they are stripped before
+      // the upstream hop exactly like on the HTTP path (T-mv2-03).
+      expect(upstreamAuthorization).toBeUndefined();
+      expect(received.text()).not.toMatch(/www-authenticate/i);
+    } finally {
+      client.socket.destroy();
+      await stop(gateway.process);
+      await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));
+    }
+  }, 15_000);
+
+  it("rejects an off-origin or protocol-relative upgrade target with a raw 400 and zero upstream requests", async () => {
+    const upstreamRequests: string[] = [];
+    const upstream = createServer((request, response) => {
+      upstreamRequests.push(request.url ?? "");
+      if (request.url === "/health") return response.end("ok");
+      request.resume();
+      response.writeHead(404);
+      response.end();
+    });
+    upstream.on("upgrade", (request) => {
+      upstreamRequests.push(request.url ?? "");
+      request.socket.on("error", () => undefined);
+      request.socket.destroy();
+    });
+    const gateway = await startGateway(await listen(upstream));
+    const protocolRelative = connectRaw(gateway.origin);
+    const absoluteForm = connectRaw(gateway.origin);
+    const relativeReceived = protocolRelative.received;
+    const absoluteReceived = absoluteForm.received;
+
+    try {
+      await protocolRelative.connected;
+      protocolRelative.socket.write("GET //evil.example/x HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Key: dGVzdC1rZXk=\r\nSec-WebSocket-Version: 13\r\n\r\n");
+      await relativeReceived.waitUntil((value) => value.includes("400"));
+      expect(relativeReceived.text()).not.toContain("Switching Protocols");
+
+      await absoluteForm.connected;
+      absoluteForm.socket.write("GET http://evil.example/x HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Key: dGVzdC1rZXk=\r\nSec-WebSocket-Version: 13\r\n\r\n");
+      await absoluteReceived.waitUntil((value) => value.includes("400"));
+      expect(absoluteReceived.text()).not.toContain("Switching Protocols");
+
+      expect(upstreamRequests.filter((path) => path !== "/health")).toHaveLength(0);
+      expect(gateway.process.exitCode).toBeNull();
+    } finally {
+      protocolRelative.socket.destroy();
+      absoluteForm.socket.destroy();
+      await stop(gateway.process);
+      await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));
+    }
+  }, 15_000);
 });

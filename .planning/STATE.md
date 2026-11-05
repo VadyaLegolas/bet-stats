@@ -5,10 +5,10 @@ current_phase: 08
 current_phase_name: Backups and Restore Verification
 status: executing
 stopped_at: Completed 08-07-PLAN.md (gap closure WR-05 - numeric post-rm exit-code guard + IN-05 classifier pins); all 7 phase-8 plans done; ready for phase verification / UAT re-test
-last_updated: "2026-11-03T15:24:00.000Z"
+last_updated: "2026-11-05T13:28:46.922Z"
 last_activity: 2026-11-03
 last_activity_desc: Phase 08 plan 07 executed (gap WR-05 closed, pending operator UAT re-test)
-state_head: 649918f
+state_head: 66af450f66f0ce0e0ae14892deb60b79908feb1e
 progress:
   total_phases: 10
   completed_phases: 2
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 Phase: 08 (Backups and Restore Verification) — EXECUTING (all plans complete, pending verification)
 Plan: 7 of 7 — complete
 Status: Phase 08 plans 01-07 all complete (gap closures WR-01 + WR-05 done); ready for /gsd-verify-work and G-08-5/G-08-6/WR-01/WR-05 UAT re-test
-Last activity: 2026-11-03 — Phase 08 plan 07 (gap closure WR-05, numeric post-rm exit-code guard + IN-05 classifier pins) executed
+Last activity: 2026-11-05 - Completed quick task 261104-mv2: Proxy WebSocket upgrades in the operator gateway so Next dev pages hydrate through :8080
 
 Progress: [██░░░░░░░░] 20%
 
@@ -356,6 +356,7 @@ None yet.
 | 261019-cfc | Calendar cohort filter with Russian labels on /scorecards: date pickers replace raw ISO inputs, server converts picked UTC days to the exact API instants (end day inclusive), cleared identity dimensions complete to the all sentinel (fixes live INCOMPLETE_COHORT_IDENTITY 400) while an absent identity keeps 308 canonicalization, FAQ describes the filter, scorecards.png recaptured | 2026-10-19 | 06748b8 | [261019-cfc-cohort-filter-calendar-dates-russian-labels](./quick/261019-cfc-cohort-filter-calendar-dates-russian-labels/) |
 | phase-7-complete | Phase 07 CI Pipeline & Quality Gates COMPLETE (3/3 plans): three-job ci.yml (quality/integration/e2e-portable) with build-before-test, branch protection required checks [quality,integration,e2e-portable] (read-back verified, force-push/delete disabled), success criterion 4 executed (three sanctioned drills: type error 39670991039, failing test 39672401978, frozen-table mutation 39674495067 — each turned the intended job red and gh pr merge was refused verbatim; three green reverts; PR #4 closed never-merged). Post-execution code-review gate (07-REVIEW.md, APPROVE, no CRITICAL) and gsd-verifier (07-VERIFICATION.md, 10/10, goal achieved) both ran; two review fixes applied on main: 6afb2bd (live-evidence-stack detached children so POSIX group-stop reaps the stack + SIGKILL escalation) and 9e11a0e (timeout-minutes 20/25/25 on all three jobs). Deferred gates (non-blocking per #4972, phase is infra not new threat surface): 07-VALIDATION.md nyquist audit and SECURITY.md secure-phase were not run | 2026-10-22 | 7b0d847 | inline (gsd-execute-phase) |
 | 261025-isolate-gate-builds-from-dev | Root `pnpm build` made safe by construction after the wave-gate build wiped /internal-api/* (incident 2026-10-24): new scripts/build.mjs wrapper passes a caller-set NEXT_DIST_DIR through, else redirects production output to apps/web/.next-gate whenever apps/web/.next/dev/lock EXISTS (fail-safe: stale lock only redirects, missed live lock breaks the site), spawned via the proven npm_execpath pnpm-exec pattern with an import guard so tests never spawn; turbo.json declares NEXT_DIST_DIR env on build+dev and caches .next-gate/**, .gitignore ignores .next-gate/, 7 unit tests cover the decision table + wrapper structure; also fixed the follow-on lint break (web globalIgnores lacked .next-gate/.next-e2e); verified with the dev stack up: guarded build exit 0 with the isolation notice, apps/web/.next/BUILD_ID mtime unchanged before/after, quota probe 200 application/json, typecheck+lint+web tests green (deferred: pre-existing uncommitted 08-review WIP makes backup-job.test.ts red — not this task's) | 2026-10-25 | fc7d13a + e30ad9c + 72b0f91 | [261025-isolate-gate-builds-from-dev](./quick/261025-isolate-gate-builds-from-dev/) |
+| 261104-mv2 | Proxy WebSocket upgrades in the operator gateway so Next dev pages hydrate through :8080 | 2026-11-05 | 66af450 | [261104-mv2-proxy-websocket-upgrades-in-the-operator](./quick/261104-mv2-proxy-websocket-upgrades-in-the-operator/) |
 
 ### Roadmap Evolution
 

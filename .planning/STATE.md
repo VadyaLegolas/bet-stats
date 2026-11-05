@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.1
-current_phase: 08
-current_phase_name: Backups and Restore Verification
-status: executing
-stopped_at: Completed 08-07-PLAN.md (gap closure WR-05 - numeric post-rm exit-code guard + IN-05 classifier pins); all 7 phase-8 plans done; ready for phase verification / UAT re-test
-last_updated: "2026-11-05T13:28:46.922Z"
-last_activity: 2026-11-03
-last_activity_desc: Phase 08 plan 07 executed (gap WR-05 closed, pending operator UAT re-test)
-state_head: 66af450f66f0ce0e0ae14892deb60b79908feb1e
+current_phase: 9
+current_phase_name: Degradation Alerting
+status: planning
+stopped_at: Phase 08 complete, ready to plan Phase 9
+last_updated: "2026-11-05T15:15:46.102Z"
+last_activity: 2026-11-05
+last_activity_desc: Phase 08 complete, transitioned to Phase 9
+state_head: b6f0dd3e151922fd837b1db32929349da8c163bd
 progress:
   total_phases: 10
   completed_phases: 2
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 10
+  completed_plans: 10
   percent: 20
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 
 ## Current Position
 
-Phase: 08 (Backups and Restore Verification) — EXECUTING (all plans complete, pending verification)
-Plan: 7 of 7 — complete
-Status: Phase 08 plans 01-07 all complete (gap closures WR-01 + WR-05 done); ready for /gsd-verify-work and G-08-5/G-08-6/WR-01/WR-05 UAT re-test
-Last activity: 2026-11-05 - Completed quick task 261104-mv2: Proxy WebSocket upgrades in the operator gateway so Next dev pages hydrate through :8080
+Phase: 9 — Degradation Alerting
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-05 — Phase 08 complete, transitioned to Phase 9
 
 Progress: [██░░░░░░░░] 20%
 
@@ -40,7 +40,7 @@ Progress: [██░░░░░░░░] 20%
 
 **Velocity:**
 
-- Total plans completed: 95
+- Total plans completed: 98
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -55,7 +55,7 @@ Progress: [██░░░░░░░░] 20%
 | 05 | 16 | - | - |
 | 06 | 11 | - | - |
 | 7 | 3 | - | - |
-| 08 | 3 | - | - |
+| 08 | 7 | - | - |
 
 **Recent Trend:**
 
@@ -371,5 +371,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-11-01T02:00:00Z
-Stopped at: Phase 8 plan 08-06 complete (gap WR-01 closed); all 6 phase-8 plans done, ready for /gsd-verify-work and WR-01 UAT re-test
+Stopped at: Phase 08 complete, ready to plan Phase 9
 Resume file: None

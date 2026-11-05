@@ -7,7 +7,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 ## Phases
 
 - [x] **Phase 7: CI Pipeline & Quality Gates** - Every push and PR runs a frozen, Linux-based pipeline that gates schema, types, lint, tests, and build before anything else lands. (completed 2026-10-22)
-- [ ] **Phase 8: Backups and Restore Verification** - The operator trusts that PostgreSQL can be restored, proven by scheduled restore drills with visible verification status.
+- [x] **Phase 8: Backups and Restore Verification** - The operator trusts that PostgreSQL can be restored, proven by scheduled restore drills with visible verification status. (completed 2026-11-05)
 - [ ] **Phase 9: Degradation Alerting** - The operator is told when providers, workers, HTTP error rates, or backups degrade, through durable alerts viewable in the operations center.
 - [ ] **Phase 10: Performance Audit and Budgets** - The fixture detail page meets declared Lighthouse budgets, and regressions fail CI instead of shipping.
 - [ ] **Phase 11: Dixon-Coles Model Version** - Forecasts can be issued under a corrected, versioned model whose rolling-origin backtests are compared against the frozen baseline before promotion.
@@ -51,7 +51,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   3. The operations center shows backup and restore-verification status (last success, age, failures) without exposing secrets; never-verified and stale backups render as explicit non-green states.
 
 **Notes / research flags**: Operator decisions needed before planning — RPO target (daily dump vs WAL shipping) and off-host storage destination for the actual single-Windows-host deployment. Redis is never backed up. No pgBackRest/Barman/SaaS (overkill, paid).
-**Plans**: 7 plans (3 + 4 gap-closure)
+**Plans**: 7/7 plans complete (3 + 4 gap-closure)
 **Plan list**:
 - [x] 08-01-PLAN.md — Backup engine: fail-closed config, pg_dump -Fc + BackupRun receipt, rotation after success, robocopy off-host, daily persisted-state scheduler
 - [x] 08-02-PLAN.md — Restore drill: throwaway container restore, migrations at head, chain-integrity checks, immutable BackupVerificationReceipt, weekly scheduler
@@ -60,6 +60,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 - [x] 08-05-PLAN.md — Gap closure G-08-5: containerCleanup verdict verified by pre/post-rm docker inspect instead of rm exit code; FAILED branch test-covered
 - [x] 08-06-PLAN.md — Gap closure WR-01 (verifier truth 22): REMOVED requires daemon-clean post-rm inspect evidence — post-rm spawnError / daemon-unreachable fails closed to FAILED; cleanup exec trio guarded so record() always lands (IN-02)
 - [x] 08-07-PLAN.md — Gap closure WR-05: numeric-exit-code guard so post-rm inspect {code: undefined} without spawnError fails closed to FAILED instead of recording REMOVED; TDD case J + IN-05 classifier pins
+
 **UI hint**: no
 
 ### Phase 9: Degradation Alerting
@@ -195,7 +196,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 7. CI Pipeline & Quality Gates | 3/3 | Complete    | 2026-10-22 |
-| 8. Backups and Restore Verification | 5/5 | Complete | 2026-10-31 |
+| 8. Backups and Restore Verification | 7/7 | Complete    | 2026-10-31 |
 | 9. Degradation Alerting | 0/0 | Not started | - |
 | 10. Performance Audit and Budgets | 0/0 | Not started | - |
 | 11. Dixon-Coles Model Version | 0/0 | Not started | - |

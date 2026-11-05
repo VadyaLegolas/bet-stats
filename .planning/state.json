@@ -11,7 +11,7 @@
     {
       "number": "8",
       "name": "Backups and Restore Verification",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "9",
@@ -56,8 +56,8 @@
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 2 of 10 · 10% · executing"
+    "label": "Advance to the next step (plan phase 9)",
+    "reason": "Phase 3 of 10 — needs a plan"
   },
-  "updated_at": "2026-10-22T19:05:09.546Z"
+  "updated_at": "2026-11-05T15:15:46.241Z"
 }

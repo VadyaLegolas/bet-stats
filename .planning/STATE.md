@@ -5,10 +5,10 @@ current_phase: 9
 current_phase_name: Degradation Alerting
 status: planning
 stopped_at: Phase 9 UI-SPEC approved
-last_updated: "2026-11-06T16:01:20.320Z"
-last_activity: 2026-11-05
-last_activity_desc: Phase 08 complete, transitioned to Phase 9
-state_head: 18f420169a2f32b07c45f7b6c82a00a7dea308a2
+last_updated: "2026-11-07T10:59:26.152Z"
+last_activity: 2026-11-07
+last_activity_desc: Quick task 261107-fen complete: gateway navigation returns to :3000 so match sync bypasses the gateway (commits 3e6be9f, 889f560)
+state_head: 889f56087bfffdbfdb38e689c7f27685b1bf40d2
 progress:
   total_phases: 10
   completed_phases: 2
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 Phase: 9 — Degradation Alerting
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-11-05 — Phase 08 complete, transitioned to Phase 9
+Last activity: 2026-11-07 - Quick task 261107-fen complete: gateway navigation returns to :3000 so match sync bypasses the gateway (commits 3e6be9f, 889f560)
 
 Progress: [██░░░░░░░░] 20%
 
@@ -357,6 +357,7 @@ None yet.
 | phase-7-complete | Phase 07 CI Pipeline & Quality Gates COMPLETE (3/3 plans): three-job ci.yml (quality/integration/e2e-portable) with build-before-test, branch protection required checks [quality,integration,e2e-portable] (read-back verified, force-push/delete disabled), success criterion 4 executed (three sanctioned drills: type error 39670991039, failing test 39672401978, frozen-table mutation 39674495067 — each turned the intended job red and gh pr merge was refused verbatim; three green reverts; PR #4 closed never-merged). Post-execution code-review gate (07-REVIEW.md, APPROVE, no CRITICAL) and gsd-verifier (07-VERIFICATION.md, 10/10, goal achieved) both ran; two review fixes applied on main: 6afb2bd (live-evidence-stack detached children so POSIX group-stop reaps the stack + SIGKILL escalation) and 9e11a0e (timeout-minutes 20/25/25 on all three jobs). Deferred gates (non-blocking per #4972, phase is infra not new threat surface): 07-VALIDATION.md nyquist audit and SECURITY.md secure-phase were not run | 2026-10-22 | 7b0d847 | inline (gsd-execute-phase) |
 | 261025-isolate-gate-builds-from-dev | Root `pnpm build` made safe by construction after the wave-gate build wiped /internal-api/* (incident 2026-10-24): new scripts/build.mjs wrapper passes a caller-set NEXT_DIST_DIR through, else redirects production output to apps/web/.next-gate whenever apps/web/.next/dev/lock EXISTS (fail-safe: stale lock only redirects, missed live lock breaks the site), spawned via the proven npm_execpath pnpm-exec pattern with an import guard so tests never spawn; turbo.json declares NEXT_DIST_DIR env on build+dev and caches .next-gate/**, .gitignore ignores .next-gate/, 7 unit tests cover the decision table + wrapper structure; also fixed the follow-on lint break (web globalIgnores lacked .next-gate/.next-e2e); verified with the dev stack up: guarded build exit 0 with the isolation notice, apps/web/.next/BUILD_ID mtime unchanged before/after, quota probe 200 application/json, typecheck+lint+web tests green (deferred: pre-existing uncommitted 08-review WIP makes backup-job.test.ts red — not this task's) | 2026-10-25 | fc7d13a + e30ad9c + 72b0f91 | [261025-isolate-gate-builds-from-dev](./quick/261025-isolate-gate-builds-from-dev/) |
 | 261104-mv2 | Proxy WebSocket upgrades in the operator gateway so Next dev pages hydrate through :8080 | 2026-11-05 | 66af450 | [261104-mv2-proxy-websocket-upgrades-in-the-operator](./quick/261104-mv2-proxy-websocket-upgrades-in-the-operator/) |
+| 51 | Return navigation from operator gateway (8080) to app origin (3000): gateway stamps x-operator-gateway-origin (loopback-gated, spoof-stripped), root layout passes it to absolute nav/brand links, non-/internal pages bounce back so match sync never hits the gateway's 10s idle timeout (504). | 2026-11-07 | 889f560 | — |
 
 ### Roadmap Evolution
 

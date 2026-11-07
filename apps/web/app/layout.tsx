@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { headers } from "next/headers";
 
 import { QuotaCounter } from "../components/quota-counter";
 import { BrandIcon } from "../components/brand-icon";
 import { ReleaseNavigation } from "../components/release-navigation";
 import { ThemeToggle } from "../components/theme-toggle";
 import { ThemeBootstrapScript } from "../components/theme-bootstrap";
+import { GatewayHomeRedirect } from "../components/gateway-home-redirect";
 
 import { plexSans, sourceSerif } from "./fonts";
 import "./globals.css";
@@ -16,7 +18,10 @@ export const metadata: Metadata = {
   description: "Прозрачные данные о футбольных матчах и аналитическая информация.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+  // Stamped by the operator gateway only for loopback WEB_ORIGIN; null on a
+  // direct :3000 request (async headers() from Next 16).
+  const homeOrigin = (await headers()).get("x-operator-gateway-origin");
   return (
     /* data-theme="light" is the server default; ThemeBootstrapScript restamps
        it from localStorage/system preference while the HTML parses (before the
@@ -32,14 +37,15 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <a className="skip-link" href="#main-content">Перейти к основному содержимому</a>
         <header className="release-header">
           <div className="release-frame release-header-inner">
-            <Link href="/" className="release-brand"><BrandIcon />Матчдей</Link>
+            <Link href={homeOrigin ? `${homeOrigin}/` : "/"} className="release-brand"><BrandIcon />Матчдей</Link>
             <div className="release-header-tools">
               <QuotaCounter />
-              <ReleaseNavigation />
+              <ReleaseNavigation homeOrigin={homeOrigin} />
               <ThemeToggle />
             </div>
           </div>
         </header>
+        <GatewayHomeRedirect homeOrigin={homeOrigin} />
         <main id="main-content" className="release-frame release-main" tabIndex={-1}>{children}</main>
         <footer className="release-footer">
           <p className="release-frame">

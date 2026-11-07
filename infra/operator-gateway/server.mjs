@@ -16,7 +16,7 @@ const hopByHopHeaders = new Set([
   "transfer-encoding",
   "upgrade",
 ]);
-const operatorHeaders = new Set(["x-operator-subject", "x-operator-timestamp", "x-operator-signature"]);
+const operatorHeaders = new Set(["x-operator-subject", "x-operator-timestamp", "x-operator-signature", "x-operator-gateway-origin"]);
 const wwwAuthenticateHeader = 'Basic realm="Bet Stats Operator", charset="UTF-8"';
 const subjectPattern = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/;
 const upstreamTimeoutMs = 10_000;
@@ -51,9 +51,15 @@ function requiredConfig(environment) {
   const subject = environment.OPERATOR_SUBJECT.normalize("NFKC").trim();
   if (subject !== environment.OPERATOR_SUBJECT || !subjectPattern.test(subject)) throw new Error("OPERATOR_SUBJECT must be canonical and match the operator subject format");
 
+  // The browser-reachable home origin: only loopback WEB_ORIGIN values may be
+  // stamped downstream (nav anchors and the gateway bounce consume it). A
+  // docker-internal origin (e.g. http://web:3000) yields null — nothing stamps.
+  const homeOrigin = ["127.0.0.1", "localhost", "::1", "[::1]"].includes(webOrigin.hostname) ? webOrigin.origin : null;
+
   return {
     port,
     webOrigin: webOrigin.origin,
+    homeOrigin,
     username: environment.OPERATOR_BASIC_USERNAME,
     password: environment.OPERATOR_BASIC_PASSWORD,
     subject,
@@ -205,6 +211,9 @@ function createGateway(config) {
     if (protectedPath && !hasValidBasic && !hasValidCookie) return unauthorized(response);
 
     const headers = forwardHeaders(incoming.headers, ["host", "authorization"]);
+    // forwardHeaders already dropped any client-supplied value (the name is in
+    // operatorHeaders), so this assignment can never produce a duplicate header.
+    if (config.homeOrigin) headers["x-operator-gateway-origin"] = config.homeOrigin;
     if (protectedPath) Object.assign(headers, signedOperatorHeaders({
       subject: config.subject,
       secret: config.signingSecret,

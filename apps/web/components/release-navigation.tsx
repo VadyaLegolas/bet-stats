@@ -13,7 +13,7 @@ const DESTINATIONS = [
   { label: "Операции", href: "/internal/operations/gateway", current: (pathname: string) => pathname.startsWith("/internal/operations"), external: true },
 ] as const;
 
-export function ReleaseNavigation() {
+export function ReleaseNavigation({ homeOrigin }: { homeOrigin?: string | null } = {}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -57,6 +57,17 @@ export function ReleaseNavigation() {
             <a
               key={destination.label}
               href={destination.href}
+              aria-current={destination.current(pathname) ? "page" : undefined}
+              onClick={() => setOpen(false)}
+            >
+              {destination.label}
+            </a>
+          ) : homeOrigin ? (
+            // Reached through the operator gateway: a full cross-origin page
+            // navigation back to the app origin is the point here.
+            <a
+              key={destination.label}
+              href={`${homeOrigin}${destination.href}`}
               aria-current={destination.current(pathname) ? "page" : undefined}
               onClick={() => setOpen(false)}
             >

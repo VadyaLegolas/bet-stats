@@ -326,6 +326,64 @@ describe("operator gateway HTTP boundary", () => {
       await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));
     }
   });
+
+  it("stamps the loopback WEB_ORIGIN origin while replacing a client-supplied gateway-origin spoof", async () => {
+    const requests: Array<{ path: string; headers: IncomingHttpHeaders }> = [];
+    const upstream = createServer((request, response) => {
+      requests.push({ path: request.url ?? "", headers: request.headers });
+      request.resume();
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ ok: true }));
+    });
+    const upstreamOrigin = await listen(upstream);
+    const gateway = await startGateway(upstreamOrigin);
+
+    try {
+      expect((await fetch(`${gateway.origin}/fixtures`, { headers: { "x-operator-gateway-origin": "http://evil.example" } })).status).toBe(200);
+      const forwarded = requests.filter((request) => request.path !== "/health");
+      expect(forwarded).toHaveLength(1);
+      expect(forwarded[0]?.headers["x-operator-gateway-origin"]).toBe(upstreamOrigin);
+    } finally {
+      await stop(gateway.process);
+      await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));
+    }
+  });
+
+  it("omits the gateway-origin stamp when WEB_ORIGIN is outside the loopback allowlist", async () => {
+    // The locked example origin http://web:3000 cannot be used here: the
+    // hostname "web" does not resolve in the test environment, so no request
+    // could reach a live upstream and the stamp's absence would be
+    // unobservable. http://127.0.0.2:<port> is an absolute origin outside the
+    // allowlist {127.0.0.1, localhost, ::1, [::1]} that still routes back to
+    // this machine — the same non-loopback gate branch under test.
+    const requests: Array<{ path: string; headers: IncomingHttpHeaders }> = [];
+    const upstream = createServer((request, response) => {
+      requests.push({ path: request.url ?? "", headers: request.headers });
+      request.resume();
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ ok: true }));
+    });
+    // The shared listen() helper binds 127.0.0.1 only, so this test binds the
+    // upstream itself to 0.0.0.0 (reachable via 127.0.0.2) and mirrors its
+    // address() narrowing to read the port.
+    await new Promise<void>((resolveListen, rejectListen) => {
+      upstream.listen(0, "0.0.0.0", () => resolveListen());
+      upstream.once("error", rejectListen);
+    });
+    const address = upstream.address();
+    if (!address || typeof address === "string") throw new Error("Expected a TCP address");
+    const gateway = await startGateway(`http://127.0.0.2:${address.port}`);
+
+    try {
+      expect((await fetch(`${gateway.origin}/fixtures`, { headers: { "x-operator-gateway-origin": "http://evil.example" } })).status).toBe(200);
+      const forwarded = requests.filter((request) => request.path !== "/health");
+      expect(forwarded).toHaveLength(1);
+      expect(forwarded[0]?.headers["x-operator-gateway-origin"]).toBeUndefined();
+    } finally {
+      await stop(gateway.process);
+      await new Promise<void>((resolveClose, rejectClose) => upstream.close((error) => error ? rejectClose(error) : resolveClose()));
+    }
+  });
 });
 
 function upgradeHandshake(path: string, extraHeaders: Record<string, string> = {}) {

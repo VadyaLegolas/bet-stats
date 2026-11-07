@@ -10,6 +10,7 @@ const DESTINATIONS = [
   { label: "Результаты", href: "/scorecards", current: (pathname: string) => pathname.startsWith("/scorecards") },
   { label: "Методология", href: "/methodology", current: (pathname: string) => pathname.startsWith("/methodology") },
   { label: "FAQ", href: "/faq", current: (pathname: string) => pathname.startsWith("/faq") },
+  { label: "Операции", href: "/internal/operations/gateway", current: (pathname: string) => pathname.startsWith("/internal/operations"), external: true },
 ] as const;
 
 export function ReleaseNavigation() {
@@ -52,14 +53,25 @@ export function ReleaseNavigation() {
       </button>
       <nav aria-label="Основная навигация" id="release-primary-links" data-open={open ? "true" : "false"}>
         {DESTINATIONS.map((destination) => (
-          <Link
-            key={destination.label}
-            href={destination.href}
-            aria-current={destination.current(pathname) ? "page" : undefined}
-            onClick={() => setOpen(false)}
-          >
-            {destination.label}
-          </Link>
+          "external" in destination && destination.external ? (
+            <a
+              key={destination.label}
+              href={destination.href}
+              aria-current={destination.current(pathname) ? "page" : undefined}
+              onClick={() => setOpen(false)}
+            >
+              {destination.label}
+            </a>
+          ) : (
+            <Link
+              key={destination.label}
+              href={destination.href}
+              aria-current={destination.current(pathname) ? "page" : undefined}
+              onClick={() => setOpen(false)}
+            >
+              {destination.label}
+            </Link>
+          )
         ))}
       </nav>
     </div>

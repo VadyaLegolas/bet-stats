@@ -51,7 +51,13 @@ export default function OperationsPage() {
       const response = await fetch(`/internal-api/operations/overview${query}`, { cache: "no-store" });
       if (!response.ok) throw new Error("OPERATIONS_UNAVAILABLE");
       setOverview(await response.json() as Overview);
-    } catch { setError("Этот операционный блок недоступен. Ранее показанные безопасные сведения остаются без изменений."); }
+    } catch {
+      if (typeof window !== "undefined" && window.location.port === "3000") {
+        window.location.href = `/internal/operations/gateway${window.location.search}`;
+        return;
+      }
+      setError("Этот операционный блок недоступен. Ранее показанные безопасные сведения остаются без изменений.");
+    }
     finally { setLoading(false); }
   };
   const trigger = async (kind: "backup" | "drill") => {

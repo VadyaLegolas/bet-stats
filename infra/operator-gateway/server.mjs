@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
@@ -19,7 +20,7 @@ const operatorHeaders = new Set(["x-operator-subject", "x-operator-timestamp", "
 const wwwAuthenticateHeader = 'Basic realm="Bet Stats Operator", charset="UTF-8"';
 const subjectPattern = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/;
 const upstreamTimeoutMs = 10_000;
-const requestTimeoutMs = 20_000;
+const requestTimeoutMs = 180_000;
 const headersTimeoutMs = 10_000;
 const keepAliveTimeoutMs = 5_000;
 
@@ -147,13 +148,61 @@ function rawHeaderBlock(rawHeaders, excluded = []) {
   return block;
 }
 
+function parseCookies(header) {
+  if (!header || typeof header !== "string") return {};
+  const cookies = {};
+  for (const part of header.split(";")) {
+    const trimmed = part.trim();
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx !== -1) {
+      cookies[trimmed.slice(0, eqIdx).trim()] = decodeURIComponent(trimmed.slice(eqIdx + 1).trim());
+    }
+  }
+  return cookies;
+}
+
+function computeOperatorToken(config) {
+  return createHmac("sha256", config.signingSecret)
+    .update(`${config.username}:${config.password}`)
+    .digest("base64url");
+}
+
+function verifyOperatorToken(token, config) {
+  if (!token || typeof token !== "string" || !config.signingSecret || !config.username || !config.password) {
+    return false;
+  }
+  const expected = computeOperatorToken(config);
+  const tokenBuf = Buffer.from(token);
+  const expectedBuf = Buffer.from(expected);
+  if (tokenBuf.length !== expectedBuf.length) return false;
+  return timingSafeEqual(tokenBuf, expectedBuf);
+}
+
 function createGateway(config) {
   const server = createServer((incoming, response) => {
     const target = requestTarget(incoming.url, config.webOrigin);
     if (!target) return invalidTarget(response);
 
     const protectedPath = isProtectedPath(target.pathname);
-    if (protectedPath && !authenticateBasic(incoming.headers.authorization, config.username, config.password)) return unauthorized(response);
+    if (protectedPath && target.searchParams.has("operator_token")) {
+      const queryToken = target.searchParams.get("operator_token");
+      if (verifyOperatorToken(queryToken, config)) {
+        target.searchParams.delete("operator_token");
+        const cleanUrl = target.pathname + (target.search ? target.search : "");
+        response.writeHead(302, {
+          location: cleanUrl,
+          "set-cookie": `operator_session=${queryToken}; Path=/; HttpOnly; SameSite=Lax`,
+          "cache-control": "private, no-store, max-age=0",
+        });
+        return response.end();
+      }
+    }
+
+    const cookies = parseCookies(incoming.headers.cookie);
+    const hasValidCookie = cookies.operator_session && verifyOperatorToken(cookies.operator_session, config);
+    const hasValidBasic = authenticateBasic(incoming.headers.authorization, config.username, config.password);
+
+    if (protectedPath && !hasValidBasic && !hasValidCookie) return unauthorized(response);
 
     const headers = forwardHeaders(incoming.headers, ["host", "authorization"]);
     if (protectedPath) Object.assign(headers, signedOperatorHeaders({
@@ -207,7 +256,10 @@ function createGateway(config) {
     }
 
     const protectedPath = isProtectedPath(target.pathname);
-    if (protectedPath && !authenticateBasic(incoming.headers.authorization, config.username, config.password)) {
+    const cookies = parseCookies(incoming.headers.cookie);
+    const hasValidCookie = cookies.operator_session && verifyOperatorToken(cookies.operator_session, config);
+    const hasValidBasic = authenticateBasic(incoming.headers.authorization, config.username, config.password);
+    if (protectedPath && !hasValidBasic && !hasValidCookie) {
       return rawSocketResponse(socket, "401 Unauthorized", { message: "Authentication required" }, { "www-authenticate": wwwAuthenticateHeader });
     }
 

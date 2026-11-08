@@ -76,7 +76,12 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   4. Probes and alerting never call live external providers and per-job failures do not create alert fatigue.
 
 **Notes / research flags**: Channel choice (webhook vs SMTP free-tier) and its rate limits need runtime verification at implementation time. BullMQ `QueueEvents` for job signals; native `fetch` for webhook dispatch.
-**Plans**: TBD
+**Plans**: 4/4 plans complete
+**Plan list**:
+- [ ] 09-01-PLAN.md — Schema foundation: OpsAlert/transition/delivery models, guarded migration, mutation-rejection tests
+- [ ] 09-02-PLAN.md — Worker evaluator: five signal adapters, dedup/damping, webhook dispatch, startAlertingRuntime
+- [ ] 09-03-PLAN.md — API layer: 5xx exception filter, alerts() read model, acknowledge endpoint, readAlertsConfig
+- [ ] 09-04-PLAN.md — UI block: «Алерты» block on operations page, enum labels, SSR tests
 **UI hint**: yes
 
 ### Phase 10: Performance Audit and Budgets

@@ -528,31 +528,37 @@ export function readBackupConfig(input: Record<string, string | undefined>): Bac
 
 **If this table is empty:** not applicable — assumptions listed above are the ones needing confirmation.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Alerts pagination parameter shape** (discretion: `alertPage` vs a dedicated sub-resource)
    - What we know: UI-SPEC defaults to `alertPage` in the same query string; the overview validator rejects unknown keys (Pitfall 3); failures own `page`.
    - What's unclear: extend the allowlist or split the read path.
    - Recommendation: extend the allowlist with `alertPage` (mirrors `page` handling, keeps one fetch per the UI-SPEC "single overview fetch" contract) and add a unit test for the 400-on-unknown-key behavior.
+   - RESOLVED: Allowlist extended with `alertPage` in Plan 03 Task 1 (operations.service.ts overview allowlist). Page.tsx reads `alertPage` independently from `failures` page (Plan 04 Task 1).
 
 2. **Evaluator runtime attachment** (discretion)
    - What we know: `start()` composes `startReplayWorker` + `startBackupRuntime` (`main.ts:142-155`); backup is a separate config-gated runtime with its own `close()`.
    - What's unclear: fold the tick into `startReplayWorker` or add `startAlertingRuntime`.
    - Recommendation: a new `startAlertingRuntime({ databaseUrl, redisUrl, alertsConfig, log })` composed in `start()` beside `startBackupRuntime` — symmetric opt-in gating (`ALERTS_ENABLED`), symmetric `close()`, and no timers when disabled.
+   - RESOLVED: New `startAlertingRuntime` composed in `start()` beside `startBackupRuntime` in Plan 02 Task 1 (workers/data-sync/src/main.ts). Opt-in on `ALERTS_ENABLED`, import-side-effect-free via `isDirectExecution()`.
 
 3. **Where the D-13 weekly synthetic cadence is armed from**
    - What we know: Phase 8 arms ticks from persisted receipts (`completedAt + interval`, idle-poll until first success).
    - What's unclear: the synthetic probe's persisted anchor (latest `OpsAlertDelivery` of the synthetic fingerprint is the natural fit).
    - Recommendation: arm from the last synthetic delivery attempt timestamp using the same idle-poll pattern.
+   - RESOLVED: `scheduleDeliveryProbe` armed from latest `OpsAlertDelivery` of the synthetic fingerprint (`delivery-health\0synthetic`), idle-poll until first success then every 7 days — Plan 02 Task 3 (workers/data-sync/src/jobs/delivery-probe.ts), wired into `startAlertingRuntime`.
 
 4. **5xx bucket key scheme** (explicitly discretion)
    - Recommendation: `bet-stats:http5xx:<minuteIndex>` with 120s TTL, both counters in one bucket key (`total`/`failed` as two keys or a hash) so the ratio needs one read.
+   - RESOLVED: `bet-stats:http5xx:<minuteIndex>` key with `MULTI INCR+EXPIRE` TTL 120s in Plan 03 Task 1 (apps/api/src/modules/operations/http-5xx-bucket.filter.ts).
 
 5. **Correlation context per signal**
    - What we know: SyncRun carries `correlationId` [VERIFIED: schema.prisma:398]; quota/circuit/backup rows have no correlation ID.
    - Recommendation: correlationIds is an optional string[] on the DTO (UI renders `Нет` when empty); never fabricate IDs.
+   - RESOLVED: `correlationIds` optional string[] on `AlertFact` DTO in Plan 03 Task 1 (operations.service.ts). UI renders `Нет` when empty (Plan 04 `alerts-block.tsx` CopyCorrelation).
 
 6. **UI-SPEC sign-off status** (see A7) — confirm with the operator/UI checker before execution.
+   - RESOLVED: UI-SPEC frontmatter `status: approved` (assumption A7 in RESEARCH.md); CONTEXT.md D-06/D-07 lock the UI contract (Russian labels, Block conventions, typed safe fields). Confirmed resolved; proceed with execution.
 
 ## Environment Availability
 

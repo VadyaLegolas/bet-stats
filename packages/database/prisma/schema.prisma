@@ -1119,3 +1119,57 @@ model ReconciliationDecision {
   @@index([caseId, decidedAt])
   @@index([canonicalEntityId])
 }
+
+/// Durable operator alert state (ALRT-02). One OPEN row per dedupFingerprint
+/// (signal\0scope); occurrences bump count/lastSeen. The guarded transition
+/// trigger freezes identity (id/dedupFingerprint/firstSeen/createdAt) while
+/// allowing severity/status/count/lastSeen/acknowledgedAt/resolvedAt changes.
+model OpsAlert {
+  id               String    @id
+  dedupFingerprint String    @unique
+  signal           String
+  scope            String
+  severity         String
+  status           String
+  count            Int
+  firstSeen        DateTime  @db.Timestamptz(3)
+  lastSeen         DateTime  @db.Timestamptz(3)
+  acknowledgedAt   DateTime? @db.Timestamptz(3)
+  resolvedAt       DateTime? @db.Timestamptz(3)
+  correlationIds   Json
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  transitions      OpsAlertTransition[]
+  deliveries       OpsAlertDelivery[]
+
+  @@index([lastSeen])
+}
+
+/// Immutable status/severity history of one alert (append-only, frozen by trigger).
+model OpsAlertTransition {
+  id           String   @id
+  alertId      String
+  from         String
+  to           String
+  severityFrom String?
+  severityTo   String?
+  at           DateTime @db.Timestamptz(3)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  alert        OpsAlert @relation(fields: [alertId], references: [id])
+
+  @@index([alertId])
+}
+
+/// Immutable record of one webhook dispatch attempt (append-only, frozen by
+/// trigger) — every attempt is kept, so a failed channel never loses the alert.
+model OpsAlertDelivery {
+  id         String   @id
+  alertId    String
+  at         DateTime @db.Timestamptz(3)
+  httpStatus Int?
+  errorCode  String?
+  attempt    Int
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  alert      OpsAlert @relation(fields: [alertId], references: [id])
+
+  @@index([at])
+}

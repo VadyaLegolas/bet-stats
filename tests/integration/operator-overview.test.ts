@@ -75,8 +75,33 @@ describe("operator overview", () => {
     expect(flatten(overview)).not.toMatch(/secret-token-canary|raw-payload-canary|authorization-header-canary|environment-canary|stack-trace-canary|unrestricted-log-canary/);
   });
 
-  it("rejects arbitrary filters and unsafe correlation identifiers", async () => {
-    const unsafe = repository();
+  it("sanitizes the alerts section: free-form fields pass safeCode/safeIdentity/safeCorrelation and no canary crosses (T-09-09)", async () => {
+    const unsafeAlerts = repository();
+    unsafeAlerts.alerts.mockResolvedValueOnce([
+      {
+        id: "alert id with spaces",
+        signal: "PROVIDER_5XX",
+        scope: "sync\nstack-trace-canary",
+        severity: "CRITICAL",
+        status: "OPEN",
+        count: 3,
+        firstSeen: new Date("2026-09-20T09:00:00.000Z"),
+        lastSeen: new Date("2026-09-20T11:00:00.000Z"),
+        acknowledgedAt: null,
+        resolvedAt: null,
+        correlationIds: ["corr-1", "evil secret-token-canary", "evil raw-payload-canary", "evil authorization-header-canary", "evil environment-canary", "evil unrestricted-log-canary"],
+        unsafe: CANARIES,
+      },
+    ] as never);
+    const overview = await createOperationsProjection(unsafeAlerts, () => new Date("2026-09-20T12:00:00.000Z")).overview({ page: 1, pageSize: 25, windowHours: 24 });
+    const alerts = overview.alerts as Array<Record<string, unknown>>;
+    expect(alerts).toHaveLength(1);
+    // Free-form values that fail the sanitizer collapse to "unavailable"; canary-bearing correlation IDs are dropped.
+    expect(alerts[0]).toMatchObject({ id: "unavailable", signal: "PROVIDER_5XX", scope: "unavailable", severity: "CRITICAL", status: "OPEN", count: 3, correlationIds: ["corr-1"] });
+    expect(flatten(overview)).not.toMatch(/secret-token-canary|raw-payload-canary|authorization-header-canary|environment-canary|stack-trace-canary|unrestricted-log-canary/);
+  });
+
+  it("rejects arbitrary filters and unsafe correlation identifiers", async () => {    const unsafe = repository();
     unsafe.failures.mockResolvedValueOnce([{ id: "job", rootCause: "FAILED", impact: "BLOCKING", scope: "sync", occurredAt: new Date(), retryable: false, correlationId: "corr\nsecret-token-canary" }] as never);
     const projection = createOperationsProjection(unsafe, () => new Date("2026-09-20T12:00:00.000Z"));
     await expect(projection.overview({ page: 1, pageSize: 25, windowHours: 24, diagnostics: "all" } as never)).rejects.toThrow("INVALID_OPERATIONS_QUERY");

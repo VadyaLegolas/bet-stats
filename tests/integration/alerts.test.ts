@@ -1,6 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 
+import { NotFoundException } from "../../apps/api/node_modules/@nestjs/common/index.js";
+import { OperationsService } from "../../apps/api/src/modules/operations/operations.service.js";
+
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required");
 
@@ -147,4 +150,50 @@ describe("alert tables: mutation rejection, dedup upsert, acknowledge idempotenc
     expect(alert.count).toBe(3);
     expect(alert.acknowledgedAt).not.toBeNull();
   });
+});
+
+describe("OperationsService.acknowledgeAlert (real PostgreSQL, ALRT-04)", () => {
+  beforeAll(async () => {
+    // The first describe's afterAll disconnects the shared client before this
+    // suite runs — open a fresh connection for the service-level cases.
+    prisma = createPrismaClient(databaseUrl);
+    // A fresh OPEN alert for the service-level acknowledge cases.
+    await expect(
+      prisma.$executeRawUnsafe(
+        `INSERT INTO "OpsAlert" (id,"dedupFingerprint",signal,scope,severity,status,count,"firstSeen","lastSeen","correlationIds") VALUES ($1,$2,'SYNC_STALE','fixtures','WARNING','OPEN',4,'2026-11-01T00:00:00.000Z','2026-11-01T00:00:00.000Z',$3::jsonb)`,
+        id("svc-ack"), id("fp-svc-ack"), JSON.stringify(["corr-1"]),
+      ),
+    ).resolves.toBe(1);
+  });
+
+  it("acknowledges once — acknowledgedAt stamped, exactly one transition, count/lastSeen untouched — and is idempotent on repeat", async () => {
+    const alertId = id("svc-ack");
+    const service = new OperationsService(prisma);
+
+    await expect(service.acknowledgeAlert(alertId)).resolves.toEqual({ acknowledged: true });
+
+    const alert = await prisma.opsAlert.findUniqueOrThrow({ where: { id: alertId } });
+    expect(alert.status).toBe("ACKNOWLEDGED");
+    expect(alert.acknowledgedAt).not.toBeNull();
+    // Acknowledge never resets count/lastSeen and never resolves the alert.
+    expect(alert.count).toBe(4);
+    expect(alert.lastSeen.toISOString()).toBe("2026-11-01T00:00:00.000Z");
+    expect(alert.resolvedAt).toBeNull();
+
+    const transitions = await prisma.opsAlertTransition.findMany({ where: { alertId } });
+    expect(transitions).toHaveLength(1);
+    expect(transitions[0]).toMatchObject({ from: "OPEN", to: "ACKNOWLEDGED", severityFrom: "WARNING", severityTo: "WARNING" });
+
+    // Repeat acknowledge: same result, no second transition row.
+    await expect(service.acknowledgeAlert(alertId)).resolves.toEqual({ acknowledged: true });
+    expect(await prisma.opsAlertTransition.count({ where: { alertId } })).toBe(1);
+  });
+
+  it("throws the uniform NotFoundException(\"Not found\") for a missing alert — no oracle", async () => {
+    const service = new OperationsService(prisma);
+    await expect(service.acknowledgeAlert(`alert-missing-${run}`)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.acknowledgeAlert(`alert-missing-${run}`)).rejects.toMatchObject({ message: "Not found" });
+  });
+
+  afterAll(async () => prisma?.$disconnect());
 });

@@ -4,11 +4,11 @@ milestone: v1.1
 current_phase: 09
 current_phase_name: Degradation Alerting
 status: executing
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-11-10T14:06:01.545Z"
+stopped_at: Completed 09-03-PLAN.md
+last_updated: "2026-11-10T14:18:53.642Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 09 execution started
-state_head: c3d0f6d8e74b68dbf8551750869af39ac6a3d5e7
+state_head: e4a584badaf8dc2211fff8d7a66d9a5e8f643a8a
 progress:
   total_phases: 10
   completed_phases: 2
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 09 (Degradation Alerting) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 09 execution started
 
@@ -131,6 +131,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 08 P06 | 11min | 2 tasks | 2 files |
 | Phase 08 P07 | 13min | 2 tasks | 2 files |
 | Phase 09 P09-01 | 28min | 2 tasks | 12 files |
+| Phase 09 P09-03 | 9min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -269,6 +270,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 08]: IN-05 classifier pins isolate one phrase each: Windows `error during connect` stderr (H's stderr carries the other two phrases, so a deleted branch keeps H green) → FAILED, and `Error: No such object: <name>` absence wording → REMOVED; IN-05's residual H-parametrization stays open in 08-REVIEW-DISPOSITION.md (08-07)
 - [Phase 09]: OpsAlert guarded by identity-freeze transition trigger (not blanket append-only) so dedup count bumps and operator actions work; audit tables frozen append-only
 - [Phase 09]: ALRT-02 stays Pending until Plan 09-02 completes (shared-ID gate); integration vitest needs CI=true + null stdin in non-TTY shells
+- [Phase 09]: Http5xxBucketFilter extends @nestjs/core BaseExceptionFilter and is registered with app.get(HttpAdapterHost).httpAdapter, so Nest error bodies stay byte-identical; both Redis bucket writes are fire-and-forget with swallowed errors (null-safe without REDIS_URL). — No other implementation preserved the byte-identical error contract while adding the 5xx counter; the filter must delegate to the Nest base handler with the real HTTP adapter, and Redis must never become a request-failure dependency (D-09, T-09-07).
+- [Phase 09]: OperationsService.acknowledgeAlert guards on acknowledgedAt IS NULL via updateMany plus a single OPEN-to-ACKNOWLEDGED transition with a randomUUID id, so concurrent and repeated acknowledges converge to one transition with the same result; RESOLVED alerts are no-op acknowledges (ALRT-04, T-09-08). — Two concurrent HTTP acknowledges must not append two transition rows (the transition table is append-only and would otherwise 500 on a second INSERT); the acknowledgedAt:null guard makes the loser of the race a benign no-op instead of an error.
+- [Phase 09]: ALRT-01, ALRT-03 and ALRT-04 remain Pending under the shared-ID gate: requirements.ready-ids reports all three blocked (also declared by Plan 09-02), so they are marked complete only when that plan's SUMMARY exists. — The shared-ID gate exists so a requirement never reads Complete while another plan still has to satisfy it; marking the ready subset (empty here) is the only allowed action for this plan.
 
 ### Pending Todos
 
@@ -374,6 +378,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-10T14:05:01.452Z
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-11-10T14:18:21.188Z
+Stopped at: Completed 09-03-PLAN.md
 Resume file: None

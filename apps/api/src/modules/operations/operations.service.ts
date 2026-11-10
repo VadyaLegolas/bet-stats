@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { BadRequestException, Injectable, NotFoundException, Optional, type OnModuleDestroy } from "@nestjs/common";
-import { DEFAULT_BACKUP_DRILL_INTERVAL_HOURS, DEFAULT_BACKUP_RETENTION_COUNT, readBackupConfig, redactSecrets } from "@bet-stats/config";
+import { DEFAULT_BACKUP_DRILL_INTERVAL_HOURS, DEFAULT_BACKUP_RETENTION_COUNT, readAlertsConfig, readBackupConfig, redactSecrets } from "@bet-stats/config";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import { Queue } from "bullmq";
 
@@ -15,6 +15,68 @@ type QuotaFact = { provider: string; endpointFamily: string; used: number; effec
 type FailureFact = { id: string; rootCause: string; impact: "BLOCKING" | "DEGRADED"; scope: string; occurredAt: Date; retryable: boolean; correlationId: string | null };
 type DataQualityFact = { code: string; scope: string; count: number; firstOccurrence: Date; lastOccurrence: Date };
 type IncidentFact = { id: string; status: "OPEN" | "RESOLVED"; impact: "BLOCKING" | "DEGRADED"; summary: string; startedAt: Date; lastUpdatedAt: Date; correlationId: string | null };
+
+// --- Alerts read model (ALRT-03) -------------------------------------------------
+
+/** Raw repository row (Dates intact) — severity ordering and sanitization happen at read time. */
+export type AlertFact = {
+  id: string;
+  signal: string;
+  scope: string;
+  severity: string;
+  status: string;
+  count: number;
+  firstSeen: Date;
+  lastSeen: Date;
+  acknowledgedAt: Date | null;
+  resolvedAt: Date | null;
+  correlationIds: string[];
+};
+
+/** Closed, secret-free projection DTO: codes, scopes, counts, instants and correlation IDs only (T-09-09). */
+export type AlertView = {
+  id: string;
+  signal: string;
+  scope: string;
+  severity: string;
+  status: string;
+  count: number;
+  firstSeen: string;
+  lastSeen: string;
+  acknowledgedAt: string | null;
+  resolvedAt: string | null;
+  correlationIds: string[];
+};
+
+/** Raw channel row — webhook config is read from the environment, the delivery row from OpsAlertDelivery. */
+export type ChannelRows = { lastDeliveryStatus: number | null; lastDeliveryAt: Date | null };
+
+/** Channel honesty (D-13): configured (ALERT_WEBHOOK_URL present) plus the last delivery outcome. */
+export type ChannelState = { configured: boolean; lastDeliveryStatus: number | null; lastDeliveryAt: string | null };
+
+/** Severity is a closed CHECK-constrained enum; unknown values rank below INFO so nothing crashes on drift. */
+const ALERT_SEVERITY_RANK: Record<string, number> = { CRITICAL: 3, WARNING: 2, INFO: 1 };
+/** Resolved alerts stay visible for 7 days after resolution. */
+const ALERT_RESOLVED_WINDOW_MS = 7 * 24 * 3_600_000;
+const MAX_CORRELATION_IDS = 5;
+
+/** Applies the safeCode/safeIdentity/safeCorrelation sanitizers to every free-form alert field (T-09-09). */
+function safeAlertView(alert: AlertFact): AlertView {
+  return {
+    id: safeIdentity(alert.id),
+    signal: safeCode(alert.signal),
+    scope: safeIdentity(alert.scope),
+    severity: safeCode(alert.severity),
+    status: safeCode(alert.status),
+    count: alert.count,
+    firstSeen: iso(alert.firstSeen)!,
+    lastSeen: iso(alert.lastSeen)!,
+    acknowledgedAt: iso(alert.acknowledgedAt),
+    resolvedAt: iso(alert.resolvedAt),
+    correlationIds: alert.correlationIds.map((value) => safeCorrelation(value)).filter((value): value is string => value !== null).slice(0, MAX_CORRELATION_IDS),
+  };
+}
+
 
 // --- Backup read model (BAK-03) ------------------------------------------------
 
@@ -112,6 +174,8 @@ export interface OperationsRepository {
   dataQuality(since: Date): Promise<DataQualityFact[]>;
   incidents(since: Date): Promise<IncidentFact[]>;
   backups(): Promise<BackupRows>;
+  alerts(since: Date): Promise<AlertFact[]>;
+  channelState(): Promise<ChannelRows>;
 }
 
 export type OperationsQuery = Readonly<{ page?: number; pageSize?: number; windowHours?: number; impact?: "BLOCKING" | "DEGRADED"; rootCause?: string }>;
@@ -122,7 +186,7 @@ function safeCode(value: string | null | undefined, fallback = "UNKNOWN"): strin
 function safeIdentity(value: string): string { return /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/.test(value) ? value : "unavailable"; }
 
 function validateQuery(raw: OperationsQuery): Required<Pick<OperationsQuery, "page" | "pageSize" | "windowHours">> & Pick<OperationsQuery, "impact" | "rootCause"> {
-  const allowed = new Set(["page", "pageSize", "windowHours", "impact", "rootCause"]);
+  const allowed = new Set(["page", "pageSize", "windowHours", "impact", "rootCause", "alertPage"]);
   if (Object.keys(raw).some((key) => !allowed.has(key))) throw new BadRequestException("INVALID_OPERATIONS_QUERY");
   const page = raw.page ?? 1; const pageSize = raw.pageSize ?? 25; const windowHours = raw.windowHours ?? 24;
   if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 25 || !Number.isInteger(windowHours) || windowHours < 1 || windowHours > 168) throw new BadRequestException("INVALID_OPERATIONS_QUERY");
@@ -137,8 +201,9 @@ export function createOperationsProjection(repository: OperationsRepository, now
       const query = validateQuery(raw);
       const current = now();
       const since = new Date(current.getTime() - query.windowHours * 3_600_000);
-      const [readiness, providerHealth, quotas, rawFailures, dataQuality, incidents, backupRows] = await Promise.all([
-        repository.readiness(), repository.providerHealth(since), repository.quotas(since), repository.failures(since), repository.dataQuality(since), repository.incidents(since), repository.backups(),
+      const resolvedSince = new Date(current.getTime() - ALERT_RESOLVED_WINDOW_MS);
+      const [readiness, providerHealth, quotas, rawFailures, dataQuality, incidents, backupRows, rawAlerts, channelRows] = await Promise.all([
+        repository.readiness(), repository.providerHealth(since), repository.quotas(since), repository.failures(since), repository.dataQuality(since), repository.incidents(since), repository.backups(), repository.alerts(resolvedSince), repository.channelState(),
       ]);
       const failures = rawFailures
         .map((failure) => ({ ...failure, rootCause: safeCode(failure.rootCause), scope: safeIdentity(failure.scope), correlationId: safeCorrelation(failure.correlationId) }))
@@ -165,6 +230,18 @@ export function createOperationsProjection(repository: OperationsRepository, now
         // D-15: belt-and-braces redactSecrets pass — the closed BackupFact carries
         // basenames, sizes, instants, durations and reason codes, nothing else.
         backups: redactSecrets(computeBackupFact(backupRows, current)) as BackupFact,
+        // T-09-09: every free-form alert field is sanitized and the whole
+        // section passes redactSecrets — raw payloads, stacks and secrets never
+        // cross the boundary. Active alerts order severity desc, lastSeen desc;
+        // resolved alerts stay visible for the 7-day window (ALRT-03).
+        alerts: redactSecrets(
+          [...rawAlerts]
+            .sort((left, right) => (ALERT_SEVERITY_RANK[right.severity] ?? 0) - (ALERT_SEVERITY_RANK[left.severity] ?? 0) || right.lastSeen.getTime() - left.lastSeen.getTime() || left.id.localeCompare(right.id))
+            .map(safeAlertView),
+        ) as AlertView[],
+        // D-13 channel honesty: configured comes from readAlertsConfig, the
+        // delivery outcome from the latest OpsAlertDelivery row.
+        channelState: { configured: Boolean(readAlertsConfig(process.env).webhookUrl), lastDeliveryStatus: channelRows.lastDeliveryStatus, lastDeliveryAt: iso(channelRows.lastDeliveryAt) },
       };
     },
   };
@@ -215,6 +292,21 @@ export function createPrismaOperationsRepository(database: PrismaClient, clock =
         drillIntervalHours: config.drillIntervalHours ?? DEFAULT_BACKUP_DRILL_INTERVAL_HOURS,
       };
     },
+    async alerts(since) {
+      // Explicit selects on closed scalars only — raw payloads never cross the
+      // boundary (Phase 06 projection discipline, T-09-09).
+      const select = { id: true, signal: true, scope: true, severity: true, status: true, count: true, firstSeen: true, lastSeen: true, acknowledgedAt: true, resolvedAt: true, correlationIds: true } as const;
+      const [activeRows, resolvedRows] = await Promise.all([
+        database.opsAlert.findMany({ where: { status: { not: "RESOLVED" } }, orderBy: [{ lastSeen: "desc" }, { id: "asc" }], take: 100, select }),
+        database.opsAlert.findMany({ where: { status: "RESOLVED", resolvedAt: { gte: since } }, orderBy: [{ resolvedAt: "desc" }, { id: "asc" }], take: 100, select }),
+      ]);
+      const toFact = (row: (typeof activeRows)[number]): AlertFact => ({ ...row, correlationIds: Array.isArray(row.correlationIds) ? row.correlationIds.filter((value): value is string => typeof value === "string") : [] });
+      return [...activeRows, ...resolvedRows].map(toFact);
+    },
+    async channelState() {
+      const latest = await database.opsAlertDelivery.findFirst({ orderBy: [{ at: "desc" }, { id: "desc" }], select: { httpStatus: true, at: true } });
+      return { lastDeliveryStatus: latest?.httpStatus ?? null, lastDeliveryAt: latest?.at ?? null };
+    },
   };
 }
 
@@ -261,11 +353,13 @@ export function createBullBackupTriggerEnqueuer(input: { redisUrl: string; prefi
 export class OperationsService implements OnModuleDestroy {
   private readonly projection: ReturnType<typeof createOperationsProjection> | null;
   private readonly ownedClient: PrismaClient | null;
+  private readonly client: PrismaClient | null;
   private readonly injectedTriggers: BackupTriggerEnqueuer | null;
   private ownedTriggers: BackupTriggerEnqueuer | null = null;
   constructor(@Optional() database?: PrismaClient, @Optional() triggers?: BackupTriggerEnqueuer) {
     this.ownedClient = database ? null : process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null;
     const client = database ?? this.ownedClient;
+    this.client = client;
     this.projection = client ? createOperationsProjection(createPrismaOperationsRepository(client)) : null;
     this.injectedTriggers = triggers ?? null;
   }
@@ -286,5 +380,31 @@ export class OperationsService implements OnModuleDestroy {
   // TDD behavior tests assert the rejection shape.
   async triggerBackup(): Promise<{ queued: true }> { this.requireBackupsConfigured(); return this.backupTriggers().trigger("backup"); }
   async triggerDrill(): Promise<{ queued: true }> { this.requireBackupsConfigured(); return this.backupTriggers().trigger("drill"); }
+
+  /**
+   * Operator acknowledge (ALRT-04/D-04, T-09-08): path-only, idempotent,
+   * uniform NotFoundException("Not found") for a missing alert. Acknowledge
+   * never closes, deletes or resolves the alert and never touches
+   * count/lastSeen — it only stamps acknowledgedAt and appends the OPEN →
+   * ACKNOWLEDGED transition once. A repeated or concurrent acknowledge is a
+   * no-op returning the same result.
+   */
+  async acknowledgeAlert(alertId: string): Promise<{ acknowledged: true }> {
+    const client = this.client;
+    if (!client) throw new NotFoundException("Not found");
+    const alert = await client.opsAlert.findUnique({ where: { id: alertId }, select: { id: true, status: true, severity: true, acknowledgedAt: true } });
+    if (!alert) throw new NotFoundException("Not found");
+    if (alert.acknowledgedAt || alert.status !== "OPEN") return { acknowledged: true as const };
+    const at = new Date();
+    await client.$transaction(async (tx) => {
+      // updateMany with the acknowledgedAt:null guard makes the concurrent case
+      // a benign no-op instead of a duplicate transition.
+      const updated = await tx.opsAlert.updateMany({ where: { id: alertId, acknowledgedAt: null }, data: { status: "ACKNOWLEDGED", acknowledgedAt: at } });
+      if (updated.count === 0) return;
+      await tx.opsAlertTransition.create({ data: { id: randomUUID(), alertId, from: alert.status, to: "ACKNOWLEDGED", severityFrom: alert.severity, severityTo: alert.severity, at } });
+    });
+    return { acknowledged: true as const };
+  }
+
   async onModuleDestroy() { await this.ownedTriggers?.close(); await this.ownedClient?.$disconnect(); }
 }

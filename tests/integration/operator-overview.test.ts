@@ -47,6 +47,8 @@ function repository() {
       drillIntervalHours: 168,
       unsafe: CANARIES,
     }) as never),
+    alerts: vi.fn(async () => []),
+    channelState: vi.fn(async () => ({ lastDeliveryStatus: 500, lastDeliveryAt: new Date("2026-09-20T10:00:00.000Z") })),
   };
 }
 
@@ -64,7 +66,7 @@ describe("operator overview", () => {
     const projection = createOperationsProjection(repository(), () => new Date("2026-09-20T12:00:00.000Z"));
     const overview = await projection.overview({ page: 1, pageSize: 25, windowHours: 24 });
 
-    expect(Object.keys(overview)).toEqual(["readiness", "providerHealth", "quotas", "failures", "dataQuality", "incidents", "backups"]);
+    expect(Object.keys(overview)).toEqual(["readiness", "providerHealth", "quotas", "failures", "dataQuality", "incidents", "backups", "alerts", "channelState"]);
     expect(overview.readiness).toEqual({ state: "DEGRADED", services: [{ name: "PostgreSQL", state: "AVAILABLE" }, { name: "Redis", state: "UNAVAILABLE" }], lastCheckedAt: "2026-09-20T12:00:00.000Z" });
     expect(overview.quotas[0]).toMatchObject({ used: 9, effectiveAllowance: 10, percentage: 90, criticalReservations: 2 });
     expect(overview.failures.groups[0]).toMatchObject({ rootCause: "UPSTREAM_5XX", impact: "BLOCKING", count: 1, retryable: true });

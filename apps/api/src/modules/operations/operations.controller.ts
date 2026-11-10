@@ -1,4 +1,4 @@
-import { Controller, Get, Header, HttpCode, HttpStatus, Post, Query, UseGuards } from "@nestjs/common";
+import { Controller, Get, Header, HttpCode, HttpStatus, Param, Post, Query, UseGuards } from "@nestjs/common";
 
 import { OperatorGuard } from "../reconciliation/operator.guard.js";
 import { OperationsService, type OperationsQuery } from "./operations.service.js";
@@ -26,4 +26,10 @@ export class OperationsController {
   @Post("backups/drill")
   @HttpCode(HttpStatus.ACCEPTED)
   backupsDrill() { return this.operations.triggerDrill(); }
+
+  // Path-only POST (no JSON body — the signed proxy forwards no body, Pitfall 4);
+  // idempotent; uniform 404 for a missing alert (T-09-08).
+  @Post("alerts/:alertId/acknowledge")
+  @HttpCode(HttpStatus.ACCEPTED)
+  acknowledgeAlert(@Param("alertId") alertId: string) { return this.operations.acknowledgeAlert(alertId); }
 }

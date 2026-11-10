@@ -139,6 +139,41 @@ function readBoundedInteger(value: string | undefined, minimum: number, maximum:
 }
 
 /**
+ * Reads only explicit alerting inputs (opt-in per D-04 — mirrors readBackupConfig).
+ * Invalid or absent inputs remain absent so callers deterministically fail closed
+ * instead of guessing a webhook target. ALERT_WEBHOOK_URL is validated as an
+ * https/http URL and is never logged. ALERT_* keys are deliberately absent from
+ * the production-required superRefine: alerting is opt-in, so only shape
+ * validation applies here.
+ */
+export type AlertConfig = {
+  enabled: boolean;
+  webhookUrl?: string | undefined;
+  tickMs?: number | undefined;
+  webhookTimeoutMs?: number | undefined;
+};
+
+function readHttpUrl(value: string | undefined): string | undefined {
+  const trimmed = readNonEmpty(value);
+  if (!trimmed) return undefined;
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === "https:" || url.protocol === "http:" ? trimmed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function readAlertsConfig(input: Record<string, string | undefined>): AlertConfig {
+  return {
+    enabled: input.ALERTS_ENABLED === "true" || input.ALERTS_ENABLED === "1",
+    webhookUrl: readHttpUrl(input.ALERT_WEBHOOK_URL),
+    tickMs: readBoundedInteger(input.ALERTS_TICK_MS, 60_000, 3_600_000),
+    webhookTimeoutMs: readBoundedInteger(input.ALERTS_WEBHOOK_TIMEOUT_MS, 1_000, 60_000),
+  };
+}
+
+/**
  * Reads only explicit backup inputs (opt-in per D-04). Invalid or absent inputs
  * remain absent so callers deterministically fail closed instead of guessing a
  * directory, a retention count, or a pg identity. BACKUP_* keys are deliberately

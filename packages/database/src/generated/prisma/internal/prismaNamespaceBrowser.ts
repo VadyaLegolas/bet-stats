@@ -103,7 +103,10 @@ export const ModelName = {
   FixtureProvenance: 'FixtureProvenance',
   ReconciliationCase: 'ReconciliationCase',
   ReconciliationCandidate: 'ReconciliationCandidate',
-  ReconciliationDecision: 'ReconciliationDecision'
+  ReconciliationDecision: 'ReconciliationDecision',
+  OpsAlert: 'OpsAlert',
+  OpsAlertTransition: 'OpsAlertTransition',
+  OpsAlertDelivery: 'OpsAlertDelivery'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -972,6 +975,52 @@ export const ReconciliationDecisionScalarFieldEnum = {
 } as const
 
 export type ReconciliationDecisionScalarFieldEnum = (typeof ReconciliationDecisionScalarFieldEnum)[keyof typeof ReconciliationDecisionScalarFieldEnum]
+
+
+export const OpsAlertScalarFieldEnum = {
+  id: 'id',
+  dedupFingerprint: 'dedupFingerprint',
+  signal: 'signal',
+  scope: 'scope',
+  severity: 'severity',
+  status: 'status',
+  count: 'count',
+  firstSeen: 'firstSeen',
+  lastSeen: 'lastSeen',
+  acknowledgedAt: 'acknowledgedAt',
+  resolvedAt: 'resolvedAt',
+  correlationIds: 'correlationIds',
+  createdAt: 'createdAt'
+} as const
+
+export type OpsAlertScalarFieldEnum = (typeof OpsAlertScalarFieldEnum)[keyof typeof OpsAlertScalarFieldEnum]
+
+
+export const OpsAlertTransitionScalarFieldEnum = {
+  id: 'id',
+  alertId: 'alertId',
+  from: 'from',
+  to: 'to',
+  severityFrom: 'severityFrom',
+  severityTo: 'severityTo',
+  at: 'at',
+  createdAt: 'createdAt'
+} as const
+
+export type OpsAlertTransitionScalarFieldEnum = (typeof OpsAlertTransitionScalarFieldEnum)[keyof typeof OpsAlertTransitionScalarFieldEnum]
+
+
+export const OpsAlertDeliveryScalarFieldEnum = {
+  id: 'id',
+  alertId: 'alertId',
+  at: 'at',
+  httpStatus: 'httpStatus',
+  errorCode: 'errorCode',
+  attempt: 'attempt',
+  createdAt: 'createdAt'
+} as const
+
+export type OpsAlertDeliveryScalarFieldEnum = (typeof OpsAlertDeliveryScalarFieldEnum)[keyof typeof OpsAlertDeliveryScalarFieldEnum]
 
 
 export const SortOrder = {

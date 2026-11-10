@@ -449,7 +449,10 @@ export const ModelName = {
   FixtureProvenance: 'FixtureProvenance',
   ReconciliationCase: 'ReconciliationCase',
   ReconciliationCandidate: 'ReconciliationCandidate',
-  ReconciliationDecision: 'ReconciliationDecision'
+  ReconciliationDecision: 'ReconciliationDecision',
+  OpsAlert: 'OpsAlert',
+  OpsAlertTransition: 'OpsAlertTransition',
+  OpsAlertDelivery: 'OpsAlertDelivery'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -465,7 +468,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "enrichmentDecisionReceipt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "retentionSubject" | "retentionConsent" | "retainedOddsHistory" | "retainedViewHistory" | "retentionPurgeAudit" | "backupRun" | "backupVerificationReceipt" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "enrichmentDecisionReceipt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "retentionSubject" | "retentionConsent" | "retainedOddsHistory" | "retainedViewHistory" | "retentionPurgeAudit" | "backupRun" | "backupVerificationReceipt" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision" | "opsAlert" | "opsAlertTransition" | "opsAlertDelivery"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -4391,6 +4394,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    OpsAlert: {
+      payload: Prisma.$OpsAlertPayload<ExtArgs>
+      fields: Prisma.OpsAlertFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.OpsAlertFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.OpsAlertFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertPayload>
+        }
+        findFirst: {
+          args: Prisma.OpsAlertFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.OpsAlertFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertPayload>
+        }
+        findMany: {
+          args: Prisma.OpsAlertFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertPayload>[]
+        }
+        create: {
+          args: Prisma.OpsAlertCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertPayload>
+        }
+        createMany: {
+          args: Prisma.OpsAlertCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.OpsAlertCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertPayload>[]
+        }
+        delete: {
+          args: Prisma.OpsAlertDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertPayload>
+        }
+        update: {
+          args: Prisma.OpsAlertUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertPayload>
+        }
+        deleteMany: {
+          args: Prisma.OpsAlertDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.OpsAlertUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.OpsAlertUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertPayload>[]
+        }
+        upsert: {
+          args: Prisma.OpsAlertUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertPayload>
+        }
+        aggregate: {
+          args: Prisma.OpsAlertAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateOpsAlert>
+        }
+        groupBy: {
+          args: Prisma.OpsAlertGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.OpsAlertGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.OpsAlertCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.OpsAlertCountAggregateOutputType> | number
+        }
+      }
+    }
+    OpsAlertTransition: {
+      payload: Prisma.$OpsAlertTransitionPayload<ExtArgs>
+      fields: Prisma.OpsAlertTransitionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.OpsAlertTransitionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertTransitionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.OpsAlertTransitionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertTransitionPayload>
+        }
+        findFirst: {
+          args: Prisma.OpsAlertTransitionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertTransitionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.OpsAlertTransitionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertTransitionPayload>
+        }
+        findMany: {
+          args: Prisma.OpsAlertTransitionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertTransitionPayload>[]
+        }
+        create: {
+          args: Prisma.OpsAlertTransitionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertTransitionPayload>
+        }
+        createMany: {
+          args: Prisma.OpsAlertTransitionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.OpsAlertTransitionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertTransitionPayload>[]
+        }
+        delete: {
+          args: Prisma.OpsAlertTransitionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertTransitionPayload>
+        }
+        update: {
+          args: Prisma.OpsAlertTransitionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertTransitionPayload>
+        }
+        deleteMany: {
+          args: Prisma.OpsAlertTransitionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.OpsAlertTransitionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.OpsAlertTransitionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertTransitionPayload>[]
+        }
+        upsert: {
+          args: Prisma.OpsAlertTransitionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertTransitionPayload>
+        }
+        aggregate: {
+          args: Prisma.OpsAlertTransitionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateOpsAlertTransition>
+        }
+        groupBy: {
+          args: Prisma.OpsAlertTransitionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.OpsAlertTransitionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.OpsAlertTransitionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.OpsAlertTransitionCountAggregateOutputType> | number
+        }
+      }
+    }
+    OpsAlertDelivery: {
+      payload: Prisma.$OpsAlertDeliveryPayload<ExtArgs>
+      fields: Prisma.OpsAlertDeliveryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.OpsAlertDeliveryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertDeliveryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.OpsAlertDeliveryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertDeliveryPayload>
+        }
+        findFirst: {
+          args: Prisma.OpsAlertDeliveryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertDeliveryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.OpsAlertDeliveryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertDeliveryPayload>
+        }
+        findMany: {
+          args: Prisma.OpsAlertDeliveryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertDeliveryPayload>[]
+        }
+        create: {
+          args: Prisma.OpsAlertDeliveryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertDeliveryPayload>
+        }
+        createMany: {
+          args: Prisma.OpsAlertDeliveryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.OpsAlertDeliveryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertDeliveryPayload>[]
+        }
+        delete: {
+          args: Prisma.OpsAlertDeliveryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertDeliveryPayload>
+        }
+        update: {
+          args: Prisma.OpsAlertDeliveryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertDeliveryPayload>
+        }
+        deleteMany: {
+          args: Prisma.OpsAlertDeliveryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.OpsAlertDeliveryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.OpsAlertDeliveryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertDeliveryPayload>[]
+        }
+        upsert: {
+          args: Prisma.OpsAlertDeliveryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OpsAlertDeliveryPayload>
+        }
+        aggregate: {
+          args: Prisma.OpsAlertDeliveryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateOpsAlertDelivery>
+        }
+        groupBy: {
+          args: Prisma.OpsAlertDeliveryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.OpsAlertDeliveryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.OpsAlertDeliveryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.OpsAlertDeliveryCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -5282,6 +5507,52 @@ export const ReconciliationDecisionScalarFieldEnum = {
 export type ReconciliationDecisionScalarFieldEnum = (typeof ReconciliationDecisionScalarFieldEnum)[keyof typeof ReconciliationDecisionScalarFieldEnum]
 
 
+export const OpsAlertScalarFieldEnum = {
+  id: 'id',
+  dedupFingerprint: 'dedupFingerprint',
+  signal: 'signal',
+  scope: 'scope',
+  severity: 'severity',
+  status: 'status',
+  count: 'count',
+  firstSeen: 'firstSeen',
+  lastSeen: 'lastSeen',
+  acknowledgedAt: 'acknowledgedAt',
+  resolvedAt: 'resolvedAt',
+  correlationIds: 'correlationIds',
+  createdAt: 'createdAt'
+} as const
+
+export type OpsAlertScalarFieldEnum = (typeof OpsAlertScalarFieldEnum)[keyof typeof OpsAlertScalarFieldEnum]
+
+
+export const OpsAlertTransitionScalarFieldEnum = {
+  id: 'id',
+  alertId: 'alertId',
+  from: 'from',
+  to: 'to',
+  severityFrom: 'severityFrom',
+  severityTo: 'severityTo',
+  at: 'at',
+  createdAt: 'createdAt'
+} as const
+
+export type OpsAlertTransitionScalarFieldEnum = (typeof OpsAlertTransitionScalarFieldEnum)[keyof typeof OpsAlertTransitionScalarFieldEnum]
+
+
+export const OpsAlertDeliveryScalarFieldEnum = {
+  id: 'id',
+  alertId: 'alertId',
+  at: 'at',
+  httpStatus: 'httpStatus',
+  errorCode: 'errorCode',
+  attempt: 'attempt',
+  createdAt: 'createdAt'
+} as const
+
+export type OpsAlertDeliveryScalarFieldEnum = (typeof OpsAlertDeliveryScalarFieldEnum)[keyof typeof OpsAlertDeliveryScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -5826,6 +6097,9 @@ export type GlobalOmitConfig = {
   reconciliationCase?: Prisma.ReconciliationCaseOmit
   reconciliationCandidate?: Prisma.ReconciliationCandidateOmit
   reconciliationDecision?: Prisma.ReconciliationDecisionOmit
+  opsAlert?: Prisma.OpsAlertOmit
+  opsAlertTransition?: Prisma.OpsAlertTransitionOmit
+  opsAlertDelivery?: Prisma.OpsAlertDeliveryOmit
 }
 
 /* Types for Logging */

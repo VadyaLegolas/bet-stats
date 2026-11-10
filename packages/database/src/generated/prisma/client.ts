@@ -311,3 +311,22 @@ export type ReconciliationCandidate = Prisma.ReconciliationCandidateModel
  * 
  */
 export type ReconciliationDecision = Prisma.ReconciliationDecisionModel
+/**
+ * Model OpsAlert
+ * Durable operator alert state (ALRT-02). One OPEN row per dedupFingerprint
+ * (signal\0scope); occurrences bump count/lastSeen. The guarded transition
+ * trigger freezes identity (id/dedupFingerprint/firstSeen/createdAt) while
+ * allowing severity/status/count/lastSeen/acknowledgedAt/resolvedAt changes.
+ */
+export type OpsAlert = Prisma.OpsAlertModel
+/**
+ * Model OpsAlertTransition
+ * Immutable status/severity history of one alert (append-only, frozen by trigger).
+ */
+export type OpsAlertTransition = Prisma.OpsAlertTransitionModel
+/**
+ * Model OpsAlertDelivery
+ * Immutable record of one webhook dispatch attempt (append-only, frozen by
+ * trigger) — every attempt is kept, so a failed channel never loses the alert.
+ */
+export type OpsAlertDelivery = Prisma.OpsAlertDeliveryModel

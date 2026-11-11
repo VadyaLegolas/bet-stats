@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 milestone: v1.1
 current_phase: 09
 current_phase_name: Degradation Alerting
-status: executing
-stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-11-11T06:53:32.191Z"
+status: verifying
+stopped_at: Completed 09-04-PLAN.md
+last_updated: "2026-11-11T07:03:34.137Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 09 execution started
-state_head: "0b55d52a166edc3c0f93d94e4a8384e3ba434c0d"
+state_head: 4788c6282b0dfaf7bf3da641f38e9861abfa20ec
 progress:
   total_phases: 10
   completed_phases: 2
   total_plans: 14
-  completed_plans: 12
+  completed_plans: 14
   percent: 20
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 
 Phase: 09 (Degradation Alerting) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-09 — Phase 09 execution started
 
 Progress: [██░░░░░░░░] 20%
@@ -133,6 +133,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 09 P09-01 | 28min | 2 tasks | 12 files |
 | Phase 09 P09-03 | 9min | 2 tasks | 8 files |
 | Phase 09 P09-02 | 25min | 3 tasks | 6 files |
+| Phase 09 P09-04 | 6min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -275,6 +276,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 09]: OperationsService.acknowledgeAlert guards on acknowledgedAt IS NULL via updateMany plus a single OPEN-to-ACKNOWLEDGED transition with a randomUUID id, so concurrent and repeated acknowledges converge to one transition with the same result; RESOLVED alerts are no-op acknowledges (ALRT-04, T-09-08). — Two concurrent HTTP acknowledges must not append two transition rows (the transition table is append-only and would otherwise 500 on a second INSERT); the acknowledgedAt:null guard makes the loser of the race a benign no-op instead of an error.
 - [Phase 09]: ALRT-01, ALRT-03 and ALRT-04 remain Pending under the shared-ID gate: requirements.ready-ids reports all three blocked (also declared by Plan 09-02), so they are marked complete only when that plan's SUMMARY exists. — The shared-ID gate exists so a requirement never reads Complete while another plan still has to satisfy it; marking the ready subset (empty here) is the only allowed action for this plan.
 - [Phase 09]: Worker-side evaluator owns the whole degradation-detection loop: one evaluateAndDispatch tick runs six signal adapters (quota D-10, circuit OPEN/HALF_OPEN D-03, sync-failure bursts D-11, BullMQ dead letters, 5xx Redis buckets with the D-09 min-volume guard, backup staleness D-12) and upserts deduplicated OpsAlert rows - PostgreSQL is the only alert state, Redis carries only the disposable 5xx/total buckets. — The worker tsconfig rootDir cannot import apps/api (where computeBackupFact lives), and duplicating alert state in Redis is explicitly prohibited; a single Prisma upsert per dedupFingerprint plus immutable OpsAlertTransition rows keeps the alert lifecycle auditable and lets auto-resolution (D-04) and re-open dispatch (D-05) work without operator action. Backup thresholds are pinned in alerts.ts with unit tests guarding the mirror of computeBackupFact.
+- [Phase 09]: AlertsBlock owns the acknowledge interaction as a row-local state machine (pending id, local ack map, per-row failure) instead of a page-level handler — the page stays a thin data owner and the whole interaction is SSR-testable. — The component re-partitions defensively instead of trusting API order (the read model returns one severity-sorted flat array where a resolved CRITICAL outranks an open WARNING): active (severity desc, lastSeen desc) then resolved (lastSeen desc), dedup by signal+scope fingerprint; alertPage pagination slices the combined ordered list client-side at 25/page with its own URL parameter.
 
 ### Pending Todos
 
@@ -380,6 +382,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-11T06:53:02.243Z
-Stopped at: Completed 09-02-PLAN.md
+Last session: 2026-11-11T07:03:32.093Z
+Stopped at: Completed 09-04-PLAN.md
 Resume file: None

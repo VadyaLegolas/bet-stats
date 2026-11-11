@@ -20,6 +20,7 @@ import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import { createDurableProviderCircuitRegistry } from "./resilience/circuits.js";
 import { DEFAULT_ALERTS_TICK_MS, scheduleAlertingTick } from "./jobs/alerts.js";
+import { scheduleDeliveryProbe } from "./jobs/delivery-probe.js";
 
 export { createSyncWorkers } from "./queues/index.js";
 
@@ -168,10 +169,22 @@ export function startAlertingRuntime(input: { databaseUrl: string; redisUrl: str
     onError: (error) => log({ event: "alerts.tick_failed", error: error instanceof Error ? error.message : "UNKNOWN" }),
     log,
   });
-  log({ event: "alerts.armed", intervalMs: config.tickMs ?? DEFAULT_ALERTS_TICK_MS, webhookConfigured: Boolean(config.webhookUrl) });
+  // D-13: the weekly synthetic delivery probe is armed only with a real webhook
+  // target — without one the channel is honestly «не настроен» and probing it
+  // would be meaningless.
+  const probe = config.webhookUrl
+    ? scheduleDeliveryProbe({
+        database,
+        webhookConfig,
+        onError: (error) => log({ event: "alerts.delivery_probe_failed", error: error instanceof Error ? error.message : "UNKNOWN" }),
+        log,
+      })
+    : undefined;
+  log({ event: "alerts.armed", intervalMs: config.tickMs ?? DEFAULT_ALERTS_TICK_MS, webhookConfigured: Boolean(config.webhookUrl), probeArmed: Boolean(probe) });
   return {
     async close() {
       scheduler.close();
+      probe?.close();
       redis.disconnect();
       await inspector.close();
       await database.$disconnect();

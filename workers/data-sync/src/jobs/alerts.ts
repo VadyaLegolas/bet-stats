@@ -209,7 +209,7 @@ export async function evaluateDeadLetters(inspector: DeadLetterInspector, now: D
 
 /** Root-cause codes are safe-code-shaped; anything else collapses to UNKNOWN. */
 function extractRootCause(failedReason: string | null | undefined): string {
-  const match = /^[A-Z0-9][A-Z0-9_.:-]*/.exec(failedReason?.trim() ?? "");
+  const match = /^[A-Z0-9][A-Z0-9_.-]*/.exec(failedReason?.trim() ?? "");
   return match ? match[0] : "UNKNOWN";
 }
 

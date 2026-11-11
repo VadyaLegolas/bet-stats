@@ -1,17 +1,18 @@
 ---
-phase: "9"
+phase: "09"
 slug: "degradation-alerting"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 # audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
-created: "2026-11-07"
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
+created: "2026-11-11"
 ---
 
-# Phase 9 — Validation Strategy
+# Phase 09 — Validation Strategy
 
 > Per-phase validation contract for feedback sampling during execution.
+> Reconstructed (State B) from the four plan SUMMARYs after execution — all four requirements map to green automated tests; no gaps found.
 
 ---
 
@@ -19,20 +20,20 @@ created: "2026-11-07"
 
 | Property | Value |
 |----------|-------|
-| **Framework** | Vitest 4.1.11 (root), separate web project config `apps/web/vitest.config.ts` |
-| **Config file** | `vitest.config.ts` (projects: `unit` = `packages/**/*.test.ts` + `tests/unit/**`; `integration` = `tests/integration/**`, `fileParallelism: false`) |
-| **Quick run command** | `pnpm test` (= `vitest run --project unit && pnpm --filter @bet-stats/web test`) |
-| **Full suite command** | `pnpm test:integration` / CI: `pnpm run test:integration:docker`; release gate: `pnpm verify:release` |
-| **Estimated runtime** | ~30s unit · ~2-4min integration |
+| **Framework** | vitest (projects: `unit`, `integration`) |
+| **Config file** | root vitest workspace config (`vitest` projects discovered via pnpm) |
+| **Quick run command** | `$env:PATH = "D:\Documents\Atom\bet-stats\.tools\node24;$env:PATH"; $env:CI = "true"; pnpm vitest run --project unit <files>` (non-TTY shells need `CI=true` + null stdin, else the forks pool hangs) |
+| **Full suite command** | `$env:PATH = "D:\Documents\Atom\bet-stats\.tools\node24;$env:PATH"; $env:CI = "true"; pnpm vitest run --project unit; pnpm vitest run --project integration` (integration requires Docker/Testcontainers + DATABASE_URL) |
+| **Estimated runtime** | ~60–120 seconds (unit), ~30–60 seconds (integration, container startup dominates) |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** Run `pnpm test` (unit + web).
-- **After every plan wave:** Run `pnpm test` + `pnpm test:integration:docker` + `pnpm typecheck` + `pnpm lint`.
-- **Before `/gsd-verify-work`:** Full CI suite green (schema validate → typecheck → lint → unit → build → Docker integration).
-- **Max feedback latency:** 30 seconds (unit) / 240 seconds (integration).
+- **After every task commit:** Run quick command over the plan's touched test files
+- **After every plan wave:** Run full unit project; integration suite at plan boundaries
+- **Before `/gsd-verify-work`:** Full suite must be green (except documented pre-existing fixtures-sync DB-credential failures, out of scope)
+- **Max feedback latency:** ~120 seconds
 
 ---
 
@@ -40,13 +41,15 @@ created: "2026-11-07"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| {9}-01-01 | 01 | 1 | ALRT-01 | T-9-NN / — | Five signal adapters raise CRITICAL/WARNING per D-10..D-12 | unit | `pnpm exec vitest run --project unit tests/unit/alerts-signals.test.ts` | ❌ Wave 0 | ⬜ pending |
-| — | 01 | 1 | ALRT-02 | T-9-NN | One OPEN row per fingerprint; transitions append; UPDATE/DELETE rejected | integration | `pnpm exec vitest run --project integration tests/integration/alerts.test.ts` | ❌ Wave 0 | ⬜ pending |
-| — | 01 | 1 | ALRT-02 | — | Acknowledge is idempotent and never closes/deletes | integration | same file, `…alerts.test.ts` acknowledge cases | ❌ Wave 0 | ⬜ pending |
-| — | 02 | 2 | ALRT-03 | — | Block renders states (empty/loading/error/populated) + ordering | web unit | `pnpm --filter @bet-stats/web exec vitest run -c vitest.config.ts app/internal/operations/alerts-block.test.ts` | ❌ Wave 0 | ⬜ pending |
-| — | 02 | 2 | ALRT-03 | T-9-NN | Canary secrets never reach JSON/DOM | integration/e2e | `pnpm exec vitest run --project integration tests/integration/alerts.test.ts` + extend `tests/e2e/operator-overview.spec.ts` | ❌ Wave 0 | ⬜ pending |
-| — | 03 | 3 | ALRT-04 | T-9-NN | Dispatcher: timeout, non-2xx → bounded retry → FAILED delivery row; payload allowlist | unit | `pnpm exec vitest run --project unit tests/unit/alerts-dispatch.test.ts` | ❌ Wave 0 | ⬜ pending |
-| — | 03 | 3 | ALRT-04 | — | 5xx filter counts buckets without changing error contract | unit/integration | `tests/unit/alerts-5xx-filter.test.ts` (mock host) + integration error-contract regression | ❌ Wave 0 | ⬜ pending |
+| 09-01-01 | 01 | 1 | ALRT-02 | T-09-01/02/03 | DB-level tamper guards: append-only audit triggers, guarded identity-freeze trigger | integration | `pnpm vitest run --project integration tests/integration/alerts.test.ts` | ✅ | ✅ green (7/7) |
+| 09-01-02 | 01 | 1 | ALRT-02 | T-09-01/02/03 | Mutation rejection + dedup convergence + ack idempotency on real PostgreSQL | integration | same as above | ✅ | ✅ green |
+| 09-02-01 | 02 | 3 | ALRT-01 | T-09-06 | Six signal adapters (quota, circuit, sync, dead letters, 5xx ratio, backup staleness) | unit | `pnpm vitest run --project unit tests/unit/alerts-signals.test.ts` | ✅ | ✅ green (29/29) |
+| 09-02-02 | 02 | 3 | ALRT-02, ALRT-04 | T-09-06 | Dedup/damping/auto-resolution lifecycle + webhook dispatch with per-attempt evidence | unit | `pnpm vitest run --project unit tests/unit/alerts-dispatch.test.ts tests/unit/alerts-signals.test.ts` | ✅ | ✅ green (37/37) |
+| 09-02-03 | 02 | 3 | ALRT-04 | T-09-04 | Weekly synthetic delivery probe, CRITICAL self-alert on channel failure (D-13) | unit | `pnpm vitest run --project unit tests/unit/alerts-delivery-probe.test.ts` | ✅ | ✅ green (10/10) |
+| 09-03-01 | 03 | 2 | ALRT-01 | T-09-07 | Http5xxBucketFilter: Redis buckets, byte-identical base errors, Redis never fails a request | unit | `pnpm vitest run --project unit tests/unit/alerts-5xx-filter.test.ts` | ✅ | ✅ green (8/8) |
+| 09-03-02 | 03 | 2 | ALRT-03, ALRT-04 | T-09-08/09 | Sanitized alerts read model (canary), idempotent OperatorGuard acknowledge | integration | `pnpm vitest run --project integration tests/integration/operator-overview.test.ts tests/integration/alerts.test.ts` | ✅ | ✅ green (25/25 + 9/9) |
+| 09-04-01 | 04 | 4 | ALRT-03 | — | Typed-field rendering: secrets/payloads/headers cannot reach the DOM (canary case) | unit (SSR) | `pnpm vitest run apps/web/app/internal/operations/alerts-block.test.ts` | ✅ | ✅ green (39/39) |
+| 09-04-02 | 04 | 4 | ALRT-04 | — | Non-destructive acknowledge semantics (D-04) at the view layer | unit (SSR) | same as above | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -54,14 +57,7 @@ created: "2026-11-07"
 
 ## Wave 0 Requirements
 
-- [ ] `tests/unit/alerts-signals.test.ts` — thresholds, flap damping, NOT_CONFIGURED exclusion, min-volume guard
-- [ ] `tests/unit/alerts-dispatch.test.ts` — fetch stub (timeout/429/3xx/bounded attempts), payload canary
-- [ ] `tests/unit/alerts-5xx-filter.test.ts` — bucket writes + unchanged error contract
-- [ ] `tests/integration/alerts.test.ts` — real Postgres: dedup upsert, guarded triggers, acknowledge idempotency, read-model ordering/pagination
-- [ ] `apps/web/app/internal/operations/alerts-block.test.ts` — SSR states, Russian copy, ordering (mirror `backup-status-block.test.ts`)
-- [ ] Framework install: **none** (Vitest/Playwright already configured — Package Legitimacy Audit clean; `pnpm-lock.yaml` unchanged)
-
-*Existing test infrastructure covers the harness; all phase-specific files are new.*
+Existing infrastructure covers all phase requirements. (vitest projects + Testcontainers harness from phases 01–08 reused; no new framework wiring needed.)
 
 ---
 
@@ -69,20 +65,19 @@ created: "2026-11-07"
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Real webhook delivery to an operator-owned endpoint | ALRT-04 | Needs an operator-provisioned external endpoint; probes/alerting never call live external providers | Configure `ALERT_WEBHOOK_URL` at a request-bin endpoint, raise a test alert, confirm the payload arrives redacted (canary secret absent) |
-| Rate-limit warn behavior against a real channel (Slack/Discord) | ALRT-04 | External service rate limits cannot be exercised in CI (D-02 warn-only) | Operator posts to a real channel during a manual drill; confirm WARN surfaced, no alert loss |
-
-*If none: "All phase behaviors have automated verification."*
+| Evaluator tick inside the live stack (real PostgreSQL/Redis/BullMQ) | ALRT-01 | Arming requires `ALERTS_ENABLED=true` + a dev-server restart, which the operating rules forbid the agent from doing | On the next natural stack restart, set `ALERTS_ENABLED=true`, force a threshold condition, confirm an OpsAlert row appears and renders on /internal/operations |
+| Filter + middleware counters observable in the running stack | ALRT-01 | Observing real Redis counters through the live API needs the running dev stack (never kill/restart it) | On the next natural stack open, trigger a 5xx and inspect `bet-stats:http5xx:<minuteIndex>` / `bet-stats:httpTotal:<minuteIndex>` in Redis |
+| Visual adequacy of the «Алерты» block (themes, 320px, 200% zoom, keyboard ack, live round-trip behind OperatorGuard+HMAC) | ALRT-03, ALRT-04 | Human visual/interaction judgment on the user's running stack (D4 in 09-04 coverage) | Open /internal/operations, check light/dark themes, narrow viewport, keyboard-only acknowledge focus on the «Подтверждён» marker |
 
 ---
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 240s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or are classified Manual-Only with rationale
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (none — no MISSING)
+- [x] No watch-mode flags (`vitest run`, `CI=true` in non-TTY shells)
+- [x] Feedback latency < 120s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-11-11 (automated reconstruction — all four requirements COVERED, no gaps found)

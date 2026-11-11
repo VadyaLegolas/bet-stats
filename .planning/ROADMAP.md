@@ -76,11 +76,11 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   4. Probes and alerting never call live external providers and per-job failures do not create alert fatigue.
 
 **Notes / research flags**: Channel choice (webhook vs SMTP free-tier) and its rate limits need runtime verification at implementation time. BullMQ `QueueEvents` for job signals; native `fetch` for webhook dispatch.
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 **Plan list**:
 - [x] 09-01-PLAN.md — Schema foundation: OpsAlert/transition/delivery models, guarded migration, mutation-rejection tests
 - [ ] 09-02-PLAN.md — Worker evaluator: five signal adapters, dedup/damping, webhook dispatch, startAlertingRuntime
-- [ ] 09-03-PLAN.md — API layer: 5xx exception filter, alerts() read model, acknowledge endpoint, readAlertsConfig
+- [x] 09-03-PLAN.md — API layer: 5xx exception filter, alerts() read model, acknowledge endpoint, readAlertsConfig
 - [ ] 09-04-PLAN.md — UI block: «Алерты» block on operations page, enum labels, SSR tests
 **UI hint**: yes
 
@@ -202,7 +202,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 |-------|----------------|--------|-----------|
 | 7. CI Pipeline & Quality Gates | 3/3 | Complete    | 2026-10-22 |
 | 8. Backups and Restore Verification | 7/7 | Complete    | 2026-10-31 |
-| 9. Degradation Alerting | 1/4 | In Progress | - |
+| 9. Degradation Alerting | 2/4 | In Progress | - |
 | 10. Performance Audit and Budgets | 0/0 | Not started | - |
 | 11. Dixon-Coles Model Version | 0/0 | Not started | - |
 | 12. Calibration Layer and Versioned Rollback | 0/0 | Not started | - |

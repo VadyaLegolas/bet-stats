@@ -4,16 +4,16 @@ milestone: v1.1
 current_phase: 09
 current_phase_name: Degradation Alerting
 status: executing
-stopped_at: Completed 09-03-PLAN.md
-last_updated: "2026-11-10T14:18:53.642Z"
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-11-11T06:53:32.191Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 09 execution started
-state_head: e4a584badaf8dc2211fff8d7a66d9a5e8f643a8a
+state_head: "0b55d52a166edc3c0f93d94e4a8384e3ba434c0d"
 progress:
   total_phases: 10
   completed_phases: 2
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 12
   percent: 20
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 ## Current Position
 
 Phase: 09 (Degradation Alerting) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 09 execution started
 
@@ -132,6 +132,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 08 P07 | 13min | 2 tasks | 2 files |
 | Phase 09 P09-01 | 28min | 2 tasks | 12 files |
 | Phase 09 P09-03 | 9min | 2 tasks | 8 files |
+| Phase 09 P09-02 | 25min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -273,6 +274,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 09]: Http5xxBucketFilter extends @nestjs/core BaseExceptionFilter and is registered with app.get(HttpAdapterHost).httpAdapter, so Nest error bodies stay byte-identical; both Redis bucket writes are fire-and-forget with swallowed errors (null-safe without REDIS_URL). — No other implementation preserved the byte-identical error contract while adding the 5xx counter; the filter must delegate to the Nest base handler with the real HTTP adapter, and Redis must never become a request-failure dependency (D-09, T-09-07).
 - [Phase 09]: OperationsService.acknowledgeAlert guards on acknowledgedAt IS NULL via updateMany plus a single OPEN-to-ACKNOWLEDGED transition with a randomUUID id, so concurrent and repeated acknowledges converge to one transition with the same result; RESOLVED alerts are no-op acknowledges (ALRT-04, T-09-08). — Two concurrent HTTP acknowledges must not append two transition rows (the transition table is append-only and would otherwise 500 on a second INSERT); the acknowledgedAt:null guard makes the loser of the race a benign no-op instead of an error.
 - [Phase 09]: ALRT-01, ALRT-03 and ALRT-04 remain Pending under the shared-ID gate: requirements.ready-ids reports all three blocked (also declared by Plan 09-02), so they are marked complete only when that plan's SUMMARY exists. — The shared-ID gate exists so a requirement never reads Complete while another plan still has to satisfy it; marking the ready subset (empty here) is the only allowed action for this plan.
+- [Phase 09]: Worker-side evaluator owns the whole degradation-detection loop: one evaluateAndDispatch tick runs six signal adapters (quota D-10, circuit OPEN/HALF_OPEN D-03, sync-failure bursts D-11, BullMQ dead letters, 5xx Redis buckets with the D-09 min-volume guard, backup staleness D-12) and upserts deduplicated OpsAlert rows - PostgreSQL is the only alert state, Redis carries only the disposable 5xx/total buckets. — The worker tsconfig rootDir cannot import apps/api (where computeBackupFact lives), and duplicating alert state in Redis is explicitly prohibited; a single Prisma upsert per dedupFingerprint plus immutable OpsAlertTransition rows keeps the alert lifecycle auditable and lets auto-resolution (D-04) and re-open dispatch (D-05) work without operator action. Backup thresholds are pinned in alerts.ts with unit tests guarding the mirror of computeBackupFact.
 
 ### Pending Todos
 
@@ -378,6 +380,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-10T14:18:21.188Z
-Stopped at: Completed 09-03-PLAN.md
+Last session: 2026-11-11T06:53:02.243Z
+Stopped at: Completed 09-02-PLAN.md
 Resume file: None

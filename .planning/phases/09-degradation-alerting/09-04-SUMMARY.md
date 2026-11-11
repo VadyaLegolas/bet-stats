@@ -145,3 +145,10 @@ None - no external service configuration required. (Optional alerting activation
 ---
 *Phase: 09-degradation-alerting*
 *Completed: 2026-11-11*
+
+## Self-Check: PASSED
+
+- SUMMARY file exists at `.planning/phases/09-degradation-alerting/09-04-SUMMARY.md`
+- All 4 commits verified as ancestors of HEAD: `49d4064` (feat), `a32e0cc` (test), `4788c62` (docs SUMMARY), `255141b` (docs state/roadmap/requirements)
+- Commits measured from ledger `gsd-plan-head-before-09-04` (cbbf2ff): 2 task commits + 3 docs commits
+- User's unrelated working-tree changes (faq, fixtures, api fixtures, e2e, etc.) untouched and uncommitted

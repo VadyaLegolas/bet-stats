@@ -1,7 +1,7 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { dependencyReadiness, readBackupConfig, readServerConfig, DEFAULT_BACKUP_DRILL_INTERVAL_HOURS, type BackupConfig } from "@bet-stats/config";
+import { dependencyReadiness, readAlertsConfig, readBackupConfig, readServerConfig, DEFAULT_BACKUP_DRILL_INTERVAL_HOURS, type AlertConfig, type BackupConfig } from "@bet-stats/config";
 import { createPrismaBacktestReceiptRepository, createPrismaClient, createPrismaForecastRepository, createProviderRoutingRepository, createReplayProviderPolicyRepository, createSettlementPipelineService, DEFAULT_REPLAY_PROVIDER_POLICIES } from "@bet-stats/database";
 import { currentForecastConfigHash, ForecastOrchestrator } from "@bet-stats/domain";
 import { ApiFootballClient, FootballDataOrgClient, type FixtureProvider, type ResultProvider, type StandingsProvider } from "@bet-stats/football-data";
@@ -15,8 +15,11 @@ import { reconcileBacktestDelivery, runBacktestPlan } from "./jobs/backtests.js"
 import { scheduleRetentionPurge } from "./jobs/retention-purge.js";
 import { backupQueue, createBackupQueue, createBackupWorker, runBackup, scheduleBackupTick } from "./jobs/backup.js";
 import { runBackupDrill, scheduleDrillTick } from "./jobs/backup-drill.js";
-import { createBacktestQueue, createBacktestWorker, createEnrichmentQueue, createEnrichmentSchedule, createEnrichmentWorker, createReplayWorker, createSettlementQueue, createSettlementWorker, type EnrichmentJobData, type ReplayJobData } from "./queues/index.js";
+import { createBacktestQueue, createBacktestWorker, createEnrichmentQueue, createEnrichmentSchedule, createEnrichmentWorker, createReplayWorker, createSettlementQueue, createSettlementWorker, redisConnection, standardQueue, type EnrichmentJobData, type ReplayJobData } from "./queues/index.js";
+import { Queue } from "bullmq";
+import { Redis } from "ioredis";
 import { createDurableProviderCircuitRegistry } from "./resilience/circuits.js";
+import { DEFAULT_ALERTS_TICK_MS, scheduleAlertingTick } from "./jobs/alerts.js";
 
 export { createSyncWorkers } from "./queues/index.js";
 
@@ -139,6 +142,43 @@ export function startBackupRuntime(input: { databaseUrl: string; redisUrl: strin
   };
 }
 
+/**
+ * Alerting runtime composition root (ALRT-01/02/04, D-08). Enabled config arms
+ * the evaluator tick beside startBackupRuntime; a configured webhook additionally
+ * arms the weekly synthetic delivery probe (D-13). Anything else logs
+ * alerts.disabled and leaves alerting honestly off — no timers exist when alerting
+ * is disabled. The webhook URL itself is never logged (T-09-04).
+ */
+export function startAlertingRuntime(input: { databaseUrl: string; redisUrl: string; prefix?: string; alertsConfig: AlertConfig; log?: (event: Readonly<Record<string, unknown>>) => void }) {
+  const log = input.log ?? ((event: Readonly<Record<string, unknown>>) => console.info(JSON.stringify(event)));
+  const config = input.alertsConfig;
+  if (!config.enabled) {
+    log({ event: "alerts.disabled" });
+    return undefined;
+  }
+  const database = createPrismaClient(input.databaseUrl);
+  const redis = new Redis(input.redisUrl, { maxRetriesPerRequest: null });
+  const webhookConfig = { webhookUrl: config.webhookUrl, webhookTimeoutMs: config.webhookTimeoutMs };
+  const inspector = new Queue(standardQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
+  const scheduler = scheduleAlertingTick({
+    database,
+    redis,
+    intervalMs: config.tickMs ?? DEFAULT_ALERTS_TICK_MS,
+    webhookConfig,
+    onError: (error) => log({ event: "alerts.tick_failed", error: error instanceof Error ? error.message : "UNKNOWN" }),
+    log,
+  });
+  log({ event: "alerts.armed", intervalMs: config.tickMs ?? DEFAULT_ALERTS_TICK_MS, webhookConfigured: Boolean(config.webhookUrl) });
+  return {
+    async close() {
+      scheduler.close();
+      redis.disconnect();
+      await inspector.close();
+      await database.$disconnect();
+    },
+  };
+}
+
 function start(): void {
   const config = readServerConfig(process.env);
   const readiness = createWorkerReadiness({
@@ -149,7 +189,8 @@ function start(): void {
   if (config.DATABASE_URL && config.REDIS_URL && config.FOOTBALL_DATA_API_TOKEN && config.API_FOOTBALL_API_KEY) {
     const runtime = startReplayWorker({ databaseUrl: config.DATABASE_URL, redisUrl: config.REDIS_URL, footballDataApiToken: config.FOOTBALL_DATA_API_TOKEN, apiFootballApiKey: config.API_FOOTBALL_API_KEY, forecastSweep: { intervalMs: 60_000 } });
     const backupRuntime = startBackupRuntime({ databaseUrl: config.DATABASE_URL, redisUrl: config.REDIS_URL, backupConfig: readBackupConfig(process.env) });
-    const close = () => { void runtime.close(); void backupRuntime?.close(); };
+    const alertsRuntime = startAlertingRuntime({ databaseUrl: config.DATABASE_URL, redisUrl: config.REDIS_URL, ...(process.env.QUEUE_PREFIX?.trim() ? { prefix: process.env.QUEUE_PREFIX.trim() } : {}), alertsConfig: readAlertsConfig(process.env) });
+    const close = () => { void runtime.close(); void backupRuntime?.close(); void alertsRuntime?.close(); };
     process.once("SIGTERM", close); process.once("SIGINT", close);
   }
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { impactLabel, incidentStatusLabel, serviceStateLabel } from "../../../components/enum-labels";
 import { formatInstant } from "../../../components/time-format";
+import { AlertsBlock } from "./alerts-block";
 import { BackupStatusBlock, type BackupStatusFact } from "./backup-status-block";
 
 type Overview = {
@@ -14,6 +15,8 @@ type Overview = {
   dataQuality: Array<{ code: string; scope: string; count: number; firstOccurrence: string; lastOccurrence: string }>;
   incidents: Array<{ id: string; status: string; impact: string; summary: string; startedAt: string; lastUpdatedAt: string; correlationId: string | null }>;
   backups: BackupStatusFact;
+  alerts: Array<{ id: string; signal: string; scope: string; severity: string; status: string; count: number; firstSeen: string; lastSeen: string; acknowledgedAt: string | null; resolvedAt: string | null; correlationIds: string[] }>;
+  channelState: { configured: boolean; lastDeliveryStatus: number | null; lastDeliveryAt: string | null };
 };
 
 const card = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, overflowWrap: "anywhere" } as const;
@@ -45,10 +48,16 @@ export default function OperationsPage() {
   const [triggerNotice, setTriggerNotice] = useState<string | null>(null);
   const [triggerNoticeFailed, setTriggerNoticeFailed] = useState(false);
   const query = useMemo(() => typeof window === "undefined" ? "?page=1&pageSize=25&windowHours=24" : window.location.search || "?page=1&pageSize=25&windowHours=24", []);
+  // Alerts paginate independently from the failures `page` parameter (UI-SPEC default):
+  // own alertPage URL parameter, 25 items per page, both blocks never clobber each other.
+  const alertPage = useMemo(() => {
+    const value = Number.parseInt(new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("alertPage") ?? "1", 10);
+    return Number.isFinite(value) && value > 0 ? value : 1;
+  }, []);
   const load = async () => {
     setLoading(true); setError("");
     try {
-      const response = await fetch(`/internal-api/operations/overview${query}`, { cache: "no-store" });
+      const response = await fetch(`/internal-api/operations/overview${query}${query.includes("?") ? "&" : "?"}alertPage=${alertPage}`, { cache: "no-store" });
       if (!response.ok) throw new Error("OPERATIONS_UNAVAILABLE");
       setOverview(await response.json() as Overview);
     } catch {
@@ -77,6 +86,9 @@ export default function OperationsPage() {
 
   return <section style={{ display: "grid", gap: 24, minWidth: 0 }}>
     <header><h1 tabIndex={-1}>Центр операций</h1><p>Только безопасные операционные метаданные. Сырые полезные нагрузки, учётные данные, заголовки, трассировки стека и журналы здесь недоступны никогда.</p><button style={button} disabled={loading} onClick={() => void load()}>{loading && overview ? "Обновление…" : "Обновить операционные данные"}</button></header>
+    <Block title="Алерты" loading={loading && !overview} error={error} empty={false} onRetry={() => void load()}>
+      {overview && <AlertsBlock fact={{ alerts: overview.alerts, channel: overview.channelState }} page={alertPage} />}
+    </Block>
     <Block title="Готовность системы" loading={loading && !overview} error={error} empty={false} onRetry={() => void load()}>
       {overview && <><p><strong>{visibleState(overview.readiness.state)}</strong></p><p>Последняя проверка: <time dateTime={overview.readiness.lastCheckedAt}>{date(overview.readiness.lastCheckedAt)}</time></p><dl>{overview.readiness.services.map((service) => <div key={service.name}><dt>{service.name}</dt><dd>{serviceStateLabel(service.state)}</dd></div>)}</dl></>}
     </Block>

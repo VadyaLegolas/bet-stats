@@ -30,6 +30,9 @@ const IMPACT_LABELS: Record<string, string> = { BLOCKING: "блокирует", 
 const INCIDENT_STATUS_LABELS: Record<string, string> = { OPEN: "открыт", RESOLVED: "решён" };
 const BACKUP_STATE_LABELS: Record<string, string> = { NOT_CONFIGURED: "Не настроено", NEVER_VERIFIED: "Никогда не проверялось", STALE: "Устарело", FAILED: "Сбой", HEALTHY: "Здорово" };
 const OFFSITE_STATE_LABELS: Record<string, string> = { NOT_CONFIGURED: "Не настроено", COPIED: "Скопировано", DEGRADED: "Деградировано" };
+export const ALERT_SEVERITY_LABELS: Record<string, string> = { CRITICAL: "Критично", WARNING: "Предупреждение" };
+export const ALERT_STATUS_LABELS: Record<string, string> = { OPEN: "Активен", RESOLVED: "Решён" };
+export const ALERT_SIGNAL_LABELS: Record<string, string> = { PROVIDER_QUOTA: "Исчерпание квоты провайдера", PROVIDER_CIRCUIT: "Предохранитель провайдера", SYNC_RUN: "Сбой синхронизации", WORKER_JOBS: "Групповые сбои задач и мёртвые письма", HTTP_5XX: "Всплеск ошибок 5xx", BACKUP_STALENESS: "Устаревание резервных копий", DELIVERY_HEALTH: "Сбой доставки алертов" };
 
 /** Unknown kind → the raw code. */
 export function forecastKindLabel(kind: ForecastKind): string { return FORECAST_KIND_LABELS[kind] ?? kind; }
@@ -65,6 +68,12 @@ export function incidentStatusLabel(status: string): string { return INCIDENT_ST
 export function backupStateLabel(state: string): string { return BACKUP_STATE_LABELS[state] ?? state; }
 /** Unknown off-host replication state → the raw code. */
 export function offsiteStateLabel(state: string): string { return OFFSITE_STATE_LABELS[state] ?? state; }
+/** Unknown alert severity → the raw code. */
+export function alertSeverityLabel(severity: string): string { return ALERT_SEVERITY_LABELS[severity] ?? severity; }
+/** Unknown alert lifecycle status → the raw code. */
+export function alertStatusLabel(status: string): string { return ALERT_STATUS_LABELS[status] ?? status; }
+/** Unknown alert signal code → the raw code (never blank, UI-SPEC row-title contract). */
+export function alertSignalLabel(signal: string): string { return ALERT_SIGNAL_LABELS[signal] ?? signal; }
 /** Unknown value reason → the lowercase-underscore transform (camelCase reasons are split into words first). */
 export function valueReasonLabel(reason: string): string {
   const fixed = VALUE_REASON_LABELS[reason];

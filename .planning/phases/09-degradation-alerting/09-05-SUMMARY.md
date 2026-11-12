@@ -94,3 +94,8 @@ None — no new network endpoints, auth paths, or trust-boundary surface; the we
 Plan 5 of 6 for phase 09. Remaining: 09-06 (WR-01/WR-02 webhook reliability). The `dependencies` injection seam added in Task 1 is the pattern 09-06 should reuse when touching `startAlertingRuntime` again.
 
 **Requirement completion:** ALRT-02 marked complete. ALRT-01 remains open pending 09-06 — it is jointly declared by 09-01/09-02/09-03/09-05/09-06, so it can only be checked off once the last declaring plan completes.
+
+## Self-Check: PASSED
+
+- SUMMARY exists; all four plan commits (`8948374`, `7a8ce59`, `a08e05c`, `80b1f09`) verified as ancestors of HEAD; all five declared files exist on disk.
+- Verify suite re-run green (44/44), `tsc --noEmit` exit 0, TDD RED evidence `RED_EVIDENCE_OK` ×3 before GREEN.

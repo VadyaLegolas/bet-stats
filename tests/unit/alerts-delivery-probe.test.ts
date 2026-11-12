@@ -133,6 +133,20 @@ describe("runDeliveryProbe", () => {
     expect(fake.transitions[0]).toMatchObject({ from: "OPEN", to: "RESOLVED" });
   });
 
+  it("success resolves an ACKNOWLEDGED anchor with a truthful ACKNOWLEDGED→RESOLVED transition (IN-05)", async () => {
+    const fetchStub = vi.fn().mockImplementation(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchStub);
+    const acknowledged = anchorRow({ status: "ACKNOWLEDGED", severity: "CRITICAL", resolvedAt: null, count: 2 });
+    const fake = createFakeDatabase([acknowledged]);
+    const result = await runDeliveryProbe(fake.database as never, WEBHOOK_CONFIG, NOW);
+    expect(result.delivered).toBe(true);
+    const anchor = fake.alertStore.get(DELIVERY_PROBE_FINGERPRINT);
+    expect(anchor?.status).toBe("RESOLVED");
+    expect(anchor?.resolvedAt).toEqual(NOW());
+    expect(fake.transitions).toHaveLength(1);
+    expect(fake.transitions[0]).toMatchObject({ alertId: "probe-anchor", from: "ACKNOWLEDGED", to: "RESOLVED", severityFrom: "CRITICAL", severityTo: "CRITICAL" });
+  });
+
   it("unconfigured webhook → no probe attempt at all", async () => {
     const fetchStub = vi.fn();
     vi.stubGlobal("fetch", fetchStub);

@@ -4,6 +4,7 @@ import type { AlertConfig } from "@bet-stats/config";
 import type { PrismaClient } from "@bet-stats/database";
 
 import { DEFAULT_ALERTS_TICK_MS, type DeadLetterInspector } from "../../workers/data-sync/src/jobs/alerts.js";
+import { DELIVERY_PROBE_FINGERPRINT } from "../../workers/data-sync/src/jobs/delivery-probe.js";
 import { startAlertingRuntime } from "../../workers/data-sync/src/main.js";
 
 // --- Fakes (mirrors alerts-signals.test.ts shapes) -------------------------------------
@@ -196,5 +197,69 @@ describe("startAlertingRuntime composition (CR-01)", () => {
     clock.timers[1]?.callback();
     await flush();
     expect(clock.timers).toHaveLength(2);
+  });
+});
+
+// --- CR-02: the evaluator must never auto-resolve the probe anchor (D-13) ---------------
+
+describe("probe-anchor lifecycle (CR-02 / IN-05)", () => {
+  const probeAnchor = () => alertRow({ dedupFingerprint: DELIVERY_PROBE_FINGERPRINT, signal: "DELIVERY_HEALTH", scope: "synthetic", severity: "CRITICAL", status: "OPEN" });
+
+  function armRuntime(fake: ReturnType<typeof createFakeDatabase>, timers: CapturedTimer[]) {
+    const runtime = startAlertingRuntime({
+      databaseUrl: "",
+      redisUrl: "",
+      alertsConfig: NO_WEBHOOK_CONFIG,
+      dependencies: { database: fake.database as unknown as PrismaClient, redis: { get: async () => null }, inspector: { getFailed: async () => [] } },
+      log: () => undefined,
+      setTimeout: (callback, delay) => { timers.push({ callback, delay }); return timers.length as unknown as ReturnType<typeof setTimeout>; },
+      clearTimeout: () => undefined,
+    });
+    if (!runtime) throw new Error("runtime should be armed with enabled config");
+    return runtime;
+  }
+
+  async function runOneTick(runtime: { close(): Promise<void> }, timers: CapturedTimer[]): Promise<void> {
+    await flush();
+    timers[0]?.callback(); // fire the one evaluator tick
+    await flush();
+  }
+
+  it("probe-failure self-alert DELIVERY_HEALTH stays OPEN after an evaluator tick (CR-02, D-13) — no OPEN→RESOLVED transition appended", async () => {
+    const seeded = probeAnchor();
+    const fake = createFakeDatabase([seeded]);
+    const timers: CapturedTimer[] = [];
+    const runtime = armRuntime(fake, timers);
+
+    await runOneTick(runtime, timers);
+
+    const anchor = fake.alerts.get(DELIVERY_PROBE_FINGERPRINT);
+    expect(anchor?.status).toBe("OPEN"); // the anchor's lifecycle is owned by runDeliveryProbe alone
+    expect(anchor?.resolvedAt).toBeNull();
+    expect(fake.transitions).toHaveLength(0);
+    await runtime.close();
+  });
+
+  it("control: a non-probe cleared alert still auto-resolves with exactly one OPEN→RESOLVED transition", async () => {
+    const quota = alertRow({ dedupFingerprint: "PROVIDER_QUOTA\0prov/FAST", severity: "WARNING", status: "OPEN" });
+    const fake = createFakeDatabase([quota]);
+    const timers: CapturedTimer[] = [];
+    const runtime = armRuntime(fake, timers);
+
+    await runOneTick(runtime, timers);
+
+    const row = fake.alerts.get("PROVIDER_QUOTA\0prov/FAST");
+    expect(row?.status).toBe("RESOLVED"); // exclusion is scoped to the probe signal, not a blanket freeze
+    expect(fake.transitions).toHaveLength(1);
+    expect(fake.transitions[0]).toMatchObject({ alertId: quota.id, from: "OPEN", to: "RESOLVED" });
+    await runtime.close();
+  });
+
+  it("PROBE_ANCHOR_SIGNAL exported from alerts equals DELIVERY_PROBE_SIGNAL from delivery-probe (drift guard)", async () => {
+    // Dynamic import keeps a temporarily missing constant an assertion failure
+    // instead of a module-load failure for the whole file.
+    const alertsModule = (await import("../../workers/data-sync/src/jobs/alerts.js")) as Record<string, unknown>;
+    const probeModule = (await import("../../workers/data-sync/src/jobs/delivery-probe.js")) as Record<string, unknown>;
+    expect(alertsModule.PROBE_ANCHOR_SIGNAL).toBe(probeModule.DELIVERY_PROBE_SIGNAL);
   });
 });

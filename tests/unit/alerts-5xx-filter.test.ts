@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { HttpException, NotFoundException } from "../../apps/api/node_modules/@nestjs/common/index.js";
 import type { ArgumentsHost } from "../../apps/api/node_modules/@nestjs/common/index.js";
-import { HTTPTOTAL_BUCKET_PREFIX, Http5xxBucketFilter, recordMinuteBucket, type BucketRedisClient } from "../../apps/api/src/modules/operations/http-5xx-bucket.filter.js";
+import { HTTPTOTAL_BUCKET_PREFIX, Http5xxBucketFilter, recordMinuteBucket, BUCKET_TTL_SECONDS, type BucketRedisClient } from "../../apps/api/src/modules/operations/http-5xx-bucket.filter.js";
+import { HTTP5XX_WINDOW_MINUTES } from "../../workers/data-sync/src/jobs/alerts.js";
 
 function mockHost() {
   const response = { status: vi.fn(() => response), json: vi.fn(() => response) };
@@ -34,7 +35,7 @@ afterEach(() => {
 });
 
 describe("Http5xxBucketFilter", () => {
-  it("counts a 500 error into bet-stats:http5xx:<minuteIndex> (INCR + EXPIRE 120s) and then delegates to the base handler", () => {
+  it("counts a 500 error into bet-stats:http5xx:<minuteIndex> (INCR + EXPIRE 420s) and then delegates to the base handler", () => {
     const fixedMs = 1_700_000_040_567;
     vi.spyOn(Date, "now").mockReturnValue(fixedMs);
     const redis = mockRedis();
@@ -46,7 +47,8 @@ describe("Http5xxBucketFilter", () => {
     filter.catch(new HttpException("boom", 500), host);
 
     expect(redis.transaction.incr).toHaveBeenCalledWith(expectedKey);
-    expect(redis.transaction.expire).toHaveBeenCalledWith(expectedKey, 120);
+    expect(redis.transaction.expire.mock.calls[0]?.[0]).toBe(expectedKey);
+    expect(redis.transaction.expire.mock.calls[0]?.[1]).toBe(420);
     expect(redis.transaction.exec).toHaveBeenCalledOnce();
     // Base error contract unchanged: reply carries the exact HttpException body and status.
     expect(applicationRef.reply).toHaveBeenCalledWith(response, expect.objectContaining({ statusCode: 500, message: "boom" }), 500);
@@ -96,7 +98,7 @@ describe("Http5xxBucketFilter", () => {
 });
 
 describe("per-request total bucket counter (recordMinuteBucket)", () => {
-  it("increments bet-stats:httpTotal:<minuteIndex> with a 120s TTL on every call", () => {
+  it("increments bet-stats:httpTotal:<minuteIndex> with a 420s TTL on every call", () => {
     const fixedMs = 1_700_000_000_123;
     vi.spyOn(Date, "now").mockReturnValue(fixedMs);
     const redis = mockRedis();
@@ -104,7 +106,7 @@ describe("per-request total bucket counter (recordMinuteBucket)", () => {
     recordMinuteBucket(redis.client, HTTPTOTAL_BUCKET_PREFIX);
 
     expect(redis.transaction.incr).toHaveBeenCalledWith(`bet-stats:httpTotal:${Math.floor(fixedMs / 60_000)}`);
-    expect(redis.transaction.expire).toHaveBeenCalledWith(expect.anything(), 120);
+    expect(redis.transaction.expire.mock.calls[0]?.[1]).toBe(420);
     expect(redis.transaction.exec).toHaveBeenCalledOnce();
   });
 
@@ -122,5 +124,14 @@ describe("per-request total bucket counter (recordMinuteBucket)", () => {
   it("survives a synchronous multi() failure", () => {
     const client = { multi: () => { throw new Error("offline queue closed"); } };
     expect(() => recordMinuteBucket(client, HTTPTOTAL_BUCKET_PREFIX)).not.toThrow();
+  });
+});
+
+describe("BUCKET_TTL_SECONDS ↔ evaluator read window (WR-02 mirror guard)", () => {
+  it("covers the evaluator's rolling 5-minute window plus margin so minute -4 buckets stay readable", () => {
+    // The evaluator (workers/data-sync alerts.ts evaluate5xx) reads offsets 0..HTTP5XX_WINDOW_MINUTES-1.
+    // Per-minute INCR refreshes the key TTL, so a bucket lives at most TTL past its minute's last
+    // write: TTL must exceed window*60 by ≥60s or late-in-minute-M reads lose the −4 bucket.
+    expect(BUCKET_TTL_SECONDS).toBeGreaterThanOrEqual(HTTP5XX_WINDOW_MINUTES * 60 + 60);
   });
 });

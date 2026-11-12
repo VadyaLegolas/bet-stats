@@ -87,9 +87,11 @@ export async function runDeliveryProbe(database: PrismaClient, webhookConfig: We
   );
   if (outcome.delivered) {
     // Health confirmed (D-04): a previously failing probe alert auto-resolves.
-    if (anchor.status === "OPEN") {
+    // IN-05: any non-RESOLVED status (OPEN or ACKNOWLEDGED) is resolved — an
+    // operator-acknowledged anchor must not block health recovery.
+    if (anchor.status !== "RESOLVED") {
       await database.opsAlert.update({ where: { id: anchor.id }, data: { status: "RESOLVED", resolvedAt: at } });
-      await database.opsAlertTransition.create({ data: { id: randomUUID(), alertId: anchor.id, from: "OPEN", to: "RESOLVED", severityFrom: anchor.severity, severityTo: anchor.severity, at } });
+      await database.opsAlertTransition.create({ data: { id: randomUUID(), alertId: anchor.id, from: anchor.status, to: "RESOLVED", severityFrom: anchor.severity, severityTo: anchor.severity, at } });
     }
     return { attempted: true, delivered: true, alertId: anchor.id };
   }

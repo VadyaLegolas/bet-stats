@@ -53,6 +53,12 @@ export const HTTP5XX_CRITICAL_RATIO = 0.5;
 export const BACKUP_STALE_MS = 25 * 3_600_000;
 /** >=48h without a successful dump → CRITICAL (D-03). */
 export const BACKUP_CRITICAL_MS = 48 * 3_600_000;
+/** The delivery probe's self-alert anchor (DELIVERY_HEALTH\0synthetic, D-13) is owned
+ *  exclusively by the probe lifecycle in delivery-probe.ts — the evaluator must never
+ *  auto-resolve it (CR-02). Pinned here (not imported from delivery-probe.js) because
+ *  delivery-probe imports from this module: a reverse import would be circular.
+ *  Drift is guarded by tests/unit/alerts-composition.test.ts. */
+export const PROBE_ANCHOR_SIGNAL = "DELIVERY_HEALTH";
 const BLOCKING_ROOT_CAUSE = /QUARANTINE|IDENTITY|PAYLOAD/;
 const MAX_CORRELATION_IDS = 5;
 const MAX_GROUPS = 50;
@@ -398,7 +404,9 @@ export async function dedupUpsert(database: PrismaClient, evaluation: SignalEval
  */
 async function resolveClearedAlerts(database: PrismaClient, fired: ReadonlySet<string>, now: Date): Promise<void> {
   const open = await database.opsAlert.findMany({
-    where: { status: { in: ["OPEN", "ACKNOWLEDGED"] } },
+    // CR-02: exclude the probe anchor signal — the DELIVERY_HEALTH anchor is owned
+    // by the probe lifecycle (success/failure transitions in delivery-probe.ts).
+    where: { status: { in: ["OPEN", "ACKNOWLEDGED"] }, signal: { not: PROBE_ANCHOR_SIGNAL } },
     select: { id: true, status: true, severity: true, dedupFingerprint: true },
   });
   for (const alert of open) {

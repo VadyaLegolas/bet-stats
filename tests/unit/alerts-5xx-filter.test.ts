@@ -64,15 +64,24 @@ describe("Http5xxBucketFilter", () => {
     expect(applicationRef.reply).toHaveBeenCalledWith(response, expect.objectContaining({ statusCode: 404, message: "Not found" }), 404);
   });
 
-  it("handles an exception without a status code gracefully — no bucket write, uniform 500 base handling", () => {
+  it("counts a raw exception as a 5xx — Nest answers it 500 «Internal server error»", () => {
+    const fixedMs = 1_700_000_040_567;
+    vi.spyOn(Date, "now").mockReturnValue(fixedMs);
     const redis = mockRedis();
     const applicationRef = mockApplicationRef();
     const { response, host } = mockHost();
     const filter = new Http5xxBucketFilter(redis.client, applicationRef as never);
+    const expectedKey = `bet-stats:http5xx:${Math.floor(fixedMs / 60_000)}`;
 
     filter.catch(new Error("boom"), host);
 
-    expect(redis.client.multi).not.toHaveBeenCalled();
+    // WR-01: a raw (non-HttpException) error is the class BaseExceptionFilter renders as 500 —
+    // the numerator must include it, exactly during unhandled-error bursts.
+    expect(redis.client.multi).toHaveBeenCalled();
+    expect(redis.transaction.incr).toHaveBeenCalledWith(expectedKey);
+    expect(redis.transaction.expire).toHaveBeenCalledWith(expectedKey, expect.anything());
+    expect(redis.transaction.exec).toHaveBeenCalledOnce();
+    // Response contract unchanged: base reply carries exactly the uniform 500 body.
     expect(applicationRef.reply).toHaveBeenCalledWith(response, { statusCode: 500, message: "Internal server error" }, 500);
   });
 

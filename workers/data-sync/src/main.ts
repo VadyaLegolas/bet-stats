@@ -2,7 +2,7 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { dependencyReadiness, readAlertsConfig, readBackupConfig, readServerConfig, DEFAULT_BACKUP_DRILL_INTERVAL_HOURS, type AlertConfig, type BackupConfig } from "@bet-stats/config";
-import { createPrismaBacktestReceiptRepository, createPrismaClient, createPrismaForecastRepository, createProviderRoutingRepository, createReplayProviderPolicyRepository, createSettlementPipelineService, DEFAULT_REPLAY_PROVIDER_POLICIES } from "@bet-stats/database";
+import { createPrismaBacktestReceiptRepository, createPrismaClient, createPrismaForecastRepository, createProviderRoutingRepository, createReplayProviderPolicyRepository, createSettlementPipelineService, DEFAULT_REPLAY_PROVIDER_POLICIES, type PrismaClient } from "@bet-stats/database";
 import { currentForecastConfigHash, ForecastOrchestrator } from "@bet-stats/domain";
 import { ApiFootballClient, FootballDataOrgClient, type FixtureProvider, type ResultProvider, type StandingsProvider } from "@bet-stats/football-data";
 import { runReplayFixtureJob } from "./jobs/fixtures.js";
@@ -19,7 +19,7 @@ import { createBacktestQueue, createBacktestWorker, createEnrichmentQueue, creat
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import { createDurableProviderCircuitRegistry } from "./resilience/circuits.js";
-import { DEFAULT_ALERTS_TICK_MS, scheduleAlertingTick } from "./jobs/alerts.js";
+import { DEFAULT_ALERTS_TICK_MS, scheduleAlertingTick, type BucketReader, type DeadLetterInspector } from "./jobs/alerts.js";
 import { scheduleDeliveryProbe } from "./jobs/delivery-probe.js";
 
 export { createSyncWorkers } from "./queues/index.js";
@@ -150,17 +150,30 @@ export function startBackupRuntime(input: { databaseUrl: string; redisUrl: strin
  * alerts.disabled and leaves alerting honestly off — no timers exist when alerting
  * is disabled. The webhook URL itself is never logged (T-09-04).
  */
-export function startAlertingRuntime(input: { databaseUrl: string; redisUrl: string; prefix?: string; alertsConfig: AlertConfig; log?: (event: Readonly<Record<string, unknown>>) => void }) {
+export function startAlertingRuntime(input: {
+  databaseUrl: string;
+  redisUrl: string;
+  prefix?: string;
+  alertsConfig: AlertConfig;
+  log?: (event: Readonly<Record<string, unknown>>) => void;
+  /** Test-only seam (T-09-15): injected dependencies are caller-owned — close()
+   *  never tears them down. Omitted (production) the constructed clients are
+   *  owned here and closed exactly as before. */
+  dependencies?: { database: PrismaClient; redis: BucketReader; inspector: DeadLetterInspector };
+  setTimeout?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout>;
+  clearTimeout?: (timer: ReturnType<typeof setTimeout>) => void;
+}) {
   const log = input.log ?? ((event: Readonly<Record<string, unknown>>) => console.info(JSON.stringify(event)));
   const config = input.alertsConfig;
   if (!config.enabled) {
     log({ event: "alerts.disabled" });
     return undefined;
   }
-  const database = createPrismaClient(input.databaseUrl);
-  const redis = new Redis(input.redisUrl, { maxRetriesPerRequest: null });
+  const deps = input.dependencies;
+  const database = deps?.database ?? createPrismaClient(input.databaseUrl);
+  const redis = deps?.redis ?? new Redis(input.redisUrl, { maxRetriesPerRequest: null });
   const webhookConfig = { webhookUrl: config.webhookUrl, webhookTimeoutMs: config.webhookTimeoutMs };
-  const inspector = new Queue(standardQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
+  const inspector = deps?.inspector ?? new Queue(standardQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
   const scheduler = scheduleAlertingTick({
     database,
     redis,
@@ -168,6 +181,12 @@ export function startAlertingRuntime(input: { databaseUrl: string; redisUrl: str
     webhookConfig,
     onError: (error) => log({ event: "alerts.tick_failed", error: error instanceof Error ? error.message : "UNKNOWN" }),
     log,
+    // CR-01: the BullMQ inspector exists precisely for the dead-letter adapter —
+    // without this key the DEAD_LETTER signal (incl. CRITICAL blocking root
+    // causes, D-03) never fires in the production composition.
+    inspector,
+    ...(input.setTimeout ? { setTimeout: input.setTimeout } : {}),
+    ...(input.clearTimeout ? { clearTimeout: input.clearTimeout } : {}),
   });
   // D-13: the weekly synthetic delivery probe is armed only with a real webhook
   // target — without one the channel is honestly «не настроен» and probing it
@@ -185,8 +204,11 @@ export function startAlertingRuntime(input: { databaseUrl: string; redisUrl: str
     async close() {
       scheduler.close();
       probe?.close();
-      redis.disconnect();
-      await inspector.close();
+      // Caller-injected dependencies are owned by the caller — never torn down
+      // here (T-09-15); only internally constructed clients get torn down.
+      if (deps) return;
+      if (redis instanceof Redis) redis.disconnect();
+      if (inspector instanceof Queue) await inspector.close();
       await database.$disconnect();
     },
   };

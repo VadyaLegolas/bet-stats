@@ -4,16 +4,16 @@ milestone: v1.1
 current_phase: 09
 current_phase_name: Degradation Alerting
 status: executing
-stopped_at: Completed 09-04-PLAN.md
-last_updated: "2026-11-12T07:53:11.512Z"
-last_activity: 2026-11-09
+stopped_at: Completed 09-05-PLAN.md
+last_updated: "2026-11-12T08:19:34.702Z"
+last_activity: 2026-11-12
 last_activity_desc: Phase 09 execution started
-state_head: 8f7f17a71fccf013aa141c56956cd38146469bd3
+state_head: a08e05cd26e739c8123619827bbc523d4f6612f6
 progress:
   total_phases: 10
   completed_phases: 2
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 15
   percent: 20
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 
 ## Current Position
 
-Phase: 09 (Degradation Alerting) — READY TO EXECUTE
-Plan: 4 of 4
+Phase: 09 (Degradation Alerting) — EXECUTING
+Plan: 6 of 6
 Status: Ready to execute
-Last activity: 2026-11-09 — Phase 09 execution started
+Last activity: 2026-11-12 — Phase 09 execution started
 
 Progress: [██░░░░░░░░] 20%
 
@@ -134,6 +134,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 09 P09-03 | 9min | 2 tasks | 8 files |
 | Phase 09 P09-02 | 25min | 3 tasks | 6 files |
 | Phase 09 P09-04 | 6min | 2 tasks | 4 files |
+| Phase 09 P05 | 25 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -277,6 +278,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 09]: ALRT-01, ALRT-03 and ALRT-04 remain Pending under the shared-ID gate: requirements.ready-ids reports all three blocked (also declared by Plan 09-02), so they are marked complete only when that plan's SUMMARY exists. — The shared-ID gate exists so a requirement never reads Complete while another plan still has to satisfy it; marking the ready subset (empty here) is the only allowed action for this plan.
 - [Phase 09]: Worker-side evaluator owns the whole degradation-detection loop: one evaluateAndDispatch tick runs six signal adapters (quota D-10, circuit OPEN/HALF_OPEN D-03, sync-failure bursts D-11, BullMQ dead letters, 5xx Redis buckets with the D-09 min-volume guard, backup staleness D-12) and upserts deduplicated OpsAlert rows - PostgreSQL is the only alert state, Redis carries only the disposable 5xx/total buckets. — The worker tsconfig rootDir cannot import apps/api (where computeBackupFact lives), and duplicating alert state in Redis is explicitly prohibited; a single Prisma upsert per dedupFingerprint plus immutable OpsAlertTransition rows keeps the alert lifecycle auditable and lets auto-resolution (D-04) and re-open dispatch (D-05) work without operator action. Backup thresholds are pinned in alerts.ts with unit tests guarding the mirror of computeBackupFact.
 - [Phase 09]: AlertsBlock owns the acknowledge interaction as a row-local state machine (pending id, local ack map, per-row failure) instead of a page-level handler — the page stays a thin data owner and the whole interaction is SSR-testable. — The component re-partitions defensively instead of trusting API order (the read model returns one severity-sorted flat array where a resolved CRITICAL outranks an open WARNING): active (severity desc, lastSeen desc) then resolved (lastSeen desc), dedup by signal+scope fingerprint; alertPage pagination slices the combined ordered list client-side at 25/page with its own URL parameter.
+- [Phase 09]: PROBE_ANCHOR_SIGNAL pinned in alerts.ts (reverse import would be circular); drift guarded by unit test
+- [Phase 09]: startAlertingRuntime close() guards teardown with instanceof checks so caller-injected dependencies are never closed
+- [Phase 09]: Task 1 (tracer) as one fix commit with test; Task 2 via full TDD RED-to-GREEN with tdd-red-evidence validation
 
 ### Pending Todos
 
@@ -382,6 +386,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-11T07:03:32.093Z
-Stopped at: Completed 09-04-PLAN.md
+Last session: 2026-11-12T08:19:32.363Z
+Stopped at: Completed 09-05-PLAN.md
 Resume file: None

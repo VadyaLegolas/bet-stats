@@ -22,7 +22,7 @@
 ### Degradation Alerting (ALRT)
 
 - [ ] **ALRT-01**: An operator receives degradation alerts for provider-quota exhaustion, worker job failures and dead letters, sync-run failures, 5xx error spikes, and backup staleness.
-- [ ] **ALRT-02**: Alerts are durable PostgreSQL records with deduplication, severity tiers, and transition history; channel delivery is an attempt, never the source of truth.
+- [x] **ALRT-02**: Alerts are durable PostgreSQL records with deduplication, severity tiers, and transition history; channel delivery is an attempt, never the source of truth.
 - [ ] **ALRT-03**: An operator can view active and recent alerts in the operations center with correlation context and redacted secrets.
 - [ ] **ALRT-04**: Alert dispatch delivers to a configurable webhook endpoint (optionally SMTP) without leaking secrets or betting data.
 
@@ -103,7 +103,7 @@ _Milestone v1.1 roadmap (2026-10-19): every requirement maps to exactly one phas
 | BAK-02 | Phase 8 | Complete |
 | BAK-03 | Phase 8 | Complete |
 | ALRT-01 | Phase 9 | Gaps Found |
-| ALRT-02 | Phase 9 | Gaps Found |
+| ALRT-02 | Phase 9 | Complete |
 | ALRT-03 | Phase 9 | Gaps Found |
 | ALRT-04 | Phase 9 | Gaps Found |
 | PERF-01 | Phase 10 | Pending |

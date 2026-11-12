@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 milestone: v1.1
 current_phase: 09
 current_phase_name: Degradation Alerting
-status: executing
-stopped_at: Completed 09-05-PLAN.md
-last_updated: "2026-11-12T08:19:34.702Z"
+status: verifying
+stopped_at: Completed 09-06-PLAN.md
+last_updated: "2026-11-12T08:33:46.147Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 09 execution started
-state_head: a08e05cd26e739c8123619827bbc523d4f6612f6
+state_head: e802a678418bc3cbc547702adaf7a88fb1e43dc1
 progress:
   total_phases: 10
   completed_phases: 2
   total_plans: 16
-  completed_plans: 15
+  completed_plans: 16
   percent: 20
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 
 Phase: 09 (Degradation Alerting) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-12 — Phase 09 execution started
 
 Progress: [██░░░░░░░░] 20%
@@ -135,6 +135,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 09 P09-02 | 25min | 3 tasks | 6 files |
 | Phase 09 P09-04 | 6min | 2 tasks | 4 files |
 | Phase 09 P05 | 25 | 2 tasks | 5 files |
+| Phase 09 P06 | 10min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -281,6 +282,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 09]: PROBE_ANCHOR_SIGNAL pinned in alerts.ts (reverse import would be circular); drift guarded by unit test
 - [Phase 09]: startAlertingRuntime close() guards teardown with instanceof checks so caller-injected dependencies are never closed
 - [Phase 09]: Task 1 (tracer) as one fix commit with test; Task 2 via full TDD RED-to-GREEN with tdd-red-evidence validation
+- [Phase 09]: Raw exceptions counted as 5xx before BaseExceptionFilter delegation; response bodies stay byte-identical (WR-01, 09-06)
+- [Phase 09]: BUCKET_TTL_SECONDS = 420 pinned by a cross-module mirror test (TTL >= HTTP5XX_WINDOW_MINUTES*60 + 60) so TTL/window drift cannot silently return (WR-02, 09-06)
+- [Phase 09]: Single-line RED assertions via mock.calls lookups keep vitest failure output TAP-YAML-parseable for tdd-red-evidence (09-06)
 
 ### Pending Todos
 
@@ -386,6 +390,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-12T08:19:32.363Z
-Stopped at: Completed 09-05-PLAN.md
+Last session: 2026-11-12T08:33:19.061Z
+Stopped at: Completed 09-06-PLAN.md
 Resume file: None

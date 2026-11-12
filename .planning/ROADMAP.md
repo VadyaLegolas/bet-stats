@@ -83,7 +83,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 - [x] 09-03-PLAN.md — API layer: 5xx exception filter, alerts() read model, acknowledge endpoint, readAlertsConfig
 - [x] 09-04-PLAN.md — UI block: «Алерты» block on operations page, enum labels, SSR tests
 - [x] 09-05-PLAN.md — Gap closure CR-01/CR-02/IN-05: inspector wired through startAlertingRuntime (composition test), DELIVERY_HEALTH excluded from auto-resolution, probe success resolves OPEN/ACKNOWLEDGED
-- [ ] 09-06-PLAN.md — Gap closure WR-01/WR-02: 5xx numerator counts raw exceptions, bucket TTL covers the 5-minute window with a mirror guard
+- [x] 09-06-PLAN.md — Gap closure WR-01/WR-02: 5xx numerator counts raw exceptions, bucket TTL covers the 5-minute window with a mirror guard
 **UI hint**: yes
 
 ### Phase 10: Performance Audit and Budgets
@@ -204,7 +204,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 |-------|----------------|--------|-----------|
 | 7. CI Pipeline & Quality Gates | 3/3 | Complete    | 2026-10-22 |
 | 8. Backups and Restore Verification | 7/7 | Complete    | 2026-10-31 |
-| 9. Degradation Alerting | 5/6 | In Progress | - |
+| 9. Degradation Alerting | 6/6 | In Progress | - |
 | 10. Performance Audit and Budgets | 0/0 | Not started | - |
 | 11. Dixon-Coles Model Version | 0/0 | Not started | - |
 | 12. Calibration Layer and Versioned Rollback | 0/0 | Not started | - |

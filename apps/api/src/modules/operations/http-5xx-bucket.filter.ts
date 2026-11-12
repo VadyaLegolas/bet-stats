@@ -51,11 +51,14 @@ function exceptionStatus(exception: unknown): number | null {
 }
 
 /**
- * Global 5xx counter (ALRT-01/D-09). Catches every exception, and for status
- * >= 500 increments bet-stats:http5xx:<minuteIndex> (MULTI INCR+EXPIRE, TTL
- * 120s), then delegates to the Nest base handler so error bodies stay
- * byte-identical — no contract change. Bucket writes are fire-and-forget: a
- * missing REDIS_URL or a Redis failure never changes the response.
+ * Global 5xx counter (ALRT-01/D-09). Catches every exception, and counts it
+ * into bet-stats:http5xx:<minuteIndex> (MULTI INCR+EXPIRE, TTL 120s) whenever
+ * it is a raw (non-HttpException) value — which Nest's BaseExceptionFilter
+ * itself answers with 500 «Internal server error» — or an HttpException with
+ * status >= 500; then it delegates to the Nest base handler so error bodies
+ * stay byte-identical — no contract change. Bucket writes are
+ * fire-and-forget: a missing REDIS_URL or a Redis failure never changes the
+ * response.
  */
 export class Http5xxBucketFilter extends BaseExceptionFilter {
   constructor(private readonly buckets: BucketRedisClient | null, applicationRef?: HttpServer) {
@@ -64,7 +67,9 @@ export class Http5xxBucketFilter extends BaseExceptionFilter {
 
   override catch(exception: unknown, host: ArgumentsHost): void {
     const status = exceptionStatus(exception);
-    if (status !== null && status >= 500) recordMinuteBucket(this.buckets, HTTP5XX_BUCKET_PREFIX);
+    // A null status means a raw (non-HttpException) exception: BaseExceptionFilter
+    // renders it as 500 «Internal server error», so the numerator must include it (WR-01).
+    if (status === null || status >= 500) recordMinuteBucket(this.buckets, HTTP5XX_BUCKET_PREFIX);
     super.catch(exception, host);
   }
 }

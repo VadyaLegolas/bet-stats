@@ -76,7 +76,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   4. Probes and alerting never call live external providers and per-job failures do not create alert fatigue.
 
 **Notes / research flags**: Channel choice (webhook vs SMTP free-tier) and its rate limits need runtime verification at implementation time. BullMQ `QueueEvents` for job signals; native `fetch` for webhook dispatch.
-**Plans**: 4/4 base plans executed + 2 gap-closure plans planned (09-VERIFICATION.md: CR-01, CR-02)
+**Plans**: 4/4 base plans executed + 2 verification-gap plans executed (09-05/09-06) + 1 UAT-gap plan planned (09-UAT.md: G-09-1, G-09-2)
 **Plan list**:
 - [x] 09-01-PLAN.md — Schema foundation: OpsAlert/transition/delivery models, guarded migration, mutation-rejection tests
 - [x] 09-02-PLAN.md — Worker evaluator: five signal adapters, dedup/damping, webhook dispatch, startAlertingRuntime
@@ -84,6 +84,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 - [x] 09-04-PLAN.md — UI block: «Алерты» block on operations page, enum labels, SSR tests
 - [x] 09-05-PLAN.md — Gap closure CR-01/CR-02/IN-05: inspector wired through startAlertingRuntime (composition test), DELIVERY_HEALTH excluded from auto-resolution, probe success resolves OPEN/ACKNOWLEDGED
 - [x] 09-06-PLAN.md — Gap closure WR-01/WR-02: 5xx numerator counts raw exceptions, bucket TTL covers the 5-minute window with a mirror guard
+- [ ] 09-07-PLAN.md — UAT gap closure G-09-1/G-09-2: NUL-free alertFingerprint separator (U+001F) with real-PostgreSQL dedupUpsert roundtrip; zoom-200% @ 320px reflow fix on /internal/operations with e2e guard
 **UI hint**: yes
 
 ### Phase 10: Performance Audit and Budgets

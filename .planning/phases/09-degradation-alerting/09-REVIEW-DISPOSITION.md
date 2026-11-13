@@ -1,25 +1,28 @@
 ---
 phase: 09-degradation-alerting
 review: 09-REVIEW.md
-reviewed: 2026-11-11
-total: 14
+reviewed: 2026-11-13
+total: 19
 open: 14
-fixed: 0
+fixed: 5
 skipped: 0
 ---
 
 # Phase 09 — Review Disposition
 
-> One row per finding from 09-REVIEW.md (committed `895b017`). Default state is `open` —
-> a triaged finding is distinguishable downstream from a forgotten one. Triage by hand-editing
-> the Disposition column (`open` / `fixed` / `skipped` / `deferred`) and stating the reason in Source.
+> One row per finding from 09-REVIEW.md (committed `895b017`) plus the incremental
+> gap-closure review `09-REVIEW-GAPS.md` (2026-11-13, scope: 7 files changed since
+> `895b017`). Default state is `open` — a triaged finding is distinguishable downstream
+> from a forgotten one. Triage by hand-editing the Disposition column
+> (`open` / `fixed` / `skipped` / `deferred`) and stating the reason in Source.
 
 | Finding ID | Severity | Disposition | Source |
 |---|---|---|---|
-| CR-01 | critical | open | Dead-letter inspector не передаётся в scheduleAlertingTick — сигнал DEAD_LETTER никогда не срабатывает |
-| CR-02 | critical | open | resolveClearedAlerts гасит CRITICAL DELIVERY_HEALTH самосигнал probe — противоречие D-13 |
-| WR-01 | warning | open | Фильтр не считает необработанные исключения (не-HttpException → 500 без записи в бакет) |
-| WR-02 | warning | open | TTL 120s против 5-минутного окна чтения — фактическое окно ≤ 3 минуты |
+| CR-01 | critical | fixed | Closed by 09-05 Task 1 (inspector passed into scheduleAlertingTick; commits `8948374`/`a08e05c`); confirmed by 09-REVIEW-GAPS.md |
+| CR-02 | critical | fixed | Closed by 09-05 Task 2 (PROBE_ANCHOR_SIGNAL excluded from resolveClearedAlerts; commit `a08e05c`); confirmed by 09-REVIEW-GAPS.md |
+| WR-01 | warning | fixed | Closed by 09-06 Task 1 (raw exceptions counted into 5xx numerator; commits `87fee2e`/`d86112e`); confirmed by 09-REVIEW-GAPS.md |
+| WR-02 | warning | fixed | Closed by 09-06 Task 2 (TTL 120→420 + cross-module mirror guard; commits `f142f61`/`a511349`); confirmed by 09-REVIEW-GAPS.md |
+| IN-05 | info | fixed | Closed by 09-05 Task 2 (probe success resolves OPEN and ACKNOWLEDGED anchors; commit `a08e05c`); confirmed by 09-REVIEW-GAPS.md |
 | WR-03 | warning | open | Де-эскалация CRITICAL→WARNING отправляется как alert_escalated |
 | WR-04 | warning | open | Неограниченный Retry-After может заморозить evaluator |
 | WR-05 | warning | open | Ключи ALERT_SIGNAL_LABELS не совпадают с фактическими сигналами (SYNC_FAILURES/DEAD_LETTER) |
@@ -29,7 +32,12 @@ skipped: 0
 | IN-02 | info | open | Неиспользуемые поля inspector/state в scheduleDeliveryProbe |
 | IN-03 | info | open | take: 100 без пагинации молча скрывает старые активные алерты |
 | IN-04 | info | open | Гонка find→create в dedupUpsert роняет остаток тика |
-| IN-05 | info | open | Успешный probe не разрешает ACKNOWLEDGED-якорь |
+| IN-05 | info | fixed | Closed by 09-05 Task 2 (probe success resolves OPEN and ACKNOWLEDGED anchors; commit `a08e05c`); confirmed by 09-REVIEW-GAPS.md |
+| WR-G1 | warning | open | (09-REVIEW-GAPS.md, 2026-11-13) После неудачного probe удаление ALERT_WEBHOOK_URL + перезапуск оставляет якорь навсегда OPEN/CRITICAL без пути к разрешению (probe не вооружается при main.ts:194, evaluator якорь исключён alerts.ts:409) — противоречие честному «не настроен» по D-01 |
+| WR-G2 | warning | open | (09-REVIEW-GAPS.md, 2026-11-13) Повторный провал probe на ACKNOWLEDGED-якоре молча переводит его в OPEN без transition-строки, acknowledgedAt остаётся выставленным — нарушение D-04; смежный скоуп (блок существовал до closure, живёт в якорном цикле, который closure взял во владение) |
+| WR-G3 | warning | open | (09-REVIEW-GAPS.md, 2026-11-13) Impossible-state guard: instanceof Redis/Queue в close() (main.ts:210-211) недостижимо ложны — ветка исполняется только когда deps falsy, а значения построены двумя строками выше |
+| IN-G1 | info | open | (09-REVIEW-GAPS.md, 2026-11-13) Нецелочисленный статус HttpException (getStatus() → null) попадает в 5xx-числитель на посылке «null ⇒ Nest отвечает 500» — верно только для сырых исключений |
+| IN-G2 | info | open | (09-REVIEW-GAPS.md, 2026-11-13) Мёртвый параметр runtime в хелпере runOneTick композиционного теста |
 
 > Осознанный остаток (ревизия 2026-11-12): WR-03..WR-07 и IN-01..IN-04 сознательно остаются вне объёма closure-планов 09-05/09-06 — 09-VERIFICATION.md рекомендует закрывать только CR-01/CR-02, WR-01/WR-02 и IN-05; из остатка наиболее значим WR-05 (русские метки сигналов не рендерятся для реальных кодов SYNC_FAILURES/DEAD_LETTER — конвенция русского UI из AGENTS.md), он — первый кандидат при открытии последующего closure.
 

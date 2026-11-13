@@ -3,7 +3,7 @@ status: diagnosed
 phase: 09-degradation-alerting
 source: [09-VERIFICATION.md]
 started: 2026-11-13T09:00:00Z
-updated: 2026-11-13T07:45:00Z
+updated: 2026-11-13T08:00:00Z
 ---
 
 ## Current Test
@@ -47,7 +47,7 @@ blocked: 0
 
 - gap_id: G-09-1
   truth: "Тик evaluator'а пишет алерты (OpsAlert) в PostgreSQL; дедуп-апсерт работает на живой БД"
-  status: failed
+  status: resolved
   reason: "Agent-performed live tick: PostgreSQL 22021 invalid byte sequence for encoding UTF8: 0x00 on OpsAlert.findUnique — alertFingerprint uses a NUL (\\0) separator, TEXT columns cannot store NUL; dedup upsert/create always fails with real fingerprints on real PostgreSQL"
   severity: blocker
   test: 1
@@ -60,12 +60,12 @@ blocked: 0
   missing:
     - "Заменить NUL-разделитель на NUL-free separator (например, U+001F или составной формат), обновить alertFingerprint и все сравнения (UI dedup в alerts-block.tsx line 103 тоже использует \\0 — в памяти, но для консистентности), добавить интеграционный тест раундтрипа alertFingerprint на реальном PostgreSQL"
   debug_session: ""
-  resolved_by: ""
-  resolved_at: ""
+  resolved_by: "09-07-PLAN.md"
+  resolved_at: "2026-11-13"
 
 - gap_id: G-09-2
   truth: "zoom 200% на /internal/operations: reflow без горизонтального скролла"
-  status: failed
+  status: resolved
   reason: "Agent-performed browser check: при html zoom 200% scrollWidth 369 > clientWidth 320; переполняют release-header-tools, quota-counter, theme-toggle (right 328) и header/H1/P/section блоки (right 369). На 100% на 320px горизонтальный скролл отсутствует."
   severity: minor
   test: 2
@@ -76,5 +76,5 @@ blocked: 0
   missing:
     - "Адаптивная правка шапки/секций для zoom 200% @ 320px (min-width сжатие, overflow-wrap, сжатие padding), e2e-проверка reflow при zoom"
   debug_session: ""
-  resolved_by: ""
-  resolved_at: ""
+  resolved_by: "09-07-PLAN.md"
+  resolved_at: "2026-11-13"

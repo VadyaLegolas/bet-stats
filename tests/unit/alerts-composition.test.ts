@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AlertConfig } from "@bet-stats/config";
 import type { PrismaClient } from "@bet-stats/database";
 
-import { DEFAULT_ALERTS_TICK_MS, type DeadLetterInspector } from "../../workers/data-sync/src/jobs/alerts.js";
+import { ALERT_FINGERPRINT_SEPARATOR, DEFAULT_ALERTS_TICK_MS, type DeadLetterInspector } from "../../workers/data-sync/src/jobs/alerts.js";
 import { DELIVERY_PROBE_FINGERPRINT } from "../../workers/data-sync/src/jobs/delivery-probe.js";
 import { startAlertingRuntime } from "../../workers/data-sync/src/main.js";
 
@@ -25,10 +25,11 @@ type AlertRow = {
 };
 
 function alertRow(overrides: Partial<AlertRow> & { dedupFingerprint: string }): AlertRow {
+  const fp = overrides.dedupFingerprint;
   return {
-    id: `alert-${overrides.dedupFingerprint.replace(/\0/g, "-")}`,
-    signal: overrides.dedupFingerprint.split("\0")[0] ?? "UNKNOWN",
-    scope: overrides.dedupFingerprint.split("\0")[1] ?? "UNKNOWN",
+    id: `alert-${fp.replace(new RegExp(`\\${ALERT_FINGERPRINT_SEPARATOR}`, "g"), "-")}`,
+    signal: fp.split(ALERT_FINGERPRINT_SEPARATOR)[0] ?? "UNKNOWN",
+    scope: fp.split(ALERT_FINGERPRINT_SEPARATOR)[1] ?? "UNKNOWN",
     severity: "WARNING",
     status: "OPEN",
     count: 1,
@@ -241,14 +242,14 @@ describe("probe-anchor lifecycle (CR-02 / IN-05)", () => {
   });
 
   it("control: a non-probe cleared alert still auto-resolves with exactly one OPEN→RESOLVED transition", async () => {
-    const quota = alertRow({ dedupFingerprint: "PROVIDER_QUOTA\0prov/FAST", severity: "WARNING", status: "OPEN" });
+    const quota = alertRow({ dedupFingerprint: `PROVIDER_QUOTA${ALERT_FINGERPRINT_SEPARATOR}prov/FAST`, severity: "WARNING", status: "OPEN" });
     const fake = createFakeDatabase([quota]);
     const timers: CapturedTimer[] = [];
     const runtime = armRuntime(fake, timers);
 
     await runOneTick(runtime, timers);
 
-    const row = fake.alerts.get("PROVIDER_QUOTA\0prov/FAST");
+    const row = fake.alerts.get(`PROVIDER_QUOTA${ALERT_FINGERPRINT_SEPARATOR}prov/FAST`);
     expect(row?.status).toBe("RESOLVED"); // exclusion is scoped to the probe signal, not a blanket freeze
     expect(fake.transitions).toHaveLength(1);
     expect(fake.transitions[0]).toMatchObject({ alertId: quota.id, from: "OPEN", to: "RESOLVED" });

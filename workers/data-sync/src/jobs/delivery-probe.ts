@@ -2,13 +2,13 @@ import { randomUUID } from "node:crypto";
 
 import type { PrismaClient } from "@bet-stats/database";
 
-import { dispatchWebhook, type DeadLetterInspector, type Logger, type WarningTickState, type WebhookConfig, defaultLog } from "./alerts.js";
+import { dispatchWebhook, alertFingerprint, type DeadLetterInspector, type Logger, type WarningTickState, type WebhookConfig, defaultLog } from "./alerts.js";
 
 // --- Weekly synthetic delivery probe (D-13, T-09-06) ----------------------------------
 
 export const DELIVERY_PROBE_SIGNAL = "DELIVERY_HEALTH";
 export const DELIVERY_PROBE_SCOPE = "synthetic";
-export const DELIVERY_PROBE_FINGERPRINT = `${DELIVERY_PROBE_SIGNAL}\0${DELIVERY_PROBE_SCOPE}`;
+export const DELIVERY_PROBE_FINGERPRINT = alertFingerprint(DELIVERY_PROBE_SIGNAL, DELIVERY_PROBE_SCOPE);
 export const DELIVERY_PROBE_INTERVAL_MS = 7 * 24 * 3_600_000;
 
 export type DeliveryProbeResult = Readonly<{ attempted: boolean; delivered: boolean; alertId: string | null }>;

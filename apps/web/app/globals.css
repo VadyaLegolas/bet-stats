@@ -174,7 +174,24 @@ input:focus, select:focus {
   box-shadow: 0 0 0 3px var(--color-accent-subtle);
   outline: none;
 }
-summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 500; }
+/* A <summary> toggles content the way a link navigates, so it carries the link
+   treatment (accent label + underline) instead of reading as plain text. The
+   native marker is suppressed by `display: flex`, so the open state is drawn
+   explicitly with a chevron. */
+summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+summary:hover { color: var(--color-accent-hover); }
+summary::before { content: "▸"; flex: none; }
+details[open] > summary::before { content: "▾"; }
 fieldset { min-width: 0; max-width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-control); }
 code, pre { overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em; }
 pre { background: var(--color-surface-subtle); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-control); padding: var(--space-3); }
@@ -333,9 +350,10 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   .quota-counter-label { display: none; }
 }
 @media (max-width: 480px) {
-  .quota-counter { min-width: 148px; }
+  .quota-counter { min-width: 0; }
   .quota-counter-provider,
   .quota-counter-reset-time { display: none; }
+  section, header, h1, h2, p, dl { overflow-wrap: anywhere; min-width: 0; }
 }
 /* The quota panel keeps its literal light-theme shadow; on dark it needs real depth. */
 :root[data-theme="dark"] .quota-counter { box-shadow: 0 1px 2px rgb(0 0 0 / 0.45); }

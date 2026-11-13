@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  ALERT_FINGERPRINT_SEPARATOR,
   alertFingerprint,
   createWarningTickState,
   evaluate5xx,
@@ -30,10 +31,11 @@ type AlertRow = {
 };
 
 function alertRow(overrides: Partial<AlertRow> & { dedupFingerprint: string }): AlertRow {
+  const fp = overrides.dedupFingerprint;
   return {
-    id: `alert-${overrides.dedupFingerprint.replace(/\0/g, "-")}`,
-    signal: overrides.dedupFingerprint.split("\0")[0] ?? "UNKNOWN",
-    scope: overrides.dedupFingerprint.split("\0")[1] ?? "UNKNOWN",
+    id: `alert-${fp.replace(new RegExp(`\\${ALERT_FINGERPRINT_SEPARATOR}`, "g"), "-")}`,
+    signal: fp.split(ALERT_FINGERPRINT_SEPARATOR)[0] ?? "UNKNOWN",
+    scope: fp.split(ALERT_FINGERPRINT_SEPARATOR)[1] ?? "UNKNOWN",
     severity: "WARNING",
     status: "OPEN",
     count: 1,

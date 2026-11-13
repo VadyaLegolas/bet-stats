@@ -53,19 +53,29 @@ export const HTTP5XX_CRITICAL_RATIO = 0.5;
 export const BACKUP_STALE_MS = 25 * 3_600_000;
 /** >=48h without a successful dump → CRITICAL (D-03). */
 export const BACKUP_CRITICAL_MS = 48 * 3_600_000;
-/** The delivery probe's self-alert anchor (DELIVERY_HEALTH\0synthetic, D-13) is owned
+/** The delivery probe's self-alert anchor (DELIVERY_HEALTH<U+001F>synthetic, D-13) is owned
  *  exclusively by the probe lifecycle in delivery-probe.ts — the evaluator must never
  *  auto-resolve it (CR-02). Pinned here (not imported from delivery-probe.js) because
  *  delivery-probe imports from this module: a reverse import would be circular.
  *  Drift is guarded by tests/unit/alerts-composition.test.ts. */
 export const PROBE_ANCHOR_SIGNAL = "DELIVERY_HEALTH";
+/**
+ * Fingerprint separator, pinned for the dedup contract (D-04/D-05):
+ * `signal` + separator + `scope` is the dedupFingerprint stored in
+ * `OpsAlert.dedupFingerprint` (TEXT column). PostgreSQL TEXT rejects only the
+ * NUL byte (0x00, error 22021), so U+001F Unit Separator is used — it is
+ * storable, never appears inside a closed constant signal or a
+ * provider/endpoint scope, and keeps every fingerprint injective (G-09-1).
+ */
+export const ALERT_FINGERPRINT_SEPARATOR = "\u001f";
+
 const BLOCKING_ROOT_CAUSE = /QUARANTINE|IDENTITY|PAYLOAD/;
-const MAX_CORRELATION_IDS = 5;
-const MAX_GROUPS = 50;
 
 export function alertFingerprint(signal: string, scope: string): string {
-  return `${signal}\0${scope}`;
+  return `${signal}${ALERT_FINGERPRINT_SEPARATOR}${scope}`;
 }
+const MAX_CORRELATION_IDS = 5;
+const MAX_GROUPS = 50;
 
 // --- Signal adapters ----------------------------------------------------------------
 
@@ -346,7 +356,7 @@ async function appendTransition(
 }
 
 /**
- * Dedup upsert (D-04): exactly one OPEN row per dedupFingerprint (signal\0scope).
+ * Dedup upsert (D-04): exactly one OPEN row per dedupFingerprint (signal<U+001F>scope).
  * Occurrences bump count/lastSeen and never insert. A RESOLVED fingerprint that
  * fires again re-opens the existing row (status → OPEN, resolvedAt cleared,
  * transition appended) and is dispatched as a re-open notification (D-05).

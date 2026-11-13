@@ -44,3 +44,16 @@ for (const [name, viewport] of [["desktop", { width: 1280, height: 900 }], ["mob
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 }
+
+test("html zoom 200% at 320px reflows without horizontal scroll (G-09-2)", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  const search = "?page=1&pageSize=25&windowHours=24";
+  await page.setExtraHTTPHeaders(signedHeaders("/internal-api/operations/overview", search));
+  await page.goto(`/internal/operations${search}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Центр операций" })).toBeVisible();
+  await page.locator("html").evaluate((element) => { element.style.zoom = "200%"; });
+  await page.waitForTimeout(100);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+  await expect(page.getByRole("heading", { level: 1, name: "Центр операций" })).toBeVisible();
+});

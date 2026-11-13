@@ -44,6 +44,14 @@ const CHIP_STYLES: Record<string, { bg: string; color: string; border: string; d
 const RESOLVED_CHIP = { bg: "color-mix(in srgb, var(--color-text-secondary) 9%, transparent)", color: "var(--color-text-secondary)", border: "color-mix(in srgb, var(--color-text-secondary) 35%, transparent)", dot: "var(--color-muted)" };
 const ACK_CHIP = { bg: "color-mix(in srgb, var(--color-info) 10%, transparent)", color: "var(--color-info)", border: "color-mix(in srgb, var(--color-info) 35%, transparent)", dot: "var(--color-info)" };
 
+/** Mirrored separator for the in-memory dedup key (D-05). The worker tree cannot
+ *  be imported from the web app, so this is a mirror of
+ *  workers/data-sync/src/jobs/alerts.ts ALERT_FINGERPRINT_SEPARATOR (U+001F). The
+ *  key is in-memory only — no TEXT column is touched here — but the separator must
+ *  stay in sync with the worker so the two dedup domains cannot silently drift.
+ */
+const DEDUP_KEY_SEPARATOR = "\u001f";
+
 /** Severity is a closed set in the API; unknown values rank last (mirrors ALERT_SEVERITY_RANK read-model ordering). */
 const SEVERITY_RANK: Record<string, number> = { CRITICAL: 2, WARNING: 1 };
 
@@ -97,10 +105,10 @@ export function AlertsBlock({ fact, page = 1 }: { fact: AlertsBlockFact; page?: 
     } finally { setPendingId(null); }
   };
 
-  // One row per dedup fingerprint (signal\0scope, D-05): the first occurrence wins.
+  // One row per dedup fingerprint (signal<U+001F>scope, D-05): the first occurrence wins.
   const seen = new Set<string>();
   const deduped = fact.alerts.filter((row) => {
-    const key = `${row.signal}\0${row.scope}`;
+    const key = `${row.signal}${DEDUP_KEY_SEPARATOR}${row.scope}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

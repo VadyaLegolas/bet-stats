@@ -65,8 +65,28 @@ findings:
   - id: IN-04
     severity: info
     disposition: open
-open: 14
-total: 19
+  - id: WR-G1
+    severity: warning
+    disposition: open
+    title: "Probe anchor is stranded OPEN/CRITICAL forever once the webhook is removed after a failed probe"
+  - id: WR-G2
+    severity: warning
+    disposition: open
+    title: "Repeated probe failure on an ACKNOWLEDGED anchor flips it to OPEN with no transition row (D-04 violation)"
+  - id: WR-G3
+    severity: warning
+    disposition: open
+    title: "Impossible-state guard — instanceof Redis/Queue checks in close() can never be false"
+  - id: IN-G1
+    severity: info
+    disposition: open
+    title: "Non-integer HttpException status is counted into the 5xx numerator on a false premise"
+  - id: IN-G2
+    severity: info
+    disposition: open
+    title: "Dead parameter in the runOneTick test helper"
+open: 19
+total: 24
 recorded: 2026-11-14T06:13:28.639Z
 ---
 
@@ -93,6 +113,11 @@ recorded: 2026-11-14T06:13:28.639Z
 | IN-02 | info | open | Неиспользуемые поля inspector/state в scheduleDeliveryProbe (not in the current review) |
 | IN-03 | info | open | take: 100 без пагинации молча скрывает старые активные алерты (not in the current review) |
 | IN-04 | info | open | Гонка find→create в dedupUpsert роняет остаток тика (not in the current review) |
+| WR-G1 | warning | open | (09-REVIEW-GAPS.md, 2026-11-13) После неудачного probe удаление ALERT_WEBHOOK_URL + перезапуск оставляет якорь навсегда OPEN/CRITICAL без пути к разрешению (probe не вооружается при main.ts:194, evaluator якорь исключён alerts.ts:409) — противоречие честному «не настроен» по D-01 (not in the current review) |
+| WR-G2 | warning | open | (09-REVIEW-GAPS.md, 2026-11-13) Повторный провал probe на ACKNOWLEDGED-якоре молча переводит его в OPEN без transition-строки, acknowledgedAt остаётся выставленным — нарушение D-04; смежный скоуп (блок существовал до closure, живёт в якорном цикле, который closure взял во владение) (not in the current review) |
+| WR-G3 | warning | open | (09-REVIEW-GAPS.md, 2026-11-13) Impossible-state guard: instanceof Redis/Queue в close() (main.ts:210-211) недостижимо ложны — ветка исполняется только когда deps falsy, а значения построены двумя строками выше (not in the current review) |
+| IN-G1 | info | open | (09-REVIEW-GAPS.md, 2026-11-13) Нецелочисленный статус HttpException (getStatus() → null) попадает в 5xx-числитель на посылке «null ⇒ Nest отвечает 500» — верно только для сырых исключений (not in the current review) |
+| IN-G2 | info | open | (09-REVIEW-GAPS.md, 2026-11-13) Мёртвый параметр runtime в хелпере runOneTick композиционного теста (not in the current review) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.

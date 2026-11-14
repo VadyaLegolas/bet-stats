@@ -1,14 +1,18 @@
 ---
-status: diagnosed
+status: testing
 phase: 09-degradation-alerting
 source: [09-VERIFICATION.md]
 started: 2026-11-13T09:00:00Z
-updated: 2026-11-13T08:00:00Z
+updated: 2026-11-14T15:00:00Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 5
+name: Живой тик evaluator'а (ре-верификация round 2; carried)
+expected: |
+  На работающем сервисе установить ALERTS_ENABLED=true (+ опционально ALERT_WEBHOOK_URL), сгенерировать отказ, подождать тик, проверить OpsAlert/OpsAlertDelivery в PostgreSQL и TTL ключа bet-stats:http5xx:* (ожидание: 420s после WR-02). Без ошибок выполнения; алерты появляются в PostgreSQL; channelState корректен.
+awaiting: user response
 
 ## Tests
 
@@ -34,12 +38,27 @@ expected: `tests/integration/alerts.test.ts` (9 кейсов: mutation-rejection
 result: pass
 note: "Агент: vitest --project integration на живом Docker-PostgreSQL 18.6 — 34/34 зелёные (alerts.test.ts + operator-overview.test.ts). Сид-фикстуры используют ASCII-отпечатки, NUL-путь evaluator'а (G-09-1) этими тестами не покрывается."
 
+### 5. Живой тик evaluator'а (ре-верификация round 2; carried)
+expected: На работающем сервисе установить ALERTS_ENABLED=true (+ опционально ALERT_WEBHOOK_URL), сгенерировать отказ, подождать тик, проверить OpsAlert/OpsAlertDelivery в PostgreSQL и TTL ключа bet-stats:http5xx:* (ожидание: 420s после WR-02).
+result: pending
+note: "Из 09-VERIFICATION.md (2026-11-14, re-verification): NUL-блокер G-09-1 закрыт с поведенческим доказательством — верификатор развернул owned PostgreSQL 18.6 (test:integration:docker, migrate deploy) и провёл roundtrip dedupUpsert с реальным U+001F-отпечатком: alerts-fingerprint 3/3, полный alert-набор 37/37. Остался живой тик в полном сервисе (интеграционный proxy-путь startAlertingRuntime не эвфемизирует PostgreSQL/Redis/BullMQ-соединение тика)."
+
+### 6. Финальное визуальное подтверждение reflow: zoom 200% @ 320px (G-09-2) + визуальная проверка operations center
+expected: Запустить `pnpm exec playwright test -c playwright.phase06.config.ts tests/e2e/operator-overview.spec.ts` (owned release stack), затем визуально: 320px/zoom 200% — нет горизонтального скролла, theme-toggle ≥ 44px, ack через фейковый HMAC-прокси, ack-конфирм. e2e-тест 'html zoom 200% at 320px reflows without horizontal scroll (G-09-2)' зелёный; desktop/mobile прогоны зелёные; в живом тёмном THEME подтверждение, ничего не сломалось.
+result: pending
+note: "Из 09-VERIFICATION.md (2026-11-14): единственный behavior-unverified truth (must-have 9) — e2e-кейс (operator-overview.spec.ts:48-62) и CSS-фикс (globals.css min-width:0 + overflow-wrap) на месте (presence VERIFIED), поведенческий прогон требует owned release stack."
+
+### 7. Живые Redis-счётчики 5xx (carried; повторное подтверждение)
+expected: На живом стеке вызвать заведомо ошибочные запросы и проверить ключи bet-stats:http5xx:*/httpTotal:*: рост с минутным индексом, TTL 420s, сырые 500-ответы (и null-status, WR-01) увеличивают http5xx.
+result: pending
+note: "Из 09-VERIFICATION.md (2026-11-14, re-verification): carried как human-пункт повторно. Предыдущий живой прогон (тест 3 ниже, 2026-11-13) подтвердил минутный индекс и TTL 403-413s; сырые 500 — покрыто юнит-тестами. Верификатор просит финальное живое переподтверждение после плана 09-07."
+
 ## Summary
 
-total: 4
+total: 7
 passed: 2
 issues: 2
-pending: 0
+pending: 3
 skipped: 0
 blocked: 0
 

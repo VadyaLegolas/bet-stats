@@ -1,58 +1,58 @@
 ---
 phase: 09-degradation-alerting
-verified: 2026-11-13T08:30:00Z
+verified: 2026-11-14T14:33:24Z
 status: human_needed
-score: 7/7 must-haves verified
-covered_files: [".planning/phases/09-degradation-alerting/09-01-PLAN.md", ".planning/phases/09-degradation-alerting/09-01-SUMMARY.md", ".planning/phases/09-degradation-alerting/09-02-PLAN.md", ".planning/phases/09-degradation-alerting/09-02-SUMMARY.md", ".planning/phases/09-degradation-alerting/09-03-PLAN.md", ".planning/phases/09-degradation-alerting/09-03-SUMMARY.md", ".planning/phases/09-degradation-alerting/09-04-PLAN.md", ".planning/phases/09-degradation-alerting/09-04-SUMMARY.md", ".planning/phases/09-degradation-alerting/09-05-PLAN.md", ".planning/phases/09-degradation-alerting/09-05-SUMMARY.md", ".planning/phases/09-degradation-alerting/09-06-PLAN.md", ".planning/phases/09-degradation-alerting/09-06-SUMMARY.md", "apps/api/src/main.ts", "apps/api/src/modules/operations/http-5xx-bucket.filter.ts", "apps/api/src/modules/operations/operations.controller.ts", "apps/api/src/modules/operations/operations.service.ts", "apps/web/app/internal/operations/alerts-block.test.ts", "apps/web/app/internal/operations/alerts-block.tsx", "apps/web/app/internal/operations/page.tsx", "apps/web/components/enum-labels.ts", "packages/config/src/index.ts", "packages/database/prisma/migrations/20261108_phase09_ops_alerts/migration.sql", "packages/database/prisma/schema.prisma", "tests/integration/alerts.test.ts", "tests/integration/operator-overview.test.ts", "tests/unit/alerts-5xx-filter.test.ts", "tests/unit/alerts-composition.test.ts", "tests/unit/alerts-delivery-probe.test.ts", "tests/unit/alerts-dispatch.test.ts", "tests/unit/alerts-signals.test.ts", "workers/data-sync/src/jobs/alerts.ts", "workers/data-sync/src/jobs/delivery-probe.ts", "workers/data-sync/src/main.ts"]
-covered_digest: "v4:sha256:633429430b90444fb37395acd490917f69fcfc2d335ab19ead16d1b1a13ca316"
+score: 8/9 must-haves verified
+covered_files: [".planning/phases/09-degradation-alerting/09-01-PLAN.md", ".planning/phases/09-degradation-alerting/09-01-SUMMARY.md", ".planning/phases/09-degradation-alerting/09-02-PLAN.md", ".planning/phases/09-degradation-alerting/09-02-SUMMARY.md", ".planning/phases/09-degradation-alerting/09-03-PLAN.md", ".planning/phases/09-degradation-alerting/09-03-SUMMARY.md", ".planning/phases/09-degradation-alerting/09-04-PLAN.md", ".planning/phases/09-degradation-alerting/09-04-SUMMARY.md", ".planning/phases/09-degradation-alerting/09-05-PLAN.md", ".planning/phases/09-degradation-alerting/09-05-SUMMARY.md", ".planning/phases/09-degradation-alerting/09-06-PLAN.md", ".planning/phases/09-degradation-alerting/09-06-SUMMARY.md", ".planning/phases/09-degradation-alerting/09-07-PLAN.md", ".planning/phases/09-degradation-alerting/09-07-SUMMARY.md", "apps/web/app/globals.css", "apps/web/app/internal/operations/alerts-block.tsx", "tests/e2e/operator-overview.spec.ts", "tests/integration/alerts-fingerprint.test.ts", "tests/unit/alerts-composition.test.ts", "tests/unit/alerts-signals.test.ts", "workers/data-sync/src/jobs/alerts.ts", "workers/data-sync/src/jobs/delivery-probe.ts"]
+covered_digest: "v4:sha256:e6c03e833140d94424fdfc31f021b724c2965bbe2b2656f6da1afaf80c90d47e"
 behavior_unverified: 1
 overrides_applied: 0
 re_verification:
-  previous_status: gaps_found
-  previous_score: 4/7
+  previous_status: human_needed
+  previous_score: 7/7
   gaps_closed:
-    - "SC1: каждый настроенный сигнал деградации даёт durable-запись — dead-letter-сигнал ожил в production-композиции (CR-01 закрыт: inspector передан в scheduleAlertingTick, main.ts:187; композиционный тест прогоняет тик через startAlertingRuntime)"
-    - "Plan 02: все шесть signal-адаптеров запускаются в тике (CR-01 закрыт — композиционный тест tests/unit/alerts-composition.test.ts доказывает вызов inspector.getFailed и durable OPEN/CRITICAL DEAD_LETTER-строку)"
-    - "Plan 02: delivery-probe self-alert остаётся активным, пока канал сломан (CR-02 закрыт: resolveClearedAlerts исключает PROBE_ANCHOR_SIGNAL, alerts.ts:409; кросс-тест: якорь остаётся OPEN после тика, контрольный non-probe-алерт резолвится)"
-    - "IN-05: успех probe разрешает якорь из OPEN и ACKNOWLEDGED с truthful-переходом (delivery-probe.ts:92-95; тест ACKNOWLEDGED→RESOLVED)"
-    - "WR-01: сырые исключения считаются в 5xx-числитель (filter.ts:80 `status === null || status >= 500`; тест фиксирует и bucket-write, и неизменный ответ { statusCode: 500, message: \"Internal server error\" })"
-    - "WR-02: BUCKET_TTL_SECONDS=420 покрывает 5-минутное окно чтения с запасом (обе expire-ассертции 420; кросс-модульный mirror-тест TTL ≥ window*60+60)"
+    - "G-09-1 (блокер UAT): fingerprint-разделитель заменён на NUL-free U+001F; roundtrip dedupUpsert по реальному PostgreSQL доказан собственным прогоном верификатора (tests/integration/alerts-fingerprint.test.ts, 3/3 на owned-контейнерах после `prisma migrate deploy`)"
+    - "G-09-2 (minor UAT): zoom-200% @ 320px reflow — постоянный e2e-кейс в operator-overview.spec.ts, CSS-фикс в globals.css; код-уровень VERIFIED, поведенческий прогон e2e требует owned release stack — перенесён в human verification"
   gaps_remaining: []
   regressions: []
 advisory:
-  - finding: "WR-G1: якорь DELIVERY_HEALTH навсегда OPEN/CRITICAL, если после неудачного probe удалить ALERT_WEBHOOK_URL и перезапустить воркер (probe не вооружается, evaluator якорь исключил)"
+  - finding: "WR-G1: 廒 DELIVERY_HEALTH остаётся OPEN/CRITICAL навсегда, если после неудачного probe удаляется ALERT_WEBHOOK_URL и не перезапускается воркер (probe не вооружается, evaluator 廒 исключает)"
     category: other
-    reason: "Достижимый тупик жизненного цикла якоря после CR-02; осознанно открыт в 09-REVIEW-DISPOSITION.md — вне объёма closure по решению пользователя"
+    reason: "Задокументировано в 09-REVIEW-DISPOSITION.md (carried-forward из предыдущей верификации); closure не решён пользователем"
     evidence_status: "none provided"
-  - finding: "WR-G2: повторный провал probe на ACKNOWLEDGED-якоре переводит его в OPEN без transition-строки и с висящим acknowledgedAt (смежный скоуп, блок существовал до closure)"
+  - finding: "WR-G2: успех probe на ACKNOWLEDGED-廒 переходит в OPEN без transition-строки и без затирания acknowledgedAt (безвредно, но неидеально)"
     category: other
-    reason: "Осознанно открыт (смежный скоуп якорного цикла) в 09-REVIEW-DISPOSITION.md"
+    reason: "Carried-forward; ledger: <безвредный побочный эффект>"
     evidence_status: "none provided"
-  - finding: "WR-G3: невозможное состояние — instanceof Redis/Queue в close() недостижимо ложны (necessity)"
+  - finding: "WR-G3: instanceof-guard в close() всегда истинен (necessity) — неиспользуемая защита"
     category: other
-    reason: "Безвредный guard; удаление — scope-решение человека, осознанно открыт"
+    reason: "Carried-forward; scope-вопрос чистоты"
     evidence_status: "none provided"
-  - finding: "IN-G1: нецелочисленный статус HttpException (fractional) попадает в 5xx-числитель на посылке «null ⇒ 500», верной только для сырых исключений"
+  - finding: "IN-G1: фракционные ошибки HttpException обрабатываются фильтром по ветке <null ? 500> (только contrived-случай)"
     category: other
-    reason: "С contrived-случай; осознанно открыт в 09-REVIEW-DISPOSITION.md"
+    reason: "Carried-forward; ledger"
     evidence_status: "none provided"
-  - finding: "IN-G2: мёртвый параметр runtime в хелпере runOneTick композиционного теста"
+  - finding: "IN-G2: лишний параметр runtime в runOneTick (неиспользуемый)"
     category: other
-    reason: "Косметика теста; осознанно открыт"
+    reason: "Carried-forward; ledger"
+    evidence_status: "none provided"
+  - finding: "Документ-состояние устарело: REQUIREMENTS.md строки ALRT-03/ALRT-04 всё ещё 'Gaps Found' + чекбоксы [ ], ROADMAP.md чекбокс 09-07-PLAN.md не отмечен — при том что 09-UAT.md фиксирует оба gap'а как resolved (resolved_by: 09-07)"
+    category: other
+    reason: "Косметика планировочных документов, не код; обновится при финальном reconcile /gsd-verify-work"
     evidence_status: "none provided"
 behavior_unverified_items:
-  - truth: "Evaluator tick реально работает в живом стеке (startAlertingRuntime с ALERTS_ENABLED=true против живых PostgreSQL/Redis/BullMQ)"
-    test: "В удобный момент перезапустить воркер с ALERTS_ENABLED=true (+ опционально ALERT_WEBHOOK_URL), дождаться тика и проверить появление OpsAlert/OpsAlertDelivery записей"
-    expected: "Тик выполняется по интервалу, алерты пишутся в PostgreSQL, канал честно отражается в channelState, TTL живых ключей bet-stats:http5xx:* равен 420s"
-    why_human: "Рестарт dev-серверов пользователя запрещён (документированное ограничение); композиция проверена proxy-тестами уровня startAlertingRuntime на фейках (7/7 в alerts-composition.test.ts) — живая инфраструктура остаётся вне автоматической досягаемости"
+  - truth: "При html zoom 200% на viewport 320px страница /internal/operations переполняется без горизонтального скролла (scrollWidth ? clientWidth + 1) — и при zoom 100% ничего не регрессирует"
+    test: "Запустить `pnpm exec playwright test -c playwright.phase06.config.ts tests/e2e/operator-overview.spec.ts` (запускает owned release stack через live-release-stack.ts globalSetup: Docker + Node 24 обязательны), затем визуально подтвердить на 320px/zoom 200%, что release-header-tools, quota-counter, theme-toggle и секции не обрезаются"
+    expected: "Кейс 'html zoom 200% at 320px reflows without horizontal scroll (G-09-2)' зелёный (overflow ? 1px); существующие desktop/mobile/zoom-100% кейсы зелёные"
+    why_human: "e2e требует owned release stack (dev-серверы не запускаются верификатором); кейс и код-фикс есть в репозитории (verified presence), но поведенческий прогон в этом раунде не выполнялся — финальное подтверждение за /gsd-verify-work"
 ---
 
-# Phase 9: Degradation Alerting — Verification Report (ре-верификация после gap-closure)
+# Phase 9: Degradation Alerting - Verification Report (ре-верификация после plan 09-07)
 
-**Phase Goal:** An operator is proactively told when the platform degrades — provider-quota exhaustion, worker failures and dead letters, sync-run failures, 5xx spikes, and backup staleness — with PostgreSQL as the source of truth and the operations center as the operator's view.
-**Verified:** 2026-11-13T08:30:00Z
+**Phase Goal:** An operator is proactively told when the platform degrades - provider-quota exhaustion, worker failures and dead letters, sync-run failures, 5xx spikes, and backup staleness - with PostgreSQL as the source of truth and the operations center as the operator's view.
+**Verified:** 2026-11-14T14:33:24Z
 **Status:** human_needed
-**Re-verification:** Yes — after gap closure (планы 09-05: CR-01/CR-02/IN-05; 09-06: WR-01/WR-02)
+**Re-verification:** Yes — предыдущий 09-VERIFICATION.md устарел (stale) после plan 09-07 (commit 0a03eeb затронул 8 файлов из covered-набора)
 
 ## Goal Achievement
 
@@ -60,149 +60,119 @@ behavior_unverified_items:
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | SC1: каждый настроенный сигнал деградации (квота, сбои задач/мёртвые письма, сбои синка, всплески 5xx, устаревание бэкапов) даёт durable-запись с дедупликацией, severity-тирами и историей переходов | ✓ VERIFIED | Все пять сигналов работают: dead-letter-сигнал ожил — `startAlertingRuntime` передаёт `inspector` в `scheduleAlertingTick` (workers/data-sync/src/main.ts:187, комментарий CR-01); композиционный тест доказывает тик на уровне production-композиции: `inspector.getFailed` вызван, в fake-БД попадает durable OPEN/CRITICAL DEAD_LETTER-строка scope `settlement/QUARANTINE_IDENTITY`. 5xx-сигнал честен после WR-01/WR-02. Прогон: 62/62 unit-теста alert-набора |
-| 2 | SC2: оператор видит активные и недавние алерты в operations center с correlation-контекстом и секретами, прошедшими редакцию | ✓ VERIFIED | Регресс: alerts-block.tsx + page.tsx:90 на месте; SSR-тесты **39/39 passed** (собственный прогон); read model в operations.service.ts не изменялась (git diff 895b017..HEAD пуст по apps/web) |
-| 3 | SC3: доставка в настраиваемый вебхук без утечки секретов и betting-данных; упавшая доставка не теряет алерт | ✓ VERIFIED | dispatchWebhook не изменён; canary-тесты в alerts-dispatch.test.ts зелёные (в прогоне 62/62); состояние алерта живёт в PostgreSQL независимо от доставки (D-02) |
-| 4 | SC4: пробы и алертинг не вызывают живых внешних провайдеров; сбои отдельных задач не создают alert fatigue | ✓ VERIFIED | Регресс: probe-тест «never calls live providers — payload is a typed allowlist only» зелёный; дедуп по signal\0scope сохранён; авто-резолюция сузилась только на probe-сигнал (контрольный тест доказывает, что non-probe-алерты резолвятся как прежде) |
-| 5 | Plan 02: шесть signal-адаптеров каждый запускается в тике | ✓ VERIFIED | CR-01 закрыт: в production-композиции (main.ts:177-190) ключ `inspector` передан; тест «one evaluator tick armed through startAlertingRuntime consumes inspector.getFailed…» — green. Тест лежит на уровне композиционного корня (не адаптера), что закрывает класс дефекта, ускользнувший от прежних юнит-тестов |
-| 6 | Plan 02: недельный delivery-probe поднимает CRITICAL self-alert (D-13), который остаётся активным, пока канал сломан | ✓ VERIFIED | CR-02 закрыт: `resolveClearedAlerts` где-клаус `signal: { not: PROBE_ANCHOR_SIGNAL }` (alerts.ts:409); кросс-тест «probe-failure self-alert stays OPEN after an evaluator tick — no OPEN→RESOLVED transition» — green; контрольный тест (non-probe PROVIDER_QUOTA резолвится с ровно одним переходом) доказывает, что исключение скоупировано по сигналу; drift-тест `PROBE_ANCHOR_SIGNAL === DELIVERY_PROBE_SIGNAL` — green |
-| 7 | Plan 01: OpsAlert/OpsAlertTransition/OpsAlertDelivery в PostgreSQL с guarded-триггерами, append-only аудитом, дедуп-индексом | ✓ VERIFIED | Регресс: schema.prisma:1127/1148/1164 на месте; миграция не изменялась (git diff 895b017..HEAD пуст по packages/database/prisma); интеграционные тесты (9 кейсов) существуют, в этой сессии не запускались — требуют DATABASE_URL/Docker (см. Human Verification) |
+| 1 | SC1: каждый настроенный сигнал деградации (квоты, отказы/дед-леттеры воркеров, отказы sync-run, всплески 5xx, устаревание бэкапов) создаёт durable-оповещение с дедупликацией, severity-уровнями и историей переходов | ✓ VERIFIED | Быстрая регрессия: состав-корень цел (main.ts передаёт `inspector` в `scheduleAlertingTick`, CR-01); `resolveClearedAlerts` по-прежнему исключает probe-якорь (alerts.ts:409, CR-02); **собственный поведенческий прогон верификатора: интеграционный гейт на owned PostgreSQL 18.6 — alert-наборы 37/37 (alerts-fingerprint 3 + alerts 9 + operator-overview 25)**; 62/62 unit alert-тестов; живой тик на dev-стеке — carried human item (см. behavior_unverified_items предыдущего раунда, proxy принят) |
+| 2 | SC2: оператор видит активные и недавние оповещения в operations center с correlation-контекстом и секретами, скрытыми от вывода | ✓ VERIFIED | Быстрая регрессия: alerts-block.tsx + page.tsx целы; **SSR 39/39 passed (собственный прогон)**; canary-утверждения в operator-overview.spec.ts на месте |
+| 3 | SC3: dispatch доставляет в настраиваемый webhook без утечки секретов или betting-данных; неудачная доставка не теряет оповещение | ✓ VERIFIED | Быстрая регрессия: dispatchWebhook + canary-тесты зелёные (в 62/62); источник истины в PostgreSQL независимо от доставки — подтверждено реальным DB-раундтрипом (#8) |
+| 4 | SC4: probes и alerting никогда не вызывают живых внешних провайдеров; отказы не создают alert fatigue | ✓ VERIFIED | Быстрая регрессия: probe-файл <never calls live providers - payload is a typed allowlist only>; авто-разрешение только по probe-сигналу (alerts.ts:409); damping/dedup зелёные в 62/62 |
+| 5 | Plan 02: все signal-адаптеры досягаемы из тика (inspector через startAlertingRuntime, CR-01) | ✓ VERIFIED | main.ts:187 `inspector,` на месте; интеграционно-композиционный тест зелёный (в 62/62) |
+| 6 | Plan 02: неудачный delivery-probe не резолвится автоматически, успех резолвит OPEN/ACKNOWLEDGED (CR-02/IN-05) | ✓ VERIFIED | alerts.ts:417 `signal: { not: PROBE_ANCHOR_SIGNAL }`; delivery-probe.ts цел; оба теста зелёные (в 62/62) |
+| 7 | Plan 01: OpsAlert/OpsAlertTransition/OpsAlertDelivery в PostgreSQL с guarded-миграцией, append-only гарантией | ✓ VERIFIED | schema.prisma:1127/1148/1164; миграция 20261108_phase09_ops_alerts применена **собственным прогоном** (`prisma migrate deploy` в интеграционном гейте: "All migrations have been successfully applied") на чистой БД |
+| 8 | Plan 07 (G-09-1): evaluator пишет реальный alertFingerprint в PostgreSQL без ошибки 22021; разделитель U+001F — единственный закреплённый источник; probe-якорь и web dedup-ключ выведены из него | ✓ VERIFIED | Код: alerts.ts:70 `ALERT_FINGERPRINT_SEPARATOR = "\u001f"`, :75 интерполяция; delivery-probe.ts:11 `alertFingerprint(DELIVERY_PROBE_SIGNAL, DELIVERY_PROBE_SCOPE)` (второго литерала нет); alerts-block.tsx:53 зеркальный `DEDUP_KEY_SEPARATOR`; unit-хелперы на константе (жёстких старых литералов нет). **Поведение: tests/integration/alerts-fingerprint.test.ts 3/3 на реальном PostgreSQL (create / occurrence count=2 / guarded RESOLVED?OPEN re-open с transition-строкой) — собственный прогон верификатора** |
+| 9 | Plan 07 (G-09-2): при zoom 200% на 320px /internal/operations вписывается без горизонтального скролла; zoom 100% без регрессий | ⚠️ PRESENT_BEHAVIOR_UNVERIFIED | Присутствие+проводка: e2e-кейс в operator-overview.spec.ts:48-62 (утверждение scrollWidth-clientWidth ? 1 + H1 видим), CSS-фикс: globals.css `min-width: 0` для quota-counter в обоих media-блоках (строки 349/353) + `overflow-wrap: anywhere; min-width: 0` на section/header/h1/h2/p/dl в ?480px; zoom-100% контроль-утверждение на месте (строка 44). Поведение не прогонялось верификатором (e2e требует owned release stack) — ? human verification |
 
-**Score:** 7/7 truths verified (0 failed; 1 carried behavior-unverified live-stack item — см. behavior_unverified_items, proxy принят)
+**Score:** 8/9 truths verified (1 present, behavior-unverified)
 
-Верификационные прогоны этой сессии (собственные, не из SUMMARY):
-- `pnpm vitest run --project unit tests/unit/alerts-composition.test.ts tests/unit/alerts-delivery-probe.test.ts tests/unit/alerts-signals.test.ts tests/unit/alerts-dispatch.test.ts tests/unit/alerts-5xx-filter.test.ts`: **62/62 passed** (5 файлов; прежние 55 + 7 новых композиционных/IN-05/mirror-кейсов)
-- Web SSR `alerts-block.test.ts`: **39/39 passed**
-- `npx tsc --noEmit` workers/data-sync: **exit 0**; apps/api: **exit 0**
-- Интеграционные тесты (Testcontainers) не запускались — требуют DATABASE_URL/Docker; существование и состав проверены чтением
+### Verified Evidence (собственные прогоны этого раунда, не SUMMARY)
 
-### Advisory (New Scope, Unevidenced)
-
-New-scope findings from Step 7 with no deterministic evidence — reported, not blocking. Include this section (even "None") whenever re-verification ran.
-
-| # | Finding | Category | Why Advisory |
-|---|---------|----------|--------------|
-| 1 | WR-G1: после CR-02 якорь DELIVERY_HEALTH stranded OPEN/CRITICAL навсегда, если канал удаляют после неудачного probe | other | Осознанно открыт в 09-REVIEW-DISPOSITION.md; вне объёма closure по решению пользователя |
-| 2 | WR-G2: повторный провал probe на ACKNOWLEDGED-якоре — переход в OPEN без transition-строки (смежный скоуп, блок предшествовал closure) | other | Осознанно открыт (ledger: «смежный скоуп») |
-| 3 | WR-G3: instanceof-guard в close() недостижимо ложны (necessity) | other | Безвредный guard; scope-решение человека |
-| 4 | IN-G1: нецелочисленный статус HttpException попадает в 5xx-числитель на посылке «null ⇒ 500» | other | Contrived-случай; осознанно открыт |
-| 5 | IN-G2: мёртвый параметр runtime в runOneTick | other | Косметика теста |
-| 6 | Унаследованный остаток WR-03..WR-07, IN-01..IN-04 (pre-existing disposition) | other | Задокументирован в 09-REVIEW-DISPOSITION.md как сознательный остаток; не является gap-ами этой верификации |
+- `pnpm vitest run --project unit` (полный юнит-проект, регрессионный гейт): **512/519 passed**; единственный упавший файл `tests/unit/fixtures-sync.test.ts` (7 тестов, "Authentication failed against the database server" — dev-DB-предпосылка; файл фазы ?9, не затронут коммитами фазы 09) — принято как известная средовая предпосылка, не регрессия
+- Alert unit-набор (5 файлов): **62/62 passed**
+- SSR alerts-block: **39/39 passed**
+- Интеграционный гейт `pnpm run test:integration:docker` (owned postgres:18 + redis:8, `migrate deploy`, весь integration-проект): **514/515 passed**; единственный отказ — `privacy-retention.test.ts` ("waits for the TCP listener...", timeout 20s при вложенном docker-запуске под нагрузкой полного прогона ~12 мин; файл фазы 06, вне фазы 09, не в covered-наборе) — классифицирован как тайминговый/средовой отказ, не регрессия фазы 09
+- Повторный прицельный прогон alert-интеграции на owned-контейнерах: `alerts-fingerprint.test.ts` + `alerts.test.ts` + `operator-overview.test.ts` — **37/37 passed**
+- `npx tsc --noEmit`: workers/data-sync **exit 0**, apps/api **exit 0**, apps/web **exit 0**
+- Prohibition-проверка plan 09-07: `git show 0a03eeb --stat` — только 8 заявленных файлов, **packages/database/** и package.json не затронуты (нет schema/migration/dependency изменений)
+- Debt-маркеры (TBD/FIXME/XXX/PLACEHOLDER/HACK) во всех 8 covered-файлах: не обнаружены
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `workers/data-sync/src/main.ts` | startAlertingRuntime передаёт inspector в scheduleAlertingTick (CR-01) | ✓ VERIFIED | main.ts:187 `inspector,` внутри вызова планировщика + injection-seam (deps, setTimeout/clearTimeout); close() не трогает caller-owned зависимости (main.ts:209-212); `git diff 895b017..HEAD` подтверждает коммиты 8948374/a08e05c |
-| `workers/data-sync/src/jobs/alerts.ts` | resolveClearedAlerts исключает probe-сигнал (CR-02) | ✓ VERIFIED | alerts.ts:61 `PROBE_ANCHOR_SIGNAL = "DELIVERY_HEALTH"`, alerts.ts:409 `signal: { not: PROBE_ANCHOR_SIGNAL }` в where findMany |
-| `workers/data-sync/src/jobs/delivery-probe.ts` | успех probe разрешает якорь из любого non-RESOLVED статуса (IN-05) | ✓ VERIFIED | delivery-probe.ts:92-95: условие `anchor.status !== "RESOLVED"`, переход `from: anchor.status` — truthful для OPEN и ACKNOWLEDGED |
-| `tests/unit/alerts-composition.test.ts` | Композиционные тесты CR-01/CR-02/IN-05 | ✓ VERIFIED | Новый файл, 5 кейсов (композиция getFailed+create, close-цепочка, якорь остаётся OPEN, контроль non-probe, drift-guard); все зелёные в прогоне |
-| `tests/unit/alerts-delivery-probe.test.ts` | ACKNOWLEDGED-успех резолвится с truthful-переходом | ✓ VERIFIED | Строка 136 «success resolves an ACKNOWLEDGED anchor with a truthful ACKNOWLEDGED→RESOLVED transition (IN-05)» — green |
-| `apps/api/src/modules/operations/http-5xx-bucket.filter.ts` | WR-01 + WR-02 | ✓ VERIFIED | Строка 80 `status === null || status >= 500` (с комментарием про BaseExceptionFilter/500); строка 14 `BUCKET_TTL_SECONDS = 420` с инвариантом в док-комментарии; BaseExceptionFilter-делегирование не изменено |
-| `tests/unit/alerts-5xx-filter.test.ts` | Перевёрнутый raw-exception тест, TTL 420, mirror-guard | ✓ VERIFIED | Строка 69 «counts a raw exception as a 5xx — Nest answers it 500 «Internal server error»» (assert'ит и bucket-write, и неизменный reply-контракт); expire-ассертции 420 (строки 51, 109); mirror-тест строка 130-136 `BUCKET_TTL_SECONDS ≥ HTTP5XX_WINDOW_MINUTES * 60 + 60` с импортом reader-side константы |
-| `packages/database/prisma/schema.prisma` | OpsAlert/OpsAlertTransition/OpsAlertDelivery | ✓ VERIFIED | Регресс: строки 1127/1148/1164; не изменялась closure-ом |
-| `packages/database/prisma/migrations/20261108_phase09_ops_alerts/migration.sql` | DDL + CHECK + триггеры | ✓ VERIFIED | Регресс: файл на месте, не изменялся (git diff пуст) |
-| `apps/api/src/main.ts` | Регистрация фильтра + httpTotal-счётчик | ✓ VERIFIED | Регресс: main.ts:11, 44 |
-| `apps/api/src/modules/operations/operations.service.ts` / `.controller.ts` | Read model + acknowledge | ✓ VERIFIED | Регресс: не изменялись в closure; прежняя верификация (read model, OperatorGuard, 202) |
-| `packages/config/src/index.ts` | readAlertsConfig | ✓ VERIFIED | Регресс: прежняя верификация |
-| `apps/web/app/internal/operations/{alerts-block.tsx,page.tsx}` | AlertsBlock + «Алерты» первым блоком | ✓ VERIFIED | Регресс: page.tsx:7, 60, 90; UI не изменялся closure-ом; SSR 39/39 |
-| `apps/web/components/enum-labels.ts` | alert-словари | ✓ VERIFIED | Регресс: прежняя верификация (оговорка WR-05 — унаследованный advisory) |
-| `tests/integration/alerts.test.ts` / `operator-overview.test.ts` | Интеграционные на реальном PostgreSQL | ✓ VERIFIED (существование) | Регресс: файлы на месте, не изменялись; прогон требует Docker/DB — не запускались |
+| `workers/data-sync/src/jobs/alerts.ts` | ALERT_FINGERPRINT_SEPARATOR (U+001F) + интерполяция в alertFingerprint | ✓ VERIFIED | строки 70, 75; dedupUpsert:366, fired-set:547/553 идут через alertFingerprint; оставшиеся `\0` в файле (97, 164, 204) — только in-memory Map-ключи группировки, не DB-записи |
+| `workers/data-sync/src/jobs/delivery-probe.ts` | DELIVERY_PROBE_FINGERPRINT выведен из alertFingerprint | ✓ VERIFIED | строка 11 — второй литерал-разделитель отсутствует |
+| `apps/web/app/internal/operations/alerts-block.tsx` | DEDUP_KEY_SEPARATOR-зеркало | ✓ VERIFIED | строка 53 (константа `\u001f`), строка 111 — сборка ключа из неё |
+| `apps/web/app/globals.css` | CSS-only zoom-200% фикс | ✓ VERIFIED (presence) | ?720px: `.quota-counter { min-width: 0; ... }` (349); ?480px: `min-width: 0` (353) + `overflow-wrap: anywhere; min-width: 0` на блочных контейнерах (356) |
+| `tests/unit/alerts-signals.test.ts` / `alerts-composition.test.ts` | хелперы на новой константе | ✓ VERIFIED | split/replace на ALERT_FINGERPRINT_SEPARATOR; жёсткие литералы 245/252 переведены на константу |
+| `tests/integration/alerts-fingerprint.test.ts` | real-PostgreSQL roundtrip-набор | ✓ VERIFIED | 3 кейса, guarded Prisma-пути, pid-scoped scope, инвариант "no NUL" — прогон 3/3 |
+| `tests/e2e/operator-overview.spec.ts` | постоянный zoom-200% кейс | ✓ VERIFIED (presence) | строки 48-62; подписанные заголовки, H1-видимость, overflow ? 1px; поведенческий прогон ? human |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|----|----|--------|---------|
-| startAlertingRuntime (main.ts) | scheduleAlertingTick input `inspector` | evaluateAndDispatch → evaluateDeadLetters | ✓ WIRED | Точная связь, разорванная CR-01: main.ts:187 передаёт ключ; композиционный тест прогоняет тик через composition root и доказывает вызов getFailed + durable-строку |
-| resolveClearedAlerts fired-set | DELIVERY_PROBE_FINGERPRINT | исключение `signal: { not: PROBE_ANCHOR_SIGNAL }` | ✓ WIRED | Точная связь CR-02: alerts.ts:409; drift-guard тест фиксирует равенство констант alerts.ts ↔ delivery-probe.ts; контрольный кейс доказывает non-probe-резолюцию жива |
-| runDeliveryProbe success | anchor OPEN/ACKNOWLEDGED → RESOLVED | transition из фактического статуса | ✓ WIRED | IN-05: delivery-probe.ts:92-95; оба теста (OPEN→RESOLVED существующий, ACKNOWLEDGED→RESOLVED новый) зелёные |
-| Filter numerator bucket | BaseExceptionFilter 500 rendering | подсчёт до делегирования | ✓ WIRED | WR-01: filter.ts:80; тест фиксирует incr/expire/exec И неизменный reply { statusCode: 500, message: "Internal server error" } в одном кейсе |
-| BUCKET_TTL_SECONDS (filter) | HTTP5XX_WINDOW_MINUTES (worker alerts.ts) | кросс-модульный mirror-тест | ✓ WIRED | WR-02: тест импортирует обе константы и пинит TTL ≥ window*60+60 |
-| NestJS filter (apps/api) | Redis 5xx/httpTotal buckets | recordMinuteBucket | ✓ WIRED | Регресс: main.ts:11,44 |
-| Evaluator (worker) | PostgreSQL OpsAlert | Prisma upsert | ✓ WIRED | Регресс: дедуп/диспатч не изменялись |
-| alerts() read model | Next.js page → AlertsBlock | overview fetch | ✓ WIRED | Регресс: page.tsx:60,90 |
-| Acknowledge кнопка | POST /internal-api/…/acknowledge | fetch POST | ✓ WIRED | Регресс: не изменялась |
+| alertFingerprint (alerts.ts) | dedupUpsert findUnique/update by dedupFingerprint | реальный PostgreSQL TEXT | ✓ WIRED | интеграционный раундtrip 3/3 на живой БД — точная связь, которую ломал 22021 |
+| alertFingerprint | DELIVERY_PROBE_FINGERPRINT (delivery-probe.ts) | импорт ./alerts.js | ✓ WIRED | выведено, не пересобрано |
+| alertFingerprint | alerts-block.tsx dedup-ключ | DEDUP_KEY_SEPARATOR-зеркало | ✓ WIRED | константа + комментарий о worker-tree границе |
+| .quota-counter min-width:0 | zoom-200% reflow | ?480px media-правило | ✓ WIRED (presence) | правило на месте; поведенческий прогон e2e ? human |
+| startAlertingRuntime | scheduleAlertingTick `inspector` | composition root | ✓ WIRED | main.ts:187 (регрессия прошлых раундов не нарушена) |
+| resolveClearedAlerts | PROBE_ANCHOR_SIGNAL-исключение | `signal: { not }` | ✓ WIRED | alerts.ts:417 |
+| Prisma migrate deploy | 20261108_phase09_ops_alerts | миграция на чистой БД | ✓ WIRED | применена верификатором в гейте |
+| NestJS filter / evaluator / read model / UI | (прошлые связи) | — | ✓ WIRED | быстрая регрессия без изменений; детали в отчёте 2026-11-13 (git-история) |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Композиция тика (CR-01/CR-02/IN-05) + сигналы + dispatch + 5xx-фильтр | `pnpm vitest run --project unit tests/unit/alerts-composition.test.ts tests/unit/alerts-delivery-probe.test.ts tests/unit/alerts-signals.test.ts tests/unit/alerts-dispatch.test.ts tests/unit/alerts-5xx-filter.test.ts` | 62/62 passed | ✓ PASS |
-| SSR-состояния AlertsBlock | `pnpm --filter @bet-stats/web exec vitest run … alerts-block.test.ts` | 39/39 passed | ✓ PASS |
-| Компиляция воркера | `npx tsc --noEmit -p workers/data-sync/tsconfig.json` | exit 0 | ✓ PASS |
-| Компиляция API | `npx tsc --noEmit -p apps/api/tsconfig.json` | exit 0 | ✓ PASS |
-| Scope-гейт (prohibitions 09-05/09-06: нет schema/UI-изменений) | `git diff --stat 895b017..HEAD -- packages/database/prisma apps/web` | пусто | ✓ PASS |
-| Debt-маркеры (TBD/FIXME/XXX/PLACEHOLDER) в файлах фазы | grep по workers/data-sync/src, apps/api/src/modules/operations | не обнаружены | ✓ PASS |
-| Интеграционные тесты на реальном PostgreSQL | требуют DATABASE_URL/Docker | не запускались | ? SKIP → human verification (унаследовано) |
-| Живой тик evaluator'а в стеке | требует ALERTS_ENABLED=true + рестарт воркера (запрещён) | не выполнено | ? SKIP → human verification (покрыт proxy — см. behavior_unverified_items) |
+| Полный юнит-проект (регрессия) | `pnpm vitest run --project unit` | 512/519; 7 failures только fixtures-sync.test.ts (dev-DB credentials, вне фазы 09) | ✓ PASS (с оговоркой) |
+| Alert unit-набор | `pnpm vitest run --project unit tests/unit/alerts-{signals,composition,delivery-probe,dispatch,5xx-filter}.test.ts` | 62/62 passed | ✓ PASS |
+| SSR AlertsBlock | `pnpm --filter @bet-stats/web exec vitest run ... alerts-block.test.ts` | 39/39 passed | ✓ PASS |
+| Интеграционный гейт (полный) | `pnpm run test:integration:docker` | 514/515; 1 failure privacy-retention.test.ts (тайминг вложенного docker, фаза 06) | ✓ PASS (с оговоркой) |
+| Alert-интеграция на реальном PostgreSQL | owned-контейнеры: alerts-fingerprint + alerts + operator-overview | 37/37 passed | ✓ PASS |
+| Typecheck | tsc --noEmit (workers/api/web) | 3 ? exit 0 | ✓ PASS |
+| e2e zoom-200% reflow | `pnpm exec playwright test -c playwright.phase06.config.ts tests/e2e/operator-overview.spec.ts` | требует owned release stack | ? SKIP ? human verification |
 
 ### Probe Execution
 
-Проб-скриптов (`scripts/*/tests/probe-*.sh`) в фазе нет; PLAN/SUMMARY не декларируют probe-файлы — шаг не применим.
+Shell-пробы (`scripts/*/tests/probe-*.sh`) в фазе нет; PLAN/SUMMARY не объявляют probe-файлов — шаг не применим. Псевдо-probe поведенческого уровня выполнены выше (Behavioral Spot-Checks).
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|------------|-------------|--------|----------|
-| ALRT-01 | 01, 02, 03, 05, 06 | Оператор получает алерты: квота, сбои задач/мёртвые письма, сбои синка, 5xx, бэкапы | ✓ SATISFIED | Все пять сигналов живы: dead-letter — через композиционный тест (CR-01); 5xx — честный числитель/окно (WR-01/WR-02 + mirror-guard); остальные четыре — прежние юнит-тесты (62/62). Advisory WR-G1/IN-G1 не влияют на утверждение сигнала в основной конфигурации |
-| ALRT-02 | 01, 02, 05 | Durable PostgreSQL-записи с дедупликацией, severity-тирами, историей переходов; доставка — попытка, не источник истины | ✓ SATISFIED | Схема/миграция не изменялись; анкер-переходы теперь truthful (IN-05); Advisory WR-G2 — единственное нетривиальное отклонение от D-04, осознанно открыто |
-| ALRT-03 | 03, 04 | Оператор видит активные/недавние алерты с correlation-контекстом и секретами, прошедшими редакцию | ✓ SATISFIED | Регресс: read model + AlertsBlock + 39/39 SSR; UI не изменялся |
-| ALRT-04 | 02, 03, 04 | Доставка в настраиваемый вебхук без утечки секретов/betting-данных | ✓ SATISFIED | dispatchWebhook не изменён; canary-тесты зелёные; CR-02 усиливает D-13 (self-alert о сломанном канале больше не гасится) |
+| ALRT-01 | 01, 02, 03, 05, 06, 07 | Оператор получает оповещения о деградации: квоты, отказы/дед-леттеры воркеров, отказы sync-run, 5xx, бэкапы | ✓ SATISFIED | Все 5 сигналов покрыты; G-09-1 устранял блокер записи оповещений в реальную БД — теперь доказано live-раундтрипом |
+| ALRT-02 | 01, 02, 05, 07 | Durable PostgreSQL-записи с дедупликацией, severity-уровнями, историей переходов; доставка — попытка, не источник истины | ✓ SATISFIED | guarded-миграция применена на чистой БД; дедуп/occurrence/re-open/transition доказаны интеграцией 3/3 |
+| ALRT-03 | 03, 04, 07 | Оператор видит активные/недавние оповещения в operations center с correlation и скрытыми секретами | ✓ SATISFIED | SSR 39/39; G-09-2 (zoom reflow) закрыт код-уровнем, поведенческое подтверждение ? финальный human-чек /gsd-verify-work |
+| ALRT-04 | 02, 03, 04 | Доставка в настраиваемый webhook без утечки секретов/betting-данных | ✓ SATISFIED | dispatchWebhook + canary зелёные; источник истины не зависит от доставки (доказано #8) |
 
-Orphaned requirements: нет — все 4 ID фазы заявлены в планах (01: ALRT-02; 02: 01/02/04; 03: 01/03/04; 04: 03/04; 05: 01/02; 06: 01) и покрыты выше.
+Orphaned requirements: нет — все 4 ID фазы объявлены в планах (01: ALRT-02; 02: 01/02/04; 03: 01/03/04; 04: 03/04; 05: 01/02; 06: 01; 07: 02/03) и покрыты.
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| workers/data-sync/src/main.ts | 210-211 | Невозможное состояние: instanceof-guard всегда истинны (WR-G3) | ℹ️ Info | Безвредно; осознанно открыто |
-| tests/unit/alerts-composition.test.ts | 222 | Мёртвый параметр runtime в runOneTick (IN-G2) | ℹ️ Info | Косметика теста |
-| workers/data-sync/src/jobs/delivery-probe.ts | 100-114 | ACKNOWLEDGED→OPEN без transition-строки (WR-G2) | ⚠️ Warning (advisory) | Осознанно открыт как смежный скоуп в 09-REVIEW-DISPOSITION.md — не gap этой верификации |
-| workers/data-sync/src/jobs/delivery-probe.ts + main.ts + alerts.ts | — | Stranded OPEN-якорь при удалении webhook после провала (WR-G1) | ⚠️ Warning (advisory) | Осознанно открыт — не gap этой верификации |
+| workers/data-sync/src/jobs/alerts.ts | 97, 164, 204 | In-memory Map-ключи с `\0`-разделителем (не DB) | ?? Info | Легитимно: Redis/память хранит NUL безопасно; DB-путь изолирован alertFingerprint |
+| tests/integration/privacy-retention.test.ts | 116 | Тайминг-зависимый кейс (20s timeout на вложенный docker-старт) вне фазы 09 | ?? Info | Упал 1 раз под нагрузкой полного гейта; фаза 06, не covered-файл — наблюдение, не регрессия 09 |
+| (carried) delivery-probe.ts / main.ts / alerts.ts | — | WR-G1/WR-G2/WR-G3, IN-G1/IN-G2 | ?? Warning (advisory) | Задокументированы в 09-REVIEW-DISPOSITION.md; не gap этого раунда |
 
-Debt-маркеры (TBD/FIXME/XXX/PLACEHOLDER) в файлах фазы: не обнаружены. Blocking anti-patterns: отсутствуют.
-
-**Вне фазы (наблюдение):** `tests/unit/fixtures-sync.test.ts` падает с «Authentication failed against the database server» — окруженческая проблема DB-креденшелов; файл предшествует фазе 09, ни один коммит фазы его не трогает. На оценку фазы не влияет.
+Blocking anti-patterns: отсутствуют. Debt-маркеры в covered-файлах: не обнаружены.
 
 ### Human Verification Required
 
-### 1. Живой тик evaluator'а (behavior_unverified, унаследован; proxy-тесты приняты)
-**Test:** В удобный момент установить ALERTS_ENABLED=true (+ опционально ALERT_WEBHOOK_URL), перезапустить воркер, дождаться тика, проверить OpsAlert/OpsAlertDelivery в PostgreSQL и TTL живых ключей bet-stats:http5xx:* (ожидание: 420s после WR-02).
-**Expected:** Тик по интервалу; алерты пишутся в PostgreSQL; channelState честный.
-**Why human:** Рестарт dev-серверов пользователя запрещён (документированное ограничение); композиция на уровне startAlertingRuntime покрыта 5 proxy-тестами на фейках, но живые PostgreSQL/Redis/BullMQ-интеграция не упражнялась.
+### 1. Живой тик evaluator'а (carried из предыдущего раунда; proxy принят)
+**Test:** В рабочем окружении установить ALERTS_ENABLED=true (+ опционально ALERT_WEBHOOK_URL), перезапустить воркер, дождаться тика, проверить OpsAlert/OpsAlertDelivery в PostgreSQL и TTL ключей bet-stats:http5xx:* (ожидание: 420s после WR-02).
+**Expected:** Тик выполняется без ошибок; записи появляются в PostgreSQL; channelState корректен.
+**Why human:** Требует dev-серверов пользователя (задокументированные ограничения); интеграционные proxy-пробы верифицируют startAlertingRuntime по интерфейсам, но не PostgreSQL/Redis/BullMQ-интеграцию живого стека.
 
-### 2. Визуальная/интерактивная адекватность блока «Алерты»
-**Test:** Открыть /internal/operations: светлая/тёмная тема, 320px, zoom 200%, клавиатурный ack с фокусом на маркере, живой ack-раундтрип.
-**Expected:** Чипы с текстом, reflow без горизонтали, маркер «Подтверждён» после ack.
-**Why human:** Визуал и живой раундтрип за OperatorGuard+HMAC не покрываются SSR-тестами.
+### 2. Финальное подтверждение reflow: zoom 200% @ 320px (G-09-2) + визуальный чек operations center
+**Test:** Запустить `pnpm exec playwright test -c playwright.phase06.config.ts tests/e2e/operator-overview.spec.ts` (owned release stack), затем визуально: 320px/zoom 200% — без горизонтального скролла, theme-toggle ? 44px, ack через фейковый HMAC-заголовок, ack-фидбек.
+**Expected:** e2e-кейс 'html zoom 200% at 320px reflows without horizontal scroll (G-09-2)' зелёный; desktop/mobile кейсы зелёные; в браузере текст переносится, ничего не обрезано.
+**Why human:** Поведенческое доказательство требует запуска release stack; визуальная корректность и фидбек не проверяются SSR-пробами.
 
-### 3. Живые Redis-счётчики 5xx
-**Test:** На живом стеке вызвать заведомо ошибочные запросы и проверить ключи bet-stats:http5xx:*/httpTotal:*.
-**Expected:** Ключи растут с минутным индексом, TTL 420s (после WR-02), сырые 500-ответы тоже увеличивают http5xx (WR-01).
-**Why human:** Требует живого Redis и реального трафика.
-
-### 4. Интеграционные тесты на реальном PostgreSQL
-**Test:** Запустить `tests/integration/alerts.test.ts` (9 кейсов: mutation-rejection триггеров, дедуп-конвергенция, ack-идемпотентность) и `operator-overview.test.ts` в окружении с DATABASE_URL+Docker.
-**Expected:** Все зелёные.
-**Why human:** Testcontainers требуют Docker/DB, недоступных в этой сессии; существование и состав проверены чтением.
+### 3. Живые Redis-счётчики 5xx (carried)
+**Test:** На живом стеке вызвать намеренно ошибочный запрос и проверить ключи bet-stats:http5xx:*/httpTotal:* в Redis.
+**Expected:** Счётчики растут с TTL 420s; ответ 500 (в т.ч. raw-исключение, WR-01) инкрементирует http5xx.
+**Why human:** Требует живого Redis и реальной маршрутизации.
 
 ### Gaps Summary
 
-Ре-верификация после closure-планов 09-05/09-06: **оба критических gap-а из предыдущей верификации закрыты и подтверждены свежим чтением кода и собственными прогонами**, регрессий не обнаружено.
+Ре-верификация после plan 09-07 (commit 0a03eeb): **блокер G-09-1 закрыт с поведенческим доказательством** — верификатор собственным прогоном развернул owned PostgreSQL 18.6, применил миграции и провёл полный roundtrip dedupUpsert (create ? occurrence ? guarded resolve ? re-open) с реальным U+001F-фингерпринтом: 3/3 зелёные. Разделитель — единственный закреплённый источник (ALERT_FINGERPRINT_SEPARATOR), probe-якорь выведен из него, web-зеркало согласовано, unit-хелперы переведены. **G-09-2 закрыт код-уровнем**: постоянный e2e-кейс и CSS-фикс на месте; поведенческий прогон требует owned release stack и остаётся финальным human-чеком.
 
-- **CR-01** — `startAlertingRuntime` передаёт `inspector` в `scheduleAlertingTick` (main.ts:187); новый композиционный тест лежит именно на том уровне, где дефект ускользал от прежних юнит-тестов: тик вооружается через composition root, `inspector.getFailed` реально вызывается, durable OPEN/CRITICAL DEAD_LETTER-строка попадает в БД. Закрыт.
-- **CR-02** — `resolveClearedAlerts` исключает `PROBE_ANCHOR_SIGNAL` (alerts.ts:409); кросс-тест доказывает, что якорь DELIVERY_HEALTH переживает тик в OPEN без переходов, а контрольный non-probe-алерт по-прежнему честно резолвится (исключение скоупировано, не blanket-freeze). Drift-guard пинит равенство констант между модулями. Закрыт.
-- **IN-05** — успех probe разрешает якорь из OPEN и ACKNOWLEDGED с truthful-переходом (delivery-probe.ts:92-95). Закрыт.
-- **WR-01** — `status === null || status >= 500` включает сырые исключения в 5xx-числитель; тест одновременно assert'ит bucket-write и байт-идентичный ответ { statusCode: 500, message: "Internal server error" }. Закрыт.
-- **WR-02** — TTL 420s покрывает 5-минутное окно чтения; кросс-модульный mirror-тест не даст TTL и окну снова разъехаться. Закрыт.
+Regрессии нет: юнит-проект 512/519 (единственные 7 отказов — fixtures-sync.test.ts, средовая dev-DB предпосылка, файл вне фазы), alert-наборы 62/62 unit + 37/37 интеграция + 39/39 SSR, tsc ?3 exit 0. Отказ privacy-retention.test.ts в полном интеграционном гейте — тайминговый, в файле фазы 06 вне covered-набора; рекомендован к наблюдению, не блокер фазы 09.
 
-Проверки: 62/62 unit alert-тестов, 39/39 SSR, tsc exit 0 ×2, prohibition-гейты (нет schema/UI-изменений — git diff 895b017..HEAD пуст), debt-маркеров нет, регрессий нет.
+Prohibitions plan 09-07 соблюдены: packages/database/** и package.json не затронуты (git show 0a03eeb --stat), интеграционный тест идёт только через guarded Prisma-пути.
 
-Статус **human_needed** (а не passed) только из-за четырёх унаследованных/инфраструктурных пунктов человеческой проверки: живой тик в стеке (proxy-тесты приняты как замещение в силу запрета рестарта dev-стека), визуальная адекватность UI-блока, живые Redis-счётчики (теперь с ожиданием TTL 420s), и запуск интеграционных тестов в окружении с DB. Все — инфраструктурные, ни один не блокирует следующий этап по коду: оба ранее блокировавших дефекта композиции устранены.
-
-Осознанный остаток (advisory, не gaps): WR-03..WR-07, IN-01..IN-04 (pre-existing disposition) + WR-G1, WR-G2, WR-G3, IN-G1, IN-G2 (09-REVIEW-GAPS.md) — все задокументированы в 09-REVIEW-DISPOSITION.md как сознательно открытые.
+Статус **human_needed** (не passed) из-за одного behavior-unverified truth (zoom-200% reflow — e2e требует release stack) и carried живых человеческих проверок (живой тик, Redis-счётчики, визуальный чек). Финальное подтверждение — /gsd-verify-work.
 
 ---
 
-_Verified: 2026-11-13T08:30:00Z_
+_Verified: 2026-11-14T14:33:24Z_
 _Verifier: the agent (gsd-verifier)_

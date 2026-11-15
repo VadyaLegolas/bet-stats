@@ -103,7 +103,7 @@ export function ProviderStateNotice({ state, compact = false }: { state: Provide
       )}
       {state.receipt && (
         <details style={{ marginTop: 12, fontSize: "0.85rem", color: "var(--color-text-secondary)" }}>
-          <summary style={{ cursor: "pointer", color: "var(--color-accent-hover)" }}>Точная квитанция поставщика</summary>
+          <summary>Точная квитанция поставщика</summary>
           <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", marginTop: 8 }}>
             <dt style={{ color: "var(--color-muted)" }}>ID квитанции</dt>
             <dd style={{ margin: 0 }}><code>{state.receipt.id}</code></dd>

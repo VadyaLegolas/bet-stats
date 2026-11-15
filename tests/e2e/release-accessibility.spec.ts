@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 import { LIVE_FIXTURES } from "./live-provider-stack.js";
 import { prepareReleaseFixture } from "./live-release-stack.js";
 
-const destinationNames = ["Матчи", "Анализ", "Результаты", "Методология"] as const;
+const destinationNames = ["Матчи", "Анализ", "Результаты", "Методология", "FAQ", "Операции"] as const;
 
 test("navigation is equivalent on desktop and mobile", async ({ page }, testInfo) => {
   await page.goto("/fixtures");

@@ -7,6 +7,15 @@ import { DAILY_ALLOWANCE, PROVIDER, PROVIDER_MINUTE_LIMIT, PROVIDER_MINUTE_WINDO
 
 const UTC_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 const MAX_RANGE_MS = 31 * 86_400_000;
+/** Terminal / non-actionable statuses that must never appear on the upcoming + live
+ * fixtures list. A match leaves the page only when it is truly finished. */
+const TERMINAL_STATUSES: string[] = ["FINISHED", "CANCELLED", "POSTPONED"];
+/** In-progress statuses: such matches stay on the page even after their kickoff has
+ * passed, with a red LIVE badge, until they reach FINISHED. */
+const LIVE_STATUSES: string[] = ["LIVE", "IN_PLAY", "PAUSED"];
+/** A match stuck in an in-progress status for more than this long is treated as stale
+ * (the provider likely never reported FINISHED) and is removed from the list. */
+const LIVE_MAX_AGE_MS = 4 * 60 * 60 * 1000;
 export type SyncQuota = { provider: string; daily: { used: number; allowance: number; remaining: number; resetAt: string; resetTimezone: "UTC" }; minute: { used: number; limit: number; remaining: number; windowSeconds: number } };
 export type ProviderStateProjection = { state: "PRIMARY" | "FALLBACK" | "PENDING" | "UNAVAILABLE" | "LIMITED" | "UNSUPPORTED" | "STALE_CAPABILITY" | "BUDGET_PROTECTED" | "CIRCUIT_DENIED"; provider: string; reason: string; capturedAt: string | null; lastValidAt: string | null; retryAllowed: boolean; receipt: { id: string; policyVersion: string; outcome: string; trigger: string } | null };
 export type FixtureProjection = { id: string; competition: { id: string; name: string; season: string }; teams: { home: { id: string; name: string }; away: { id: string; name: string } }; kickoff: string; status: string; dataState: DataStateProjection<null>; providerState: ProviderStateProjection };
@@ -31,6 +40,19 @@ function parseUtc(value: string, name: string): Date {
   if (!Number.isFinite(parsed.getTime())) throw new BadRequestException(`${name} must be a valid UTC instant`);
   return parsed;
 }
+/** Текущий момент в часовом поясе пользователя, представленный как UTC-Date.
+ * Сравнение с `updatedAt` в базе (хранится в UTC) даёт корректный отсчёт
+ * «4 часа после начала матча по локальному времени пользователя». */
+function nowInTimezone(timezone?: string): Date {
+  if (!timezone) return new Date();
+  try {
+    const localString = new Date().toLocaleString("en-US", { timeZone: timezone });
+    return new Date(`${localString} UTC`);
+  } catch {
+    return new Date();
+  }
+}
+
 function parseRange(fromValue?: string, toValue?: string): { from: Date; to: Date } {
   const from = fromValue === undefined ? new Date() : parseUtc(fromValue, "from");
   const to = toValue === undefined ? new Date(from.getTime() + 48 * 3_600_000) : parseUtc(toValue, "to");
@@ -167,10 +189,23 @@ export class FixturesService implements OnModuleDestroy {
     };
   }
 
-  async list(filters: { from?: string; to?: string; competition?: string }): Promise<{ items: readonly FixtureListProjection[]; range: { from: string; to: string } }> {
+  async list(filters: { from?: string; to?: string; competition?: string; timezone?: string }): Promise<{ items: readonly FixtureListProjection[]; range: { from: string; to: string } }> {
     const { from, to } = parseRange(filters.from, filters.to);
+    const now = nowInTimezone(filters.timezone);
     if (filters.competition !== undefined && (filters.competition.trim() === "" || filters.competition.length > 100)) throw new BadRequestException("competition must be between 1 and 100 characters");
-    const rows: FixtureRow[] = this.database ? await this.database.fixture.findMany({ where: { kickoffUtc: { gte: from, lt: to }, ...(filters.competition ? { league: { name: filters.competition } } : { league: { externalRefs: { some: { provider: "football-data.org" } } } }) }, include: { league: true, season: true, homeTeam: true, awayTeam: true, provenance: { orderBy: { observedAt: "desc" }, take: 1 } }, orderBy: [{ kickoffUtc: "asc" }, { id: "asc" }] }) : [deterministicFixtureRow(new Date())].filter((row) => row.kickoffUtc >= from && row.kickoffUtc < to && (!filters.competition || row.league.name === filters.competition));
+    let rows: FixtureRow[];
+    const liveCutoff = new Date(now.getTime() - LIVE_MAX_AGE_MS);
+    if (this.database) {
+      const andConditions: any[] = [
+        { status: { notIn: TERMINAL_STATUSES } },
+        { OR: [{ kickoffUtc: { gte: from, lt: to } }, { AND: [{ status: { in: LIVE_STATUSES } }, { updatedAt: { gte: liveCutoff } }] }] },
+      ];
+      if (filters.competition) andConditions.push({ league: { name: filters.competition } });
+      else andConditions.push({ league: { externalRefs: { some: { provider: "football-data.org" } } } });
+      rows = await this.database.fixture.findMany({ where: { AND: andConditions } as any, include: { league: true, season: true, homeTeam: true, awayTeam: true, provenance: { orderBy: { observedAt: "desc" }, take: 1 } }, orderBy: [{ kickoffUtc: "asc" }, { id: "asc" }] });
+    } else {
+      rows = [deterministicFixtureRow(now)].filter((row) => !TERMINAL_STATUSES.includes(row.status) && (row.kickoffUtc >= from && row.kickoffUtc < to || (LIVE_STATUSES.includes(row.status) && row.updatedAt >= liveCutoff)) && (!filters.competition || row.league.name === filters.competition)) as unknown as FixtureRow[];
+    }
     // Forecast enrichment is display-only and additive: it degrades to the all-null
     // (pending) state on ANY error — the list endpoint must never 500 because of it.
     let snapshotRows: readonly { fixtureId: string; kind: unknown; cutoff: Date; probabilities: unknown }[] = [];

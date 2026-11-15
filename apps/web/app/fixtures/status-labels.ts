@@ -11,4 +11,10 @@ export const STATUS_LABELS: Record<string, string> = {
   AWARDED: "присвоен",
 };
 
+/** Статусы, означающие, что матч уже идёт — такие карточки остаются на странице
+ * с красным значком LIVE и убираются только после завершения матча. */
+export const LIVE_STATUSES = new Set(["LIVE", "IN_PLAY", "PAUSED"]);
+
+export const isLiveStatus = (status: string): boolean => LIVE_STATUSES.has(status);
+
 export const statusLabel = (status: string): string => STATUS_LABELS[status] ?? status.toLowerCase();

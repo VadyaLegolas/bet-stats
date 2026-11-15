@@ -2,7 +2,7 @@ import Link from "next/link";
 import { DateRangeFilter } from "../../components/date-range-filter";
 import { DataStateNotice, type FixtureDataState } from "../../components/data-state-notice";
 import { ProviderStateNotice, type ProviderState } from "../../components/provider-state-notice";
-import { statusLabel } from "./status-labels";
+import { statusLabel, isLiveStatus } from "./status-labels";
 type Fixture = { id: string; competition: { id: string; name: string; season: string }; teams: { home: { id: string; name: string }; away: { id: string; name: string } }; kickoff: string; status: string; dataState: FixtureDataState; providerState: ProviderState; forecast?: { kind?: string; cutoff?: string; probabilities?: { home?: unknown; draw?: unknown; away?: unknown } } | null };
 type Result = { items: readonly Fixture[]; range: { from: string; to: string } }; type Search = Record<string, string | string[] | undefined>;
 const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
@@ -82,6 +82,17 @@ async function load(search: Search): Promise<Result> {
     const value = first(search[key]);
     if (value) query.set(key, key === "competition" ? value : toApiInstant(key, value));
   }
+  const timezone = first(search.timezone);
+  if (timezone) query.set("timezone", timezone);
+  // Передаем часовой пояс пользователя на бэкенд, чтобы окно «4 часа после начала матча»
+  // считалось по его локальному времени, а не по серверному UTC.
+  if (!query.has("timezone")) {
+    try {
+      query.set("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone);
+    } catch {
+      query.set("timezone", "UTC");
+    }
+  }
   const response = await fetch(`${process.env.API_ORIGIN ?? "http://127.0.0.1:3001"}/fixtures?${query}`, { cache: "no-store" });
   if (!response.ok) throw new Error("load failed");
   return response.json() as Promise<Result>;
@@ -160,6 +171,27 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
                       <span>{fixture.competition.name}</span>
                       <span>·</span>
                       <span>{statusLabel(fixture.status)}</span>
+                      {isLiveStatus(fixture.status) && (
+                        <span
+                          className="fixture-live-badge"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            padding: "2px 8px",
+                            borderRadius: 9999,
+                            background: "var(--color-danger)",
+                            color: "#fff",
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                            letterSpacing: "0.05em",
+                            textTransform: "uppercase",
+                            boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+                          }}
+                        >
+                          LIVE
+                        </span>
+                      )}
                     </div>
                   </div>
                   <FixtureForecastLine forecast={fixture.forecast} />

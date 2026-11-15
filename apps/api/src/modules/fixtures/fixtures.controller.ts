@@ -39,8 +39,8 @@ export class FixturesController {
   }
 
   @Get()
-  list(@Query("from") from?: string, @Query("to") to?: string, @Query("competition") competition?: string): Promise<{ items: readonly FixtureListProjection[]; range: { from: string; to: string } }> {
-    return this.fixtures.list({ ...(from === undefined ? {} : { from }), ...(to === undefined ? {} : { to }), ...(competition === undefined ? {} : { competition }) });
+  list(@Query("from") from?: string, @Query("to") to?: string, @Query("competition") competition?: string, @Query("timezone") timezone?: string): Promise<{ items: readonly FixtureListProjection[]; range: { from: string; to: string } }> {
+    return this.fixtures.list({ ...(from === undefined ? {} : { from }), ...(to === undefined ? {} : { to }), ...(competition === undefined ? {} : { competition }), ...(timezone === undefined ? {} : { timezone }) });
   }
 
   @Get(":fixtureId")

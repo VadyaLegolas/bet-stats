@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 milestone: v1.1
 current_phase: 09
 current_phase_name: Degradation Alerting
-status: executing
-stopped_at: Completed 09-06-PLAN.md
-last_updated: "2026-11-15T00:49:59.466Z"
-last_activity: 2026-11-14
+status: verifying
+stopped_at: Completed 09-08-PLAN.md
+last_updated: "2026-11-15T01:08:24.034Z"
+last_activity: 2026-11-15
 last_activity_desc: Phase 09 execution started
-state_head: eefffc25ab39fff00911f1e1da4b004e41b75270
+state_head: 1ed4f2b894e5c263fde1d632bd05ba6b5b690ee5
 progress:
   total_phases: 10
   completed_phases: 2
   total_plans: 18
-  completed_plans: 17
+  completed_plans: 18
   percent: 20
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-09-08)
 
 ## Current Position
 
-Phase: 09 (Degradation Alerting) — READY TO EXECUTE
-Plan: 1 of 7
-Status: Ready to execute
-Last activity: 2026-11-14 — Phase 09 execution started
+Phase: 09 (Degradation Alerting) — EXECUTING
+Plan: 8 of 8
+Status: Phase complete — ready for verification
+Last activity: 2026-11-15 — Phase 09 execution started
 
 Progress: [██░░░░░░░░] 20%
 
@@ -136,6 +136,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 09 P09-04 | 6min | 2 tasks | 4 files |
 | Phase 09 P05 | 25 | 2 tasks | 5 files |
 | Phase 09 P06 | 10min | 2 tasks | 2 files |
+| Phase 09 P08 | 7min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -285,6 +286,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 09]: Raw exceptions counted as 5xx before BaseExceptionFilter delegation; response bodies stay byte-identical (WR-01, 09-06)
 - [Phase 09]: BUCKET_TTL_SECONDS = 420 pinned by a cross-module mirror test (TTL >= HTTP5XX_WINDOW_MINUTES*60 + 60) so TTL/window drift cannot silently return (WR-02, 09-06)
 - [Phase 09]: Single-line RED assertions via mock.calls lookups keep vitest failure output TAP-YAML-parseable for tdd-red-evidence (09-06)
+- [Phase 09]: Page and e2e derive the operations overview fetch search from one shared overviewFetchSearch helper (overview-request.ts), so the signed parameter set can never drift out of the page's fetch URL again (T-09-22, 09-08)
+- [Phase 09]: Full unfiltered operator-overview.spec.ts run is the only completion evidence for the operations-center guard: 6 passed, 0 failed on the owned release stack; the round-3 filtered-run masking lesson is enforced as a hard gate in 09-08
 
 ### Pending Todos
 
@@ -390,6 +393,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-12T08:33:19.061Z
-Stopped at: Completed 09-06-PLAN.md
+Last session: 2026-11-15T01:08:22.861Z
+Stopped at: Completed 09-08-PLAN.md
 Resume file: None

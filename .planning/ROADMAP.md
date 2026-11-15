@@ -84,8 +84,8 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 - [x] 09-04-PLAN.md — UI block: «Алерты» block on operations page, enum labels, SSR tests
 - [x] 09-05-PLAN.md — Gap closure CR-01/CR-02/IN-05: inspector wired through startAlertingRuntime (composition test), DELIVERY_HEALTH excluded from auto-resolution, probe success resolves OPEN/ACKNOWLEDGED
 - [x] 09-06-PLAN.md — Gap closure WR-01/WR-02: 5xx numerator counts raw exceptions, bucket TTL covers the 5-minute window with a mirror guard
-- [ ] 09-07-PLAN.md — UAT gap closure G-09-1/G-09-2: NUL-free alertFingerprint separator (U+001F) with real-PostgreSQL dedupUpsert roundtrip; zoom-200% @ 320px reflow fix on /internal/operations with e2e guard
-- [ ] 09-08-PLAN.md — Verification gap closure (round 3): operations-center e2e guard restored — 8-section h2 contract + shared overviewFetchSearch signature helper (alertPage drift) + full unfiltered green run
+- [x] 09-07-PLAN.md — UAT gap closure G-09-1/G-09-2: NUL-free alertFingerprint separator (U+001F) with real-PostgreSQL dedupUpsert roundtrip; zoom-200% @ 320px reflow fix on /internal/operations with e2e guard
+- [x] 09-08-PLAN.md — Verification gap closure (round 3): operations-center e2e guard restored — 8-section h2 contract + shared overviewFetchSearch signature helper (alertPage drift) + full unfiltered green run
 **UI hint**: yes
 
 ### Phase 10: Performance Audit and Budgets
@@ -206,7 +206,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 |-------|----------------|--------|-----------|
 | 7. CI Pipeline & Quality Gates | 3/3 | Complete    | 2026-10-22 |
 | 8. Backups and Restore Verification | 7/7 | Complete    | 2026-10-31 |
-| 9. Degradation Alerting | 6/6 | In Progress | - |
+| 9. Degradation Alerting | 8/8 | In Progress | - |
 | 10. Performance Audit and Budgets | 0/0 | Not started | - |
 | 11. Dixon-Coles Model Version | 0/0 | Not started | - |
 | 12. Calibration Layer and Versioned Rollback | 0/0 | Not started | - |

@@ -16,6 +16,18 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Матчдей — достоверные футбольные прогнозы",
   description: "Прозрачные данные о футбольных матчах и аналитическая информация.",
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/site.webmanifest',
+  appleWebApp: {
+    title: 'Матчдей',
+  },
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

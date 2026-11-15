@@ -6,6 +6,7 @@ import { impactLabel, incidentStatusLabel, serviceStateLabel } from "../../../co
 import { formatInstant } from "../../../components/time-format";
 import { AlertsBlock } from "./alerts-block";
 import { BackupStatusBlock, type BackupStatusFact } from "./backup-status-block";
+import { overviewFetchSearch } from "./overview-request";
 
 type Overview = {
   readiness: { state: "READY" | "DEGRADED" | "NOT_READY"; services: Array<{ name: string; state: string }>; lastCheckedAt: string };
@@ -57,7 +58,7 @@ export default function OperationsPage() {
   const load = async () => {
     setLoading(true); setError("");
     try {
-      const response = await fetch(`/internal-api/operations/overview${query}${query.includes("?") ? "&" : "?"}alertPage=${alertPage}`, { cache: "no-store" });
+      const response = await fetch(`/internal-api/operations/overview${overviewFetchSearch(query, alertPage)}`, { cache: "no-store" });
       if (!response.ok) throw new Error("OPERATIONS_UNAVAILABLE");
       setOverview(await response.json() as Overview);
     } catch {

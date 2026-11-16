@@ -99,7 +99,11 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   2. Lighthouse assertions run in CI against key pages and fail the build on budget regression, so later UI phases (scanner, journal, new markets) inherit the discipline.
 
 **Notes / research flags**: Research gap to resolve at planning — STACK.md/ARCHITECTURE.md verify Recharts is absent from the repo; do not add a charting library (it would blow the budget); if Recharts unexpectedly exists, the fix strategy becomes dynamic-import-per-widget. Target component: ~39 KB client `forecast-workbench.tsx`.
-**Plans**: TBD
+**Plans**: 3 plans
+**Plan list**:
+- [ ] 10-01-PLAN.md — Audit harness on the owned stack: Wave-0 unit tests, «before» median-of-3 receipt, perf-budget.json pinned from measurement
+- [ ] 10-02-PLAN.md — D-09 workbench split (lazy comparison/value panels), test updates, «after» receipt + budget tightening
+- [ ] 10-03-PLAN.md — performance-budget CI job + contract-test extension + induced-regression dry-run
 **UI hint**: yes
 
 ### Phase 11: Dixon-Coles Model Version

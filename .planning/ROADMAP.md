@@ -8,7 +8,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 
 - [x] **Phase 7: CI Pipeline & Quality Gates** - Every push and PR runs a frozen, Linux-based pipeline that gates schema, types, lint, tests, and build before anything else lands. (completed 2026-10-22)
 - [x] **Phase 8: Backups and Restore Verification** - The operator trusts that PostgreSQL can be restored, proven by scheduled restore drills with visible verification status. (completed 2026-11-05)
-- [ ] **Phase 9: Degradation Alerting** - The operator is told when providers, workers, HTTP error rates, or backups degrade, through durable alerts viewable in the operations center.
+- [x] **Phase 9: Degradation Alerting** - The operator is told when providers, workers, HTTP error rates, or backups degrade, through durable alerts viewable in the operations center. (completed 2026-11-16)
 - [ ] **Phase 10: Performance Audit and Budgets** - The fixture detail page meets declared Lighthouse budgets, and regressions fail CI instead of shipping.
 - [ ] **Phase 11: Dixon-Coles Model Version** - Forecasts can be issued under a corrected, versioned model whose rolling-origin backtests are compared against the frozen baseline before promotion.
 - [ ] **Phase 12: Calibration Layer and Versioned Rollback** - Users see calibrated probabilities with honest labels and insufficient-data states, backed by per-model-version calibrators that roll back on measured regression.
@@ -206,7 +206,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 |-------|----------------|--------|-----------|
 | 7. CI Pipeline & Quality Gates | 3/3 | Complete    | 2026-10-22 |
 | 8. Backups and Restore Verification | 7/7 | Complete    | 2026-10-31 |
-| 9. Degradation Alerting | 8/8 | In Progress | - |
+| 9. Degradation Alerting | 8/8 | Complete    | 2026-11-16 |
 | 10. Performance Audit and Budgets | 0/0 | Not started | - |
 | 11. Dixon-Coles Model Version | 0/0 | Not started | - |
 | 12. Calibration Layer and Versioned Rollback | 0/0 | Not started | - |

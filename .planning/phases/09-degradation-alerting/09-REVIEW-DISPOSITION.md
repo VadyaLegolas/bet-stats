@@ -85,9 +85,17 @@ findings:
     severity: info
     disposition: open
     title: "Dead parameter in the runOneTick test helper"
-open: 19
-total: 24
-recorded: 2026-11-14T06:13:28.639Z
+  - id: WR-09
+    severity: warning
+    disposition: open
+    title: "Неполное замыкание drift-класса Cause B — scripts/capture-faq-screenshots.mjs подписывает 3-параметровый search, страница отправляет 4 (alertPage); FAQ-снимок operations.png деградирует молча при повторном прогоне"
+  - id: IN-10
+    severity: info
+    disposition: open
+    title: "overviewFetchSearch двойной append alertPage при навигации с уже содержащимся alertPage (путь alertPage>1 не покрыт e2e); сохранено байт-в-байт по мандату плана"
+open: 21
+total: 26
+recorded: 2026-11-16T00:30:00.000Z
 ---
 
 # Phase 09: Code Review Disposition
@@ -118,6 +126,8 @@ recorded: 2026-11-14T06:13:28.639Z
 | WR-G3 | warning | open | (09-REVIEW-GAPS.md, 2026-11-13) Impossible-state guard: instanceof Redis/Queue в close() (main.ts:210-211) недостижимо ложны — ветка исполняется только когда deps falsy, а значения построены двумя строками выше (not in the current review) |
 | IN-G1 | info | open | (09-REVIEW-GAPS.md, 2026-11-13) Нецелочисленный статус HttpException (getStatus() → null) попадает в 5xx-числитель на посылке «null ⇒ Nest отвечает 500» — верно только для сырых исключений (not in the current review) |
 | IN-G2 | info | open | (09-REVIEW-GAPS.md, 2026-11-13) Мёртвый параметр runtime в хелпере runOneTick композиционного теста (not in the current review) |
+| WR-09 | warning | open | (09-REVIEW.md, 2026-11-16, incremental 09-08) scripts/capture-faq-screenshots.mjs:22,32,120 подписывает 3-параметровый OPERATIONS_QUERY, а page fetch отправляет alertPage=1 → тот же digest-mismatch→404, что Cause B; валидация снимка только размер ≥ 10 КБ → повторный прогон молча перезапишет корректный operations.png деградировавшим состоянием. Fix: импорт overviewFetchSearch в .mjs (Node 24 type-stripping) или 4-параметровый литерал; плюс fail прогона при отсутствии маркера «Последняя проверка» |
+| IN-10 | info | open | (09-REVIEW.md, 2026-11-16, incremental 09-08) overview-request.ts:8 аппендит alertPage без проверки наличия в query — навигация пагинации алертов (alerts-block.tsx:187-189) даёт alertPage=2&alertPage=2; сегодня доброкачественно (upstream вайтлистит, gateway подписывает фактические байты), семантика сохранена байт-в-байт по мандату плана; e2e-гард верифицирован только для дефолтного alertPage=1. Fix: канонизировать alertPage в хелпере или задокументировать инвариант; дешёвый e2e-кейс alertPage=2 |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.

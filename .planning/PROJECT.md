@@ -38,6 +38,9 @@ Produce honest, reproducible probability estimates whose quality can be measured
 - ✓ Settlement pipeline, Brier Score, Log Loss, calibration curves, ROI/Yield accounting, and rolling-origin backtests — Phase 4
 - ✓ Multi-provider fallback (football-data.org / API-Football), UEL/UECL coverage, and provider-aware degradation — Phase 5
 - ✓ Responsive desktop & mobile Chromium UI, public methodology card, secret-safe operations center, and fail-closed privacy retention — Phase 6
+- ✓ CI pipeline in GitHub Actions covering install, typecheck, lint, tests, and build — Phase 7
+- ✓ Automated PostgreSQL backups with rotation and periodic restore verification — Phase 8
+- ✓ Degradation alerting (durable PostgreSQL alerts, dedup, severity tiers) with fail-closed HMAC operator gateway and the operations center as the operator's view — Phase 9
 
 ### Current State (Shipped: v1.0 MVP)
 
@@ -45,9 +48,6 @@ All 6 phases (88 plans) of the v1.0 MVP milestone have shipped and passed all en
 
 ### Active (v1.1 — this milestone)
 
-- CI in GitHub Actions covering install, typecheck, lint, tests, and build (no CI exists today).
-- Automated PostgreSQL backups with rotation and periodic restore verification.
-- Degradation alerting for provider-quota exhaustion, worker failures, and 5xx spikes, visible in the operator contour.
 - Lighthouse/performance audit of the fixture detail page with measured improvements.
 - Isotonic/Platt per-market calibration with versioned rollback when Brier degrades.
 - Dixon-Coles correction integrated into the Poisson goal model.
@@ -107,6 +107,7 @@ All 6 phases (88 plans) of the v1.0 MVP milestone have shipped and passed all en
 | Structure delivery as vertical MVP slices | Each phase should leave an observable, testable capability rather than an unfinished technical layer | — Pending |
 | Use append-only reconciliation decisions with optimistic concurrency | Manual identity corrections must remain auditable and must never overwrite prior evidence | ✓ Validated in Phase 1 |
 | Reserve provider budget atomically before every external call | Retries and concurrent workers must not overspend free-tier allowance or duplicate durable facts | ✓ Validated in Phase 1 |
+| Store degradation alerts as durable PostgreSQL rows with dedup and severity tiers, surfaced through a fail-closed HMAC gateway | Redis is disposable infrastructure; alert history must be auditable and the operator view must fail closed, never silently expose state | ✓ Validated in Phase 9 |
 
 ## Evolution
 
@@ -126,4 +127,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-19 — milestone v1.1 started*
+*Last updated: 2026-11-16 after Phase 9 (Degradation Alerting)*

@@ -406,18 +406,13 @@ for (const [metric, { median, budget }] of Object.entries(gated)) {
 | A4 | `--headless=new` works with the Playwright chromium build (chromium-1234 / current) | Runner flags | Launch failure → use `--headless`; trivially testable in the first run |
 | A5 | One full CI perf-job run fits a ~20 min `timeout-minutes` (build web + 3 audits × 1 page) | CI job shape | Bump timeout to 25-30; measured in the first run |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Exact budget values (LCP/TBT/CLS/script bytes)**
-   - What we know: they must come from the measured medians (D-03); they do not exist yet.
-   - What's unclear: the actual numbers until the first harness run.
-   - Recommendation: planner writes a task that runs the harness, records the «before» receipt, and fills `perf-budget.json` from measured values; the plan should not contain invented numbers.
-2. **Receipt/budget file location and naming**
-   - What we know: CONTEXT suggests `scripts/` or `tests/perf/`; receipts are committed (D-07).
-   - Recommendation: one directory (e.g. `scripts/perf/` with `perf-budget.json` + `perf-receipts/`), decided once by the planner.
-3. **ValueOutcomeSection in the split or not**
-   - What we know: D-09 names "comparison / evidence trace" panels; `ValueOutcomeSection` (value result + full receipt JSON) also only renders post-interaction and is test-imported [VERIFIED: tests/unit/forecast-comparison-ui.test.tsx:5].
-   - Recommendation: measure both; split whichever keeps the odds-entry core eager while maximizing script-byte savings; keep `ResponsiveEvidence` eager (used by the primary forecast tables).
+All three questions are resolved by the Phase 10 plans (10-01/10-02/10-03); no ambiguity remains for execution.
+
+1. **Exact budget values (LCP/TBT/CLS/script bytes)** — RESOLVED: budgets are pinned from measured medians, never invented. 10-01 Task 1 records the «before» median-of-3 receipt (`scripts/perf/perf-receipts/perf-baseline-before.json`); 10-01 Task 3 creates `scripts/perf/perf-budget.json` with budgets = before medians + modest headroom (D-03); 10-02 Task 3 re-pins from the «after» receipt when justified.
+2. **Receipt/budget file location and naming** — RESOLVED: `scripts/perf-audit.mjs` (harness), `scripts/perf/perf-budget.json` (budget config), `scripts/perf/perf-receipts/` (committed baseline receipts) — decided in 10-01 Task 1/Task 3; check-run receipts go to the OS temp dir and are deleted, never committed.
+3. **ValueOutcomeSection in the split or not** — RESOLVED: BOTH heavy panels split — `ForecastComparisonPanel` and `ValueOutcomeSection` move to their own lazily-loaded modules in 10-02 Task 1 (both render only post-interaction, both are test-imported; the odds-entry core stays eager). ResponsiveEvidence stays eager.
 
 ## Environment Availability
 

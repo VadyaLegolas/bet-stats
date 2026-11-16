@@ -22,10 +22,10 @@ milestone_name: Reliability, Model Quality and Value Experience
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-08)
+See: .planning/PROJECT.md (updated 2026-11-16)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Phase 09 — Degradation Alerting
+**Current focus:** Phase 10 - Performance Audit and Budgets
 
 ## Current Position
 
@@ -394,6 +394,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-15T01:08:22.861Z
+Last session: 2026-11-16
 Stopped at: Phase 09 complete, ready to plan Phase 10
 Resume file: None

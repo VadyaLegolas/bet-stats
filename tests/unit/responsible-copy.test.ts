@@ -65,11 +65,15 @@ describe("responsible user-facing copy", () => {
   });
 
   it("uses the exact API receipt for readable, copied, and downloaded output", () => {
+    /* После D-09-разбиения строки квитанции живут в двух модулях: жадное ядро
+       держит канонический JSON и копирование, ленивая секция — скачивание и
+       разделы точной квитанции. Сканируем оба источника-владельца. */
     const workbench = readFileSync(resolve("apps/web/app/fixtures/[fixtureId]/forecast-workbench.tsx"), "utf8");
     expect(workbench).toContain("JSON.stringify(result, null, 2)");
     expect(workbench).toContain("navigator.clipboard.writeText(canonicalReceipt)");
-    expect(workbench).toContain("?download=true");
-    expect(workbench).toContain("ID и версии квитанции");
-    expect(workbench).toContain("Результаты проверок и пороги");
+    const outcome = readFileSync(resolve("apps/web/app/fixtures/[fixtureId]/value-outcome-section.tsx"), "utf8");
+    expect(outcome).toContain("?download=true");
+    expect(outcome).toContain("ID и версии квитанции");
+    expect(outcome).toContain("Результаты проверок и пороги");
   });
 });

@@ -2,7 +2,9 @@ import { createElement } from "../../apps/web/node_modules/react/index.js";
 import { renderToStaticMarkup } from "../../apps/web/node_modules/react-dom/server.js";
 import { describe, expect, it } from "vitest";
 
-import { availabilityReasonCopy, ForecastComparisonPanel, ForecastWorkbench, initializeComparisonPair, swapComparisonPair, ValueOutcomeSection, type ValueResult } from "../../apps/web/app/fixtures/[fixtureId]/forecast-workbench.js";
+import { availabilityReasonCopy, ForecastWorkbench, initializeComparisonPair, swapComparisonPair, type ValueResult } from "../../apps/web/app/fixtures/[fixtureId]/forecast-workbench.js";
+import { ForecastComparisonPanel } from "../../apps/web/app/fixtures/[fixtureId]/forecast-comparison-panel.js";
+import { ValueOutcomeSection } from "../../apps/web/app/fixtures/[fixtureId]/value-outcome-section.js";
 import { compareForecastPair } from "../../packages/domain/src/forecast/comparison.js";
 import { snapshot } from "./forecast-comparison.test.js";
 

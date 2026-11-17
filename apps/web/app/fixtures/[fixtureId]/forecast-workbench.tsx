@@ -1,23 +1,34 @@
 "use client";
 
 import { clearOddsDraftAfterSubmission, FORECAST_KINDS, MARKET_SELECTIONS, parseOddsDraft, serializeOddsDraft, type ForecastComparisonDto, type ForecastKind, type ForecastResponseDto, type OddsMarket, type OddsSelection } from "@bet-stats/domain";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { confidenceComponentLabel, forecastKindLabel, forecastLimitationLabel, MARKET_LABELS, oddsMarketLabel, oddsSelectionLabel, SELECTION_LABELS, valueReasonLabel } from "../../../components/enum-labels";
+import { confidenceComponentLabel, forecastKindLabel, forecastLimitationLabel, MARKET_LABELS, SELECTION_LABELS } from "../../../components/enum-labels";
 import { ResponsiveEvidence, type EvidenceColumn } from "../../../components/responsive-evidence";
 import { LocalDataBlock, type LocalDataBlockState } from "../../../components/local-data-block";
 import { ContextualMethodologyWarning } from "../../../components/contextual-methodology-warning";
 import { formatOdds } from "../../../components/odds-format";
 import { formatInstant } from "../../../components/time-format";
+import { labelReason, percent, type ValueResult } from "./workbench-format";
+
+// Оба тяжёлых пост-интерактивных модуля грузятся лениво через next/dynamic
+// (D-09): вызовы — только на верхнем уровне модуля, как требует гайд
+// Next 16 по ленивой загрузке. Жадное ядро (выбор рынка, поля коэффициентов,
+// обработчики отправки/сравнения, блок доступности) остаётся статичным.
+const ForecastComparisonPanel = dynamic(
+  () => import("./forecast-comparison-panel").then((module) => module.ForecastComparisonPanel),
+  { loading: () => <p role="status">Загружаем результат сравнения…</p> },
+);
+const ValueOutcomeSection = dynamic(
+  () => import("./value-outcome-section").then((module) => module.ValueOutcomeSection),
+  { loading: () => <p role="status">Загружаем результат value-сравнения…</p> },
+);
+
+export type { ValueResult } from "./workbench-format";
 
 type OddsSnapshot = { oddsSnapshotId: string; fixtureId: string; market: OddsMarket; sourceLabel: string; capturedAt: string; schemaVersion: string; normalizationVersion: string; overround: string; selections: readonly { selection: OddsSelection; decimalOdds: string; impliedProbability: string; noVigProbability: string }[] };
-export type ValueResult = { id: string; fixtureId: string; forecastSnapshotId: string; oddsSnapshotId: string; market: OddsMarket; selection: OddsSelection; outcome: "VALUE_CANDIDATE" | "NO_VALUE" | "INSUFFICIENT_EVIDENCE"; reasons: readonly string[]; modelProbability: string; noVigProbability: string; fairOdds: string | null; edge: string; expectedValue: string; receipt: Record<string, unknown>; createdAt: string };
 const ODDS_FIELD_LABELS: Record<OddsSelection, string> = { HOME: "Десятичный коэффициент на хозяев", DRAW: "Десятичный коэффициент на ничью", AWAY: "Десятичный коэффициент на гостей", OVER_2_5: "Десятичный коэффициент: Тотал больше 2.5", UNDER_2_5: "Десятичный коэффициент: Тотал меньше 2.5", YES: "Десятичный коэффициент: Да", NO: "Десятичный коэффициент: Нет" };
-const OUTCOME_COPY = {
-  VALUE_CANDIDATE: { heading: "Кандидат value", detail: "Все настроенные проверки доказательств, уверенности, преимущества и ожидаемого value пройдены для этой точной пары снимков." },
-  NO_VALUE: { heading: "Нет value-сигнала", detail: "Доказательств достаточно, но ни один из настроенных порогов value-сигнала не пройден. Ниже — какие проверки не прошли." },
-  INSUFFICIENT_EVIDENCE: { heading: "Недостаточно доказательств", detail: "Доказательства, уверенность или качество данных не позволили провести квалифицированное сравнение." },
-} as const;
 const MAX_DECIMAL_ODDS_SCALE = 20;
 const MAX_DECIMAL_ODDS_LENGTH = 128;
 const CLIENT_DECIMAL_ODDS_PATTERN = /^(?:0|[1-9]\d*)(?:[.,]\d+)?$/;
@@ -38,8 +49,6 @@ export function validateOddsFields(market: OddsMarket, fields: Partial<Record<Od
 export function buildOddsSubmission(input: { fixtureId: string; market: OddsMarket; sourceLabel: string; fields: Partial<Record<OddsSelection, string>>; capturedAt: string; oddsSnapshotId: string }) { if (!input.sourceLabel.trim() || Object.keys(validateOddsFields(input.market, input.fields)).length > 0) throw new Error("INCOMPLETE_ODDS_BOOK"); return { oddsSnapshotId: input.oddsSnapshotId, market: input.market, sourceLabel: input.sourceLabel.trim(), capturedAt: input.capturedAt, selections: MARKET_SELECTIONS[input.market].map((selection) => ({ selection, decimalOdds: canonicalizeClientOdds(input.fields[selection]!) })) }; }
 export function selectStableSnapshot<T extends { id: string }>(selectedId: string, snapshots: readonly T[]): T | undefined { return snapshots.find(({ id }) => id === selectedId) ?? snapshots[0]; }
 export function forecastOptionLabel(snapshot: Pick<ForecastResponseDto, "id" | "kind" | "revision" | "cutoff">): string { return `${forecastKindLabel(snapshot.kind)} · ревизия ${snapshot.revision} — ${snapshot.cutoff} — ${snapshot.id}`; }
-function percent(value: number | string): string { return `${(Number(value) * 100).toFixed(1)}%`; }
-function labelReason(reason: string): string { return reason.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().replaceAll("_", " "); }
 
 export function initializeComparisonPair(params: URLSearchParams, forecasts: readonly Pick<ForecastResponseDto, "id">[]) {
   const leftId = params.get("left"), rightId = params.get("right");
@@ -47,28 +56,6 @@ export function initializeComparisonPair(params: URLSearchParams, forecasts: rea
   return { leftId: forecasts[0]?.id ?? "", rightId: forecasts[1]?.id ?? "", initialized: true };
 }
 export function swapComparisonPair(pair: { leftId: string; rightId: string }) { return { leftId: pair.rightId, rightId: pair.leftId }; }
-function signedPercent(value: number): string { return `${value > 0 ? "+" : ""}${(value * 100).toFixed(1)}%`; }
-function directionText(direction: "increase" | "decrease" | "unchanged", delta: number): string { return direction === "increase" ? `вырос на ${signedPercent(delta)}` : direction === "decrease" ? `снизился на ${signedPercent(Math.abs(delta))}` : "без изменений"; }
-type ComparisonSourceRef = ForecastComparisonDto["sourceRefs"]["added"][number];
-/** Evidence instant → «11.10.2026 13:00 UTC»; an unparsable value stays exact. */
-export function formatUtc(instant: string): string {
-  const date = new Date(instant);
-  if (Number.isNaN(date.getTime())) return instant;
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${pad(date.getUTCDate())}.${pad(date.getUTCMonth() + 1)}.${date.getUTCFullYear()} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} UTC`;
-}
-/** Human-short fingerprint (12 hex chars) — the exact payload hash stays in the hover receipt. */
-export function shortFingerprint(value: string): string { return value.length > 12 ? `${value.slice(0, 12)}…` : value; }
-export function shortFixtureId(fixtureId: string): string { return fixtureId.length > 8 ? `${fixtureId.slice(0, 8)}…` : fixtureId; }
-function SourceRefItem({ source, name }: { source: ComparisonSourceRef; name?: string | undefined }) {
-  return <li title={`Матч: ${source.fixtureId} · отпечаток: ${source.payloadHash} · обновление источника: ${source.sourceUpdatedAt ?? "нет"}`}>
-    <strong>{name ?? shortFixtureId(source.fixtureId)}</strong> · {formatUtc(source.effectiveAt)} · отпечаток <code>{shortFingerprint(source.payloadHash)}</code> · наблюдено {formatUtc(source.observedAt)}
-  </li>;
-}
-function sourceRefList(sources: readonly ComparisonSourceRef[], labels: Readonly<Record<string, string>> | undefined) {
-  if (sources.length === 0) return "нет";
-  return <ul>{sources.map((source) => <SourceRefItem key={`${source.fixtureId}:${source.payloadHash}:${source.observedAt}`} source={source} name={labels?.[source.fixtureId]} />)}</ul>;
-}
 
 type ProbabilityRow = ForecastResponseDto["probabilities"][OddsMarket][number];
 const probabilityColumns: readonly EvidenceColumn<ProbabilityRow>[] = [
@@ -85,34 +72,6 @@ const oddsComparisonColumns: readonly EvidenceColumn<ComparisonRow>[] = [
   { key: "implied", label: "Подразумеваемая", value: (row) => row.odds ? percent(row.odds.impliedProbability) : "Недоступно" },
   { key: "noVig", label: "Без вига", value: (row) => row.odds ? percent(row.odds.noVigProbability) : "Недоступно" },
 ];
-type RevisionDelta = ForecastComparisonDto["probabilities"][number];
-const revisionColumns: readonly EvidenceColumn<RevisionDelta>[] = [
-  { key: "market", label: "Рынок", value: (row) => oddsMarketLabel(row.market as OddsMarket) },
-  { key: "selection", label: "Выбор", value: (row) => oddsSelectionLabel(row.selection as OddsSelection) },
-  { key: "left", label: "Левый", value: (row) => percent(row.left) },
-  { key: "right", label: "Правый", value: (row) => percent(row.right) },
-  { key: "change", label: "Изменение", value: (row) => directionText(row.direction, row.delta) },
-];
-
-export function ForecastComparisonPanel({ comparison }: { comparison: ForecastComparisonDto }) {
-  const material = comparison.sourceRefs.added.length + comparison.sourceRefs.removed.length + comparison.limitations.added.length + comparison.limitations.removed.length;
-  return <div>
-    <h4>Значимые изменения доказательств, модели и ограничений</h4>
-    {material === 0 ? <p>Отображаемые компоненты модели не изменились между этими точными снимками.</p> : <ul><li>Добавленные доказательства: {sourceRefList(comparison.sourceRefs.added, comparison.fixtureLabels)}</li><li>Удалённые доказательства: {sourceRefList(comparison.sourceRefs.removed, comparison.fixtureLabels)}</li><li>Добавленные ограничения: {comparison.limitations.added.map(forecastLimitationLabel).join(", ") || "нет"}</li><li>Устранённые ограничения: {comparison.limitations.removed.map(forecastLimitationLabel).join(", ") || "нет"}</li></ul>}
-    <ResponsiveEvidence projectionId="forecast-revision-delta" label="Доказательства изменения вероятностей" tableLabel="Полные данные об изменении вероятностей" caption="Стабильные изменения вероятностей для выбранных неизменяемых снимков" rows={comparison.probabilities} columns={revisionColumns} rowKey={(row) => `${row.market}:${row.selection}`} conclusion={(row) => `${oddsMarketLabel(row.market as OddsMarket)} — ${oddsSelectionLabel(row.selection as OddsSelection)}`} denominator={(row) => directionText(row.direction, row.delta)}/>
-    <details><summary>Точные квитанции сравнения</summary><dl><dt>ID левого снимка</dt><dd><code>{comparison.left.id}</code></dd><dt>ID правого снимка</dt><dd><code>{comparison.right.id}</code></dd><dt>Левая отсечка</dt><dd><time dateTime={comparison.left.cutoff}>{comparison.left.cutoff}</time></dd><dt>Правая отсечка</dt><dd><time dateTime={comparison.right.cutoff}>{comparison.right.cutoff}</time></dd></dl></details>
-    <p>Вероятности — это оценки, а не гарантии. Вы можете потерять деньги при ставках.</p>
-  </div>;
-}
-
-export function ValueOutcomeSection({ result, canonicalReceipt, copyMessage, copyReceipt }: { result: ValueResult; canonicalReceipt: string; copyMessage: string; copyReceipt: () => void | Promise<void> }) {
-  return <section aria-labelledby="outcome-heading" role={result.outcome === "INSUFFICIENT_EVIDENCE" ? "alert" : "status"}><h3 id="outcome-heading">{OUTCOME_COPY[result.outcome].heading}</h3><p>{OUTCOME_COPY[result.outcome].detail}</p><p>Снимок прогноза <code>{result.forecastSnapshotId}</code> · Снимок коэффициентов <code>{result.oddsSnapshotId}</code></p><ul>{result.reasons.map((reason) => <li key={reason}>{valueReasonLabel(reason)}</li>)}</ul><dl><dt>Модельная вероятность</dt><dd>{percent(result.modelProbability)}</dd><dt>Вероятность без перекрытия</dt><dd>{percent(result.noVigProbability)}</dd><dt>Преимущество</dt><dd>{percent(result.edge)}</dd><dt>Ожидаемое value</dt><dd>{percent(result.expectedValue)}</dd></dl>
-    <details><summary>Точная неизменяемая квитанция решения</summary><h4>ID и версии квитанции</h4><dl><dt>Квитанция value</dt><dd><code>{result.id}</code></dd><dt>Снимок прогноза</dt><dd><code>{result.forecastSnapshotId}</code></dd><dt>Снимок коэффициентов</dt><dd><code>{result.oddsSnapshotId}</code></dd><dt>Создана</dt><dd><time dateTime={result.createdAt}>{result.createdAt}</time></dd>{Object.entries(result.receipt).filter(([key]) => key.toLowerCase().includes("version") || key === "cutoff").map(([key, value]) => <div key={key}><dt>{labelReason(key)}</dt><dd>{String(value)}</dd></div>)}</dl>
-      <h4>Источники, допущения и формулы</h4><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify({ sources: result.receipt.sources, evidenceBuildIds: result.receipt.evidenceBuildIds, assumptions: result.receipt.assumptions, formulas: result.receipt.formulas }, null, 2)}</pre>
-      <h4>Результаты проверок и пороги</h4><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify({ outcome: result.outcome, reasons: result.reasons, thresholds: result.receipt.thresholds, gates: result.receipt.gates }, null, 2)}</pre>
-      <h4>Канонический структурированный JSON</h4><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{canonicalReceipt}</pre><p><button type="button" onClick={() => void copyReceipt()}>Скопировать JSON точной квитанции</button>{" "}<a href={`/internal-api/value/${encodeURIComponent(result.id)}?download=true`} download>Скачать JSON точной квитанции</a></p><p aria-live="polite">{copyMessage}</p>
-    </details></section>;
-}
 
 export function ForecastWorkbench({ fixtureId, forecasts, timeZone }: { fixtureId: string; forecasts: readonly ForecastResponseDto[]; timeZone: string }) {
   const [availabilityReasons, setAvailabilityReasons] = useState<Record<string, string>>({});

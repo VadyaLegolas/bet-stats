@@ -1,0 +1,17 @@
+import { valueReasonLabel } from "../../../components/enum-labels";
+import { labelReason, percent, type ValueResult } from "./workbench-format";
+
+const OUTCOME_COPY = {
+  VALUE_CANDIDATE: { heading: "Кандидат value", detail: "Все настроенные проверки доказательств, уверенности, преимущества и ожидаемого value пройдены для этой точной пары снимков." },
+  NO_VALUE: { heading: "Нет value-сигнала", detail: "Доказательств достаточно, но ни один из настроенных порогов value-сигнала не пройден. Ниже — какие проверки не прошли." },
+  INSUFFICIENT_EVIDENCE: { heading: "Недостаточно доказательств", detail: "Доказательства, уверенность или качество данных не позволили провести квалифицированное сравнение." },
+} as const;
+
+export function ValueOutcomeSection({ result, canonicalReceipt, copyMessage, copyReceipt }: { result: ValueResult; canonicalReceipt: string; copyMessage: string; copyReceipt: () => void | Promise<void> }) {
+  return <section aria-labelledby="outcome-heading" role={result.outcome === "INSUFFICIENT_EVIDENCE" ? "alert" : "status"}><h3 id="outcome-heading">{OUTCOME_COPY[result.outcome].heading}</h3><p>{OUTCOME_COPY[result.outcome].detail}</p><p>Снимок прогноза <code>{result.forecastSnapshotId}</code> · Снимок коэффициентов <code>{result.oddsSnapshotId}</code></p><ul>{result.reasons.map((reason) => <li key={reason}>{valueReasonLabel(reason)}</li>)}</ul><dl><dt>Модельная вероятность</dt><dd>{percent(result.modelProbability)}</dd><dt>Вероятность без перекрытия</dt><dd>{percent(result.noVigProbability)}</dd><dt>Преимущество</dt><dd>{percent(result.edge)}</dd><dt>Ожидаемое value</dt><dd>{percent(result.expectedValue)}</dd></dl>
+    <details><summary>Точная неизменяемая квитанция решения</summary><h4>ID и версии квитанции</h4><dl><dt>Квитанция value</dt><dd><code>{result.id}</code></dd><dt>Снимок прогноза</dt><dd><code>{result.forecastSnapshotId}</code></dd><dt>Снимок коэффициентов</dt><dd><code>{result.oddsSnapshotId}</code></dd><dt>Создана</dt><dd><time dateTime={result.createdAt}>{result.createdAt}</time></dd>{Object.entries(result.receipt).filter(([key]) => key.toLowerCase().includes("version") || key === "cutoff").map(([key, value]) => <div key={key}><dt>{labelReason(key)}</dt><dd>{String(value)}</dd></div>)}</dl>
+      <h4>Источники, допущения и формулы</h4><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify({ sources: result.receipt.sources, evidenceBuildIds: result.receipt.evidenceBuildIds, assumptions: result.receipt.assumptions, formulas: result.receipt.formulas }, null, 2)}</pre>
+      <h4>Результаты проверок и пороги</h4><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify({ outcome: result.outcome, reasons: result.reasons, thresholds: result.receipt.thresholds, gates: result.receipt.gates }, null, 2)}</pre>
+      <h4>Канонический структурированный JSON</h4><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{canonicalReceipt}</pre><p><button type="button" onClick={() => void copyReceipt()}>Скопировать JSON точной квитанции</button>{" "}<a href={`/internal-api/value/${encodeURIComponent(result.id)}?download=true`} download>Скачать JSON точной квитанции</a></p><p aria-live="polite">{copyMessage}</p>
+    </details></section>;
+}

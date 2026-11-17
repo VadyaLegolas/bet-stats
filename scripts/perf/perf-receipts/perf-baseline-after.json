@@ -2,6 +2,7 @@
   "schemaVersion": "perf-receipt-v1",
   "date": "2026-11-17T06:15:29.582Z",
   "gitSha": "3b83b3a901424eef4a4cad657d6a331feed66ebc",
+  "lighthouseVersion": "13.6.0",
   "profile": {
     "throttlingMethod": "simulate",
     "throttling": {

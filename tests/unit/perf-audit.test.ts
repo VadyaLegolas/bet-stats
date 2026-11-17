@@ -118,6 +118,39 @@ describe("fail-closed budget assertions", () => {
   });
 });
 
+// Minimal LHR shaped like the real runner output: version at the top level,
+// configSettings for the profile pin, and the four gated audit sources.
+function makeLhr(version = "13.6.0") {
+  return {
+    lighthouseVersion: version,
+    finalDisplayedUrl: "http://127.0.0.1:3230/fixtures/perf-audit-fixture",
+    configSettings: {
+      throttlingMethod: "simulate",
+      throttling: { rttMs: 150 },
+      screenEmulation: { mobile: true },
+      formFactor: "mobile",
+    },
+    categories: { performance: { score: 0.5 } },
+    audits: {
+      "largest-contentful-paint": { numericValue: 1000 },
+      "total-blocking-time": { numericValue: 100 },
+      "cumulative-layout-shift": { numericValue: 0.05 },
+      "resource-summary": { details: { items: [{ resourceType: "script", transferSize: 1000 }] } },
+    },
+  };
+}
+
+describe("receipt builder provenance", () => {
+  it("reads lighthouseVersion from the top-level LHR field so the written receipt always validates", () => {
+    const receipt = perfAudit.buildReceipt?.({ gitSha: "abc123", mobileLhrs: [makeLhr()], desktopLhrs: [makeLhr()] });
+    expect(
+      receipt?.lighthouseVersion,
+      "buildReceipt must read the top-level lhr.lighthouseVersion — the environment path never existed and silently dropped the key",
+    ).toBe("13.6.0");
+    expect(() => perfAudit.validateReceipt?.(receipt)).not.toThrow();
+  });
+});
+
 // Minimal closed-field receipt literal shaped like perf-receipt-v1.
 function makeReceipt(overrides: Record<string, unknown> = {}) {
   return {

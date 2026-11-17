@@ -171,7 +171,11 @@ export function buildReceipt({ gitSha, mobileLhrs, desktopLhrs }) {
     schemaVersion: "perf-receipt-v1",
     date: new Date().toISOString(),
     gitSha,
-    lighthouseVersion: mobileLhrs[0]?.environment?.lighthouseVersion,
+    // Top-level LHR field (Lighthouse 13 types/lhr/lhr.d.ts line 31). The old
+    // `environment?.lighthouseVersion` path never existed, so receipts were written
+    // with `undefined` — JSON.stringify dropped the key and --assert-only then
+    // rejected the harness's own receipts (INVALID_RECEIPT: missing lighthouseVersion).
+    lighthouseVersion: mobileLhrs[0]?.lighthouseVersion,
     profile: profileFromLhr(mobileLhrs[0]),
     pages: [{
       url: mobileLhrs[0]?.finalDisplayedUrl,

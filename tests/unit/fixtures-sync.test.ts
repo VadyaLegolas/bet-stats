@@ -24,15 +24,14 @@ const harness = vi.hoisted(() => ({
   observations: [] as Array<Record<string, unknown>>,
 }));
 
-// The service graph resolves @bet-stats/* through apps/api/node_modules to the built
-// package dist (the vitest source alias only applies to test-file imports), so the mock
-// keys must target the dist entry points the service actually imports.
-vi.mock("../../packages/database/dist/index.js", async (importOriginal) => {
+// Vitest aliases @bet-stats/* to workspace package sources in vitest.config.ts, so
+// vi.mock targets the package specifiers directly to intercept both test and service imports.
+vi.mock("@bet-stats/database", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@bet-stats/database")>();
   return { ...actual, createPrismaClient: () => harness.db };
 });
 
-vi.mock("../../packages/football-data/dist/index.js", async (importOriginal) => {
+vi.mock("@bet-stats/football-data", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@bet-stats/football-data")>();
   class FakeFootballDataOrgClient {
     constructor(_config: unknown) {}

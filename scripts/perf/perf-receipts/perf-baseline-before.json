@@ -1,0 +1,121 @@
+{
+  "schemaVersion": "perf-receipt-v1",
+  "date": "2026-11-17T05:58:29.746Z",
+  "gitSha": "2f4102b34a259ddc990789e16351425dbbbfb9ca",
+  "profile": {
+    "throttlingMethod": "simulate",
+    "throttling": {
+      "rttMs": 150,
+      "throughputKbps": 1638.4,
+      "requestLatencyMs": 562.5,
+      "downloadThroughputKbps": 1474.5600000000002,
+      "uploadThroughputKbps": 675,
+      "cpuSlowdownMultiplier": 4
+    },
+    "screenEmulation": {
+      "mobile": true,
+      "width": 412,
+      "height": 823,
+      "deviceScaleFactor": 1.75,
+      "disabled": false
+    },
+    "formFactor": "mobile"
+  },
+  "pages": [
+    {
+      "url": "http://127.0.0.1:3230/fixtures/perf-audit-fixture?left=perf-audit-forecast-pre_match&right=perf-audit-forecast-initial",
+      "metrics": {
+        "lcp": {
+          "median": 22051.316999999974,
+          "runs": [
+            14420.08699999999,
+            22051.316999999974,
+            24138.077000000005
+          ]
+        },
+        "tbt": {
+          "median": 755.5,
+          "runs": [
+            904.5,
+            755.5,
+            740.4999999999982
+          ]
+        },
+        "cls": {
+          "median": 0.08710918036748198,
+          "runs": [
+            0.08710918036748198,
+            0.08710918036748198,
+            0.08710918036748198
+          ]
+        },
+        "scriptTransferBytes": {
+          "median": 5203434,
+          "runs": [
+            5203434,
+            5203434,
+            5203434
+          ]
+        }
+      },
+      "performanceScore": 0.35
+    }
+  ],
+  "desktop": {
+    "profile": {
+      "throttlingMethod": "simulate",
+      "throttling": {
+        "rttMs": 150,
+        "throughputKbps": 1638.4,
+        "requestLatencyMs": 562.5,
+        "downloadThroughputKbps": 1474.5600000000002,
+        "uploadThroughputKbps": 675,
+        "cpuSlowdownMultiplier": 4
+      },
+      "screenEmulation": {
+        "mobile": false,
+        "width": 1350,
+        "height": 940,
+        "deviceScaleFactor": 1,
+        "disabled": false
+      },
+      "formFactor": "desktop"
+    },
+    "metrics": {
+      "lcp": {
+        "median": 27998.266000000003,
+        "runs": [
+          27998.266000000003,
+          30270.292500000018,
+          24036.184999999994
+        ]
+      },
+      "tbt": {
+        "median": 767,
+        "runs": [
+          757.4999999999982,
+          769.5,
+          767
+        ]
+      },
+      "cls": {
+        "median": 0.02954975289934618,
+        "runs": [
+          0.02954975289934618,
+          0.02954975289934618,
+          0.02954975289934618
+        ]
+      },
+      "scriptTransferBytes": {
+        "median": 5203434,
+        "runs": [
+          5203434,
+          5203434,
+          5203434
+        ]
+      }
+    },
+    "performanceScore": 0.28,
+    "recordedOnly": true
+  }
+}

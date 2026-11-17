@@ -75,3 +75,30 @@ jobs:
       - run: corepack enable
       - run: pnpm exec playwright install chromium --with-deps
       - run: pnpm exec playwright test -c playwright.ci.config.ts tests/e2e/evidence-scorecard.spec.ts tests/e2e/team-evidence-live.spec.ts
+  performance-budget:
+    runs-on: ubuntu-latest
+    # Workspace dist builds + the web production build + 3 pinned Lighthouse audits
+    # over one page must fit under the ceiling; Assumption A5 sizes the job at
+    # ~20 min generously — bump only with evidence from the first measured run.
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      # no `version` input — pnpm/action-setup reads packageManager pnpm@10.34.5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The audit harness performs ALL builds itself (config/domain/database/api dists
+      # plus the web production build with NEXT_DIST_DIR=.next-e2e it sets internally),
+      # boots the owned stack, audits and asserts — the job adds no build steps of its
+      # own beyond what it needs to reach the script.
+      - run: corepack enable
+      # Reuse the Playwright chromium the harness resolves via chromium.executablePath()
+      # — no second browser download, no third-party Lighthouse action (D-08).
+      - run: pnpm exec playwright install chromium --with-deps
+      # Default mode = measure + write receipt + assert budgets; exits 1 on any
+      # budget regression, failing the build (PERF-02). Raw HTML goes to the OS
+      # temp dir, CI commits nothing (D-07).
+      - run: node scripts/perf-audit.mjs

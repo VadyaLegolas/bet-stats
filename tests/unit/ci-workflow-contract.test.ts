@@ -18,6 +18,7 @@ const source = readFileSync(workflowPath, "utf8").replace(/\r\n/g, "\n");
 const QUALITY_JOB = "\n  quality:\n";
 const INTEGRATION_JOB = "\n  integration:\n";
 const E2E_JOB = "\n  e2e-portable:\n";
+const PERF_JOB = "\n  performance-budget:\n";
 
 function jobBlock(jobKey: string, nextJobKey?: string): string {
   const start = source.indexOf(jobKey);
@@ -29,19 +30,21 @@ function jobBlock(jobKey: string, nextJobKey?: string): string {
 }
 
 describe("CI workflow structure contract", () => {
-  it("declares the CI workflow with exactly the quality, integration and e2e-portable jobs", () => {
+  it("declares the CI workflow with exactly the quality, integration, e2e-portable and performance-budget jobs", () => {
     expect(existsSync(workflowPath), `Missing CI workflow: ${workflowPath}`).toBe(true);
     expect(source, "ci.yml must declare `name: CI`").toContain("name: CI");
     expect(source, "ci.yml must define the quality job").toContain(QUALITY_JOB);
     expect(source, "ci.yml must define the integration job").toContain(INTEGRATION_JOB);
     expect(source, "ci.yml must define the e2e-portable job").toContain(E2E_JOB);
+    expect(source, "ci.yml must define the performance-budget job").toContain(PERF_JOB);
   });
 
   it("runs every job on ubuntu-latest", () => {
     const jobs: Array<[string, string | undefined]> = [
       [QUALITY_JOB, INTEGRATION_JOB],
       [INTEGRATION_JOB, E2E_JOB],
-      [E2E_JOB, undefined],
+      [E2E_JOB, PERF_JOB],
+      [PERF_JOB, undefined],
     ];
     for (const [jobKey, nextJobKey] of jobs) {
       expect(
@@ -71,8 +74,8 @@ describe("CI workflow structure contract", () => {
     expect(source, "ci.yml must not use pull_request_target (fork-PR secret-exfiltration vector)").not.toContain(
       "pull_request_target",
     );
-    expect(source, "ci.yml must not use `paths:` — every commit must execute all three jobs").not.toContain("paths:");
-    expect(source, "ci.yml must not use `paths-ignore:` — every commit must execute all three jobs").not.toContain(
+    expect(source, "ci.yml must not use `paths:` — every commit must execute all four jobs").not.toContain("paths:");
+    expect(source, "ci.yml must not use `paths-ignore:` — every commit must execute all four jobs").not.toContain(
       "paths-ignore:",
     );
   });
@@ -195,7 +198,9 @@ describe("CI workflow job-body contracts", () => {
   });
 
   it("runs exactly the two portable specs under the webServer-less CI config", () => {
-    const e2e = source.slice(source.indexOf(E2E_JOB));
+    // Bounded by the performance-budget job so the e2e assertions read exactly
+    // the e2e job even after new jobs are appended to the workflow.
+    const e2e = jobBlock(E2E_JOB, PERF_JOB);
     expect(e2e, "e2e-portable job must run `corepack enable` (stacks shell out to corepack pnpm)").toContain(
       "corepack enable",
     );
@@ -207,5 +212,24 @@ describe("CI workflow job-body contracts", () => {
       e2e,
       "e2e-portable job must run playwright with -c playwright.ci.config.ts and the explicit two-spec list",
     ).toContain("playwright.ci.config.ts");
+  });
+
+  it("gates performance through the pinned audit script in the performance-budget job", () => {
+    const perf = jobBlock(PERF_JOB);
+    expect(perf, "performance-budget job must run `corepack enable` (the audit harness shells out to corepack pnpm)").toContain(
+      "corepack enable",
+    );
+    expect(
+      perf,
+      "performance-budget job must reuse Playwright's chromium via `playwright install chromium --with-deps` — no second browser download (D-08)",
+    ).toContain("playwright install chromium --with-deps");
+    expect(
+      perf,
+      "performance-budget job must gate through `node scripts/perf-audit.mjs` — the same pinned script, budget file and mobile profile as the local runs (D-06)",
+    ).toContain("node scripts/perf-audit.mjs");
+    expect(
+      perf,
+      "performance-budget job must declare timeout-minutes (a hung chromium launch must fail loudly, not sit on the 6-hour default)",
+    ).toContain("timeout-minutes:");
   });
 });

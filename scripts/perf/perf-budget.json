@@ -25,8 +25,8 @@
   "budgets": {
     "lcp": 26500,
     "tbt": 950,
-    "cls": 0.11,
-    "scriptTransferBytes": 6300000
+    "cls": 0.09,
+    "scriptTransferBytes": 5500000
   },
   "desktopProfile": {
     "throttlingMethod": "simulate",

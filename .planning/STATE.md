@@ -4,16 +4,16 @@ milestone: v1.1
 current_phase: 10
 current_phase_name: Performance Audit and Budgets
 status: executing
-stopped_at: Phase 10 executing (10-01 + 10-02 complete; next 10-03)
-last_updated: "2026-11-17T07:25:00.000Z"
+stopped_at: Phase 10 plans complete (10-01..10-03); ready for phase verification/wrap-up
+last_updated: "2026-11-17T07:30:00.000Z"
 last_activity: 2026-11-17
-last_activity_desc: Plan 10-02 complete (D-09 workbench split, after-receipt, tightened deterministic budgets)
-state_head: 2cfc9a9
+last_activity_desc: Plan 10-03 complete (performance-budget CI job, four-job contract policy, induced-regression dry-run proof; PERF-02)
+state_head: 88e5287
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 21
-  completed_plans: 20
+  completed_plans: 21
   percent: 30
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 
 ## Current Position
 
-Phase: 10 (Performance Audit and Budgets) — EXECUTING
-Plan: Waves 1-2 complete (10-01, 10-02); next 10-03 (performance-budget CI job)
-Status: Executing phase 10
-Last activity: 2026-11-17 — 10-02 complete: D-09 split (ForecastComparisonPanel + ValueOutcomeSection lazy via next/dynamic, eager odds-entry core intact), tests repointed 32/32, after-receipt committed (LCP 23346.2ms / TBT 641ms / CLS 0.0871 / script 5200986B, −2448B vs before), budgets tightened on deterministic metrics only (bytes 6300000→5500000, CLS 0.11→0.09)
+Phase: 10 (Performance Audit and Budgets) — PLANS COMPLETE, awaiting phase verification/wrap-up
+Plan: All 3 plans complete (10-01, 10-02, 10-03)
+Status: Phase 10 executed; next: /gsd-verify-work / phase audit (first green CI run on push is the recorded manual check)
+Last activity: 2026-11-17 — 10-03 complete: ci.yml performance-budget job (node scripts/perf-audit.mjs after workspace install; reuses Playwright chromium, D-08), контрактный тест охраняет все четыре задачи (16/16), gate failure path proven locally — induced CLS regression: exit 1, «cls: 0.08710918036748198 > budget 0.000001»; PERF-02 complete
 
 Progress: [███░░░░░░░] 30%
 
@@ -140,6 +140,7 @@ Progress: [███░░░░░░░] 30%
 | Phase 09 P08 | 7min | 3 tasks | 3 files |
 | Phase 10 P10-01 | 87min | 3 tasks | 6 files |
 | Phase 10 P10-02 | 10min | 3 tasks | 8 files |
+| Phase 10 P10-03 | 12min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -296,6 +297,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 10]: 7 pre-existing fixtures-sync unit failures (PrismaClientKnownRequestError) logged to 10 deferred-items.md — out of perf scope, needs a repair task (10-01)
 - [Phase 10]: D-09 split lands both post-interaction panels as separate next/dynamic chunks (4184B + 4375B raw) but the honest byte win is only −2448B of 5.2MB — the transfer is dominated by framework/shared chunks; the after-proof is the committed receipt plus build-artifact inspection, not inspection alone (10-02)
 - [Phase 10]: Budget tightening applies only to deterministic metrics (scriptTransferBytes 6300000→5500000, CLS 0.11→0.09 — identical across every run); LCP/TBT keep Plan-01 budgets because run spreads (14.4–24.2s; 626–905ms) would make medians-plus-modest-headroom a flaky CI gate (10-02)
+- [Phase 10]: CI performance-budget job runs node scripts/perf-audit.mjs in default measure+assert mode after a frozen-lockfile install — the harness performs ALL builds itself (NEXT_DIST_DIR=.next-e2e internal), the job reuses Playwright's chromium (D-08) and adds no build steps; the contract test enumerates all four jobs and bounds the e2e block by the perf job in the same commit (T-10-07) (10-03)
+- [Phase 10]: PERF-02 failure path proven locally, not inferred: --assert-only against a doctored budget copy (cls 0.000001) exits 1 naming the breach («cls: 0.08710918036748198 > budget 0.000001»); the committed budget file stays byte-identical; the CI-green half remains a push-time manual check per 10-VALIDATION.md (10-03)
+- [Phase 10]: buildReceipt read the nonexistent lhr.environment.lighthouseVersion path — optional chain yielded undefined, JSON.stringify dropped the key, and --assert-only rejected the harness's own committed receipts (INVALID_RECEIPT); fixed to top-level lhr.lighthouseVersion (Lighthouse 13 types line 31) and both committed receipts repaired with the true 13.6.0 — always round-trip a written receipt through the validator when touching the receipt code (10-03)
 
 ### Pending Todos
 

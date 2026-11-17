@@ -9,7 +9,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 - [x] **Phase 7: CI Pipeline & Quality Gates** - Every push and PR runs a frozen, Linux-based pipeline that gates schema, types, lint, tests, and build before anything else lands. (completed 2026-10-22)
 - [x] **Phase 8: Backups and Restore Verification** - The operator trusts that PostgreSQL can be restored, proven by scheduled restore drills with visible verification status. (completed 2026-11-05)
 - [x] **Phase 9: Degradation Alerting** - The operator is told when providers, workers, HTTP error rates, or backups degrade, through durable alerts viewable in the operations center. (completed 2026-11-16)
-- [ ] **Phase 10: Performance Audit and Budgets** - The fixture detail page meets declared Lighthouse budgets, and regressions fail CI instead of shipping.
+- [x] **Phase 10: Performance Audit and Budgets** - The fixture detail page meets declared Lighthouse budgets, and regressions fail CI instead of shipping. (completed 2026-11-17)
 - [ ] **Phase 11: Dixon-Coles Model Version** - Forecasts can be issued under a corrected, versioned model whose rolling-origin backtests are compared against the frozen baseline before promotion.
 - [ ] **Phase 12: Calibration Layer and Versioned Rollback** - Users see calibrated probabilities with honest labels and insufficient-data states, backed by per-model-version calibrators that roll back on measured regression.
 - [ ] **Phase 13: CLV Price Diary** - Forecast-time and closing prices are compared per candidate, with honest unavailable states and strict evaluation-only semantics.
@@ -103,7 +103,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 **Plan list**:
 - [x] 10-01-PLAN.md — Audit harness on the owned stack: Wave-0 unit tests, «before» median-of-3 receipt, perf-budget.json pinned from measurement ✅ 2026-11-17 (10-01-SUMMARY.md: harness + before-receipt LCP 22051.3ms/TBT 755.5ms/CLS 0.0871/5 203 434B + recorded-only desktop block; budgets pinned with ~20% headroom; 18/18 unit tests)
 - [x] 10-02-PLAN.md — D-09 workbench split (lazy comparison/value panels), test updates, «after» receipt + budget tightening ✅ 2026-11-17 (10-02-SUMMARY.md: обе панели ленивые через next/dynamic, жадное ядро ввода коэффициентов цело; after-receipt LCP 23346.2ms/TBT 641ms/CLS 0.0871/5 200 986B — строго ниже before; бюджеты ужесточены по детерминированным метрикам: байты 5 500 000, CLS 0.09; тесты 32/32)
-- [ ] 10-03-PLAN.md — performance-budget CI job + contract-test extension + induced-regression dry-run
+- [x] 10-03-PLAN.md — performance-budget CI job + contract-test extension + induced-regression dry-run ✅ 2026-11-17 (10-03-SUMMARY.md: ci.yml performance-budget job runs node scripts/perf-audit.mjs — same script/config/profile, exits 1 on regression, reuses Playwright chromium (D-08); контрактный тест охраняет все четыре задачи в том же коммите; доказательство отказа локально — искусственный регресс CLS: exit 1, «cls: 0.08710918036748198 > budget 0.000001»; первый зелёный CI-прогон остаётся ручной проверкой при пуше)
 **UI hint**: yes
 
 ### Phase 11: Dixon-Coles Model Version
@@ -211,7 +211,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 | 7. CI Pipeline & Quality Gates | 3/3 | Complete    | 2026-10-22 |
 | 8. Backups and Restore Verification | 7/7 | Complete    | 2026-10-31 |
 | 9. Degradation Alerting | 8/8 | Complete    | 2026-11-16 |
-| 10. Performance Audit and Budgets | 0/0 | Not started | - |
+| 10. Performance Audit and Budgets | 3/3 | Complete    | 2026-11-17 |
 | 11. Dixon-Coles Model Version | 0/0 | Not started | - |
 | 12. Calibration Layer and Versioned Rollback | 0/0 | Not started | - |
 | 13. CLV Price Diary | 0/0 | Not started | - |

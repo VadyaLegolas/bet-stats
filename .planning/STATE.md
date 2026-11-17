@@ -4,16 +4,16 @@ milestone: v1.1
 current_phase: 10
 current_phase_name: Performance Audit and Budgets
 status: executing
-stopped_at: Phase 10 executing (wave 1 complete: 10-01; next 10-02)
-last_updated: "2026-11-17T07:15:00.000Z"
+stopped_at: Phase 10 executing (10-01 + 10-02 complete; next 10-03)
+last_updated: "2026-11-17T07:25:00.000Z"
 last_activity: 2026-11-17
-last_activity_desc: Plan 10-01 complete (audit harness, before-receipt, budgets pinned)
-state_head: 79f5234
+last_activity_desc: Plan 10-02 complete (D-09 workbench split, after-receipt, tightened deterministic budgets)
+state_head: 2cfc9a9
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 21
-  completed_plans: 19
+  completed_plans: 20
   percent: 30
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 ## Current Position
 
 Phase: 10 (Performance Audit and Budgets) — EXECUTING
-Plan: Wave 1 complete (10-01); next Wave 2 (10-02 — D-09 workbench split, «after» receipt, budget tightening)
+Plan: Waves 1-2 complete (10-01, 10-02); next 10-03 (performance-budget CI job)
 Status: Executing phase 10
-Last activity: 2026-11-17 — 10-01 complete: audit harness (scripts/perf-audit.mjs), committed before-receipt (LCP 22051.3ms / TBT 755.5ms / CLS 0.0871 / script 5203434B + recorded-only desktop block), perf-budget.json pinned with ~20% headroom, 18/18 Wave-0 unit tests
+Last activity: 2026-11-17 — 10-02 complete: D-09 split (ForecastComparisonPanel + ValueOutcomeSection lazy via next/dynamic, eager odds-entry core intact), tests repointed 32/32, after-receipt committed (LCP 23346.2ms / TBT 641ms / CLS 0.0871 / script 5200986B, −2448B vs before), budgets tightened on deterministic metrics only (bytes 6300000→5500000, CLS 0.11→0.09)
 
 Progress: [███░░░░░░░] 30%
 
@@ -139,6 +139,7 @@ Progress: [███░░░░░░░] 30%
 | Phase 09 P06 | 10min | 2 tasks | 2 files |
 | Phase 09 P08 | 7min | 3 tasks | 3 files |
 | Phase 10 P10-01 | 87min | 3 tasks | 6 files |
+| Phase 10 P10-02 | 10min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -293,6 +294,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 10]: Perf audit harness seeds the FULL fail-closed ForecastResponseDto into the snapshot receipt column — the eval-stack `receipt: {}` shape 500s the /forecasts list route (fail-closed exact-keys parse), which would render the degraded workbench and make the audit dishonest (10-01)
 - [Phase 10]: Budgets pinned from the committed before-receipt with ~20% headroom (LCP 26500ms, TBT 950ms, CLS 0.11, script 6300000B); profile + recorded-only desktopProfile copied verbatim from the receipt's lhr.configSettings (self-verifying pin, D-06); desktop never gated (D-04) (10-01)
 - [Phase 10]: 7 pre-existing fixtures-sync unit failures (PrismaClientKnownRequestError) logged to 10 deferred-items.md — out of perf scope, needs a repair task (10-01)
+- [Phase 10]: D-09 split lands both post-interaction panels as separate next/dynamic chunks (4184B + 4375B raw) but the honest byte win is only −2448B of 5.2MB — the transfer is dominated by framework/shared chunks; the after-proof is the committed receipt plus build-artifact inspection, not inspection alone (10-02)
+- [Phase 10]: Budget tightening applies only to deterministic metrics (scriptTransferBytes 6300000→5500000, CLS 0.11→0.09 — identical across every run); LCP/TBT keep Plan-01 budgets because run spreads (14.4–24.2s; 626–905ms) would make medians-plus-modest-headroom a flaky CI gate (10-02)
 
 ### Pending Todos
 

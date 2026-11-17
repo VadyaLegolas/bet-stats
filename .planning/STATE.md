@@ -4,16 +4,16 @@ milestone: v1.1
 current_phase: 10
 current_phase_name: Performance Audit and Budgets
 status: executing
-stopped_at: Phase 10 context gathered
-last_updated: "2026-11-17T05:34:55.483Z"
-last_activity: 2026-11-16
-last_activity_desc: Phase 09 complete, transitioned to Phase 10
-state_head: 1ae41b627e9633eba04e004f0f233e3e00490514
+stopped_at: Phase 10 executing (wave 1 complete: 10-01; next 10-02)
+last_updated: "2026-11-17T07:15:00.000Z"
+last_activity: 2026-11-17
+last_activity_desc: Plan 10-01 complete (audit harness, before-receipt, budgets pinned)
+state_head: 79f5234
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 21
-  completed_plans: 18
+  completed_plans: 19
   percent: 30
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 
 ## Current Position
 
-Phase: 10 (Performance Audit and Budgets) — READY TO EXECUTE
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-11-16 — Phase 09 complete, transitioned to Phase 10
+Phase: 10 (Performance Audit and Budgets) — EXECUTING
+Plan: Wave 1 complete (10-01); next Wave 2 (10-02 — D-09 workbench split, «after» receipt, budget tightening)
+Status: Executing phase 10
+Last activity: 2026-11-17 — 10-01 complete: audit harness (scripts/perf-audit.mjs), committed before-receipt (LCP 22051.3ms / TBT 755.5ms / CLS 0.0871 / script 5203434B + recorded-only desktop block), perf-budget.json pinned with ~20% headroom, 18/18 Wave-0 unit tests
 
 Progress: [███░░░░░░░] 30%
 
@@ -138,6 +138,7 @@ Progress: [███░░░░░░░] 30%
 | Phase 09 P05 | 25 | 2 tasks | 5 files |
 | Phase 09 P06 | 10min | 2 tasks | 2 files |
 | Phase 09 P08 | 7min | 3 tasks | 3 files |
+| Phase 10 P10-01 | 87min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -289,6 +290,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 09]: Single-line RED assertions via mock.calls lookups keep vitest failure output TAP-YAML-parseable for tdd-red-evidence (09-06)
 - [Phase 09]: Page and e2e derive the operations overview fetch search from one shared overviewFetchSearch helper (overview-request.ts), so the signed parameter set can never drift out of the page's fetch URL again (T-09-22, 09-08)
 - [Phase 09]: Full unfiltered operator-overview.spec.ts run is the only completion evidence for the operations-center guard: 6 passed, 0 failed on the owned release stack; the round-3 filtered-run masking lesson is enforced as a hard gate in 09-08
+- [Phase 10]: Perf audit harness seeds the FULL fail-closed ForecastResponseDto into the snapshot receipt column — the eval-stack `receipt: {}` shape 500s the /forecasts list route (fail-closed exact-keys parse), which would render the degraded workbench and make the audit dishonest (10-01)
+- [Phase 10]: Budgets pinned from the committed before-receipt with ~20% headroom (LCP 26500ms, TBT 950ms, CLS 0.11, script 6300000B); profile + recorded-only desktopProfile copied verbatim from the receipt's lhr.configSettings (self-verifying pin, D-06); desktop never gated (D-04) (10-01)
+- [Phase 10]: 7 pre-existing fixtures-sync unit failures (PrismaClientKnownRequestError) logged to 10 deferred-items.md — out of perf scope, needs a repair task (10-01)
 
 ### Pending Todos
 

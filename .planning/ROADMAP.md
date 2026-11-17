@@ -101,7 +101,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 **Notes / research flags**: Research gap to resolve at planning — STACK.md/ARCHITECTURE.md verify Recharts is absent from the repo; do not add a charting library (it would blow the budget); if Recharts unexpectedly exists, the fix strategy becomes dynamic-import-per-widget. Target component: ~39 KB client `forecast-workbench.tsx`.
 **Plans**: 3 plans
 **Plan list**:
-- [ ] 10-01-PLAN.md — Audit harness on the owned stack: Wave-0 unit tests, «before» median-of-3 receipt, perf-budget.json pinned from measurement
+- [ ] 10-01-PLAN.md — Audit harness on the owned stack: Wave-0 unit tests, «before» median-of-3 receipt, perf-budget.json pinned from measurement ✅ 2026-11-17 (10-01-SUMMARY.md: harness + before-receipt LCP 22051.3ms/TBT 755.5ms/CLS 0.0871/5 203 434B + recorded-only desktop block; budgets pinned with ~20% headroom; 18/18 unit tests)
 - [ ] 10-02-PLAN.md — D-09 workbench split (lazy comparison/value panels), test updates, «after» receipt + budget tightening
 - [ ] 10-03-PLAN.md — performance-budget CI job + contract-test extension + induced-regression dry-run
 **UI hint**: yes

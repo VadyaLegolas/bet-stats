@@ -40,6 +40,9 @@ const AUDIT_NEXT_DIST_DIR = ".next-e2e";
 // and lives outside this set by construction — assertMetricsWithinBudgets never reads it.
 export const GATED_METRICS = ["lcp", "tbt", "cls", "scriptTransferBytes"];
 
+// Fail-closed error names, e.g. UNMEASURABLE_SCRIPT_TRANSFER_BYTES.
+const METRIC_ERROR_NAMES = { lcp: "LCP", tbt: "TBT", cls: "CLS", scriptTransferBytes: "SCRIPT_TRANSFER_BYTES" };
+
 const state = { container: "", url: "", apiPid: undefined, webPid: undefined, htmlDir: "", ownsHtmlDir: false };
 
 function docker(...args) {
@@ -118,7 +121,7 @@ export function extractMetrics(lhr) {
   };
   for (const metric of GATED_METRICS) {
     const value = metrics[metric];
-    if (typeof value !== "number" || Number.isNaN(value)) throw new Error(`UNMEASURABLE_${metric.toUpperCase()}`);
+    if (typeof value !== "number" || Number.isNaN(value)) throw new Error(`UNMEASURABLE_${METRIC_ERROR_NAMES[metric]}`);
   }
   return metrics;
 }
@@ -142,7 +145,7 @@ export function assertMetricsWithinBudgets(metrics, budgets) {
   for (const metric of GATED_METRICS) {
     const medianValue = metrics?.[metric]?.median;
     const budget = budgets[metric];
-    if (typeof medianValue !== "number" || Number.isNaN(medianValue)) throw new Error(`UNMEASURABLE_${metric.toUpperCase()}`);
+    if (typeof medianValue !== "number" || Number.isNaN(medianValue)) throw new Error(`UNMEASURABLE_${METRIC_ERROR_NAMES[metric]}`);
     if (typeof budget !== "number" || Number.isNaN(budget)) throw new Error(`${metric}: missing budget value`);
     if (medianValue > budget) throw new Error(`${metric}: ${medianValue} > budget ${budget}`);
   }
@@ -184,8 +187,50 @@ export function buildReceipt({ gitSha, mobileLhrs, desktopLhrs }) {
   };
 }
 
-// D-06 comparability: the receipt's recorded lhr.configSettings profile must equal the
-// budget's pinned profile or the run fails loudly (T-10-03).
+// Closed-field receipt validation (T-10-01): unknown top-level keys, secret-shaped
+// values anywhere in the receipt, and missing gated-metric blocks all fail loudly.
+const RECEIPT_FIELDS = ["schemaVersion", "date", "gitSha", "lighthouseVersion", "profile", "pages", "desktop"];
+
+const SECRET_SHAPED = [
+  /postgres(ql)?:\/\/[^\s/]*:[^\s/]*@/i, // connection string with credentials
+  /\bbearer\s+[A-Za-z0-9._\-+/=]{8,}/i, // bearer-style token
+];
+
+function assertSecretFree(value, path) {
+  if (typeof value === "string") {
+    for (const pattern of SECRET_SHAPED) {
+      if (pattern.test(value)) throw new Error(`RECEIPT_SECRET_SHAPED_VALUE: ${path}`);
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertSecretFree(item, `${path}[${index}]`));
+    return;
+  }
+  if (value && typeof value === "object") {
+    for (const [key, item] of Object.entries(value)) assertSecretFree(item, `${path}.${key}`);
+  }
+}
+
+export function validateReceipt(receipt) {
+  if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)) throw new Error("INVALID_RECEIPT");
+  for (const key of Object.keys(receipt)) {
+    if (!RECEIPT_FIELDS.includes(key)) throw new Error(`UNKNOWN_RECEIPT_KEY: ${key}`);
+  }
+  for (const field of RECEIPT_FIELDS) {
+    if (!(field in receipt)) throw new Error(`INVALID_RECEIPT: missing ${field}`);
+  }
+  assertSecretFree(receipt, "receipt");
+  const pages = receipt.pages;
+  if (!Array.isArray(pages) || pages.length === 0) throw new Error("INVALID_RECEIPT: missing pages");
+  for (const page of pages) {
+    const metrics = page?.metrics;
+    if (!metrics || typeof metrics !== "object") throw new Error("INVALID_RECEIPT: missing page metrics");
+    for (const metric of GATED_METRICS) {
+      if (!metrics[metric]) throw new Error(`RECEIPT_MISSING_GATED_METRIC: ${metric}`);
+    }
+  }
+}
 export function assertProfileMatch(receiptProfile, budgetProfile) {
   if (JSON.stringify(receiptProfile) !== JSON.stringify(budgetProfile)) {
     throw new Error("PROFILE_DRIFT: receipt profile does not match the budget's pinned profile");
@@ -479,6 +524,7 @@ async function measureAndAssert({ receiptPath, budgetPath, record }) {
   }
 
   const receipt = buildReceipt({ gitSha: gitSha(), mobileLhrs, desktopLhrs });
+  validateReceipt(receipt);
   writeReceipt(receiptPath, receipt);
   console.log(`RECEIPT_WRITTEN: ${resolve(receiptPath)}`);
   const page = receipt.pages[0];
@@ -499,6 +545,7 @@ async function measureAndAssert({ receiptPath, budgetPath, record }) {
 function assertExistingReceipt({ receiptPath, budgetPath }) {
   const receipt = JSON.parse(readFileSync(receiptPath, "utf8"));
   const budget = loadBudget(budgetPath);
+  validateReceipt(receipt);
   assertProfileMatch(receipt.profile, budget.profile);
   const page = receipt.pages?.[0];
   if (!page) throw new Error("RECEIPT_PAGES_MISSING");

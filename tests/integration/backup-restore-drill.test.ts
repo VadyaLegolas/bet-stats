@@ -154,7 +154,7 @@ describe("backup dump and receipt drill", () => {
       BACKUP_PG_DB: "missing_database",
     });
 
-    const result = await runBackup({ config, database, databaseUrl, trigger: "SCHEDULED", exec: recordingExec({ record }) });
+    const result = await runBackup({ config, database, databaseUrl, trigger: "SCHEDULED", exec: recordingExec({ record, blockPathProbe: true }) });
 
     expect(result.status).toBe("FAILED");
     expect(result.reason).toBe("DUMP_FAILED");

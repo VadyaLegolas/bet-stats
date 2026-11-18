@@ -269,7 +269,20 @@ async function runSingleAudit(url, config, chromePath, htmlDir, label) {
   const { launch } = await import("chrome-launcher");
   const { default: lighthouse } = await import("lighthouse");
   // Same flags locally and CI for parity (Pitfall 7).
-  const chrome = await launch({ chromePath, chromeFlags: ["--headless=new"] });
+  const chrome = await launch({
+    chromePath,
+    // CI runners (GitHub Actions ubuntu) run as root in a container; Chrome
+    // refuses to start without --no-sandbox and hangs forever waiting for a
+    // debugging port. --disable-dev-shm-usage avoids /dev/shm exhaustion on
+    // small CI images. Locally these flags are harmless no-ops.
+    chromeFlags: [
+      "--headless=new",
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--disable-software-rasterizer",
+    ],
+  });
   try {
     const runnerResult = await lighthouse(url, { port: chrome.port, output: ["html", "json"] }, config);
     if (!runnerResult?.lhr) throw new Error(`UNMEASURABLE_${label.toUpperCase()}`);

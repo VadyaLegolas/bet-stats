@@ -29,9 +29,10 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 
 ## Current Position
 
-Phase: 10 (Performance Audit and Budgets) — PLANS COMPLETE, awaiting phase verification/wrap-up
-Plan: All 3 plans complete (10-01, 10-02, 10-03)
-Status: Phase 10 executed; next: /gsd-verify-work / phase audit (first green CI run on push is the recorded manual check)
+Phase: 10 (Performance Audit and Budgets) - VERIFIED WITH GAPS
+Plan: All 3 plans complete (10-01, 10-02, 10-03); verification found 1 gap
+Status: gaps_found (2026-11-17) — CI job calls scripts/perf-audit.mjs without the required --receipt flag (RECEIPT_PATH_REQUIRED every run); contract test too shallow. Next: /gsd-plan-phase 10 --gaps, then /gsd-execute-phase 10 --gaps-only
+Last activity: 2026-11-17 - verification 5/6 must-haves verified; PERF-01/PERF-02 reverted to Pending in REQUIREMENTS.md pending gap closure
 Last activity: 2026-11-17 — 10-03 complete: ci.yml performance-budget job (node scripts/perf-audit.mjs after workspace install; reuses Playwright chromium, D-08), контрактный тест охраняет все четыре задачи (16/16), gate failure path proven locally — induced CLS regression: exit 1, «cls: 0.08710918036748198 > budget 0.000001»; PERF-02 complete
 
 Progress: [███░░░░░░░] 30%

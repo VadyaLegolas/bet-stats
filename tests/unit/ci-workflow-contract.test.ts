@@ -227,6 +227,19 @@ describe("CI workflow job-body contracts", () => {
       perf,
       "performance-budget job must gate through `node scripts/perf-audit.mjs` — the same pinned script, budget file and mobile profile as the local runs (D-06)",
     ).toContain("node scripts/perf-audit.mjs");
+    // (б) Without an explicit --receipt, parseFlags throws RECEIPT_PATH_REQUIRED and
+    //     the job is permanently red — it cannot distinguish a regression from a compliant
+    //     run (verification gap 2026-11-18). The flag and its destination must be pinned.
+    expect(
+      perf,
+      "performance-budget job must pass an explicit --receipt to RUNNER_TEMP; without it parseFlags throws RECEIPT_PATH_REQUIRED and the gate is permanently red (PERF-02 gap)",
+    ).toContain('--receipt "$RUNNER_TEMP/perf-receipt.json');
+    // (в) CI must never write the receipt inside the committed scripts/perf tree —
+    //     baseline receipts are immutable inputs, not CI outputs (D-07).
+    expect(
+      perf,
+      "performance-budget job must not write the receipt into the committed scripts/perf tree — baseline receipts are immutable inputs (D-07)",
+    ).not.toContain("--receipt scripts/");
     expect(
       perf,
       "performance-budget job must declare timeout-minutes (a hung chromium launch must fail loudly, not sit on the 6-hour default)",

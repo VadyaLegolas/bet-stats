@@ -99,6 +99,8 @@ jobs:
       # — no second browser download, no third-party Lighthouse action (D-08).
       - run: pnpm exec playwright install chromium --with-deps
       # Default mode = measure + write receipt + assert budgets; exits 1 on any
-      # budget regression, failing the build (PERF-02). Raw HTML goes to the OS
-      # temp dir, CI commits nothing (D-07).
-      - run: node scripts/perf-audit.mjs
+      # budget regression, failing the build (PERF-02). The script has no default
+      # receipt path in any mode (fail-closed: RECEIPT_PATH_REQUIRED — D-06/D-08);
+      # CI names the destination explicitly: RUNNER_TEMP is provided by GitHub on
+      # every runner and is erased between jobs — outside the checkout tree (D-07).
+      - run: node scripts/perf-audit.mjs --receipt "$RUNNER_TEMP/perf-receipt.json"

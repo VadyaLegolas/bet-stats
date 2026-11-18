@@ -558,14 +558,21 @@ function assertExistingReceipt({ receiptPath, budgetPath }) {
   return 0;
 }
 
-function parseFlags(argv) {
+export function parseFlags(argv) {
   const flags = { record: false, assertOnly: false, budget: defaultBudgetPath, receipt: "", htmlDir: "" };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--record") flags.record = true;
     else if (arg === "--assert-only") flags.assertOnly = true;
     else if (arg === "--budget") flags.budget = resolve(argv[++index] ?? "");
-    else if (arg === "--receipt") flags.receipt = resolve(argv[++index] ?? "");
+    else if (arg === "--receipt") {
+      // Hardening: capture the raw value token; if it is undefined (flag is the
+      // last argument) or an empty string, throw before resolve() — path.resolve("")
+      // silently returns cwd, which would bypass the fail-closed check below.
+      const raw = argv[++index];
+      if (raw === undefined || raw === "") throw new Error("RECEIPT_PATH_REQUIRED");
+      flags.receipt = resolve(raw);
+    }
     else if (arg === "--html-dir") { flags.htmlDir = resolve(argv[++index] ?? ""); state.htmlDir = flags.htmlDir; state.ownsHtmlDir = false; }
     else throw new Error(`UNKNOWN_ARGUMENT: ${arg}`);
   }

@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import * as perfAudit from "../../scripts/perf-audit.mjs";
+
 // CI-02 backstop: this test is the executable security policy for
 // .github/workflows/ci.yml. It runs inside the unit project, therefore inside
 // the quality job itself — the policy guards the workflow that runs the policy.
@@ -244,5 +246,49 @@ describe("CI workflow job-body contracts", () => {
       perf,
       "performance-budget job must declare timeout-minutes (a hung chromium launch must fail loudly, not sit on the 6-hour default)",
     ).toContain("timeout-minutes:");
+  });
+
+  it("the performance-budget invocation parses under the audit script's own flag contract (cross-parse pin T-10-10)", () => {
+    // Extract the run-line that contains the audit script invocation from the
+    // perf job block and parse its argument vector through the script's own
+    // parseFlags — an executable pin that closes the substring-weakness:
+    //   • removing --receipt from ci.yml → parseFlags throws RECEIPT_PATH_REQUIRED
+    //   • renaming the flag in the script → throws UNKNOWN_ARGUMENT
+    // Both failures are caught BEFORE merge (this test runs inside the quality job).
+    const perf = jobBlock(PERF_JOB);
+    const runLine = perf
+      .split("\n")
+      .map((l) => l.trim())
+      .find((l) => l.startsWith("- run:") && l.includes("perf-audit.mjs"));
+    expect(runLine, "perf job must contain a run-line with perf-audit.mjs").toBeTruthy();
+
+    // Strip the YAML prefix ("- run: ") and split on whitespace to get tokens.
+    // Strip surrounding double-quotes from each token (CI YAML style).
+    const rawCmd = runLine!.replace(/^-\s+run:\s+/, "").trim();
+    const tokens = rawCmd.split(/\s+/).map((t) => t.replace(/^"|"$/g, ""));
+
+    // tokens[0] = "node", tokens[1] = "scripts/perf-audit.mjs", argv = tokens[2..]
+    const argv = tokens.slice(2);
+    expect(argv.length, "argv must contain at least --receipt and its value").toBeGreaterThanOrEqual(2);
+
+    const parseFlags = (perfAudit as unknown as { parseFlags?: (argv: string[]) => { receipt: string } }).parseFlags;
+    expect(typeof parseFlags, "parseFlags must be exported from perf-audit.mjs").toBe("function");
+
+    // Must not throw — a working invocation parses cleanly.
+    let flags: { receipt: string } | undefined;
+    expect(() => {
+      flags = parseFlags!(argv);
+    }, "the CI invocation must parse without throwing — a bare call or missing flag would throw RECEIPT_PATH_REQUIRED").not.toThrow();
+
+    // The resolved receipt path must NOT land inside the committed scripts/perf tree.
+    const receipt = flags?.receipt ?? "";
+    const normalised = receipt.replace(/\\/g, "/");
+    expect(
+      normalised,
+      "the resolved receipt path must not point inside scripts/perf — baseline receipts are immutable inputs (D-07)",
+    ).not.toMatch(/\/scripts\/perf\//);
+
+    // The --receipt flag must be present in the argv vector.
+    expect(argv, "argv must include --receipt").toContain("--receipt");
   });
 });

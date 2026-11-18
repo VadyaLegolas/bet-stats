@@ -198,6 +198,55 @@ describe("closed-field secret-free receipt schema", () => {
   });
 });
 
+describe("parseFlags flag contract", () => {
+  // perfAudit.parseFlags is a pure CLI-argument parser; importing the module is
+  // safe because the main-entry guard prevents the harness from running on import.
+  const parseFlags = (perfAudit as unknown as { parseFlags?: (argv: string[]) => unknown }).parseFlags;
+
+  it("exports parseFlags as a function", () => {
+    expect(typeof parseFlags, "parseFlags must be exported from perf-audit.mjs").toBe("function");
+  });
+
+  it("throws RECEIPT_PATH_REQUIRED on a bare call with no arguments", () => {
+    expect(() => parseFlags?.([]), "parseFlags([]) must throw RECEIPT_PATH_REQUIRED").toThrow("RECEIPT_PATH_REQUIRED");
+  });
+
+  it("throws RECEIPT_PATH_REQUIRED when --receipt flag is present but has no value token", () => {
+    expect(
+      () => parseFlags?.(["--receipt"]),
+      "parseFlags(['--receipt']) must throw RECEIPT_PATH_REQUIRED — flag without a value token",
+    ).toThrow("RECEIPT_PATH_REQUIRED");
+  });
+
+  it("throws RECEIPT_PATH_REQUIRED when --receipt value is an empty string", () => {
+    expect(
+      () => parseFlags?.(["--receipt", ""]),
+      "parseFlags(['--receipt', '']) must throw RECEIPT_PATH_REQUIRED — empty value silently resolved to cwd before hardening",
+    ).toThrow("RECEIPT_PATH_REQUIRED");
+  });
+
+  it("resolves a valid --receipt path and returns well-formed flags", () => {
+    const result = parseFlags?.(["--receipt", "C:/tmp/r.json"]) as Record<string, unknown> | undefined;
+    expect(result?.receipt, "flags.receipt must be a resolved non-empty path").toBeTruthy();
+    expect(typeof result?.receipt).toBe("string");
+    expect(result?.record, "flags.record must default to false").toBe(false);
+    expect(result?.assertOnly, "flags.assertOnly must default to false").toBe(false);
+  });
+
+  it("sets assertOnly=true when --assert-only is passed alongside a valid --receipt", () => {
+    const result = parseFlags?.(["--assert-only", "--receipt", "C:/tmp/r.json"]) as Record<string, unknown> | undefined;
+    expect(result?.assertOnly, "flags.assertOnly must be true with --assert-only").toBe(true);
+    expect(result?.receipt, "flags.receipt must still be resolved").toBeTruthy();
+  });
+
+  it("throws UNKNOWN_ARGUMENT for unrecognised flags", () => {
+    expect(
+      () => parseFlags?.(["--unknown", "--receipt", "C:/tmp/r.json"]),
+      "parseFlags must throw UNKNOWN_ARGUMENT for unrecognised flags",
+    ).toThrow("UNKNOWN_ARGUMENT: --unknown");
+  });
+});
+
 describe("recorded-only fields are never gated", () => {
   it("ignores the desktop block entirely: desktop values can never fail the assertion (D-04)", () => {
     // Desktop medians far above every budget — the assertion reads only pages[].metrics.

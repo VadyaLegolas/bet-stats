@@ -12,4 +12,4 @@ export function createPrismaClient(connectionString = process.env.DATABASE_URL):
   });
 }
 
-export type { PrismaClient } from "./generated/prisma/client.js";
+export type { Prisma, PrismaClient } from "./generated/prisma/client.js";

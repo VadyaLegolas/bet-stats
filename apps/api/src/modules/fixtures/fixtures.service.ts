@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException, type OnModuleDestroy } from "@nestjs/common";
 import { readFreshnessThresholds, readServerConfig } from "@bet-stats/config";
-import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { createPrismaClient, type Prisma, type PrismaClient } from "@bet-stats/database";
 import { classifyFreshness, type DataStateProjection } from "@bet-stats/domain";
 
 import { DAILY_ALLOWANCE, PROVIDER, PROVIDER_MINUTE_LIMIT, PROVIDER_MINUTE_WINDOW_SECONDS } from "./fixtures-budget.js";
@@ -196,13 +196,13 @@ export class FixturesService implements OnModuleDestroy {
     let rows: FixtureRow[];
     const liveCutoff = new Date(now.getTime() - LIVE_MAX_AGE_MS);
     if (this.database) {
-      const andConditions: any[] = [
+      const andConditions: Prisma.FixtureWhereInput[] = [
         { status: { notIn: TERMINAL_STATUSES } },
         { OR: [{ kickoffUtc: { gte: from, lt: to } }, { AND: [{ status: { in: LIVE_STATUSES } }, { updatedAt: { gte: liveCutoff } }] }] },
       ];
       if (filters.competition) andConditions.push({ league: { name: filters.competition } });
       else andConditions.push({ league: { externalRefs: { some: { provider: "football-data.org" } } } });
-      rows = await this.database.fixture.findMany({ where: { AND: andConditions } as any, include: { league: true, season: true, homeTeam: true, awayTeam: true, provenance: { orderBy: { observedAt: "desc" }, take: 1 } }, orderBy: [{ kickoffUtc: "asc" }, { id: "asc" }] });
+      rows = await this.database.fixture.findMany({ where: { AND: andConditions }, include: { league: true, season: true, homeTeam: true, awayTeam: true, provenance: { orderBy: { observedAt: "desc" }, take: 1 } }, orderBy: [{ kickoffUtc: "asc" }, { id: "asc" }] });
     } else {
       rows = [deterministicFixtureRow(now)].filter((row) => !TERMINAL_STATUSES.includes(row.status) && (row.kickoffUtc >= from && row.kickoffUtc < to || (LIVE_STATUSES.includes(row.status) && row.updatedAt >= liveCutoff)) && (!filters.competition || row.league.name === filters.competition)) as unknown as FixtureRow[];
     }

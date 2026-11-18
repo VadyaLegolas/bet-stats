@@ -43,7 +43,7 @@ export const GATED_METRICS = ["lcp", "tbt", "cls", "scriptTransferBytes"];
 // Fail-closed error names, e.g. UNMEASURABLE_SCRIPT_TRANSFER_BYTES.
 const METRIC_ERROR_NAMES = { lcp: "LCP", tbt: "TBT", cls: "CLS", scriptTransferBytes: "SCRIPT_TRANSFER_BYTES" };
 
-const state = { container: "", url: "", apiPid: undefined, webPid: undefined, htmlDir: "", ownsHtmlDir: false };
+const state = { container: "", url: "", apiPid: undefined, webPid: undefined, apiProc: undefined, webProc: undefined, htmlDir: "", ownsHtmlDir: false };
 
 function docker(...args) {
   return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
@@ -60,18 +60,25 @@ function corepack(args, extraEnv = {}) {
 }
 
 function start(args, env) {
-  return spawn(
+  const child = spawn(
     process.platform === "win32" ? "cmd.exe" : "corepack",
     process.platform === "win32" ? ["/d", "/s", "/c", "corepack", ...args] : args,
     { cwd: root, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"], windowsHide: true },
   );
+  child.log = [];
+  child.stdout?.on("data", (chunk) => { child.log.push(chunk.toString()); });
+  child.stderr?.on("data", (chunk) => { child.log.push(chunk.toString()); });
+  child.on("error", (err) => { child.log.push(`SPAWN_ERROR: ${err.message}`); });
+  return child;
 }
 
 function stop(pid) {
   if (!pid) return;
   try {
     if (process.platform === "win32") execFileSync("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore" });
-    else process.kill(-pid, "SIGTERM");
+    else {
+      try { process.kill(-pid, "SIGTERM"); } catch { try { process.kill(pid, "SIGTERM"); } catch { /* ignore */ } }
+    }
   } catch { /* already stopped */ }
 }
 
@@ -82,14 +89,19 @@ function cleanup() {
   if (state.ownsHtmlDir && state.htmlDir) rmSync(state.htmlDir, { recursive: true, force: true });
 }
 
-async function wait(url) {
+async function wait(url, child) {
   let cause;
   for (let i = 0; i < 120; i += 1) {
+    if (child && child.exitCode !== null) {
+      const logs = child.log?.join("") ?? "";
+      throw new Error(`SERVICE_EXITED_EARLY: exitCode=${child.exitCode}\n${logs}`);
+    }
     try { const response = await fetch(url); if (response.ok) return; cause = response.status; }
     catch (error) { cause = error; }
     await new Promise((done) => setTimeout(done, 500));
   }
-  throw new Error(`SERVICE_NOT_READY: ${String(cause)}`);
+  const logs = child?.log?.join("") ?? "";
+  throw new Error(`SERVICE_NOT_READY: ${String(cause)}\n${logs}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -428,7 +440,7 @@ async function bootOwnedStack() {
 
   // REDIS_READY=true is fine: the app degrades gracefully without a live Redis and no
   // external Redis is started. Zero live provider calls anywhere in the run.
-  state.apiPid = start(["pnpm", "--filter", "@bet-stats/api", "dev"], {
+  state.apiProc = start(["pnpm", "--filter", "@bet-stats/api", "dev"], {
     DATABASE_URL: state.url,
     API_HOST: "127.0.0.1",
     API_PORT: "3231",
@@ -436,22 +448,24 @@ async function bootOwnedStack() {
     REDIS_READY: "true",
     NODE_ENV: "test",
     ELIGIBILITY_ALLOWED_REGIONS: "PL",
-  }).pid;
-  await wait(`${AUDIT_API_ORIGIN}/health/ready`);
+  });
+  state.apiPid = state.apiProc.pid;
+  await wait(`${AUDIT_API_ORIGIN}/health/ready`, state.apiProc);
 
   // Production web build + start with distDir isolation; NEXT_DIST_DIR is set for BOTH
   // build and start (Pitfall 6). ELIGIBILITY_CHECKED_AT is deliberately NOT set — the
   // proxies stamp per request so long audits never serve a stale-denied page (Pitfall 5).
   corepack(["pnpm", "--filter", "@bet-stats/web", "build"], { NEXT_DIST_DIR: AUDIT_NEXT_DIST_DIR });
-  state.webPid = start(["pnpm", "--filter", "@bet-stats/web", "exec", "next", "start", "--hostname", "127.0.0.1", "--port", "3230"], {
+  state.webProc = start(["pnpm", "--filter", "@bet-stats/web", "exec", "next", "start", "--hostname", "127.0.0.1", "--port", "3230"], {
     API_ORIGIN: AUDIT_API_ORIGIN,
     DISPLAY_TIME_ZONE: "Europe/Warsaw",
     NODE_ENV: "production",
     ELIGIBILITY_REGION: "PL",
     ELIGIBILITY_AGE_ACKNOWLEDGED: "true",
     NEXT_DIST_DIR: AUDIT_NEXT_DIST_DIR,
-  }).pid;
-  await wait(AUDIT_WEB_ORIGIN);
+  });
+  state.webPid = state.webProc.pid;
+  await wait(AUDIT_WEB_ORIGIN, state.webProc);
 }
 
 // Honest-audit preflight: the page must render the full workbench, never the degraded state.

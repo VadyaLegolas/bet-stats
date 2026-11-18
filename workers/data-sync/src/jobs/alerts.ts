@@ -589,8 +589,6 @@ const moduleWarningTickState: WarningTickState = createWarningTickState();
 
 export type AlertingScheduler = Readonly<{ close(): void }>;
 
-const MAX_TIMER_DELAY = 2 ** 31 - 1;
-
 /**
  * Self-closing interval chain (D-08): one evaluator tick every intervalMs with
  * an injected clock and onError catch-all (T-09-05) — a failing tick never

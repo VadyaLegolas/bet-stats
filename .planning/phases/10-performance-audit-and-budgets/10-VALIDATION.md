@@ -63,9 +63,10 @@ created: "2026-11-16"
 
 ## Manual-Only Verifications
 
-| Behavior | Requirement | Why Manual | Test Instructions |
-|----------|-------------|------------|-------------------|
-| CI `performance-budget` job green on the PR | PERF-02 | first push observation | push the branch, watch the GitHub Actions run |
+| Behavior | Requirement | Why Manual | Status | Result |
+|----------|-------------|------------|--------|--------|
+| Свежий полный локальный прогон харнеса (Docker, 3+3 аудита) | PERF-02 / PERF-01 | только живой прогон подтверждает fix parseFlags в сквозном вызове | ✅ DONE (2026-11-18T08:19–08:23 UTC+1) | exit 0; `RECEIPT_WRITTEN`; `BUDGETS_OK: all gated medians within budget`; LCP 12156 / TBT 702 / CLS 0.0871 / bytes 2818955 — все в рамках бюджетов (LCP 26500 / TBT 950 / CLS 0.09 / bytes 5500000); время 3м 49с; temp-квитанция удалена; стек разработчика :3000 не затронут |
+| CI `performance-budget` job green на GitHub Actions | PERF-02 | первый живой прогон джобы подтверждает fix ci.yml | ⏳ DEFERRED (2026-11-18) | Нет плагина GitHub — автоматический push/наблюдение недоступны. Два fix-коммита готовы к пушу: `2a91d11` (ci.yml + тест) и `c6d2c83` (parseFlags export + cross-parse). Пользователь: выполните `git push origin main` и проверьте джобу `performance-budget` в GitHub Actions. Ожидается: зелёная, ≤25 мин. |
 
 ---
 

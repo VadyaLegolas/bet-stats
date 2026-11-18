@@ -432,6 +432,7 @@ async function bootOwnedStack() {
 
   corepack(["pnpm", "--filter", "@bet-stats/config", "build"]);
   corepack(["pnpm", "--filter", "@bet-stats/domain", "build"]);
+  corepack(["pnpm", "--filter", "@bet-stats/football-data", "build"]);
   corepack(["pnpm", "--filter", "@bet-stats/database", "build"]);
   const { createPrismaClient } = await import(pathToFileURL(databaseDist).href);
   const prisma = createPrismaClient(state.url);

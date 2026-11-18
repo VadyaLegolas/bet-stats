@@ -4,17 +4,17 @@ milestone: v1.1
 current_phase: 10
 current_phase_name: Performance Audit and Budgets
 status: executing
-stopped_at: Phase 10 plans complete (10-01..10-03); ready for phase verification/wrap-up
-last_updated: "2026-11-17T07:30:00.000Z"
+stopped_at: Phase 10 UI-SPEC approved
+last_updated: "2026-11-18T06:54:53.180Z"
 last_activity: 2026-11-17
 last_activity_desc: Plan 10-03 complete (performance-budget CI job, four-job contract policy, induced-regression dry-run proof; PERF-02)
-state_head: 88e5287
+state_head: 0c1f80f147eae6782e656dc9f5cb8846c06e3f8c
 progress:
   total_phases: 10
-  completed_phases: 3
-  total_plans: 21
+  completed_phases: 4
+  total_plans: 22
   completed_plans: 21
-  percent: 30
+  percent: 40
 milestone_name: Reliability, Model Quality and Value Experience
 ---
 
@@ -29,13 +29,13 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 
 ## Current Position
 
-Phase: 10 (Performance Audit and Budgets) - VERIFIED WITH GAPS
+Phase: 10 (Performance Audit and Budgets) — READY TO EXECUTE
 Plan: All 3 plans complete (10-01, 10-02, 10-03); verification found 1 gap
 Status: gaps_found (2026-11-17) — CI job calls scripts/perf-audit.mjs without the required --receipt flag (RECEIPT_PATH_REQUIRED every run); contract test too shallow. Next: /gsd-plan-phase 10 --gaps, then /gsd-execute-phase 10 --gaps-only
 Last activity: 2026-11-17 - verification 5/6 must-haves verified; PERF-01/PERF-02 reverted to Pending in REQUIREMENTS.md pending gap closure
 Last activity: 2026-11-17 — 10-03 complete: ci.yml performance-budget job (node scripts/perf-audit.mjs after workspace install; reuses Playwright chromium, D-08), контрактный тест охраняет все четыре задачи (16/16), gate failure path proven locally — induced CLS regression: exit 1, «cls: 0.08710918036748198 > budget 0.000001»; PERF-02 complete
 
-Progress: [███░░░░░░░] 30%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
@@ -406,6 +406,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-16T01:22:43.532Z
-Stopped at: Phase 10 context gathered
-Resume file: .planning/phases/10-performance-audit-and-budgets/10-CONTEXT.md
+Last session: 2026-11-18T06:13:28.562Z
+Stopped at: Phase 10 UI-SPEC approved
+Resume file: .planning/phases/10-performance-audit-and-budgets/10-UI-SPEC.md

@@ -28,8 +28,8 @@
 
 ### Performance Audit and Budgets (PERF)
 
-- [ ] **PERF-01**: A user receives a fixture detail page that meets configured Lighthouse performance budgets measured as a median-of-3 audit against the production build, with before/after metrics recorded.
-- [ ] **PERF-02**: Lighthouse assertions run in CI against key pages and fail on budget regression. (Reverted after verification gaps_found 2026-11-17: CI job calls scripts/perf-audit.mjs without the required --receipt flag → RECEIPT_PATH_REQUIRED every run; gap closure pending)
+- [x] **PERF-01**: A user receives a fixture detail page that meets configured Lighthouse performance budgets measured as a median-of-3 audit against the production build, with before/after metrics recorded.
+- [x] **PERF-02**: Lighthouse assertions run in CI against key pages and fail on budget regression.
 
 ### Dixon-Coles Model Version (MODEL)
 
@@ -106,8 +106,8 @@ _Milestone v1.1 roadmap (2026-10-19): every requirement maps to exactly one phas
 | ALRT-02 | Phase 9 | Complete |
 | ALRT-03 | Phase 9 | Complete |
 | ALRT-04 | Phase 9 | Complete |
-| PERF-01 | Phase 10 | Pending (gaps_found — reverted) |
-| PERF-02 | Phase 10 | Pending (gaps_found — reverted) |
+| PERF-01 | Phase 10 | Complete |
+| PERF-02 | Phase 10 | Complete |
 | MODEL-01 | Phase 11 | Pending |
 | MODEL-02 | Phase 11 | Pending |
 | MODEL-03 | Phase 11 | Pending |

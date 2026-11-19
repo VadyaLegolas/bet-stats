@@ -99,12 +99,12 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   2. Lighthouse assertions run in CI against key pages and fail the build on budget regression, so later UI phases (scanner, journal, new markets) inherit the discipline.
 
 **Notes / research flags**: Research gap to resolve at planning — STACK.md/ARCHITECTURE.md verify Recharts is absent from the repo; do not add a charting library (it would blow the budget); if Recharts unexpectedly exists, the fix strategy becomes dynamic-import-per-widget. Target component: ~39 KB client `forecast-workbench.tsx`.
-**Plans**: 4 plans (1 gap-closure)
+**Plans**: 4/4 plans complete (3 + 1 gap-closure)
 **Plan list**:
 - [x] 10-01-PLAN.md — Audit harness on the owned stack: Wave-0 unit tests, «before» median-of-3 receipt, perf-budget.json pinned from measurement ✅ 2026-11-17 (10-01-SUMMARY.md: harness + before-receipt LCP 22051.3ms/TBT 755.5ms/CLS 0.0871/5 203 434B + recorded-only desktop block; budgets pinned with ~20% headroom; 18/18 unit tests)
 - [x] 10-02-PLAN.md — D-09 workbench split (lazy comparison/value panels), test updates, «after» receipt + budget tightening ✅ 2026-11-17 (10-02-SUMMARY.md: обе панели ленивые через next/dynamic, жадное ядро ввода коэффициентов цело; after-receipt LCP 23346.2ms/TBT 641ms/CLS 0.0871/5 200 986B — строго ниже before; бюджеты ужесточены по детерминированным метрикам: байты 5 500 000, CLS 0.09; тесты 32/32)
 - [x] 10-03-PLAN.md — performance-budget CI job + contract-test extension + induced-regression dry-run ✅ 2026-11-17 (10-03-SUMMARY.md: ci.yml performance-budget job runs node scripts/perf-audit.mjs — same script/config/profile, exits 1 on regression, reuses Playwright chromium (D-08); контрактный тест охраняет все четыре задачи в том же коммите; доказательство отказа локально — искусственный регресс CLS: exit 1, «cls: 0.08710918036748198 > budget 0.000001»; первый зелёный CI-прогон остаётся ручной проверкой при пуше)
-- [ ] 10-04-PLAN.md — Gap closure: когерентный контракт вызова perf-аудита — явный --receipt в CI-шаге (RUNNER_TEMP), fail-closed контракт скрипта сохранён + hardening пустого значения; контрактный тест пинует полный вызов через экспортированный parseFlags; blocking human-чекпойнт (первый зелёный CI-прогон, свежий полный локальный прогон)
+- [x] 10-04-PLAN.md — Gap closure: когерентный контракт вызова perf-аудита — явный --receipt в CI-шаге (RUNNER_TEMP), fail-closed контракт скрипта сохранён + hardening пустого значения; контрактный тест пинует полный вызов через экспортированный parseFlags; blocking human-чекпойнт (первый зелёный CI-прогон — run 44469419394, 2026-11-19; свежий полный локальный прогон — BUDGETS_OK exit 0)
 **UI hint**: yes
 
 ### Phase 11: Dixon-Coles Model Version
@@ -212,7 +212,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 | 7. CI Pipeline & Quality Gates | 3/3 | Complete    | 2026-10-22 |
 | 8. Backups and Restore Verification | 7/7 | Complete    | 2026-10-31 |
 | 9. Degradation Alerting | 8/8 | Complete    | 2026-11-16 |
-| 10. Performance Audit and Budgets | 3/3 | Complete    | 2026-11-17 |
+| 10. Performance Audit and Budgets | 4/4 | Complete    | 2026-11-17 |
 | 11. Dixon-Coles Model Version | 0/0 | Not started | - |
 | 12. Calibration Layer and Versioned Rollback | 0/0 | Not started | - |
 | 13. CLV Price Diary | 0/0 | Not started | - |

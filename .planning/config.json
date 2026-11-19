@@ -91,7 +91,20 @@
     "source_grounding": true,
     "source_grounding_authority": "grep"
   },
-  "resolve_model_ids": "omit",
+  "runtime": "opencode",
+  "model_profile_overrides": {
+    "opencode": {
+      "opus": {
+        "model": "openrouter/free"
+      },
+      "sonnet": {
+        "model": "openrouter/free"
+      },
+      "haiku": {
+        "model": "openrouter/free"
+      }
+    }
+  },
   "mode": "yolo",
   "granularity": "coarse"
 }

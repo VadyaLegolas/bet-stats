@@ -16,12 +16,12 @@
     {
       "number": "9",
       "name": "Degradation Alerting",
-      "status": "in_progress"
+      "status": "complete"
     },
     {
       "number": "10",
       "name": "Performance Audit and Budgets",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "11",
@@ -56,8 +56,8 @@
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 3 of 10 · 20% · executing"
+    "label": "Advance to the next step (plan phase 11)",
+    "reason": "Phase 5 of 10 — needs a plan"
   },
-  "updated_at": "2026-11-14T05:52:57.698Z"
+  "updated_at": "2026-11-19T06:27:12.311Z"
 }

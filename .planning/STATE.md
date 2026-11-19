@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.1
-current_phase: 10
-current_phase_name: Performance Audit and Budgets
-status: executing
-stopped_at: Phase 10 UI-SPEC approved
-last_updated: "2026-11-18T06:54:53.180Z"
-last_activity: 2026-11-17
-last_activity_desc: Plan 10-03 complete (performance-budget CI job, four-job contract policy, induced-regression dry-run proof; PERF-02)
-state_head: 0c1f80f147eae6782e656dc9f5cb8846c06e3f8c
+current_phase: 11
+current_phase_name: Dixon-Coles Model Version
+status: planning
+stopped_at: Phase 10 complete, ready to plan Phase 11
+last_updated: "2026-11-19T06:27:12.138Z"
+last_activity: 2026-11-19
+last_activity_desc: Phase 10 complete, transitioned to Phase 11
+state_head: 0a08ad2814f8f942f3b678caed19066237a858b9
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 22
-  completed_plans: 21
+  completed_plans: 22
   percent: 40
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -25,15 +25,14 @@ milestone_name: Reliability, Model Quality and Value Experience
 See: .planning/PROJECT.md (updated 2026-11-16)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Phase 10 - Performance Audit and Budgets
+**Current focus:** Phase 11 — Dixon-Coles Model Version
 
 ## Current Position
 
-Phase: 10 (Performance Audit and Budgets) — READY TO EXECUTE
-Plan: All 3 plans complete (10-01, 10-02, 10-03); verification found 1 gap
-Status: gaps_found (2026-11-17) — CI job calls scripts/perf-audit.mjs without the required --receipt flag (RECEIPT_PATH_REQUIRED every run); contract test too shallow. Next: /gsd-plan-phase 10 --gaps, then /gsd-execute-phase 10 --gaps-only
-Last activity: 2026-11-17 - verification 5/6 must-haves verified; PERF-01/PERF-02 reverted to Pending in REQUIREMENTS.md pending gap closure
-Last activity: 2026-11-17 — 10-03 complete: ci.yml performance-budget job (node scripts/perf-audit.mjs after workspace install; reuses Playwright chromium, D-08), контрактный тест охраняет все четыре задачи (16/16), gate failure path proven locally — induced CLS regression: exit 1, «cls: 0.08710918036748198 > budget 0.000001»; PERF-02 complete
+Phase: 11 — Dixon-Coles Model Version
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-19 — Phase 10 complete (verification passed, all 4 jobs green in CI run 44469419394), transitioned to Phase 11
 
 Progress: [████░░░░░░] 40%
 
@@ -41,7 +40,7 @@ Progress: [████░░░░░░] 40%
 
 **Velocity:**
 
-- Total plans completed: 106
+- Total plans completed: 110
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -58,6 +57,7 @@ Progress: [████░░░░░░] 40%
 | 7 | 3 | - | - |
 | 08 | 7 | - | - |
 | 09 | 8 | - | - |
+| 10 | 4 | - | - |
 
 **Recent Trend:**
 
@@ -407,5 +407,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-11-18T06:13:28.562Z
-Stopped at: Phase 10 UI-SPEC approved
+Stopped at: Phase 10 complete, ready to plan Phase 11
 Resume file: .planning/phases/10-performance-audit-and-budgets/10-UI-SPEC.md

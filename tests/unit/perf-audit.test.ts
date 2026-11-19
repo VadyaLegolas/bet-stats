@@ -266,3 +266,25 @@ describe("recorded-only fields are never gated", () => {
     expect(() => perfAudit.validateReceipt?.(receipt)).not.toThrow();
   });
 });
+
+// CI run 44340445683 (head 9387bd0) reached BUDGETS_OK at 15:53:28 and then sat idle
+// until the 25-minute job timeout: on POSIX the owned API/web servers are grandchildren
+// of the corepack wrapper, survived stop() and kept the harness' stdio pipes open. These
+// two source pins keep the fix from regressing — a completed audit must always end the
+// step with the assertion's exit code.
+describe("CI process-exit contract", () => {
+  it("launches owned services in their own POSIX process group so stop() can kill the tree", () => {
+    expect(
+      source,
+      "start() must spawn POSIX services detached so process.kill(-pid) reaches pnpm's child servers",
+    ).toMatch(/detached:\s*process\.platform\s*!==\s*"win32"/);
+  });
+
+  it("exits explicitly with the assertion code after cleanup instead of leaving open handles", () => {
+    expect(source, "cleanup must still run in the main-entry finally block").toMatch(/finally\s*\{\s*cleanup\(\);\s*\}/);
+    expect(
+      source,
+      "the main entry must call process.exit(exitCode) so a successful audit cannot hang the CI step",
+    ).toMatch(/process\.exit\(exitCode\)/);
+  });
+});

@@ -1,8 +1,8 @@
 ---
-status: fixed_pending_ci
+status: fixed
 trigger: "CI run 44261545363: performance-budget job hangs at 'waiting for dynamic debugging port in chrome-err.log' and is cancelled by the 25-minute job timeout"
 created: "2026-11-18T08:20:00Z"
-updated: "2026-11-18T16:52:00Z"
+updated: "2026-11-19T07:00:00Z"
 fixed_commit: "9387bd0"
 ---
 
@@ -57,4 +57,6 @@ Locally these are harmless no-ops; on the CI runner they let Chrome expose its d
 
 ## Status
 
-**Fixed, pending first green CI run.**
+**Fixed and confirmed on CI:** run 44340445683 (head `9387bd0`) launched Chrome and completed all six audits
+(`RECEIPT_WRITTEN` + `BUDGETS_OK`). The same run then exposed a separate post-audit exit hang — see
+`perf-budget-ci-process-hang.md`.

@@ -63,7 +63,19 @@ function start(args, env) {
   const child = spawn(
     process.platform === "win32" ? "cmd.exe" : "corepack",
     process.platform === "win32" ? ["/d", "/s", "/c", "corepack", ...args] : args,
-    { cwd: root, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"], windowsHide: true },
+    {
+      cwd: root,
+      env: { ...process.env, ...env },
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+      // POSIX: make the wrapper a process-group leader so stop() can signal the whole
+      // tree (corepack → pnpm → node server). Without a group, process.kill(-pid) fails
+      // (no such group) and the fallback only kills the wrapper — the surviving server
+      // keeps the harness' inherited stdio pipes open, so the process never exits even
+      // after BUDGETS_OK (CI run 44340445683, performance-budget timeout). taskkill /T
+      // already covers the Windows tree, so no detachment is needed there.
+      detached: process.platform !== "win32",
+    },
   );
   child.log = [];
   child.stdout?.on("data", (chunk) => { child.log.push(chunk.toString()); });
@@ -617,12 +629,19 @@ async function main() {
 
 // Main-entry guard: importing this module for unit tests never runs the harness.
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  let exitCode = 1;
   try {
-    process.exitCode = await main();
+    exitCode = await main();
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
-    process.exitCode = 1;
+    exitCode = 1;
   } finally {
     cleanup();
   }
+  // Explicit exit: on POSIX the owned API/web servers are grandchildren of the corepack
+  // wrapper and can outlive stop() holding inherited stdio handles. Node then keeps the
+  // event loop alive forever after a completed, successful audit (CI run 44340445683 sat
+  // from BUDGETS_OK at 15:53:28 until the 25-minute job timeout). Cleanup has already run
+  // synchronously (docker rm --force included), so nothing is left to drain.
+  process.exit(exitCode);
 }

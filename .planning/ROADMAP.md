@@ -119,7 +119,12 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   3. An operator can compare rolling-origin backtest metrics of the new version against the frozen baseline, and the methodology card names the exact integration and its limitations (e.g. neutral on O/U 2.5).
 
 **Notes / research flags**: Open product decision for discuss/spec — hybrid Elo/form-derived λ,μ + fitted per-league ρ (recommended, labeled as hybrid) vs full DC attack/defence refit (risks double-counting home advantage). ρ fitting window and decay selection are project-specific. `modelVersion` is hard-pinned as a string literal in ≥10 files — must widen the shared union in one pass.
-**Plans**: TBD
+**Plans**: 4 plans
+**Plan list**:
+- [ ] 11-01-PLAN.md — Domain foundation: `MODEL_VERSIONS` union, split config (`FORECAST_CONFIG` untouched, `DIXON_COLES_CONFIG`/`forecast-config-v2`), pinned τ math with feasible ρ band, deterministic ρ estimator, contract/orchestrator accept both versions with explicit params, V1 frozen numeric vector
+- [ ] 11-02-PLAN.md — Production default: leakage-safe per-league ρ from settled history (pooled/zero fallbacks), repository hook, `FORECAST_MODEL_VERSION` selector with `dixon-coles-ensemble-v1` default, all API/worker paths use one resolver, V1 selectable
+- [ ] 11-03-PLAN.md — MODEL-03 comparison: backtest plans pin their own version and fit ρ at `trainingEndsAt`, deterministic comparison receipt with plan hashes + window digest + honest verdict, `GET /evaluation/model-comparison`
+- [ ] 11-04-PLAN.md — Honest documentation: `model-card-v1.1.0` names the hybrid integration, τ convention, ρ policy, O/U 2.5 neutrality and V1 rollback path; `/methodology` renders it; e2e pin derives from the card
 **UI hint**: no
 
 ### Phase 12: Calibration Layer and Versioned Rollback

@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 import type { EvidenceProjectionDto, EvidenceSourceRef } from "../evidence/contract.js";
 import { calculateConfidence } from "./confidence.js";
-import { fairOddsForProbability, FORECAST_CONFIG } from "./config.js";
+import { fairOddsForProbability, FORECAST_CONFIG, FORECAST_CONFIGS, FORECAST_CONFIG_VERSION_BY_MODEL, type ForecastConfigVersion } from "./config.js";
+import type { DixonColesProvenance } from "./dixon-coles.js";
+import type { ForecastModelVersion } from "./model-version.js";
 
 export type ForecastMarket = "ONE_X_TWO" | "OVER_UNDER_2_5" | "BTTS";
 export type ForecastSelection = "HOME" | "DRAW" | "AWAY" | "OVER_2_5" | "UNDER_2_5" | "YES" | "NO";
@@ -15,6 +17,10 @@ export interface ForecastInput {
   readonly away: EvidenceProjectionDto;
   readonly lineupAvailable: boolean;
   readonly sourceReliability: number;
+  /** Absent means `poisson-ensemble-v1`: the version is never inferred from parameters. */
+  readonly modelVersion?: ForecastModelVersion;
+  /** Required for `dixon-coles-ensemble-v1`, ignored by `poisson-ensemble-v1`. */
+  readonly dixonColes?: Readonly<{ rho: number; provenance: DixonColesProvenance }>;
 }
 
 export interface ForecastEvent {
@@ -27,8 +33,8 @@ export interface ForecastDraft {
   readonly fixtureId: string;
   readonly forecastSnapshotId: string;
   readonly cutoff: string;
-  readonly modelVersion: "poisson-ensemble-v1";
-  readonly configVersion: "forecast-config-v1";
+  readonly modelVersion: ForecastModelVersion;
+  readonly configVersion: ForecastConfigVersion;
   readonly configHash: string;
   readonly inputHash: string;
   readonly evidenceBuildIds: readonly string[];
@@ -116,6 +122,8 @@ function event(selection: ForecastSelection, probability: number): ForecastEvent
 export function createForecast(input: ForecastInput): ForecastDraft {
   if (!Number.isFinite(Date.parse(input.cutoff))) throw new Error("INVALID_FORECAST_CUTOFF");
   if (!Number.isFinite(input.sourceReliability) || input.sourceReliability < 0 || input.sourceReliability > 1) throw new Error("INVALID_SOURCE_RELIABILITY");
+  const modelVersion = input.modelVersion ?? "poisson-ensemble-v1";
+  const configVersion = FORECAST_CONFIG_VERSION_BY_MODEL[modelVersion];
   const limitations: string[] = [];
   if (input.canonicalIdentityState !== "RESOLVED") limitations.push("UNRESOLVED_CANONICAL_IDENTITY");
   if (rate(input.home) === null) limitations.push("MISSING_HOME_GOAL_RATES");
@@ -175,7 +183,7 @@ export function createForecast(input: ForecastInput): ForecastDraft {
   const canonicalInput = { fixtureId: input.fixtureId, cutoff: input.cutoff, canonicalIdentityState: input.canonicalIdentityState, lineupAvailable: input.lineupAvailable, sourceReliability: input.sourceReliability, evidenceBuildIds, sources };
   return {
     fixtureId: input.fixtureId, forecastSnapshotId: input.forecastSnapshotId, cutoff: input.cutoff,
-    modelVersion: "poisson-ensemble-v1", configVersion: "forecast-config-v1", configHash: hash(FORECAST_CONFIG), inputHash: hash(canonicalInput), evidenceBuildIds,
+    modelVersion, configVersion, configHash: hash(FORECAST_CONFIGS[modelVersion]), inputHash: hash(canonicalInput), evidenceBuildIds,
     expectedGoals, scoreMatrix, retainedMass, tailMass: Math.max(0, 1 - retainedMass), tailWarning: 1 - retainedMass > FORECAST_CONFIG.tailWarningThreshold,
     normalizationVersion: "retained-mass-v1", rawMarginals, adjustments: { home: homeAdjustment, away: awayAdjustment },
     markets: { ONE_X_TWO: [event("HOME", home), event("DRAW", draw), event("AWAY", 1 - home - draw)], OVER_UNDER_2_5: [event("OVER_2_5", over), event("UNDER_2_5", 1 - over)], BTTS: [event("YES", yes), event("NO", 1 - yes)] },

@@ -1,3 +1,5 @@
+import { FORECAST_CONFIG_VERSION_BY_MODEL } from "./config.js";
+import { isForecastModelVersion } from "./model-version.js";
 import type { ForecastDraft, ForecastEvent, ForecastMarket } from "./model.js";
 
 export const FORECAST_KINDS = ["INITIAL", "PRE_MATCH", "LINEUP_CONFIRMED"] as const;
@@ -132,7 +134,7 @@ export function parseForecastResponse(value: unknown): ForecastResponseDto {
   if ((dto.kind === "LINEUP_CONFIRMED") !== (dto.officialLineupObservationId !== null)) throw new Error("INVALID_FORECAST_LINEUP_PROVENANCE");
   instant(dto.cutoff, "INVALID_FORECAST_CUTOFF");
   instant(dto.issuedAt, "INVALID_FORECAST_ISSUED_AT");
-  if (!Number.isInteger(dto.revision) || (dto.revision as number) < 1 || dto.modelVersion !== "poisson-ensemble-v1" || dto.configVersion !== "forecast-config-v1") throw new Error("INVALID_FORECAST_RESPONSE");
+  if (!Number.isInteger(dto.revision) || (dto.revision as number) < 1 || !isForecastModelVersion(dto.modelVersion) || dto.configVersion !== FORECAST_CONFIG_VERSION_BY_MODEL[dto.modelVersion]) throw new Error("INVALID_FORECAST_RESPONSE");
   if (!Array.isArray(dto.evidenceBuildIds) || dto.evidenceBuildIds.length !== 2 || dto.evidenceBuildIds.some((id) => typeof id !== "string" || id.length === 0)) throw new Error("INVALID_FORECAST_EVIDENCE");
   probabilities(dto.probabilities);
   confidence(dto.confidence);

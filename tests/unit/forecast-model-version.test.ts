@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { currentForecastConfigHash } from "../../packages/domain/src/evaluation/forecast-orchestrator.js";
 import { parseForecastResponse } from "../../packages/domain/src/forecast/contract.js";
 import { DIXON_COLES_CONFIG, FORECAST_CONFIG, FORECAST_CONFIGS, FORECAST_CONFIG_VERSION_BY_MODEL, forecastConfigHashFor } from "../../packages/domain/src/forecast/config.js";
+import { DIXON_COLES_CONVENTION } from "../../packages/domain/src/forecast/dixon-coles.js";
 import { createForecast } from "../../packages/domain/src/forecast/model.js";
 import { DEFAULT_FORECAST_MODEL_VERSION, MODEL_VERSIONS, isForecastModelVersion } from "../../packages/domain/src/forecast/model-version.js";
 import type { EvidenceProjectionDto } from "../../packages/domain/src/evidence/contract.js";
@@ -47,8 +48,19 @@ const input = {
   sourceReliability: 0.8,
 };
 
-function v1Response(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-  const forecast = createForecast(input);
+const dcProvenance = {
+  rho: -0.08,
+  convention: DIXON_COLES_CONVENTION,
+  method: "mle-low-score-v1" as const,
+  windowFrom: "2024-01-01T00:00:00.000Z",
+  windowTo: cutoff,
+  sampleSize: 400,
+  tauMin: 0.908,
+};
+
+type AnyForecast = ReturnType<typeof createForecast>;
+
+function responseOf(forecast: AnyForecast, overrides: Record<string, unknown> = {}, receiptOverrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     id: "snapshot-1",
     fixtureId: forecast.fixtureId,
@@ -68,10 +80,19 @@ function v1Response(overrides: Record<string, unknown> = {}): Record<string, unk
     limitations: forecast.limitations,
     tail: { retainedMass: forecast.retainedMass, tailMass: forecast.tailMass, warning: forecast.tailWarning, normalizationVersion: forecast.normalizationVersion },
     assumptions: forecast.assumptions,
-    receipt: { forecastSnapshotId: "snapshot-1", officialLineupObservationId: null, evidenceBuildIds: forecast.evidenceBuildIds, sourceRefs: forecast.sources, expectedGoals: forecast.expectedGoals, adjustments: forecast.adjustments },
+    receipt: { forecastSnapshotId: "snapshot-1", officialLineupObservationId: null, evidenceBuildIds: forecast.evidenceBuildIds, sourceRefs: forecast.sources, expectedGoals: forecast.expectedGoals, adjustments: forecast.adjustments, ...receiptOverrides },
     issuedAt: cutoff,
     ...overrides,
   };
+}
+
+function v1Response(overrides: Record<string, unknown> = {}, receiptOverrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return responseOf(createForecast(input), overrides, receiptOverrides);
+}
+
+function dcResponse(overrides: Record<string, unknown> = {}, receiptOverrides: Record<string, unknown> = {}): Record<string, unknown> {
+  const forecast = createForecast({ ...input, modelVersion: "dixon-coles-ensemble-v1", dixonColes: { rho: dcProvenance.rho, provenance: dcProvenance } });
+  return responseOf(forecast, overrides, { dixonColes: dcProvenance, ...receiptOverrides });
 }
 
 describe("forecast model version union", () => {
@@ -142,5 +163,41 @@ describe("forecast response contract across versions", () => {
 
   it("rejects an unknown model version", () => {
     expect(() => parseForecastResponse(v1Response({ modelVersion: "poisson-ensemble-v2" }))).toThrow("INVALID_FORECAST_RESPONSE");
+  });
+
+  it("accepts a dixon-coles response with its provenance block", () => {
+    const parsed = parseForecastResponse(dcResponse());
+    expect(parsed.modelVersion).toBe("dixon-coles-ensemble-v1");
+    expect(parsed.configVersion).toBe("forecast-config-v2");
+    expect(parsed.receipt.dixonColes).toEqual(dcProvenance);
+  });
+
+  it("rejects a dixon-coles response without the provenance block", () => {
+    const receipt = dcResponse().receipt as Record<string, unknown>;
+    const { dixonColes: _omitted, ...rest } = receipt;
+    expect(() => parseForecastResponse({ ...dcResponse(), receipt: rest })).toThrow("INVALID_FORECAST_RECEIPT");
+  });
+
+  it("rejects a v1 response that carries the provenance block", () => {
+    expect(() => parseForecastResponse(v1Response({}, { dixonColes: dcProvenance }))).toThrow("UNKNOWN_FORECAST_RECEIPT_KEY");
+  });
+
+  it.each([
+    [{ ...dcProvenance, rho: 1 }],
+    [{ ...dcProvenance, rho: -1 }],
+    [{ ...dcProvenance, convention: "tau-other" }],
+    [{ ...dcProvenance, method: "guess" }],
+    [{ ...dcProvenance, windowFrom: "2024-01-01T00:00:00Z" }],
+    [{ ...dcProvenance, windowTo: "2023-06-01T00:00:00.000Z" }],
+    [{ ...dcProvenance, sampleSize: -1 }],
+    [{ ...dcProvenance, sampleSize: 1.5 }],
+    [{ ...dcProvenance, tauMin: 0 }],
+    [{ ...dcProvenance, rho: Number.NaN }],
+  ])("rejects an invalid provenance block %o", (block) => {
+    expect(() => parseForecastResponse(dcResponse({}, { dixonColes: block }))).toThrow("INVALID_FORECAST_RECEIPT");
+  });
+
+  it("rejects an unknown key inside the provenance block", () => {
+    expect(() => parseForecastResponse(dcResponse({}, { dixonColes: { ...dcProvenance, secret: "x" } }))).toThrow("INVALID_FORECAST_RECEIPT");
   });
 });

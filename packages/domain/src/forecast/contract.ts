@@ -1,4 +1,5 @@
 import { FORECAST_CONFIG_VERSION_BY_MODEL } from "./config.js";
+import { DIXON_COLES_CONVENTION, type DixonColesProvenance } from "./dixon-coles.js";
 import { isForecastModelVersion } from "./model-version.js";
 import type { ForecastDraft, ForecastEvent, ForecastMarket } from "./model.js";
 
@@ -18,6 +19,8 @@ export interface ForecastReceiptDto {
   readonly sourceRefs: ForecastDraft["sources"];
   readonly expectedGoals: ForecastDraft["expectedGoals"];
   readonly adjustments: ForecastDraft["adjustments"];
+  /** Present exactly for `dixon-coles-ensemble-v1`; absent for `poisson-ensemble-v1`. */
+  readonly dixonColes?: DixonColesProvenance;
 }
 
 export interface ForecastResponseDto {
@@ -125,6 +128,19 @@ function confidence(value: unknown): asserts value is ForecastDraft["confidence"
   for (const component of Object.values(components)) if (typeof component !== "number" || !Number.isFinite(component) || component < 0 || component > 1) throw new Error("INVALID_FORECAST_CONFIDENCE");
 }
 
+function dixonColesProvenance(value: unknown): asserts value is DixonColesProvenance {
+  const block = record(value, "INVALID_FORECAST_RECEIPT");
+  exactKeys(block, ["rho", "convention", "method", "windowFrom", "windowTo", "sampleSize", "tauMin"], "INVALID_FORECAST_RECEIPT");
+  if (typeof block.rho !== "number" || !Number.isFinite(block.rho) || block.rho <= -1 || block.rho >= 1) throw new Error("INVALID_FORECAST_RECEIPT");
+  if (block.convention !== DIXON_COLES_CONVENTION) throw new Error("INVALID_FORECAST_RECEIPT");
+  if (block.method !== "mle-low-score-v1" && block.method !== "pooled-fallback-v1" && block.method !== "insufficient-sample-zero") throw new Error("INVALID_FORECAST_RECEIPT");
+  instant(block.windowFrom, "INVALID_FORECAST_RECEIPT");
+  instant(block.windowTo, "INVALID_FORECAST_RECEIPT");
+  if (block.windowFrom > block.windowTo) throw new Error("INVALID_FORECAST_RECEIPT");
+  if (!Number.isInteger(block.sampleSize) || (block.sampleSize as number) < 0) throw new Error("INVALID_FORECAST_RECEIPT");
+  if (typeof block.tauMin !== "number" || !Number.isFinite(block.tauMin) || block.tauMin <= 0) throw new Error("INVALID_FORECAST_RECEIPT");
+}
+
 export function parseForecastResponse(value: unknown): ForecastResponseDto {
   const dto = record(value, "INVALID_FORECAST_RESPONSE");
   exactKeys(dto, ["id", "fixtureId", "kind", "officialLineupObservationId", "revision", "cutoff", "modelVersion", "modelHash", "configVersion", "configHash", "inputHash", "evidenceFingerprint", "evidenceBuildIds", "probabilities", "confidence", "limitations", "tail", "assumptions", "receipt", "issuedAt"], "UNKNOWN_FORECAST_RESPONSE_KEY");
@@ -143,7 +159,11 @@ export function parseForecastResponse(value: unknown): ForecastResponseDto {
   exactKeys(tail, ["retainedMass", "tailMass", "warning", "normalizationVersion"], "INVALID_FORECAST_TAIL");
   if (typeof tail.retainedMass !== "number" || typeof tail.tailMass !== "number" || typeof tail.warning !== "boolean" || tail.normalizationVersion !== "retained-mass-v1") throw new Error("INVALID_FORECAST_TAIL");
   const receipt = record(dto.receipt, "INVALID_FORECAST_RECEIPT");
-  exactKeys(receipt, ["forecastSnapshotId", "officialLineupObservationId", "evidenceBuildIds", "sourceRefs", "expectedGoals", "adjustments"], "INVALID_FORECAST_RECEIPT");
+  const receiptKeys = ["forecastSnapshotId", "officialLineupObservationId", "evidenceBuildIds", "sourceRefs", "expectedGoals", "adjustments"] as const;
+  const requiresDixonColes = dto.modelVersion === "dixon-coles-ensemble-v1";
+  if (!requiresDixonColes && "dixonColes" in receipt) throw new Error("UNKNOWN_FORECAST_RECEIPT_KEY");
+  exactKeys(receipt, requiresDixonColes ? [...receiptKeys, "dixonColes"] : receiptKeys, "INVALID_FORECAST_RECEIPT");
+  if (requiresDixonColes) dixonColesProvenance(receipt.dixonColes);
   if (receipt.forecastSnapshotId !== dto.id || receipt.officialLineupObservationId !== dto.officialLineupObservationId || JSON.stringify(receipt.evidenceBuildIds) !== JSON.stringify(dto.evidenceBuildIds) || !Array.isArray(receipt.sourceRefs)) throw new Error("INVALID_FORECAST_RECEIPT");
   return dto as unknown as ForecastResponseDto;
 }

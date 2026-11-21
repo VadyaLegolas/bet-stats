@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { EvidenceProjectionDto, EvidenceSourceRef } from "../evidence/contract.js";
 import { calculateConfidence } from "./confidence.js";
 import { fairOddsForProbability, FORECAST_CONFIG, FORECAST_CONFIGS, FORECAST_CONFIG_VERSION_BY_MODEL, type ForecastConfigVersion } from "./config.js";
-import type { DixonColesProvenance } from "./dixon-coles.js";
+import { applyDixonColesCorrection, type DixonColesProvenance } from "./dixon-coles.js";
 import type { ForecastModelVersion } from "./model-version.js";
 
 export type ForecastMarket = "ONE_X_TWO" | "OVER_UNDER_2_5" | "BTTS";
@@ -124,6 +124,7 @@ export function createForecast(input: ForecastInput): ForecastDraft {
   if (!Number.isFinite(input.sourceReliability) || input.sourceReliability < 0 || input.sourceReliability > 1) throw new Error("INVALID_SOURCE_RELIABILITY");
   const modelVersion = input.modelVersion ?? "poisson-ensemble-v1";
   const configVersion = FORECAST_CONFIG_VERSION_BY_MODEL[modelVersion];
+  if (modelVersion === "dixon-coles-ensemble-v1" && !input.dixonColes) throw new Error("DIXON_COLES_RHO_REQUIRED");
   const limitations: string[] = [];
   if (input.canonicalIdentityState !== "RESOLVED") limitations.push("UNRESOLVED_CANONICAL_IDENTITY");
   if (rate(input.home) === null) limitations.push("MISSING_HOME_GOAL_RATES");
@@ -151,20 +152,26 @@ export function createForecast(input: ForecastInput): ForecastDraft {
   const homeMultiplier = homeAdjustment.multiplier;
   const awayMultiplier = awayAdjustment.multiplier;
   const expectedGoals = { home: clamp(FORECAST_CONFIG.baselineGoals.home * homeMultiplier, FORECAST_CONFIG.lambdaBounds), away: clamp(FORECAST_CONFIG.baselineGoals.away * awayMultiplier, FORECAST_CONFIG.lambdaBounds) };
+  const dixonColes = modelVersion === "dixon-coles-ensemble-v1" ? input.dixonColes : undefined;
   const raw: Array<{ homeGoals: number; awayGoals: number; probability: number }> = [];
   for (let homeGoals = 0; homeGoals <= 7; homeGoals += 1) for (let awayGoals = 0; awayGoals <= 7; awayGoals += 1) raw.push({ homeGoals, awayGoals, probability: poisson(homeGoals, expectedGoals.home) * poisson(awayGoals, expectedGoals.away) });
-  const retainedMass = raw.reduce((sum, cell) => sum + cell.probability, 0);
-  const scoreMatrix = raw.map((cell) => ({ ...cell, probability: cell.probability / retainedMass }));
-  const sumWhere = (matrix: typeof scoreMatrix | typeof raw, predicate: (cell: (typeof scoreMatrix)[number]) => boolean) => matrix.filter(predicate).reduce((sum, cell) => sum + cell.probability, 0);
+  // The low-score correction is applied BEFORE the retained-mass renormalization so
+  // that every market still sums to one (T-11-03) and retained + tail stay complementary.
+  const corrected: Array<{ homeGoals: number; awayGoals: number; probability: number }> = dixonColes
+    ? applyDixonColesCorrection({ cells: raw, lambdaHome: expectedGoals.home, lambdaAway: expectedGoals.away, rho: dixonColes.rho })
+    : raw;
+  const retainedMass = corrected.reduce((sum, cell) => sum + cell.probability, 0);
+  const scoreMatrix = corrected.map((cell) => ({ ...cell, probability: cell.probability / retainedMass }));
+  const sumWhere = (matrix: readonly { homeGoals: number; awayGoals: number; probability: number }[], predicate: (cell: { homeGoals: number; awayGoals: number; probability: number }) => boolean) => matrix.filter(predicate).reduce((sum, cell) => sum + cell.probability, 0);
   const probability = (predicate: (cell: (typeof scoreMatrix)[number]) => boolean) => sumWhere(scoreMatrix, predicate);
   const home = probability((cell) => cell.homeGoals > cell.awayGoals);
   const draw = probability((cell) => cell.homeGoals === cell.awayGoals);
   const over = probability((cell) => cell.homeGoals + cell.awayGoals > 2);
   const yes = probability((cell) => cell.homeGoals > 0 && cell.awayGoals > 0);
-  const rawHome = sumWhere(raw, (cell) => cell.homeGoals > cell.awayGoals);
-  const rawDraw = sumWhere(raw, (cell) => cell.homeGoals === cell.awayGoals);
-  const rawOver = sumWhere(raw, (cell) => cell.homeGoals + cell.awayGoals > 2);
-  const rawYes = sumWhere(raw, (cell) => cell.homeGoals > 0 && cell.awayGoals > 0);
+  const rawHome = sumWhere(corrected, (cell) => cell.homeGoals > cell.awayGoals);
+  const rawDraw = sumWhere(corrected, (cell) => cell.homeGoals === cell.awayGoals);
+  const rawOver = sumWhere(corrected, (cell) => cell.homeGoals + cell.awayGoals > 2);
+  const rawYes = sumWhere(corrected, (cell) => cell.homeGoals > 0 && cell.awayGoals > 0);
   const rawMarginals = {
     ONE_X_TWO: [event("HOME", rawHome), event("DRAW", rawDraw), event("AWAY", retainedMass - rawHome - rawDraw)],
     OVER_UNDER_2_5: [event("OVER_2_5", rawOver), event("UNDER_2_5", retainedMass - rawOver)],
@@ -180,7 +187,11 @@ export function createForecast(input: ForecastInput): ForecastDraft {
   const confidence = calculateConfidence(components);
   const sources = [...(input.home.receipt?.inputs ?? []), ...(input.away.receipt?.inputs ?? [])].sort((a, b) => canonical(a).localeCompare(canonical(b)));
   const evidenceBuildIds = [input.home.buildId, input.away.buildId].filter((value): value is string => value !== null).sort();
-  const canonicalInput = { fixtureId: input.fixtureId, cutoff: input.cutoff, canonicalIdentityState: input.canonicalIdentityState, lineupAvailable: input.lineupAvailable, sourceReliability: input.sourceReliability, evidenceBuildIds, sources };
+  const canonicalInput = {
+    fixtureId: input.fixtureId, cutoff: input.cutoff, canonicalIdentityState: input.canonicalIdentityState, lineupAvailable: input.lineupAvailable, sourceReliability: input.sourceReliability, evidenceBuildIds, sources,
+    // Only the dixon-coles input hash carries rho and its provenance, so the v1 input hash stays bit-identical.
+    ...(dixonColes ? { dixonColes: { rho: dixonColes.rho, convention: dixonColes.provenance.convention, method: dixonColes.provenance.method, windowFrom: dixonColes.provenance.windowFrom, windowTo: dixonColes.provenance.windowTo, sampleSize: dixonColes.provenance.sampleSize } } : {}),
+  };
   return {
     fixtureId: input.fixtureId, forecastSnapshotId: input.forecastSnapshotId, cutoff: input.cutoff,
     modelVersion, configVersion, configHash: hash(FORECAST_CONFIGS[modelVersion]), inputHash: hash(canonicalInput), evidenceBuildIds,
@@ -188,6 +199,11 @@ export function createForecast(input: ForecastInput): ForecastDraft {
     normalizationVersion: "retained-mass-v1", rawMarginals, adjustments: { home: homeAdjustment, away: awayAdjustment },
     markets: { ONE_X_TWO: [event("HOME", home), event("DRAW", draw), event("AWAY", 1 - home - draw)], OVER_UNDER_2_5: [event("OVER_2_5", over), event("UNDER_2_5", 1 - over)], BTTS: [event("YES", yes), event("NO", 1 - yes)] },
     confidence, limitations, sources,
-    assumptions: ["independent Poisson goal counts", "0..7 score grid normalized by retained mass", "starting policy pending Phase 4 calibration"],
+    assumptions: [
+      "independent Poisson goal counts",
+      "0..7 score grid normalized by retained mass",
+      "starting policy pending Phase 4 calibration",
+      ...(dixonColes ? ["dixon-coles low-score correction applied before retained-mass normalization"] : []),
+    ],
   };
 }

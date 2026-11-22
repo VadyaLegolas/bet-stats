@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { currentForecastConfigHash } from "../../packages/domain/src/evaluation/forecast-orchestrator.js";
+import { ForecastOrchestrator, currentForecastConfigHash, type ForecastOrchestratorRepository } from "../../packages/domain/src/evaluation/forecast-orchestrator.js";
 import { parseForecastResponse } from "../../packages/domain/src/forecast/contract.js";
 import { DIXON_COLES_CONFIG, FORECAST_CONFIG, FORECAST_CONFIGS, FORECAST_CONFIG_VERSION_BY_MODEL, forecastConfigHashFor } from "../../packages/domain/src/forecast/config.js";
 import { DIXON_COLES_CONVENTION } from "../../packages/domain/src/forecast/dixon-coles.js";
@@ -11,7 +11,7 @@ import type { EvidenceProjectionDto } from "../../packages/domain/src/evidence/c
 const cutoff = "2026-09-13T12:00:00.000Z";
 
 function projection(side: "home" | "away"): EvidenceProjectionDto {
-  const source = { observationId: `${side}-observation`, provider: "API_FOOTBALL", providerFixtureId: `${side}-external`, effectiveAt: "2026-09-10T12:00:00.000Z", observedAt: cutoff, payloadHash: `sha256:${side}`, payloadBytes: 42 };
+  const source = { observationId: `${side}-observation`, provider: "API_FOOTBALL", providerFixtureId: `${side}-external`, effectiveAt: "2026-09-10T12:00:00.000Z", observedAt: cutoff, sourceUpdatedAt: null, payloadHash: `sha256:${side}`, payloadBytes: 42 };
   const component = (kind: string, value: unknown, sampleSize = 10) => ({ kind, value, unit: "test", sampleSize, limitation: null, sourceRefs: [source] });
   return {
     teamId: side,
@@ -199,5 +199,90 @@ describe("forecast response contract across versions", () => {
 
   it("rejects an unknown key inside the provenance block", () => {
     expect(() => parseForecastResponse(dcResponse({}, { dixonColes: { ...dcProvenance, secret: "x" } }))).toThrow("INVALID_FORECAST_RECEIPT");
+  });
+});
+
+function repositoryOf(options: { readonly rho?: number; readonly withHook?: boolean } = {}) {
+  const calls = { rho: 0, publish: 0 };
+  const repository: ForecastOrchestratorRepository = {
+    assertEligible: async () => undefined,
+    findFixture: async (fixtureId) => ({ id: fixtureId, homeTeamId: "home", awayTeamId: "away", leagueId: "league-1", kickoffUtc: "2026-09-14T12:00:00.000Z", canonicalIdentityResolved: true }),
+    findEvidence: async (teamId) => projection(teamId === "away" ? "away" : "home"),
+    findOfficialLineup: async () => null,
+    publish: async (draft) => { calls.publish += 1; return parseForecastResponse(draft); },
+  };
+  if (options.withHook) {
+    repository.findDixonColesParameters = async () => {
+      calls.rho += 1;
+      const rho = options.rho ?? dcProvenance.rho;
+      return { rho, provenance: { ...dcProvenance, rho } };
+    };
+  }
+  return { repository, calls };
+}
+
+const orchestratorInput = {
+  fixtureId: "fixture-1",
+  asOf: cutoff,
+  kind: "PRE_MATCH" as const,
+  initiator: { type: "production" as const, correlationId: "correlation-1" },
+};
+
+describe("forecast orchestrator across model versions", () => {
+  it("runs v1 with the frozen config hash and never touches the dixon-coles resolver", async () => {
+    const { repository, calls } = repositoryOf({ withHook: true });
+    const published = await new ForecastOrchestrator().run({ ...orchestratorInput, modelVersion: "poisson-ensemble-v1", configHash: forecastConfigHashFor("poisson-ensemble-v1") }, repository);
+    expect(published.modelVersion).toBe("poisson-ensemble-v1");
+    expect(published.configVersion).toBe("forecast-config-v1");
+    expect(published.receipt.dixonColes).toBeUndefined();
+    expect(calls.rho).toBe(0);
+  });
+
+  it("rejects a dixon-coles run carrying the v1 config hash", async () => {
+    const { repository } = repositoryOf();
+    await expect(new ForecastOrchestrator().run({ ...orchestratorInput, modelVersion: "dixon-coles-ensemble-v1", configHash: forecastConfigHashFor("poisson-ensemble-v1") }, repository)).rejects.toThrow("CONFIG_HASH_MISMATCH");
+  });
+
+  it("fails closed when dixon-coles has neither explicit rho nor a repository resolver", async () => {
+    const { repository } = repositoryOf();
+    await expect(new ForecastOrchestrator().run({ ...orchestratorInput, modelVersion: "dixon-coles-ensemble-v1", configHash: forecastConfigHashFor("dixon-coles-ensemble-v1") }, repository)).rejects.toThrow("DIXON_COLES_RHO_UNAVAILABLE");
+  });
+
+  it("publishes a dixon-coles snapshot with an independent model hash and the given provenance", async () => {
+    const { repository } = repositoryOf();
+    const published = await new ForecastOrchestrator().run(
+      { ...orchestratorInput, modelVersion: "dixon-coles-ensemble-v1", configHash: forecastConfigHashFor("dixon-coles-ensemble-v1"), dixonColes: { rho: dcProvenance.rho, provenance: dcProvenance } },
+      repository,
+    );
+    const v1 = await new ForecastOrchestrator().run({ ...orchestratorInput, modelVersion: "poisson-ensemble-v1", configHash: forecastConfigHashFor("poisson-ensemble-v1") }, repositoryOf().repository);
+    expect(published.modelVersion).toBe("dixon-coles-ensemble-v1");
+    expect(published.configVersion).toBe("forecast-config-v2");
+    expect(published.receipt.dixonColes).toEqual(dcProvenance);
+    expect(published.modelHash).not.toBe(v1.modelHash);
+    expect(published.inputHash).not.toBe(v1.inputHash);
+  });
+
+  it("resolves rho from the repository when no explicit parameters are given", async () => {
+    const { repository, calls } = repositoryOf({ withHook: true, rho: -0.11 });
+    const published = await new ForecastOrchestrator().run({ ...orchestratorInput, modelVersion: "dixon-coles-ensemble-v1", configHash: forecastConfigHashFor("dixon-coles-ensemble-v1") }, repository);
+    expect(calls.rho).toBe(1);
+    expect(published.receipt.dixonColes?.rho).toBe(-0.11);
+  });
+
+  it("changes input hash and snapshot id when only rho changes", async () => {
+    const run = (rho: number) => new ForecastOrchestrator().run(
+      { ...orchestratorInput, modelVersion: "dixon-coles-ensemble-v1", configHash: forecastConfigHashFor("dixon-coles-ensemble-v1"), dixonColes: { rho, provenance: { ...dcProvenance, rho } } },
+      repositoryOf().repository,
+    );
+    const first = await run(-0.05);
+    const second = await run(-0.12);
+    expect(first.inputHash).not.toBe(second.inputHash);
+    expect(first.id).not.toBe(second.id);
+  });
+
+  it("rejects a resolver whose rho disagrees with its provenance", async () => {
+    const { repository } = repositoryOf({ withHook: true });
+    repository.findDixonColesParameters = async () => ({ rho: -0.2, provenance: { ...dcProvenance, rho: -0.1 } });
+    await expect(new ForecastOrchestrator().run({ ...orchestratorInput, modelVersion: "dixon-coles-ensemble-v1", configHash: forecastConfigHashFor("dixon-coles-ensemble-v1") }, repository)).rejects.toThrow("DIXON_COLES_RHO_UNAVAILABLE");
   });
 });

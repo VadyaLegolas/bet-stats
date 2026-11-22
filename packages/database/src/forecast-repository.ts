@@ -49,7 +49,7 @@ export function createPrismaForecastRepository(client: PrismaClient): ForecastPu
   return {
     assertEligible: async () => undefined,
     findFixture: async (id) => {
-      const row = await client.fixture.findUnique({ where: { id }, select: { id: true, homeTeamId: true, awayTeamId: true, kickoffUtc: true } });
+      const row = await client.fixture.findUnique({ where: { id }, select: { id: true, homeTeamId: true, awayTeamId: true, leagueId: true, kickoffUtc: true } });
       return row ? { ...row, canonicalIdentityResolved: Boolean(row.homeTeamId && row.awayTeamId) } : null;
     },
     findEvidence: (teamId, cutoff) => resolveEvidence(client, teamId, cutoff),

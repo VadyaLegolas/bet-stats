@@ -7,6 +7,8 @@ export type { SettlementPipelineCommand, SettlementPipelineResult } from "./eval
 export { compareBacktestPlans, createPrismaBacktestReceiptRepository, resolveHistoricalResultGraph } from "./evaluation/backtest-repository.js";
 export { createPrismaForecastRepository } from "./forecast-repository.js";
 export type { ForecastPublicationRepository } from "./forecast-repository.js";
+export { createDixonColesParameterProvider, fitLeagueDixonColesParameters } from "./dixon-coles-repository.js";
+export type { DixonColesParameters } from "./dixon-coles-repository.js";
 export { persistResults, persistResultsInTransaction } from "./results-persistence.js";
 export { createProviderRoutingRepository } from "./provider-routing/repository.js";
 export type { AppendAttemptInput, AppendRouteInput, CapabilityApprovalInput, ProviderAdmissionInput, QuotaObservationInput } from "./provider-routing/repository.js";

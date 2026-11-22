@@ -14,6 +14,7 @@ import {
 } from "@bet-stats/domain";
 
 import type { PrismaClient } from "./client.js";
+import { createDixonColesParameterProvider } from "./dixon-coles-repository.js";
 
 export interface ForecastPublicationRepository extends ForecastOrchestratorRepository {
   assertEligible(): Promise<void>;
@@ -53,6 +54,7 @@ export function createPrismaForecastRepository(client: PrismaClient): ForecastPu
       return row ? { ...row, canonicalIdentityResolved: Boolean(row.homeTeamId && row.awayTeamId) } : null;
     },
     findEvidence: (teamId, cutoff) => resolveEvidence(client, teamId, cutoff),
+    findDixonColesParameters: createDixonColesParameterProvider(client).findDixonColesParameters,
     findOfficialLineup: async (fixtureId, cutoff) => client.lineupObservation.findFirst({ where: { fixtureId, status: "OFFICIAL_CONFIRMED", confirmedAt: { lte: new Date(cutoff) }, observation: { observedAt: { lte: new Date(cutoff) }, externalIdentity: fixtureId } }, orderBy: { confirmedAt: "desc" }, select: { id: true } }),
     findIssued: async (fixtureId, kind, cutoff) => {
       const row = await client.forecastSnapshot.findFirst({ where: { fixtureId, kind, cutoff: new Date(cutoff), state: "ISSUED" }, orderBy: { revision: "desc" } });

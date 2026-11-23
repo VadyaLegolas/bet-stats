@@ -63,6 +63,11 @@ function forecastRepository(overrides: Partial<ForecastPublicationRepository> = 
     findFixture: async () => ({ id: request.fixtureId, homeTeamId: "home", awayTeamId: "away", kickoffUtc: "2026-09-11T12:00:00.000Z", canonicalIdentityResolved: true }),
     findEvidence: async (teamId) => projection(teamId, `${teamId}-build`),
     findOfficialLineup: async () => null,
+    // The production default model is dixon-coles (since 11-02), which needs a rho before it touches evidence.
+    findDixonColesParameters: async () => ({
+      rho: -0.05,
+      provenance: { rho: -0.05, convention: "tau-1x2-v1", method: "mle-low-score-v1", windowFrom: "2024-09-10T00:00:00.000Z", windowTo: "2026-09-10T12:00:00.000Z", sampleSize: 400, tauMin: 0.9 },
+    }),
     publish: async (draft) => draft,
     ...overrides,
   };

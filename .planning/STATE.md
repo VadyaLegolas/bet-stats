@@ -4,17 +4,17 @@ milestone: v1.1
 current_phase: 11
 current_phase_name: Dixon-Coles Model Version
 status: in_progress
-stopped_at: Phase 11 — 4/4 plans executed, verification human_needed; kept open for 2 live-data UAT items (11-UAT.md)
-last_updated: "2026-11-23T00:00:00.000Z"
+stopped_at: Completed 11-05-PLAN.md
+last_updated: "2026-11-23T22:24:18.463Z"
 last_activity: 2026-11-23
-last_activity_desc: Phase 11 verified (human_needed): review findings fixed, DC-default-before-comparison accepted as override; real V1-vs-DC comparison and rho-method SQL check pending
-state_head: c14159b
+last_activity_desc: "Phase 11 verified (human_needed): review findings fixed, DC-default-before-comparison accepted as override; real V1-vs-DC comparison and rho-method SQL check pending"
+state_head: b7bbcd2bc3081eac3156e1846224bd357d12b48a
 progress:
   total_phases: 10
   completed_phases: 4
-  total_plans: 26
-  completed_plans: 26
-  percent: 44
+  total_plans: 29
+  completed_plans: 27
+  percent: 40
 milestone_name: Reliability, Model Quality and Value Experience
 ---
 
@@ -34,7 +34,7 @@ Plan: 4 of 4 (all plans executed; verification human_needed, phase kept open)
 Status: Awaiting human verification (11-UAT.md tests 2-3)
 Last activity: 2026-11-23 — phase 11 verification human_needed; override accepted; 659/659 unit green
 
-Progress: [████░░░░░░] 44%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
@@ -142,6 +142,7 @@ Progress: [████░░░░░░] 44%
 | Phase 10 P10-01 | 87min | 3 tasks | 6 files |
 | Phase 10 P10-02 | 10min | 3 tasks | 8 files |
 | Phase 10 P10-03 | 12min | 2 tasks | 6 files |
+| Phase 11 P05 | 2 sessions (blocked by Docker/disk once) | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -301,6 +302,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 10]: CI performance-budget job runs node scripts/perf-audit.mjs in default measure+assert mode after a frozen-lockfile install — the harness performs ALL builds itself (NEXT_DIST_DIR=.next-e2e internal), the job reuses Playwright's chromium (D-08) and adds no build steps; the contract test enumerates all four jobs and bounds the e2e block by the perf job in the same commit (T-10-07) (10-03)
 - [Phase 10]: PERF-02 failure path proven locally, not inferred: --assert-only against a doctored budget copy (cls 0.000001) exits 1 naming the breach («cls: 0.08710918036748198 > budget 0.000001»); the committed budget file stays byte-identical; the CI-green half remains a push-time manual check per 10-VALIDATION.md (10-03)
 - [Phase 10]: buildReceipt read the nonexistent lhr.environment.lighthouseVersion path — optional chain yielded undefined, JSON.stringify dropped the key, and --assert-only rejected the harness's own committed receipts (INVALID_RECEIPT); fixed to top-level lhr.lighthouseVersion (Lighthouse 13 types line 31) and both committed receipts repaired with the true 13.6.0 — always round-trip a written receipt through the validator when touching the receipt code (10-03)
+- [Phase 11]: 11-05: SettlementReceipt revision chain per (fixtureId, forecastSnapshotId) via forward-only migration; settlement intake lock held by outer transaction on its own connection before the Serializable snapshot (retry policy unchanged)
 
 ### Pending Todos
 
@@ -408,6 +410,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-23T00:00:00.000Z
-Stopped at: Phase 11 executing - 11-03 complete, 11-04 next
-Resume file: .planning/phases/11-dixon-coles-model-version/11-04-PLAN.md
+Last session: 2026-11-23T22:24:15.971Z
+Stopped at: Completed 11-05-PLAN.md
+Resume file: None

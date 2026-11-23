@@ -35,7 +35,7 @@
 
 - [ ] **MODEL-01**: The forecast model applies a Dixon-Coles low-score correlation correction with a pinned tau convention and a bounded rho; tests prove rho=0 reproduces the Poisson model, the score matrix sums to 1, and draw probability rises for the documented sign.
 - [ ] **MODEL-02**: Probabilities produced under the corrected model are issued under a new model version identity across the whole stack (snapshots, backtests, comparisons, validators) in one coherent pass.
-- [ ] **MODEL-03**: An operator can compare rolling-origin backtest metrics of the new model version against the frozen baseline before it becomes the production default.
+- [x] **MODEL-03**: An operator can compare rolling-origin backtest metrics of the new model version against the frozen baseline before it becomes the production default.
 
 ### Probability Calibration (CALIB)
 
@@ -110,7 +110,7 @@ _Milestone v1.1 roadmap (2026-10-19): every requirement maps to exactly one phas
 | PERF-02 | Phase 10 | Complete |
 | MODEL-01 | Phase 11 | Pending |
 | MODEL-02 | Phase 11 | Pending |
-| MODEL-03 | Phase 11 | Pending |
+| MODEL-03 | Phase 11 | Complete |
 | CALIB-01 | Phase 12 | Pending |
 | CALIB-02 | Phase 12 | Pending |
 | CALIB-03 | Phase 12 | Pending |

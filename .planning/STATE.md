@@ -4,16 +4,16 @@ milestone: v1.1
 current_phase: 11
 current_phase_name: Dixon-Coles Model Version
 status: in_progress
-stopped_at: Phase 11 executing — 11-03 complete, 11-04 next
+stopped_at: Phase 11 — all 4 plans executed, awaiting phase verification
 last_updated: "2026-11-23T00:00:00.000Z"
 last_activity: 2026-11-23
-last_activity_desc: Phase 11 plan 11-03 complete (version-pinned backtests, rho at training boundary, model comparison receipt + endpoint)
+last_activity_desc: Phase 11 plan 11-04 complete (hybrid Dixon-Coles methodology card and /methodology section)
 state_head: c14159b
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 26
-  completed_plans: 25
+  completed_plans: 26
   percent: 44
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 ## Current Position
 
 Phase: 11 — Dixon-Coles Model Version
-Plan: 11-03 complete, 11-04 next
+Plan: 4 of 4 (all plans executed; phase verification pending)
 Status: Executing
-Last activity: 2026-11-23 — 11-03 version-pinned backtests + comparison receipt/endpoint complete, 640/640 unit green
+Last activity: 2026-11-23 — 11-04 methodology card + page complete, 649/649 unit green
 
 Progress: [████░░░░░░] 44%
 

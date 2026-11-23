@@ -13,6 +13,7 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "vitest run --project unit && pnpm --filter @bet-stats/web test",
+    "model:compare": "node scripts/model-comparison.mjs",
     "test:e2e": "playwright test",
     "test:integration": "vitest run --project integration",
     "//test:integration:docker": "comment key (JSON has no comments): the pnpm-run context is load-bearing - verify-release-integration.mjs resolves npm_execpath, which exists only under pnpm run",

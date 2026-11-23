@@ -156,14 +156,14 @@ describe("production rolling-origin backtests", () => {
     await new Promise((resolveWait) => setTimeout(resolveWait, 250));
     expect(await database.backtestWindow.count({ where: { planId: admitted.id } })).toBe(1);
 
-    const peer = plan("bt-plan-peer", "peer-config");
+    const peer = plan("bt-plan-peer");
     await receipts.createPlan(peer, "bt-peer");
     const current = await database.backtestEvaluation.findFirstOrThrow({ where: { windowId: "bt-plan-first-window", isCurrent: true } });
     await database.backtestEvaluation.create({ data: { id: "bt-peer-evaluation", windowId: peer.windows[0]!.id, evaluationAsOf: new Date(peer.windows[0]!.evaluationAsOf), resultVersionId: current.resultVersionId, settlementReceiptId: current.settlementReceiptId, scoreIds: current.scoreIds, revision: 1, isCurrent: true, receipt: { comparison: true } } });
     await database.backtestWindow.update({ where: { id: peer.windows[0]!.id }, data: { state: "SUCCEEDED", forecastSnapshotId: "bt-forecast", evidenceBuildIds: ["build-before-cutoff"], scoreIds: current.scoreIds, completedAt: new Date() } });
     await database.backtestPlan.update({ where: { id: peer.id }, data: { state: "SUCCEEDED", completedAt: new Date() } });
 
-    const comparableLeft = plan("bt-plan-comparable-left", "left-config");
+    const comparableLeft = plan("bt-plan-comparable-left");
     await receipts.createPlan(comparableLeft, "bt-left");
     await database.backtestEvaluation.create({ data: { id: "bt-left-evaluation", windowId: comparableLeft.windows[0]!.id, evaluationAsOf: new Date(comparableLeft.windows[0]!.evaluationAsOf), resultVersionId: current.resultVersionId, settlementReceiptId: current.settlementReceiptId, scoreIds: current.scoreIds, revision: 1, isCurrent: true, receipt: { comparison: true } } });
     await database.backtestWindow.update({ where: { id: comparableLeft.windows[0]!.id }, data: { state: "SUCCEEDED", scoreIds: current.scoreIds, completedAt: new Date() } });

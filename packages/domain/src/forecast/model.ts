@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
 import type { EvidenceProjectionDto, EvidenceSourceRef } from "../evidence/contract.js";
 import { calculateConfidence } from "./confidence.js";
+import { canonicalJson as canonical, canonicalSha256 } from "./canonical-json.js";
 import { fairOddsForProbability, FORECAST_CONFIG, FORECAST_CONFIGS, FORECAST_CONFIG_VERSION_BY_MODEL, type ForecastConfigVersion } from "./config.js";
 import { applyDixonColesCorrection, dixonColesRhoBounds, isDixonColesRhoWithinBounds, type DixonColesProvenance } from "./dixon-coles.js";
 import type { ForecastModelVersion } from "./model-version.js";
@@ -59,15 +59,7 @@ type AdjustmentKind = "goalRates" | "elo" | "form" | "venue" | "rest" | "h2h";
 interface AdjustmentComponent { readonly signal: number; readonly weight: number; readonly applied: number; readonly bounds: readonly [number, number] }
 interface AdjustmentReceipt { readonly multiplier: number; readonly components: Readonly<Record<AdjustmentKind, AdjustmentComponent>> }
 
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
-  if (value && typeof value === "object") return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(",")}}`;
-  return JSON.stringify(value);
-}
-
-function hash(value: unknown): string {
-  return `sha256:${createHash("sha256").update(canonical(value)).digest("hex")}`;
-}
+const hash = canonicalSha256;
 
 function clamp(value: number, [minimum, maximum]: readonly [number, number]): number {
   return Math.min(maximum, Math.max(minimum, value));

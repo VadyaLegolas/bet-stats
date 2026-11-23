@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
 
 import type { EvidenceProjectionDto, EvidenceSourceRef } from "../evidence/contract.js";
+import { canonicalSha256 } from "../forecast/canonical-json.js";
 import { forecastConfigHashFor } from "../forecast/config.js";
 import { parseForecastResponse, type ForecastKind, type ForecastResponseDto } from "../forecast/contract.js";
 import type { DixonColesProvenance } from "../forecast/dixon-coles.js";
@@ -44,15 +44,7 @@ export interface ForecastOrchestratorInput {
   readonly dixonColes?: Readonly<{ rho: number; provenance: DixonColesProvenance }>;
 }
 
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
-  if (value && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(",")}}`;
-  return JSON.stringify(value);
-}
-
-function sha(value: unknown): string {
-  return `sha256:${createHash("sha256").update(canonical(value)).digest("hex")}`;
-}
+const sha = canonicalSha256;
 
 export function currentForecastConfigHash(): string {
   return forecastConfigHashFor("poisson-ensemble-v1");

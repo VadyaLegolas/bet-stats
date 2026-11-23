@@ -152,6 +152,10 @@ describe("forecast API orchestration", () => {
     await expect(generateForecast(validRequest, { ...base, assertEligible: async () => undefined, findFixture: async () => ({ ...(await base.findFixture()), canonicalIdentityResolved: false }) }, v1Selection)).rejects.toMatchObject({ code: "UNRESOLVED_CANONICAL_IDENTITY" });
     await expect(generateForecast({ ...validRequest, cutoff: "2026-09-08T12:00:00.000Z" }, { ...base, assertEligible: async () => undefined }, v1Selection)).rejects.toMatchObject({ code: "POST_KICKOFF_CUTOFF" });
     await expect(generateForecast(validRequest, { ...base, assertEligible: async () => undefined, findEvidence: async () => null }, v1Selection)).rejects.toMatchObject({ code: "REQUIRED_EVIDENCE_UNAVAILABLE" });
+    // IN-03: server-side configuration failures are 503, not a client 400.
+    const mismatch = generateForecast(validRequest, { ...base, assertEligible: async () => undefined }, { ...v1Selection, configHash: "sha256:wrong-config" });
+    await expect(mismatch).rejects.toMatchObject({ code: "CONFIG_HASH_MISMATCH", status: 503 });
+    await expect(generateForecast(validRequest, { ...base, assertEligible: async () => undefined }, { ...v1Selection, modelVersion: "dixon-coles-ensemble-v1" as never })).rejects.toMatchObject({ status: 503 });
     expect(inserts).toBe(0);
   });
 

@@ -134,6 +134,9 @@ describe("rolling-origin backtest", () => {
     expect(() => admitBacktestPlan({ ...admitted, split: "random" } as never)).toThrowError(expect.objectContaining({ code: "RANDOM_SPLIT_REJECTED" }));
     expect(() => admitBacktestPlan({ ...admitted, windows: [...windows].reverse() })).toThrowError(expect.objectContaining({ code: "LEAKAGE_DETECTED" }));
     expect(() => admitBacktestPlan({ ...admitted, concurrency: BACKTEST_LIMITS.maxConcurrency + 1 })).toThrowError(expect.objectContaining({ code: "BACKTEST_LIMIT_EXCEEDED" }));
+    // IN-02: a config hash that does not belong to the plan's model version is rejected before persist/enqueue.
+    expect(() => admitBacktestPlan({ ...admitted, planHash: undefined, configHash: "sha256:not-this-model" })).toThrowError(expect.objectContaining({ code: "BACKTEST_CONFIG_HASH_MISMATCH" }));
+    expect(() => admitBacktestPlan({ ...admitted, planHash: undefined, modelVersion: "dixon-coles-ensemble-v1" })).toThrowError(expect.objectContaining({ code: "BACKTEST_CONFIG_HASH_MISMATCH" }));
   });
 
   it("converges duplicate delivery by deterministic plan and window identities", async () => {

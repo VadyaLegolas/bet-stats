@@ -13,6 +13,7 @@ export * from "./evidence/elo.js";
 export * from "./evidence/features.js";
 export * from "./forecast/contract.js";
 export * from "./forecast/comparison.js";
+export * from "./forecast/canonical-json.js";
 export * from "./forecast/config.js";
 export * from "./forecast/dixon-coles.js";
 export * from "./forecast/model-version.js";

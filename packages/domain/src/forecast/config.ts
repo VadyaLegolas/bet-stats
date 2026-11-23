@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
 import { Decimal } from "decimal.js";
 
+import { canonicalSha256 } from "./canonical-json.js";
 import type { ForecastModelVersion } from "./model-version.js";
 
 /**
@@ -60,15 +60,7 @@ export const FORECAST_CONFIGS = Object.freeze({
   "dixon-coles-ensemble-v1": DIXON_COLES_CONFIG,
 });
 
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
-  if (value && typeof value === "object") return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(",")}}`;
-  return JSON.stringify(value);
-}
-
-function sha(value: unknown): string {
-  return `sha256:${createHash("sha256").update(canonical(value)).digest("hex")}`;
-}
+const sha = canonicalSha256;
 
 /** Config hash for a model version. For V1 this is exactly the historical `currentForecastConfigHash()`. */
 export function forecastConfigHashFor(version: ForecastModelVersion): string {

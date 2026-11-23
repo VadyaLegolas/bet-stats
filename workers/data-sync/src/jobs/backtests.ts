@@ -1,5 +1,6 @@
 import {
   BACKTEST_POLICY_VERSION,
+  forecastConfigHashFor,
   isForecastModelVersion,
   validateRollingOriginWindow,
   type BacktestOriginResult,
@@ -38,6 +39,9 @@ export function admitBacktestPlan(raw: unknown): BacktestPlanReceipt {
   const allowed = new Set(["id", "version", "modelVersion", "configHash", "rangeFrom", "rangeTo", "concurrency", "windows", "planHash"]);
   if (Object.keys(value).some((key) => !allowed.has(key))) throw error("INVALID_BACKTEST_PLAN");
   if (typeof value.id !== "string" || value.version !== BACKTEST_POLICY_VERSION || !isForecastModelVersion(value.modelVersion) || typeof value.configHash !== "string" || !Array.isArray(value.windows)) throw error("INVALID_BACKTEST_PLAN");
+  // Fail at admission, before persist/enqueue: a plan whose config hash does not belong to its model version
+  // would otherwise fail every window with CONFIG_HASH_MISMATCH after claim and failure bookkeeping (review IN-02).
+  if (value.configHash !== forecastConfigHashFor(value.modelVersion)) throw error("BACKTEST_CONFIG_HASH_MISMATCH");
   const from = Date.parse(String(value.rangeFrom)); const to = Date.parse(String(value.rangeTo)); const concurrency = Number(value.concurrency);
   if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to || to - from > BACKTEST_LIMITS.maxSpanDays * 86_400_000 || value.windows.length < 1 || value.windows.length > BACKTEST_LIMITS.maxWindows || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > BACKTEST_LIMITS.maxConcurrency) throw error("BACKTEST_LIMIT_EXCEEDED");
   let previous: string | undefined;

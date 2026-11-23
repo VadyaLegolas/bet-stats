@@ -8,10 +8,15 @@ import {
 import { resolveForecastModelSelection } from "@bet-stats/config";
 
 
+/** Server-side configuration/identity failures: the caller did nothing wrong, so they are not a 400 (review IN-03). */
+const SERVER_CONFIGURATION_FAILURES = ["DIXON_COLES_RHO_UNAVAILABLE", "MODEL_VERSION_MISMATCH", "CONFIG_HASH_MISMATCH", "FORECAST_RUNTIME_IDENTITY_MISMATCH"];
+
 function failure(code: string): Error & { code: string } {
   const exception = ["POST_KICKOFF_CUTOFF", "LINEUP_NOT_CONFIRMED", "REQUIRED_EVIDENCE_UNAVAILABLE", "UNRESOLVED_CANONICAL_IDENTITY"].includes(code)
     ? new ConflictException({ code })
-    : new BadRequestException({ code });
+    : SERVER_CONFIGURATION_FAILURES.includes(code)
+      ? new ServiceUnavailableException({ code })
+      : new BadRequestException({ code });
   return Object.assign(exception, { code });
 }
 
@@ -31,7 +36,7 @@ export async function generateForecast(
       initiator: { type: "production", correlationId: `api:${request.fixtureId}:${request.cutoff}` },
     }, repository);
   } catch (error) {
-    if (error instanceof BadRequestException || error instanceof ConflictException) throw error;
+    if (error instanceof BadRequestException || error instanceof ConflictException || error instanceof ServiceUnavailableException) throw error;
     const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : null;
     if (code) throw failure(code);
     throw error;

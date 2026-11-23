@@ -182,4 +182,6 @@ _Depth: standard_
 | WR-05 | fixed | scored-cohort windows, fixture-set identity, `[from, to)`, `minimumSampleSize = 30`, policy `model-comparison-v2` |
 | WR-06 | fixed | card bounds string, rho policy/fallbacks, page no longer claims a public comparison view |
 | IN-04 | fixed | «μ» replaced with λh / λa |
-| IN-01, IN-02, IN-03 | open | duplicated `canonical()`, late `configHash` check in plan admission, config errors mapped to HTTP 400 |
+| IN-01 | fixed (partly) | one shared `canonicalJson` (code-unit key order) replaces the 3 copies; V1 hashes unchanged (regression suite green). Not changed: the `sources` array sort in `model.ts` still uses `localeCompare` on canonical strings, because switching it could re-order sources and shift stored V1 `inputHash` values; `provider-routing.ts` keeps its own copy |
+| IN-02 | fixed | `admitBacktestPlan` throws `BACKTEST_CONFIG_HASH_MISMATCH` before persist/enqueue |
+| IN-03 | fixed | `DIXON_COLES_RHO_UNAVAILABLE`, `MODEL_VERSION_MISMATCH`, `CONFIG_HASH_MISMATCH`, `FORECAST_RUNTIME_IDENTITY_MISMATCH` → HTTP 503 |

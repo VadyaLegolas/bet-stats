@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { PrismaClient } from "@bet-stats/database";
-import { currentForecastConfigHash, ForecastOrchestrator, type ForecastOrchestratorRepository } from "@bet-stats/domain";
+import { ForecastOrchestrator, type ForecastModelVersion, type ForecastOrchestratorRepository } from "@bet-stats/domain";
 
 import { createPrismaEvidenceRebuildDatabase, runEvidenceRebuild } from "./evidence-rebuild.js";
 import { planForecastPublication, runForecastPublicationJob, type ForecastPublisher } from "./forecasts.js";
@@ -87,6 +87,9 @@ export async function ensureTeamEvidence(input: EnsureTeamEvidenceInput): Promis
 export interface ForecastSweepDeps {
   readonly database: PrismaClient;
   readonly forecastRepository: ForecastOrchestratorRepository;
+  /** Selected once at process start; the sweep never picks a version on its own. */
+  readonly modelVersion: ForecastModelVersion;
+  readonly configHash: string;
   readonly now?: () => Date;
   readonly logger?: (event: Record<string, unknown>) => void;
 }
@@ -134,8 +137,8 @@ export async function runForecastPublicationSweep(deps: ForecastSweepDeps): Prom
         fixtureId: fixture.id,
         kickoffUtc,
         initialEligibleCutoff: initialCutoff,
-        modelVersion: "poisson-ensemble-v1",
-        configHash: currentForecastConfigHash(),
+        modelVersion: deps.modelVersion,
+        configHash: deps.configHash,
         evidenceBuildIdsAt,
         officialLineupAt: async (cutoff) => {
           const lineup = await deps.database.lineupObservation.findFirst({
@@ -151,8 +154,8 @@ export async function runForecastPublicationSweep(deps: ForecastSweepDeps): Prom
           fixtureId: request.fixtureId,
           asOf: request.cutoff,
           kind: request.kind,
-          modelVersion: "poisson-ensemble-v1",
-          configHash: currentForecastConfigHash(),
+          modelVersion: deps.modelVersion,
+          configHash: deps.configHash,
           initiator: { type: "production", correlationId: `sweep:${request.fixtureId}:${request.kind}:${request.cutoff}` },
         }, deps.forecastRepository),
       };

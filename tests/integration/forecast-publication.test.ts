@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { forecastConfigHashFor } from "../../packages/domain/src/forecast/config.js";
+
+const v1Selection = { modelVersion: "poisson-ensemble-v1" as const, configHash: forecastConfigHashFor("poisson-ensemble-v1") };
 
 const cutoff = "2026-09-06T12:00:00.000Z";
 const source = {
@@ -66,17 +69,17 @@ describe("scheduled forecast publication", () => {
     let observationId = "lineup-observation-1";
     const repository = {
       assertEligible: async () => undefined,
-      findFixture: async () => ({ id: "fixture-1", homeTeamId: "home", awayTeamId: "away", kickoffUtc: "2026-09-07T12:00:00.000Z", canonicalIdentityResolved: true }),
+      findFixture: async () => ({ id: "fixture-1", homeTeamId: "home", awayTeamId: "away", leagueId: "league-1", kickoffUtc: "2026-09-07T12:00:00.000Z", canonicalIdentityResolved: true }),
       findEvidence: async (teamId: string) => projection(teamId),
       findOfficialLineup: async () => ({ id: observationId }),
       publish: async (draft: any) => draft,
     };
     const request = { fixtureId: "fixture-1", kind: "LINEUP_CONFIRMED", cutoff };
 
-    const first = await generateForecast(request, repository);
-    const retry = await generateForecast(request, repository);
+    const first = await generateForecast(request, repository, v1Selection);
+    const retry = await generateForecast(request, repository, v1Selection);
     observationId = "lineup-observation-2";
-    const corrected = await generateForecast(request, repository);
+    const corrected = await generateForecast(request, repository, v1Selection);
 
     expect(retry.id).toBe(first.id);
     expect(retry.inputHash).toBe(first.inputHash);
@@ -85,5 +88,26 @@ describe("scheduled forecast publication", () => {
     expect(first.officialLineupObservationId).toBe("lineup-observation-1");
     expect(first.receipt.officialLineupObservationId).toBe("lineup-observation-1");
     expect(corrected.receipt.officialLineupObservationId).toBe("lineup-observation-2");
+  });
+
+  it("keeps both model identities distinct through the same publisher", async () => {
+    const { generateForecast } = await import("../../apps/api/src/modules/forecasts/forecasts.service.js");
+    const repository = {
+      assertEligible: async () => undefined,
+      findFixture: async () => ({ id: "fixture-1", homeTeamId: "home", awayTeamId: "away", leagueId: "league-1", kickoffUtc: "2026-09-07T12:00:00.000Z", canonicalIdentityResolved: true }),
+      findEvidence: async (teamId: string) => projection(teamId),
+      findOfficialLineup: async () => null,
+      findDixonColesParameters: async () => ({ rho: 0, provenance: { rho: 0, convention: "tau-1x2-v1" as const, method: "insufficient-sample-zero" as const, windowFrom: "2024-01-01T00:00:00.000Z", windowTo: cutoff, sampleSize: 0, tauMin: 1 } }),
+      publish: async (draft: any) => draft,
+    };
+    const request = { fixtureId: "fixture-1", kind: "PRE_MATCH", cutoff };
+    const v1 = await generateForecast(request, repository, v1Selection);
+    const dc = await generateForecast(request, repository);
+
+    expect(v1).toMatchObject({ modelVersion: "poisson-ensemble-v1", configVersion: "forecast-config-v1" });
+    expect(dc).toMatchObject({ modelVersion: "dixon-coles-ensemble-v1", configVersion: "forecast-config-v2" });
+    expect(dc.modelHash).not.toBe(v1.modelHash);
+    expect(dc.receipt.dixonColes).toBeDefined();
+    expect(v1.receipt.dixonColes).toBeUndefined();
   });
 });

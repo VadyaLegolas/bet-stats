@@ -1,9 +1,9 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { dependencyReadiness, readAlertsConfig, readBackupConfig, readServerConfig, DEFAULT_BACKUP_DRILL_INTERVAL_HOURS, type AlertConfig, type BackupConfig } from "@bet-stats/config";
+import { dependencyReadiness, readAlertsConfig, readBackupConfig, readServerConfig, resolveForecastModelSelection, DEFAULT_BACKUP_DRILL_INTERVAL_HOURS, type AlertConfig, type BackupConfig } from "@bet-stats/config";
 import { createPrismaBacktestReceiptRepository, createPrismaClient, createPrismaForecastRepository, createProviderRoutingRepository, createReplayProviderPolicyRepository, createSettlementPipelineService, DEFAULT_REPLAY_PROVIDER_POLICIES, type PrismaClient } from "@bet-stats/database";
-import { currentForecastConfigHash, ForecastOrchestrator } from "@bet-stats/domain";
+import { ForecastOrchestrator } from "@bet-stats/domain";
 import { ApiFootballClient, FootballDataOrgClient, type FixtureProvider, type ResultProvider, type StandingsProvider } from "@bet-stats/football-data";
 import { runReplayFixtureJob } from "./jobs/fixtures.js";
 import { runReplayResultJob } from "./jobs/results.js";
@@ -62,8 +62,9 @@ export function startReplayWorker(input: { databaseUrl: string; redisUrl: string
   } });
   const settlementWorker = createSettlementWorker({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}), execute: createSettlementJobHandler({ service: settlementService }) });
   const forecastRepository = createPrismaForecastRepository(database);
+  const forecastSelection = resolveForecastModelSelection(process.env);
   const enrichmentQueueHandle = createEnrichmentQueue({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}) });
-  const issueLineupForecastBase = async ({ fixtureId, cutoff }: { fixtureId: string; cutoff: string }) => (await new ForecastOrchestrator().run({ fixtureId, asOf: cutoff, kind: "LINEUP_CONFIRMED", modelVersion: "poisson-ensemble-v1", configHash: currentForecastConfigHash(), initiator: { type: "production", correlationId: `enrichment:${fixtureId}:${cutoff}` } }, forecastRepository)).id;
+  const issueLineupForecastBase = async ({ fixtureId, cutoff }: { fixtureId: string; cutoff: string }) => (await new ForecastOrchestrator().run({ fixtureId, asOf: cutoff, kind: "LINEUP_CONFIRMED", modelVersion: forecastSelection.modelVersion, configHash: forecastSelection.configHash, initiator: { type: "production", correlationId: `enrichment:${fixtureId}:${cutoff}` } }, forecastRepository)).id;
   const issueLineupForecast = input.forecastSweep
     ? async ({ fixtureId, cutoff }: { fixtureId: string; cutoff: string }) => {
         const fixture = await database.fixture.findUnique({ where: { id: fixtureId }, select: { homeTeamId: true, awayTeamId: true } });
@@ -83,7 +84,7 @@ export function startReplayWorker(input: { databaseUrl: string; redisUrl: string
   let forecastSweepInterval: NodeJS.Timeout | undefined;
   let forecastSweepInFlight = false;
   if (input.forecastSweep) {
-    const sweepDeps = { database, forecastRepository };
+    const sweepDeps = { database, forecastRepository, modelVersion: forecastSelection.modelVersion, configHash: forecastSelection.configHash };
     const tick = () => {
       if (forecastSweepInFlight) return;
       forecastSweepInFlight = true;

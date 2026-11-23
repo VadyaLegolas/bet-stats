@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createPrismaForecastRepository } from "@bet-stats/database";
+import { forecastConfigHashFor } from "../../packages/domain/src/forecast/config.js";
+
+const v1Selection = { modelVersion: "poisson-ensemble-v1" as const, configHash: forecastConfigHashFor("poisson-ensemble-v1") };
 
 async function contract() {
   return import("../../packages/domain/src/forecast/contract.js");
@@ -140,15 +143,15 @@ describe("forecast API orchestration", () => {
     const { generateForecast } = await import("../../apps/api/src/modules/forecasts/forecasts.service.js");
     let inserts = 0;
     const base = {
-      findFixture: async () => ({ id: "fixture-1", homeTeamId: "home", awayTeamId: "away", kickoffUtc: "2026-09-07T12:00:00.000Z", canonicalIdentityResolved: true }),
+      findFixture: async () => ({ id: "fixture-1", homeTeamId: "home", awayTeamId: "away", leagueId: "league-1", kickoffUtc: "2026-09-07T12:00:00.000Z", canonicalIdentityResolved: true }),
       findEvidence: async (teamId: string) => projection(teamId, `${teamId}-build`),
       findOfficialLineup: async () => null,
       publish: async () => { inserts += 1; return validResponse; },
     };
-    await expect(generateForecast(validRequest, { ...base, assertEligible: async () => { throw Object.assign(new Error("POLICY_INELIGIBLE"), { code: "POLICY_INELIGIBLE" }); } })).rejects.toMatchObject({ code: "POLICY_INELIGIBLE" });
-    await expect(generateForecast(validRequest, { ...base, assertEligible: async () => undefined, findFixture: async () => ({ ...(await base.findFixture()), canonicalIdentityResolved: false }) })).rejects.toMatchObject({ code: "UNRESOLVED_CANONICAL_IDENTITY" });
-    await expect(generateForecast({ ...validRequest, cutoff: "2026-09-08T12:00:00.000Z" }, { ...base, assertEligible: async () => undefined })).rejects.toMatchObject({ code: "POST_KICKOFF_CUTOFF" });
-    await expect(generateForecast(validRequest, { ...base, assertEligible: async () => undefined, findEvidence: async () => null })).rejects.toMatchObject({ code: "REQUIRED_EVIDENCE_UNAVAILABLE" });
+    await expect(generateForecast(validRequest, { ...base, assertEligible: async () => { throw Object.assign(new Error("POLICY_INELIGIBLE"), { code: "POLICY_INELIGIBLE" }); } }, v1Selection)).rejects.toMatchObject({ code: "POLICY_INELIGIBLE" });
+    await expect(generateForecast(validRequest, { ...base, assertEligible: async () => undefined, findFixture: async () => ({ ...(await base.findFixture()), canonicalIdentityResolved: false }) }, v1Selection)).rejects.toMatchObject({ code: "UNRESOLVED_CANONICAL_IDENTITY" });
+    await expect(generateForecast({ ...validRequest, cutoff: "2026-09-08T12:00:00.000Z" }, { ...base, assertEligible: async () => undefined }, v1Selection)).rejects.toMatchObject({ code: "POST_KICKOFF_CUTOFF" });
+    await expect(generateForecast(validRequest, { ...base, assertEligible: async () => undefined, findEvidence: async () => null }, v1Selection)).rejects.toMatchObject({ code: "REQUIRED_EVIDENCE_UNAVAILABLE" });
     expect(inserts).toBe(0);
   });
 
@@ -157,16 +160,43 @@ describe("forecast API orchestration", () => {
     const published: unknown[] = [];
     const repository = {
       assertEligible: async () => undefined,
-      findFixture: async () => ({ id: "fixture-1", homeTeamId: "home", awayTeamId: "away", kickoffUtc: "2026-09-07T12:00:00.000Z", canonicalIdentityResolved: true }),
+      findFixture: async () => ({ id: "fixture-1", homeTeamId: "home", awayTeamId: "away", leagueId: "league-1", kickoffUtc: "2026-09-07T12:00:00.000Z", canonicalIdentityResolved: true }),
       findEvidence: async (teamId: string) => projection(teamId, `${teamId}-build`),
       findOfficialLineup: async () => null,
       publish: async (draft: unknown) => { published.push(draft); return { ...validResponse, ...(draft as object) }; },
     };
-    const first = await generateForecast(validRequest, repository);
-    const second = await generateForecast(validRequest, repository);
+    const first = await generateForecast(validRequest, repository, v1Selection);
+    const second = await generateForecast(validRequest, repository, v1Selection);
     expect(first).toMatchObject({ fixtureId: "fixture-1", kind: "PRE_MATCH", cutoff: validRequest.cutoff, evidenceBuildIds: ["away-build", "home-build"] });
     expect(second.inputHash).toBe(first.inputHash);
     expect(published).toHaveLength(2);
     expect(published[0]).toMatchObject({ receipt: { evidenceBuildIds: ["away-build", "home-build"] } });
+  });
+
+  it("issues dixon-coles by default and reproduces v1 probabilities when history is empty", async () => {
+    const { generateForecast } = await import("../../apps/api/src/modules/forecasts/forecasts.service.js");
+    const windowFrom = "2024-01-01T00:00:00.000Z";
+    const repository = {
+      assertEligible: async () => undefined,
+      findFixture: async () => ({ id: "fixture-1", homeTeamId: "home", awayTeamId: "away", leagueId: "league-1", kickoffUtc: "2026-09-07T12:00:00.000Z", canonicalIdentityResolved: true }),
+      findEvidence: async (teamId: string) => projection(teamId, `${teamId}-build`),
+      findOfficialLineup: async () => null,
+      findDixonColesParameters: async () => ({ rho: 0, provenance: { rho: 0, convention: "tau-1x2-v1" as const, method: "insufficient-sample-zero" as const, windowFrom, windowTo: validRequest.cutoff, sampleSize: 0, tauMin: 1 } }),
+      publish: async (draft: unknown) => draft,
+    };
+    const dc = await generateForecast(validRequest, repository) as Record<string, any>;
+    const v1 = await generateForecast(validRequest, repository, v1Selection) as Record<string, any>;
+
+    expect(dc.modelVersion).toBe("dixon-coles-ensemble-v1");
+    expect(dc.configVersion).toBe("forecast-config-v2");
+    expect(dc.receipt.dixonColes).toMatchObject({ rho: 0, convention: "tau-1x2-v1", method: "insufficient-sample-zero", sampleSize: 0, tauMin: 1 });
+    expect(dc.modelHash).not.toBe(v1.modelHash);
+    expect(dc.inputHash).not.toBe(v1.inputHash);
+    for (const market of Object.keys(v1.probabilities)) {
+      for (const event of v1.probabilities[market]) {
+        const mirrored = dc.probabilities[market].find((candidate: { selection: string }) => candidate.selection === event.selection);
+        expect(Math.abs(mirrored.probability - event.probability)).toBeLessThanOrEqual(1e-12);
+      }
+    }
   });
 });

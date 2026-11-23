@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import { computeDueKinds, computeInitialCutoff, EVIDENCE_CONFIG_HASH, runForecastPublicationSweep } from "../../workers/data-sync/src/jobs/forecast-sweep.js";
+import { createForecastPublicationJobId } from "../../workers/data-sync/src/jobs/forecasts.js";
 
 const kickoff = "2026-11-08T18:00:00.000Z";
 // kickoff minus 14d = 2026-10-25T18:00:00.000Z; kickoff minus 6h = 2026-11-08T12:00:00.000Z
@@ -64,6 +65,17 @@ describe("evidence config hash", () => {
   });
 });
 
+describe("forecast sweep publication identity", () => {
+  it("derives a different job id per model version at otherwise equal inputs", () => {
+    const base = { fixtureId: "fixture-1", kind: "PRE_MATCH" as const, cutoff: "2026-11-08T12:00:00.000Z", configHash: "sha256:config", evidenceBuildIds: ["build-a", "build-b"] };
+    const v1 = createForecastPublicationJobId({ ...base, modelVersion: "poisson-ensemble-v1" });
+    const dc = createForecastPublicationJobId({ ...base, modelVersion: "dixon-coles-ensemble-v1" });
+    expect(v1).toMatch(/^[0-9a-f]{64}$/);
+    expect(dc).toMatch(/^[0-9a-f]{64}$/);
+    expect(dc).not.toBe(v1);
+  });
+});
+
 describe("forecast sweep DB-only contract", () => {
   it("completes one full tick with zero fixture_failed when the deps supply no enqueue function at all", async () => {
     const nowDate = new Date("2026-11-01T00:00:00.000Z");
@@ -85,6 +97,8 @@ describe("forecast sweep DB-only contract", () => {
     };
     const deps = {
       database,
+      modelVersion: "dixon-coles-ensemble-v1",
+      configHash: "sha256:config",
       now: () => nowDate,
       logger: (event: Record<string, unknown>) => { events.push(event); },
     } as unknown as Parameters<typeof runForecastPublicationSweep>[0];

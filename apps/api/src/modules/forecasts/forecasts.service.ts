@@ -1,11 +1,11 @@
 import { BadRequestException, ConflictException, Injectable, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, createPrismaForecastRepository, type ForecastPublicationRepository, type PrismaClient } from "@bet-stats/database";
 import {
-  currentForecastConfigHash,
   ForecastOrchestrator,
   parseForecastRequest,
   type ForecastResponseDto,
 } from "@bet-stats/domain";
+import { resolveForecastModelSelection } from "@bet-stats/config";
 
 
 function failure(code: string): Error & { code: string } {
@@ -15,15 +15,19 @@ function failure(code: string): Error & { code: string } {
   return Object.assign(exception, { code });
 }
 
-export async function generateForecast(raw: unknown, repository: ForecastPublicationRepository): Promise<ForecastResponseDto> {
+export async function generateForecast(
+  raw: unknown,
+  repository: ForecastPublicationRepository,
+  selection: ReturnType<typeof resolveForecastModelSelection> = resolveForecastModelSelection(process.env),
+): Promise<ForecastResponseDto> {
   const request = parseForecastRequest(raw);
   try {
     return await new ForecastOrchestrator().run({
       fixtureId: request.fixtureId,
       asOf: request.cutoff,
       kind: request.kind,
-      modelVersion: "poisson-ensemble-v1",
-      configHash: currentForecastConfigHash(),
+      modelVersion: selection.modelVersion,
+      configHash: selection.configHash,
       initiator: { type: "production", correlationId: `api:${request.fixtureId}:${request.cutoff}` },
     }, repository);
   } catch (error) {
@@ -38,10 +42,12 @@ export async function generateForecast(raw: unknown, repository: ForecastPublica
 export class ForecastsService implements OnModuleDestroy {
   private readonly client: PrismaClient | null;
   private readonly repository: ForecastPublicationRepository | null;
+  private readonly selection: ReturnType<typeof resolveForecastModelSelection>;
 
   constructor() {
     this.client = process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null;
     this.repository = this.client ? createPrismaForecastRepository(this.client) : null;
+    this.selection = resolveForecastModelSelection(process.env);
   }
 
   private db(): ForecastPublicationRepository {
@@ -49,7 +55,7 @@ export class ForecastsService implements OnModuleDestroy {
     return this.repository;
   }
 
-  generate(input: unknown): Promise<ForecastResponseDto> { return generateForecast(input, this.db()); }
+  generate(input: unknown): Promise<ForecastResponseDto> { return generateForecast(input, this.db(), this.selection); }
   async list(fixtureId: string): Promise<readonly ForecastResponseDto[]> {
     return this.db().listIssued?.(fixtureId) ?? [];
   }

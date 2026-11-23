@@ -123,7 +123,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 **Plan list**:
 - [x] 11-01-PLAN.md — Domain foundation: `MODEL_VERSIONS` union, split config (`FORECAST_CONFIG` untouched, `DIXON_COLES_CONFIG`/`forecast-config-v2`), pinned τ math with feasible ρ band, deterministic ρ estimator, contract/orchestrator accept both versions with explicit params, V1 frozen numeric vector
 - [x] 11-02-PLAN.md — Production default: leakage-safe per-league ρ from settled history (pooled/zero fallbacks), repository hook, `FORECAST_MODEL_VERSION` selector with `dixon-coles-ensemble-v1` default, all API/worker paths use one resolver, V1 selectable
-- [ ] 11-03-PLAN.md — MODEL-03 comparison: backtest plans pin their own version and fit ρ at `trainingEndsAt`, deterministic comparison receipt with plan hashes + window digest + honest verdict, `GET /evaluation/model-comparison`
+- [x] 11-03-PLAN.md — MODEL-03 comparison: backtest plans pin their own version and fit ρ at `trainingEndsAt`, deterministic comparison receipt with plan hashes + window digest + honest verdict, `GET /evaluation/model-comparison`
 - [ ] 11-04-PLAN.md — Honest documentation: `model-card-v1.1.0` names the hybrid integration, τ convention, ρ policy, O/U 2.5 neutrality and V1 rollback path; `/methodology` renders it; e2e pin derives from the card
 **UI hint**: no
 
@@ -218,7 +218,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 | 8. Backups and Restore Verification | 7/7 | Complete    | 2026-10-31 |
 | 9. Degradation Alerting | 8/8 | Complete    | 2026-11-16 |
 | 10. Performance Audit and Budgets | 4/4 | Complete    | 2026-11-17 |
-| 11. Dixon-Coles Model Version | 2/4 | In progress | - |
+| 11. Dixon-Coles Model Version | 3/4 | In progress | - |
 | 12. Calibration Layer and Versioned Rollback | 0/0 | Not started | - |
 | 13. CLV Price Diary | 0/0 | Not started | - |
 | 14. Asian Handicap and Exact Score Markets | 0/0 | Not started | - |

@@ -4,17 +4,17 @@ milestone: v1.1
 current_phase: 11
 current_phase_name: Dixon-Coles Model Version
 status: in_progress
-stopped_at: Phase 11 executing — 11-02 complete, 11-03 next
+stopped_at: Phase 11 executing — 11-03 complete, 11-04 next
 last_updated: "2026-11-23T00:00:00.000Z"
 last_activity: 2026-11-23
-last_activity_desc: Phase 11 plan 11-02 complete (rho from data, version selector, dixon-coles default)
-state_head: befe571
+last_activity_desc: Phase 11 plan 11-03 complete (version-pinned backtests, rho at training boundary, model comparison receipt + endpoint)
+state_head: c14159b
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 26
-  completed_plans: 24
-  percent: 42
+  completed_plans: 25
+  percent: 44
 milestone_name: Reliability, Model Quality and Value Experience
 ---
 
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 ## Current Position
 
 Phase: 11 — Dixon-Coles Model Version
-Plan: 11-02 complete, 11-03 next
+Plan: 11-03 complete, 11-04 next
 Status: Executing
-Last activity: 2026-11-23 — 11-02 production ρ + version selector complete, DC is the default and V1 stays selectable, 631/631 unit green
+Last activity: 2026-11-23 — 11-03 version-pinned backtests + comparison receipt/endpoint complete, 640/640 unit green
 
-Progress: [████░░░░░░] 42%
+Progress: [████░░░░░░] 44%
 
 ## Performance Metrics
 
@@ -407,5 +407,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-11-23T00:00:00.000Z
-Stopped at: Phase 11 executing - 11-02 complete, 11-03 next
-Resume file: .planning/phases/11-dixon-coles-model-version/11-03-PLAN.md
+Stopped at: Phase 11 executing - 11-03 complete, 11-04 next
+Resume file: .planning/phases/11-dixon-coles-model-version/11-04-PLAN.md

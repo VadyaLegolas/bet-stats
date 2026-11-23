@@ -4,10 +4,10 @@ milestone: v1.1
 current_phase: 11
 current_phase_name: Dixon-Coles Model Version
 status: in_progress
-stopped_at: Phase 11 — all 4 plans executed, awaiting phase verification
+stopped_at: Phase 11 — 4/4 plans executed, verification human_needed; kept open for 2 live-data UAT items (11-UAT.md)
 last_updated: "2026-11-23T00:00:00.000Z"
 last_activity: 2026-11-23
-last_activity_desc: Phase 11 plan 11-04 complete (hybrid Dixon-Coles methodology card and /methodology section)
+last_activity_desc: Phase 11 verified (human_needed): review findings fixed, DC-default-before-comparison accepted as override; real V1-vs-DC comparison and rho-method SQL check pending
 state_head: c14159b
 progress:
   total_phases: 10
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 ## Current Position
 
 Phase: 11 — Dixon-Coles Model Version
-Plan: 4 of 4 (all plans executed; phase verification pending)
-Status: Executing
-Last activity: 2026-11-23 — 11-04 methodology card + page complete, 649/649 unit green
+Plan: 4 of 4 (all plans executed; verification human_needed, phase kept open)
+Status: Awaiting human verification (11-UAT.md tests 2-3)
+Last activity: 2026-11-23 — phase 11 verification human_needed; override accepted; 659/659 unit green
 
 Progress: [████░░░░░░] 44%
 

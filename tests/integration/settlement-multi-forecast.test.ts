@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createPrismaClient, createSettlementPipelineService, type PrismaClient } from "@bet-stats/database";
+import { createPrismaClient, createSettlementPipelineService, SETTLEMENT_PIPELINE_POLICY_HASH, type PrismaClient } from "@bet-stats/database";
 
 const root = resolve(import.meta.dirname, "../..");
 const databaseRoot = resolve(root, "packages/database");
@@ -114,5 +114,115 @@ describe("settlement of two forecasts for one fixture", () => {
       );
       expect(current[0]!.count).toBe(6n);
     }
+  });
+
+  it("result correction yields chains [1,2] per forecast, each linked to its own predecessor", async () => {
+    const service = createSettlementPipelineService({ database: prisma });
+    const match = await seedMatch(prisma, "mf-corr", 12, true);
+    await service.process(command(match.fixtureId, match.result2, match.forecastA, "corr-corr-a"));
+    await service.process(command(match.fixtureId, match.result2, match.forecastB, "corr-corr-b"));
+
+    for (const forecastId of [match.forecastA, match.forecastB]) {
+      const chain = await prisma.settlementReceipt.findMany({ where: { fixtureId: match.fixtureId, forecastSnapshotId: forecastId }, orderBy: { revision: "asc" } });
+      expect(chain.map((receipt) => receipt.revision)).toEqual([1, 2]);
+      expect(chain[0]!.supersedesSettlementReceiptId).toBeNull();
+      expect(chain[1]!.supersedesSettlementReceiptId).toBe(chain[0]!.id);
+      expect(chain.map((receipt) => receipt.resultVersionId)).toEqual([match.result1, match.result2]);
+      const scores = await prisma.forecastScore.findMany({ where: { settlementReceiptId: { in: chain.map((receipt) => receipt.id) } } });
+      expect(scores).toHaveLength(6);
+      const first = new Map(scores.filter((score) => score.settlementReceiptId === chain[0]!.id).map((score) => [score.id, score]));
+      const second = scores.filter((score) => score.settlementReceiptId === chain[1]!.id);
+      expect(second).toHaveLength(3);
+      for (const score of second) expect(first.get(score.supersedesForecastScoreId!)?.market).toBe(score.market);
+    }
+    const current = await prisma.$queryRawUnsafe<Array<{ settlementReceiptId: string }>>(
+      `SELECT c."settlementReceiptId" FROM current_forecast_scores c JOIN "SettlementReceipt" r ON r.id=c."settlementReceiptId" WHERE r."fixtureId"=$1`,
+      match.fixtureId,
+    );
+    expect(current).toHaveLength(6);
+    const receipts = await prisma.settlementReceipt.findMany({ where: { fixtureId: match.fixtureId, revision: 2 } });
+    expect(new Set(current.map((row) => row.settlementReceiptId))).toEqual(new Set(receipts.map((receipt) => receipt.id)));
+  });
+
+  it("two forecasts of the same fixture settle concurrently without losing or duplicating receipts", async () => {
+    const service = createSettlementPipelineService({ database: prisma });
+    for (let index = 0; index < 5; index += 1) {
+      const match = await seedMatch(prisma, `mf-par-${index}`, 13 + index);
+      const outcomes = await Promise.all([
+        service.process(command(match.fixtureId, match.result1, match.forecastA, `corr-par-${index}-a`)),
+        service.process(command(match.fixtureId, match.result1, match.forecastB, `corr-par-${index}-b`)),
+      ]);
+      expect(outcomes.every((outcome) => outcome.forecastScoreIds.length === 3)).toBe(true);
+      const receipts = await prisma.settlementReceipt.findMany({ where: { fixtureId: match.fixtureId } });
+      expect(receipts).toHaveLength(2);
+      for (const forecastId of [match.forecastA, match.forecastB]) {
+        const own = receipts.filter((receipt) => receipt.forecastSnapshotId === forecastId);
+        expect(own.map((receipt) => receipt.revision)).toEqual([1]);
+        expect(own[0]!.supersedesSettlementReceiptId).toBeNull();
+        expect(await prisma.forecastScore.count({ where: { settlementReceiptId: own[0]!.id } })).toBe(3);
+      }
+    }
+  });
+
+  it("concurrent corrections of two forecasts keep independent chains [1,2]", async () => {
+    const service = createSettlementPipelineService({ database: prisma });
+    const match = await seedMatch(prisma, "mf-pcorr", 19, true);
+    await service.process(command(match.fixtureId, match.result1, match.forecastA, "corr-pcorr-a1"));
+    await service.process(command(match.fixtureId, match.result1, match.forecastB, "corr-pcorr-b1"));
+    await Promise.all([
+      service.process(command(match.fixtureId, match.result2, match.forecastA, "corr-pcorr-a2")),
+      service.process(command(match.fixtureId, match.result2, match.forecastB, "corr-pcorr-b2")),
+    ]);
+    for (const forecastId of [match.forecastA, match.forecastB]) {
+      const chain = await prisma.settlementReceipt.findMany({ where: { fixtureId: match.fixtureId, forecastSnapshotId: forecastId }, orderBy: { revision: "asc" } });
+      expect(chain.map((receipt) => receipt.revision)).toEqual([1, 2]);
+      expect(chain[1]!.supersedesSettlementReceiptId).toBe(chain[0]!.id);
+    }
+    expect(await prisma.settlementReceipt.count({ where: { fixtureId: match.fixtureId } })).toBe(4);
+  });
+
+  it("SettlementReceipt stays append-only", async () => {
+    const service = createSettlementPipelineService({ database: prisma });
+    const match = await seedMatch(prisma, "mf-append", 20);
+    const outcome = await service.process(command(match.fixtureId, match.result1, match.forecastA, "corr-append"));
+    await expect(prisma.$executeRawUnsafe(`UPDATE "SettlementReceipt" SET reason='tampered' WHERE id=$1`, outcome.settlementReceiptId)).rejects.toThrow(/SettlementReceipt is immutable/);
+    await expect(prisma.$executeRawUnsafe(`DELETE FROM "SettlementReceipt" WHERE id=$1`, outcome.settlementReceiptId)).rejects.toThrow(/SettlementReceipt is immutable/);
+    expect(await prisma.settlementReceipt.count({ where: { fixtureId: match.fixtureId } })).toBe(1);
+  });
+
+  it("guard rejects a predecessor taken from another forecast's chain", async () => {
+    const service = createSettlementPipelineService({ database: prisma });
+    const match = await seedMatch(prisma, "mf-cross", 21, true);
+    const receiptA = await service.process(command(match.fixtureId, match.result1, match.forecastA, "corr-cross-a1"));
+    await service.process(command(match.fixtureId, match.result1, match.forecastB, "corr-cross-b1"));
+    const claims = {
+      fixtureId: match.fixtureId, resultVersionId: match.result2, forecastSnapshotId: match.forecastB,
+      policyVersion: "settlement-policy-v1", policyHash: SETTLEMENT_PIPELINE_POLICY_HASH,
+      lifecycle: "FINISHED", scoreability: "SCOREABLE", financialEligibility: "ELIGIBLE", classOutcome: "SCORED", reason: "RESULT_FINISHED",
+    };
+    await expect(prisma.$queryRawUnsafe(
+      `SELECT * FROM persist_settlement_receipt($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13::timestamptz,$14,NULL)`,
+      "mf-cross-forged", match.fixtureId, match.result2, match.forecastB, claims.policyVersion, claims.policyHash,
+      claims.lifecycle, claims.scoreability, claims.financialEligibility, claims.classOutcome, claims.reason,
+      JSON.stringify(claims), "2026-10-21T20:01:00Z", receiptA.settlementReceiptId,
+    )).rejects.toThrow(/settlement predecessor does not match result correction and revision/);
+    expect(await prisma.settlementReceipt.count({ where: { fixtureId: match.fixtureId } })).toBe(2);
+  });
+
+  it("uniqueness is keyed by (fixtureId, forecastSnapshotId, revision), not by fixture and revision", async () => {
+    const indexes = await prisma.$queryRawUnsafe<Array<{ name: string; columns: string }>>(`
+      SELECT i.relname AS name, string_agg(a.attname, ',' ORDER BY k.ord) AS columns
+      FROM pg_index x
+      JOIN pg_class i ON i.oid = x.indexrelid
+      JOIN pg_class t ON t.oid = x.indrelid
+      CROSS JOIN LATERAL unnest(x.indkey) WITH ORDINALITY AS k(attnum, ord)
+      JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
+      WHERE t.relname = 'SettlementReceipt' AND x.indisunique
+      GROUP BY i.relname`);
+    const columns = indexes.map((index) => index.columns);
+    expect(columns).toContain("fixtureId,forecastSnapshotId,revision");
+    expect(columns).not.toContain("fixtureId,revision");
+    const legacy = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(`SELECT count(*)::bigint AS count FROM pg_constraint WHERE conname='SettlementReceipt_fixtureId_revision_key'`);
+    expect(legacy[0]!.count).toBe(0n);
   });
 });

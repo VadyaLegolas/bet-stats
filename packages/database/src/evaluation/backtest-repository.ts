@@ -126,16 +126,17 @@ export async function compareBacktestPlans(database: PrismaClient, input: { left
   const right = input.leftPlanId === first.id ? second : first;
   const identity = (plan: typeof first) => plan.windows.map((w) => `${w.fixtureId}|${w.forecastCutoff.toISOString()}|${w.evaluationAsOf.toISOString()}`);
   if (left.version !== right.version || JSON.stringify(identity(left)) !== JSON.stringify(identity(right))) return { available: false as const, reason: "COHORT_MISMATCH" };
+  const windows = left.windows.map((window) => ({ fixtureId: window.fixtureId, forecastCutoff: window.forecastCutoff.toISOString(), evaluationAsOf: window.evaluationAsOf.toISOString() }));
   const aggregate = async (plan: typeof first) => {
     const scoreIds = plan.windows.flatMap((window) => window.evaluations.flatMap((evaluation) => evaluation.scoreIds as string[]));
     if (scoreIds.length === 0) throw coded("BACKTEST_SCORE_IDS_EMPTY");
     const scores = await database.forecastScore.findMany({ where: { id: { in: scoreIds }, market: input.market, kickoffUtc: { gte: new Date(input.from), lte: new Date(input.to) } }, select: { brierScore: true, logLoss: true } });
     if (scores.length === 0) throw coded("COMPARISON_EMPTY_COHORT");
-    return { modelVersion: plan.modelVersion, configHash: plan.configHash, sampleSize: scores.length, brierScore: scores.reduce((s, x) => s + x.brierScore, 0) / scores.length, logLoss: scores.reduce((s, x) => s + x.logLoss, 0) / scores.length };
+    return { planId: plan.id, planHash: plan.planHash, modelVersion: plan.modelVersion, configHash: plan.configHash, sampleSize: scores.length, brierScore: scores.reduce((s, x) => s + x.brierScore, 0) / scores.length, logLoss: scores.reduce((s, x) => s + x.logLoss, 0) / scores.length };
   };
   try {
     const leftMetrics = await aggregate(left); const rightMetrics = await aggregate(right);
     if (leftMetrics.sampleSize !== rightMetrics.sampleSize) return { available: false as const, reason: "COHORT_MISMATCH" };
-    return { available: true as const, market: input.market, sampleSize: leftMetrics.sampleSize, left: leftMetrics, right: rightMetrics, deltas: { brierScore: rightMetrics.brierScore - leftMetrics.brierScore, logLoss: rightMetrics.logLoss - leftMetrics.logLoss } };
+    return { available: true as const, market: input.market, sampleSize: leftMetrics.sampleSize, windows, left: leftMetrics, right: rightMetrics, deltas: { brierScore: rightMetrics.brierScore - leftMetrics.brierScore, logLoss: rightMetrics.logLoss - leftMetrics.logLoss } };
   } catch (error) { return { available: false as const, reason: (error as { code?: string }).code ?? "COMPARISON_UNAVAILABLE" }; }
 }

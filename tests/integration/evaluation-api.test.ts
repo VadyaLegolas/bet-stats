@@ -43,6 +43,7 @@ function setup(rows: ScorecardCohort[] = [cohort()]) {
       metrics: null,
     })),
     enumerateAvailableCohorts: vi.fn(async () => rows),
+    comparePlans: vi.fn(async () => ({ available: false as const, reason: "PLAN_NOT_COMPLETE" })),
     listValueCandidates: vi.fn(async () => ({ items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" } })),
   };
   const service = new EvaluationService(repository);

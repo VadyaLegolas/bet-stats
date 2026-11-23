@@ -31,4 +31,10 @@ export class EvaluationController {
     response.setHeader("Cache-Control", PRIVATE_NO_STORE);
     return response.status(200).json(await this.evaluation.valueCandidates(query));
   }
+
+  @Get("model-comparison")
+  async modelComparison(@Query() query: Record<string, unknown>, @Res() response: HttpResponse): Promise<unknown> {
+    response.setHeader("Cache-Control", PRIVATE_NO_STORE);
+    return response.status(200).json(await this.evaluation.modelComparison(query));
+  }
 }

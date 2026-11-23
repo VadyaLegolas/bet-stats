@@ -1,5 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException, Optional } from "@nestjs/common";
-import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { BadRequestException, Injectable, NotFoundException, Optional, ServiceUnavailableException } from "@nestjs/common";
+import { compareBacktestPlans, createPrismaClient, type PrismaClient } from "@bet-stats/database";
 import {
   COHORT_HEALTH_POLICY,
   RELIABILITY_POLICY,
@@ -8,12 +8,17 @@ import {
   aggregateReliability,
   evaluateCohortHealth,
   expandCategoricalScore,
+  toModelComparisonResult,
   type CohortDenominators,
   type FlatOneUnitReceipt,
+  type ModelComparisonResult,
+  type RawModelComparison,
   type ReliabilityBucket,
 } from "@bet-stats/domain";
 
 const MARKETS = new Set(["all", "ONE_X_TWO", "OVER_UNDER_2_5", "BTTS"]);
+/** Comparison is per market: "all" would mix incomparable deltas. */
+const COMPARISON_MARKETS = new Set(["ONE_X_TWO", "OVER_UNDER_2_5", "BTTS"]);
 const MAX_PERIOD_MS = 366 * 24 * 60 * 60 * 1_000;
 
 export type CohortIdentity = Readonly<{
@@ -52,6 +57,7 @@ export type ValueCandidateRow = Readonly<{
 export interface EvaluationRepository {
   loadCohort(identity: CohortIdentity): Promise<ScorecardCohort>;
   enumerateAvailableCohorts(bounds: Pick<CohortIdentity, "from" | "to">): Promise<readonly ScorecardCohort[]>;
+  comparePlans(input: { leftPlanId: string; rightPlanId: string; market: string; from: string; to: string }): Promise<RawModelComparison>;
   listValueCandidates(identity: CohortIdentity, cursor: { settledAt: string; id: string } | null, limit: number): Promise<{
     items: readonly ValueCandidateRow[];
     nextCursor: { settledAt: string; id: string } | null;
@@ -187,6 +193,7 @@ export function createPrismaEvaluationRepository(client: PrismaClient): Evaluati
   }
   return {
     loadCohort: load,
+    comparePlans: (input) => compareBacktestPlans(client, input),
     async enumerateAvailableCohorts(bounds) {
       const dimensions = await client.forecastScore.findMany({ where: { supersededBy: null, kickoffUtc: { gte: new Date(bounds.from), lt: new Date(bounds.to) } }, distinct: ["modelVersion", "leagueId", "market"], select: { modelVersion: true, leagueId: true, market: true } });
       return Promise.all(dimensions.map((row) => load({ modelVersion: row.modelVersion, competitionId: row.leagueId, market: row.market, ...bounds })));
@@ -271,5 +278,28 @@ export class EvaluationService {
     const cursor = rawCursor === undefined ? null : decodeCandidateCursor(rawCursor as string, identity);
     const page = await this.repo().listValueCandidates(identity, cursor, limit);
     return { ...page, nextCursor: page.nextCursor ? encodeCandidateCursor(identity, page.nextCursor) : null, cohortIdentity: identity };
+  }
+
+  /**
+   * Operator comparison of two completed backtest plans over the same windows.
+   *
+   * Incompatible plans are a valid answer (`available: false` with a reason), not
+   * an error, so the caller can archive an honest "cannot compare yet" receipt.
+   */
+  async modelComparison(query: Record<string, unknown>): Promise<ModelComparisonResult> {
+    const allowed = new Set(["leftPlanId", "rightPlanId", "market", "from", "to"]);
+    if (Object.keys(query).some((key) => !allowed.has(key)) || Object.values(query).some(Array.isArray)) throw new BadRequestException("INVALID_COMPARISON_QUERY");
+    const market = scalar(query.market, "market");
+    if (!COMPARISON_MARKETS.has(market)) throw new BadRequestException("INVALID_MARKET");
+    const from = exactUtc(query.from, "from");
+    const to = exactUtc(query.to, "to");
+    const duration = Date.parse(to) - Date.parse(from);
+    if (duration <= 0 || duration > MAX_PERIOD_MS) throw new BadRequestException("INVALID_COMPARISON_PERIOD");
+    const leftPlanId = scalar(query.leftPlanId, "leftPlanId");
+    const rightPlanId = scalar(query.rightPlanId, "rightPlanId");
+    if (leftPlanId === rightPlanId) throw new BadRequestException("IDENTICAL_PLANS");
+    if (!this.repository) throw new ServiceUnavailableException("EVALUATION_UNAVAILABLE");
+    const raw = await this.repository.comparePlans({ leftPlanId, rightPlanId, market, from, to });
+    return toModelComparisonResult(raw, { from, to, computedAt: new Date().toISOString(), windows: raw.windows ?? [] });
   }
 }

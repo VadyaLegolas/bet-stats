@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { EligibilityGuard } from "../../apps/api/src/modules/eligibility/eligibility.guard.js";
 import { EvaluationController } from "../../apps/api/src/modules/evaluation/evaluation.controller.js";
 import { EvaluationService, type EvaluationRepository } from "../../apps/api/src/modules/evaluation/evaluation.service.js";
+import { OperatorGuard } from "../../apps/api/src/modules/reconciliation/operator.guard.js";
 import type { RawModelComparison } from "@bet-stats/domain";
 
 const from = "2026-07-01T00:00:00.000Z";
@@ -51,6 +52,23 @@ async function call(controller: EvaluationController, query: Record<string, unkn
   await controller.modelComparison(query, response as never);
   return { status, headers, body: body as Body };
 }
+
+describe("model comparison operator guard (phase 11 review CR-02)", () => {
+  it("protects only the comparison route with OperatorGuard and fails closed with 404", () => {
+    const routeGuards = Reflect.getMetadata("__guards__", EvaluationController.prototype.modelComparison) as unknown[];
+    expect(routeGuards).toContain(OperatorGuard);
+    // Other evaluation routes keep the eligibility-only contract.
+    for (const name of ["valueCandidates"] as const) {
+      const guards = (Reflect.getMetadata("__guards__", EvaluationController.prototype[name]) as unknown[] | undefined) ?? [];
+      expect(guards).not.toContain(OperatorGuard);
+    }
+    const guard = new OperatorGuard("operator-credential-long-enough");
+    expect(() => guard.authorize(undefined)).toThrow("Not found");
+    expect(() => guard.authorize("wrong-credential")).toThrow("Not found");
+    expect(guard.authorize("operator-credential-long-enough")).toEqual({ actor: "operator" });
+    expect(() => new OperatorGuard(undefined).authorize("anything")).toThrow("Not found");
+  });
+});
 
 describe("model comparison API boundary", () => {
   it("is guarded and returns a reproducible receipt for two completed plans", async () => {

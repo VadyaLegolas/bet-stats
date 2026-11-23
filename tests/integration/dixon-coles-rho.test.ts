@@ -126,7 +126,9 @@ function planLeagueMatches(prefix: string, leagueId: string, count: number, twea
       lambdaAway,
       homeGoals: score.homeGoals,
       awayGoals: score.awayGoals,
-      receipt: override.receipt ?? { forecastSnapshotId: `${id}-snap`, expectedGoals: { home: lambdaHome, away: lambdaAway } },
+      // Real stored shape: the snapshot's `receipt` column holds the whole forecast DTO,
+      // whose own `receipt.expectedGoals` carries the lambdas (forecast-repository.ts).
+      receipt: override.receipt ?? { id: `${id}-snap`, receipt: { forecastSnapshotId: `${id}-snap`, expectedGoals: { home: lambdaHome, away: lambdaAway } } },
     };
   });
 }

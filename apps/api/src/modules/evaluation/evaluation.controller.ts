@@ -2,6 +2,7 @@ import { Controller, Get, Query, Res, UseGuards } from "@nestjs/common";
 
 import { PRIVATE_NO_STORE } from "../eligibility/eligibility.controller.js";
 import { EligibilityGuard } from "../eligibility/eligibility.guard.js";
+import { OperatorGuard } from "../reconciliation/operator.guard.js";
 import { EvaluationService, type ScorecardCohort } from "./evaluation.service.js";
 
 export type EvaluationHttpResponse<T> = { statusCode: number; headers: Record<string, string>; body: T };
@@ -32,7 +33,9 @@ export class EvaluationController {
     return response.status(200).json(await this.evaluation.valueCandidates(query));
   }
 
+  /** Operator-only: fail-closed (404) without the operator credential, on top of the class-level eligibility guard. */
   @Get("model-comparison")
+  @UseGuards(OperatorGuard)
   async modelComparison(@Query() query: Record<string, unknown>, @Res() response: HttpResponse): Promise<unknown> {
     response.setHeader("Cache-Control", PRIVATE_NO_STORE);
     return response.status(200).json(await this.evaluation.modelComparison(query));

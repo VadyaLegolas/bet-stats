@@ -35,7 +35,14 @@ function coded(code: string): Error & { code: string } {
   return Object.assign(new Error(code), { code });
 }
 
-function expectedGoalsOf(receipt: unknown): { home: number; away: number } | null {
+/**
+ * `ForecastSnapshot.receipt` stores the whole published forecast DTO
+ * (forecast-repository.ts persists `receipt: response`), so the expected goals
+ * live one level down at `receipt.receipt.expectedGoals`, not at the top level.
+ */
+function expectedGoalsOf(snapshotReceipt: unknown): { home: number; away: number } | null {
+  if (snapshotReceipt === null || typeof snapshotReceipt !== "object") return null;
+  const receipt = (snapshotReceipt as Record<string, unknown>).receipt;
   if (receipt === null || typeof receipt !== "object") return null;
   const expectedGoals = (receipt as Record<string, unknown>).expectedGoals;
   if (expectedGoals === null || typeof expectedGoals !== "object") return null;

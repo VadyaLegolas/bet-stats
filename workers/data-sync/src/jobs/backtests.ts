@@ -1,7 +1,10 @@
 import {
   BACKTEST_POLICY_VERSION,
+  isForecastModelVersion,
   validateRollingOriginWindow,
   type BacktestOriginResult,
+  type DixonColesProvenance,
+  type ForecastModelVersion,
   type ForecastOrchestrator,
   type ForecastOrchestratorRepository,
   type RollingOriginWindow,
@@ -10,10 +13,13 @@ import { createHash } from "node:crypto";
 
 export const BACKTEST_LIMITS = Object.freeze({ maxSpanDays: 366, maxWindows: 500, maxConcurrency: 4 });
 
+/** Rho resolution for a dixon-coles backtest window. Implementations MUST fit at `window.trainingEndsAt`. */
+export type DixonColesWindowResolver = (window: RollingOriginWindow) => Promise<Readonly<{ rho: number; provenance: DixonColesProvenance }> | null>;
+
 export interface BacktestPlanReceipt {
   readonly id: string;
   readonly version: typeof BACKTEST_POLICY_VERSION;
-  readonly modelVersion: "poisson-ensemble-v1";
+  readonly modelVersion: ForecastModelVersion;
   readonly configHash: string;
   readonly rangeFrom: string;
   readonly rangeTo: string;
@@ -31,7 +37,7 @@ export function admitBacktestPlan(raw: unknown): BacktestPlanReceipt {
   if ("split" in value || "shuffle" in value || "random" in value) throw error("RANDOM_SPLIT_REJECTED");
   const allowed = new Set(["id", "version", "modelVersion", "configHash", "rangeFrom", "rangeTo", "concurrency", "windows", "planHash"]);
   if (Object.keys(value).some((key) => !allowed.has(key))) throw error("INVALID_BACKTEST_PLAN");
-  if (typeof value.id !== "string" || value.version !== BACKTEST_POLICY_VERSION || value.modelVersion !== "poisson-ensemble-v1" || typeof value.configHash !== "string" || !Array.isArray(value.windows)) throw error("INVALID_BACKTEST_PLAN");
+  if (typeof value.id !== "string" || value.version !== BACKTEST_POLICY_VERSION || !isForecastModelVersion(value.modelVersion) || typeof value.configHash !== "string" || !Array.isArray(value.windows)) throw error("INVALID_BACKTEST_PLAN");
   const from = Date.parse(String(value.rangeFrom)); const to = Date.parse(String(value.rangeTo)); const concurrency = Number(value.concurrency);
   if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to || to - from > BACKTEST_LIMITS.maxSpanDays * 86_400_000 || value.windows.length < 1 || value.windows.length > BACKTEST_LIMITS.maxWindows || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > BACKTEST_LIMITS.maxConcurrency) throw error("BACKTEST_LIMIT_EXCEEDED");
   let previous: string | undefined;
@@ -41,7 +47,7 @@ export function admitBacktestPlan(raw: unknown): BacktestPlanReceipt {
     previous = window.forecastCutoff;
     return Object.freeze({ ...window });
   });
-  const canonical = { id: value.id, version: BACKTEST_POLICY_VERSION, modelVersion: "poisson-ensemble-v1" as const, configHash: value.configHash, rangeFrom: new Date(from).toISOString(), rangeTo: new Date(to).toISOString(), concurrency, windows };
+  const canonical = { id: value.id, version: BACKTEST_POLICY_VERSION, modelVersion: value.modelVersion, configHash: value.configHash, rangeFrom: new Date(from).toISOString(), rangeTo: new Date(to).toISOString(), concurrency, windows };
   const planHash = digest(canonical);
   if (typeof value.planHash === "string" && value.planHash !== planHash) throw error("BACKTEST_PLAN_HASH_MISMATCH");
   return Object.freeze({ ...canonical, planHash });
@@ -91,7 +97,7 @@ export interface BacktestReceiptRepository {
   completePlan(id: string): Promise<void>;
 }
 
-export async function runBacktestPlan(input: { plan: BacktestPlanReceipt; receipts: BacktestReceiptRepository; orchestrator: ForecastOrchestrator; repository: ForecastOrchestratorRepository; correlationId: string }) {
+export async function runBacktestPlan(input: { plan: BacktestPlanReceipt; receipts: BacktestReceiptRepository; orchestrator: ForecastOrchestrator; repository: ForecastOrchestratorRepository; correlationId: string; resolveDixonColes?: DixonColesWindowResolver }) {
   const existing = await input.receipts.findPlan(input.plan.id);
   if (existing && existing.planHash !== input.plan.planHash) throw error("BACKTEST_PLAN_ID_CONFLICT");
   if (!existing) await input.receipts.createPlan(input.plan, input.correlationId);
@@ -101,7 +107,10 @@ export async function runBacktestPlan(input: { plan: BacktestPlanReceipt; receip
     const claim = await input.receipts.claimWindow(receipt);
     if (!claim.claimed) { duplicateWindowIds.push(window.id); completedWindowIds.push(window.id); continue; }
     try {
-      const result = await runBacktestOrigin({ orchestrator: input.orchestrator, repository: input.repository, window, modelVersion: input.plan.modelVersion, configHash: input.plan.configHash, correlationId: input.correlationId, planId: input.plan.id });
+      // rho is fitted at the training boundary, never at the forecast cutoff (MODEL-03).
+      const dixonColes = input.plan.modelVersion === "dixon-coles-ensemble-v1" ? await input.resolveDixonColes?.(window) ?? null : undefined;
+      if (input.plan.modelVersion === "dixon-coles-ensemble-v1" && !dixonColes) throw error("DIXON_COLES_RHO_UNAVAILABLE");
+      const result = await runBacktestOrigin({ orchestrator: input.orchestrator, repository: input.repository, window, modelVersion: input.plan.modelVersion, configHash: input.plan.configHash, correlationId: input.correlationId, planId: input.plan.id, ...(dixonColes ? { dixonColes } : {}) });
       const evaluation = await input.receipts.evaluateWindow(window.id, { fixtureId: window.fixtureId, forecastSnapshotId: result.forecast.id, evaluationAsOf: window.evaluationAsOf, correlationId: input.correlationId });
       const scoreIds = evaluation.scoreIds as readonly string[];
       if (!Array.isArray(scoreIds) || scoreIds.length === 0) throw error("BACKTEST_SCORE_IDS_EMPTY");
@@ -117,10 +126,11 @@ export interface RunBacktestOriginInput {
   readonly orchestrator: ForecastOrchestrator;
   readonly repository: ForecastOrchestratorRepository;
   readonly window: RollingOriginWindow;
-  readonly modelVersion: "poisson-ensemble-v1";
+  readonly modelVersion: ForecastModelVersion;
   readonly configHash: string;
   readonly correlationId: string;
   readonly planId?: string;
+  readonly dixonColes?: Readonly<{ rho: number; provenance: DixonColesProvenance }>;
 }
 
 export async function runBacktestOrigin(input: RunBacktestOriginInput): Promise<BacktestOriginResult> {
@@ -132,6 +142,7 @@ export async function runBacktestOrigin(input: RunBacktestOriginInput): Promise<
     modelVersion: input.modelVersion,
     configHash: input.configHash,
     initiator: { type: "backtest", correlationId: input.correlationId, windowId: window.id, ...(input.planId ? { planId: input.planId } : {}) },
+    ...(input.dixonColes ? { dixonColes: input.dixonColes } : {}),
   }, input.repository);
   return { window, forecast };
 }

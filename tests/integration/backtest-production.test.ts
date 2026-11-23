@@ -12,7 +12,7 @@ import {
   resolveHistoricalResultGraph,
   type PrismaClient,
 } from "@bet-stats/database";
-import { currentForecastConfigHash } from "@bet-stats/domain";
+import { currentForecastConfigHash, forecastConfigHashFor } from "@bet-stats/domain";
 import {
   admitBacktestPlan,
   admitPersistEnqueueBacktest,
@@ -71,11 +71,11 @@ async function seed(): Promise<void> {
   `);
 }
 
-function plan(id: string, configHash = currentForecastConfigHash(), evaluationAsOf = "2026-09-11T00:00:00.000Z"): BacktestPlanReceipt {
+function plan(id: string, configHash = currentForecastConfigHash(), evaluationAsOf = "2026-09-11T00:00:00.000Z", modelVersion: "poisson-ensemble-v1" | "dixon-coles-ensemble-v1" = "poisson-ensemble-v1"): BacktestPlanReceipt {
   return admitBacktestPlan({
     id,
     version: "rolling-origin-v1",
-    modelVersion: "poisson-ensemble-v1",
+    modelVersion,
     configHash,
     rangeFrom: "2026-09-01T00:00:00.000Z",
     rangeTo: "2026-09-10T17:00:00.000Z",
@@ -170,6 +170,16 @@ describe("production rolling-origin backtests", () => {
     await database.backtestPlan.update({ where: { id: comparableLeft.id }, data: { state: "SUCCEEDED", completedAt: new Date() } });
     const comparison = await compareBacktestPlans(database, { leftPlanId: comparableLeft.id, rightPlanId: peer.id, market: "ONE_X_TWO", from: "2026-09-01T00:00:00.000Z", to: "2026-09-30T00:00:00.000Z" });
     expect(comparison).toMatchObject({ available: true, sampleSize: 1, left: { sampleSize: 1 }, right: { sampleSize: 1 } });
+
+    // MODEL-03: the same windows can carry both versions; comparison keeps them distinct.
+    const crossVersion = plan("bt-plan-dc", forecastConfigHashFor("dixon-coles-ensemble-v1"), "2026-09-11T00:00:00.000Z", "dixon-coles-ensemble-v1");
+    await receipts.createPlan(crossVersion, "bt-dc");
+    await database.backtestEvaluation.create({ data: { id: "bt-dc-evaluation", windowId: crossVersion.windows[0]!.id, evaluationAsOf: new Date(crossVersion.windows[0]!.evaluationAsOf), resultVersionId: current.resultVersionId, settlementReceiptId: current.settlementReceiptId, scoreIds: current.scoreIds, revision: 1, isCurrent: true, receipt: { comparison: true } } });
+    await database.backtestWindow.update({ where: { id: crossVersion.windows[0]!.id }, data: { state: "SUCCEEDED", scoreIds: current.scoreIds, completedAt: new Date() } });
+    await database.backtestPlan.update({ where: { id: crossVersion.id }, data: { state: "SUCCEEDED", completedAt: new Date() } });
+    const acrossVersions = await compareBacktestPlans(database, { leftPlanId: comparableLeft.id, rightPlanId: crossVersion.id, market: "ONE_X_TWO", from: "2026-09-01T00:00:00.000Z", to: "2026-09-30T00:00:00.000Z" });
+    expect(acrossVersions).toMatchObject({ available: true, left: { modelVersion: "poisson-ensemble-v1" }, right: { modelVersion: "dixon-coles-ensemble-v1" } });
+    expect(comparableLeft.planHash).not.toBe(crossVersion.planHash);
     await worker.close();
     await queue.close();
   }, 30_000);

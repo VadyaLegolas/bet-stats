@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   ForecastOrchestrator,
   currentForecastConfigHash,
+  forecastConfigHashFor,
+  type DixonColesProvenance,
   type EvidenceProjectionDto,
   type ForecastOrchestratorRepository,
 } from "@bet-stats/domain";
@@ -158,5 +160,114 @@ describe("rolling-origin backtest", () => {
     expect(first).toMatchObject({ state: "SUCCEEDED", completedWindowIds: ["w-repeat"] });
     expect(retry).toMatchObject({ state: "SUCCEEDED", completedWindowIds: ["w-repeat"], duplicateWindowIds: ["w-repeat"] });
     expect(windows.size).toBe(1);
+  });
+});
+
+const dcWindow = { id: "w-dc", fixtureId: "fixture-1", trainingEndsAt: "2026-07-31T23:59:59.999Z", forecastCutoff: cutoff, evaluationAsOf };
+
+function dcPlan(id = "plan-dc") {
+  return admitBacktestPlan({
+    id,
+    version: "rolling-origin-v1",
+    modelVersion: "dixon-coles-ensemble-v1",
+    configHash: forecastConfigHashFor("dixon-coles-ensemble-v1"),
+    rangeFrom: "2026-07-01T00:00:00.000Z",
+    rangeTo: cutoff,
+    concurrency: 1,
+    windows: [dcWindow],
+  });
+}
+
+function zeroRho(windowFrom: string, windowTo: string): Readonly<{ rho: number; provenance: DixonColesProvenance }> {
+  return { rho: 0, provenance: { rho: 0, convention: "tau-1x2-v1", method: "insufficient-sample-zero", windowFrom, windowTo, sampleSize: 0, tauMin: 1 } };
+}
+
+/** In-memory receipt store that records window outcomes so failures are observable. */
+function memoryReceipts() {
+  const plans = new Map<string, unknown>();
+  const windows = new Map<string, { state: string; code?: string }>();
+  const receipts: BacktestReceiptRepository = {
+    createPlan: async (receipt) => { plans.set(receipt.id, receipt); },
+    findPlan: async (id) => (plans.get(id) ?? null) as never,
+    claimWindow: async (receipt) => {
+      const existing = windows.get(receipt.id);
+      if (existing?.state === "SUCCEEDED") return { claimed: false, receipt: existing as never };
+      windows.set(receipt.id, { state: "RUNNING" });
+      return { claimed: true, receipt: { ...receipt, state: "RUNNING" } };
+    },
+    completeWindow: async (id) => { windows.set(id, { state: "SUCCEEDED" }); },
+    evaluateWindow: async () => ({ resultVersionId: "result-1", settlementReceiptId: "settlement-1", scoreIds: ["score-1"] }),
+    failWindow: async (id, code) => { windows.set(id, { state: "FAILED", code }); },
+    completePlan: async () => undefined,
+  };
+  return { receipts, windows };
+}
+
+describe("dixon-coles backtest versioning", () => {
+  it("accepts both known versions and rejects unknown ones", () => {
+    expect(dcPlan().modelVersion).toBe("dixon-coles-ensemble-v1");
+    expect(() => admitBacktestPlan({
+      id: "plan-bad",
+      version: "rolling-origin-v1",
+      modelVersion: "poisson-ensemble-v2",
+      configHash: currentForecastConfigHash(),
+      rangeFrom: "2026-07-01T00:00:00.000Z",
+      rangeTo: cutoff,
+      concurrency: 1,
+      windows: [dcWindow],
+    })).toThrowError(expect.objectContaining({ code: "INVALID_BACKTEST_PLAN" }));
+  });
+
+  it("gives V1 and dixon-coles different plan hashes over the same windows", () => {
+    const v1 = admitBacktestPlan({ id: "plan-same", version: "rolling-origin-v1", modelVersion: "poisson-ensemble-v1", configHash: currentForecastConfigHash(), rangeFrom: "2026-07-01T00:00:00.000Z", rangeTo: cutoff, concurrency: 1, windows: [dcWindow] });
+    expect(v1.planHash).not.toBe(dcPlan("plan-same").planHash);
+  });
+
+  it("fits rho at the training boundary, not at the forecast cutoff", async () => {
+    const seen: string[] = [];
+    const { receipts } = memoryReceipts();
+    const plan = dcPlan();
+    await runBacktestPlan({
+      plan,
+      receipts,
+      orchestrator: new ForecastOrchestrator(),
+      repository: repository([]),
+      correlationId: "dc-fit",
+      resolveDixonColes: async (window) => {
+        seen.push(window.trainingEndsAt);
+        return zeroRho(window.trainingEndsAt, window.trainingEndsAt);
+      },
+    });
+    expect(seen).toEqual([dcWindow.trainingEndsAt]);
+    expect(Date.parse(seen[0]!)).toBeLessThan(Date.parse(cutoff));
+    expect(seen[0]).not.toBe(dcWindow.forecastCutoff);
+  });
+
+  it("marks the window FAILED when rho cannot be fitted", async () => {
+    const { receipts, windows } = memoryReceipts();
+    await expect(runBacktestPlan({
+      plan: dcPlan(),
+      receipts,
+      orchestrator: new ForecastOrchestrator(),
+      repository: repository([]),
+      correlationId: "dc-null",
+      resolveDixonColes: async () => null,
+    })).rejects.toMatchObject({ code: "DIXON_COLES_RHO_UNAVAILABLE" });
+    expect(windows.get(dcWindow.id)).toEqual({ state: "FAILED", code: "DIXON_COLES_RHO_UNAVAILABLE" });
+  });
+
+  it("never resolves dixon-coles for a V1 plan", async () => {
+    let calls = 0;
+    const { receipts } = memoryReceipts();
+    const plan = admitBacktestPlan({ id: "plan-v1-only", version: "rolling-origin-v1", modelVersion: "poisson-ensemble-v1", configHash: currentForecastConfigHash(), rangeFrom: "2026-07-01T00:00:00.000Z", rangeTo: cutoff, concurrency: 1, windows: [dcWindow] });
+    await runBacktestPlan({
+      plan,
+      receipts,
+      orchestrator: new ForecastOrchestrator(),
+      repository: repository([]),
+      correlationId: "v1-only",
+      resolveDixonColes: async (window) => { calls += 1; return zeroRho(window.trainingEndsAt, window.trainingEndsAt); },
+    });
+    expect(calls).toBe(0);
   });
 });

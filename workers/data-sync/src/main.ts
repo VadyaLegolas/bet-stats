@@ -2,7 +2,7 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { dependencyReadiness, readAlertsConfig, readBackupConfig, readServerConfig, resolveForecastModelSelection, DEFAULT_BACKUP_DRILL_INTERVAL_HOURS, type AlertConfig, type BackupConfig } from "@bet-stats/config";
-import { createPrismaBacktestReceiptRepository, createPrismaClient, createPrismaForecastRepository, createProviderRoutingRepository, createReplayProviderPolicyRepository, createSettlementPipelineService, DEFAULT_REPLAY_PROVIDER_POLICIES, type PrismaClient } from "@bet-stats/database";
+import { createPrismaBacktestReceiptRepository, createPrismaClient, createPrismaForecastRepository, createProviderRoutingRepository, createReplayProviderPolicyRepository, createSettlementPipelineService, DEFAULT_REPLAY_PROVIDER_POLICIES, fitLeagueDixonColesParameters, type PrismaClient } from "@bet-stats/database";
 import { ForecastOrchestrator } from "@bet-stats/domain";
 import { ApiFootballClient, FootballDataOrgClient, type FixtureProvider, type ResultProvider, type StandingsProvider } from "@bet-stats/football-data";
 import { runReplayFixtureJob } from "./jobs/fixtures.js";
@@ -75,7 +75,7 @@ export function startReplayWorker(input: { databaseUrl: string; redisUrl: string
       }
     : issueLineupForecastBase;
   const enrichmentWorker = createEnrichmentWorker({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}), execute: createProductionEnrichmentExecutor({ database, apiFootballFactory: providerFactories["api-football"], issueLineupForecast }) });
-  const backtestWorker = createBacktestWorker({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}), loadPlan: backtestReceipts.findPlan as never, execute: (plan, data) => runBacktestPlan({ plan, receipts: backtestReceipts as never, orchestrator: new ForecastOrchestrator(), repository: forecastRepository, correlationId: data.correlationId }) });
+  const backtestWorker = createBacktestWorker({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}), loadPlan: backtestReceipts.findPlan as never, execute: (plan, data) => runBacktestPlan({ plan, receipts: backtestReceipts as never, orchestrator: new ForecastOrchestrator(), repository: forecastRepository, correlationId: data.correlationId, resolveDixonColes: async (window) => { const fixture = await forecastRepository.findFixture(window.fixtureId); if (!fixture) return null; return fitLeagueDixonColesParameters(database, { leagueId: fixture.leagueId, asOf: window.trainingEndsAt }); } }) });
   const reconcile = () => reconcileBacktestDelivery({ receipts: backtestReceipts, queue: backtestQueueHandle }).catch(() => undefined);
   void reconcile();
   const backtestReconcileTimer = setInterval(() => { void reconcile(); }, 5_000);

@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import type { ForecastKind, ForecastModelVersion, ForecastRequestDto, ForecastResponseDto } from "@bet-stats/domain";
 
+/** Production PRE_MATCH lead: the forecast is issued this many hours before kickoff (single source for the planner, the sweep and the operator comparison). */
+export const PRE_MATCH_CUTOFF_LEAD_HOURS = 6;
+export const PRE_MATCH_CUTOFF_LEAD_MS = PRE_MATCH_CUTOFF_LEAD_HOURS * 60 * 60 * 1_000;
+
 export interface ForecastPublicationJobData {
   readonly fixtureId: string;
   readonly kind: ForecastKind;
@@ -41,7 +45,7 @@ export async function planForecastPublication(input: ForecastPublicationPlanInpu
   if (!Number.isFinite(kickoff)) throw new Error("INVALID_FIXTURE_KICKOFF");
   const planned: Array<Readonly<{ kind: ForecastKind; cutoff: string }>> = [];
   if (input.initialEligibleCutoff) planned.push({ kind: "INITIAL", cutoff: new Date(input.initialEligibleCutoff).toISOString() });
-  planned.push({ kind: "PRE_MATCH", cutoff: new Date(kickoff - 6 * 60 * 60 * 1_000).toISOString() });
+  planned.push({ kind: "PRE_MATCH", cutoff: new Date(kickoff - PRE_MATCH_CUTOFF_LEAD_MS).toISOString() });
   const lineup = await input.officialLineupAt(input.kickoffUtc);
   if (lineup && Date.parse(lineup.confirmedAt) < kickoff) planned.push({ kind: "LINEUP_CONFIRMED", cutoff: new Date(lineup.confirmedAt).toISOString() });
   const jobs: ForecastPublicationJob[] = [];

@@ -114,7 +114,7 @@ export async function runModelComparisonCommand(argv: readonly string[], deps: M
 
   const resolved = resolveComparisonParams(params);
   const pair = buildComparisonPlanPair(params, await listComparisonFixtures(deps.database, resolved));
-  const summary = { pairId: pair.pairId, leftPlanId: pair.left.id, rightPlanId: pair.right.id, leftModel: pair.left.modelVersion, rightModel: pair.right.modelVersion, windows: pair.windowCount, params: pair.params };
+  const summary = { pairId: pair.pairId, leftPlanId: pair.left.id, rightPlanId: pair.right.id, leftModel: pair.left.modelVersion, rightModel: pair.right.modelVersion, windows: pair.windowCount, cohort: pair.cohort, params: pair.params };
   if (values["dry-run"]) { emit({ dryRun: true, ...summary }, `Пробный запуск, ничего не записано.\nОкон: ${pair.windowCount}\nV1: ${pair.left.id}\nDC: ${pair.right.id}`); return 0; }
   await submitComparisonPair(pair, { receipts: deps.receipts, queue: deps.queue });
   emit({ submitted: true, ...summary }, `Пара планов подана (повтор с теми же параметрами дубликатов не создаёт). Окон: ${pair.windowCount}\nV1: ${pair.left.id}\nDC: ${pair.right.id}`);

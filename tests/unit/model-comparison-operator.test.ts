@@ -2,10 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import { MODEL_COMPARISON_POLICY, forecastConfigHashFor, validateRollingOriginWindow } from "@bet-stats/domain";
 import { BACKTEST_LIMITS } from "../../workers/data-sync/src/jobs/backtests.js";
+import { PRE_MATCH_CUTOFF_LEAD_HOURS, PRE_MATCH_CUTOFF_LEAD_MS } from "../../workers/data-sync/src/jobs/forecasts.js";
 import {
   buildComparisonPlanPair,
   buildComparisonWindows,
   describeComparison,
+  listComparisonFixtures,
+  planComparisonCohort,
   resolveComparisonParams,
   submitComparisonPair,
   waitForPlans,
@@ -15,25 +18,96 @@ import {
 import { runModelComparisonCommand } from "../../workers/data-sync/src/jobs/model-comparison-cli.js";
 
 const range = { from: "2026-08-01T00:00:00.000Z", to: "2026-09-01T00:00:00.000Z" };
-function fixture(id: string, kickoff: string, resultAfterHours: number | null = 3): ComparisonFixture {
+function fixture(id: string, kickoff: string, resultAfterHours: number | null = 3, hasEvidenceAtCutoff = true): ComparisonFixture {
   const kickoffUtc = new Date(kickoff);
-  return { id, kickoffUtc, firstResultEffectiveAt: resultAfterHours === null ? null : new Date(kickoffUtc.getTime() + resultAfterHours * 3_600_000) };
+  return { id, kickoffUtc, firstResultEffectiveAt: resultAfterHours === null ? null : new Date(kickoffUtc.getTime() + resultAfterHours * 3_600_000), hasEvidenceAtCutoff };
 }
 const fixtures = [fixture("f2", "2026-08-10T18:00:00.000Z"), fixture("f1", "2026-08-09T15:00:00.000Z"), fixture("f3", "2026-08-10T18:00:00.000Z")];
 
 describe("operator model comparison: windows and plans", () => {
-  it("builds strictly increasing, leakage-safe windows and breaks kickoff ties deterministically", () => {
-    const windows = buildComparisonWindows(fixtures, resolveComparisonParams(range), "p");
-    expect(windows.map((w) => w.fixtureId)).toEqual(["f1", "f2", "f3"]);
+  it("builds strictly increasing, leakage-safe windows at the production lead and keeps the smallest id on a shared kickoff", () => {
+    const resolved = resolveComparisonParams(range);
+    const windows = buildComparisonWindows(fixtures, resolved, "p");
+    expect(windows.map((w) => w.fixtureId)).toEqual(["f1", "f2"]);
     let previous: string | undefined;
     for (const window of windows) { validateRollingOriginWindow(window, previous); previous = window.forecastCutoff; }
-    expect(Date.parse(windows[2]!.forecastCutoff) - Date.parse(windows[1]!.forecastCutoff)).toBe(1);
-    expect(windows[0]).toMatchObject({ trainingEndsAt: "2026-08-08T14:00:00.000Z", forecastCutoff: "2026-08-09T14:00:00.000Z", evaluationAsOf: "2026-08-11T15:00:00.000Z" });
+    expect(windows[1]!.forecastCutoff).toBe("2026-08-10T12:00:00.000Z");
+    expect(windows[0]).toMatchObject({ trainingEndsAt: "2026-08-08T09:00:00.000Z", forecastCutoff: "2026-08-09T09:00:00.000Z", evaluationAsOf: "2026-08-11T15:00:00.000Z" });
+    const { report } = planComparisonCohort(fixtures, resolved);
+    expect(report).toMatchObject({ considered: 3, usable: 2, skipped: { noResultByEvaluationAsOf: 0, noPublishedEvidenceAtCutoff: 0, sharedCutoffInstant: 1 }, tieBreak: "smallest-fixture-id", minimumRequired: MODEL_COMPARISON_POLICY.minimumSampleSize });
+  });
+
+  it("defaults the cutoff lead to the single production PRE_MATCH constant (6 hours)", () => {
+    expect(PRE_MATCH_CUTOFF_LEAD_HOURS).toBe(6);
+    expect(PRE_MATCH_CUTOFF_LEAD_MS).toBe(21_600_000);
+    expect(resolveComparisonParams(range).cutoffHoursBeforeKickoff).toBe(PRE_MATCH_CUTOFF_LEAD_HOURS);
+    expect(planComparisonCohort(fixtures, resolveComparisonParams(range)).report.leadHours).toBe(6);
+    expect(resolveComparisonParams({ ...range, cutoffHoursBeforeKickoff: 2 }).cutoffHoursBeforeKickoff).toBe(2);
+  });
+
+  it("does not let a fixture without evidence occupy the tie-break slot, even with the smaller id", () => {
+    const tied = [fixture("a", "2026-08-10T18:00:00.000Z", 3, false), fixture("b", "2026-08-10T18:00:00.000Z"), fixture("c", "2026-08-10T18:00:00.000Z")];
+    const { eligible, report } = planComparisonCohort(tied, resolveComparisonParams(range));
+    expect(eligible.map((item) => item.id)).toEqual(["b"]);
+    expect(report.skipped).toEqual({ noResultByEvaluationAsOf: 0, noPublishedEvidenceAtCutoff: 1, sharedCutoffInstant: 1 });
+  });
+
+  it("keeps considered = usable + skipped and is independent of the input order", () => {
+    const mixed = [
+      fixture("a", "2026-08-05T12:00:00.000Z", null),
+      fixture("b", "2026-08-06T12:00:00.000Z", 100),
+      fixture("c", "2026-08-07T12:00:00.000Z", 3, false),
+      fixture("d", "2026-08-08T12:00:00.000Z"),
+      fixture("e", "2026-08-08T12:00:00.000Z"),
+      fixture("f", "2026-08-09T12:00:00.000Z"),
+      fixture("out", "2026-09-05T12:00:00.000Z"),
+    ];
+    const resolved = resolveComparisonParams(range);
+    const { eligible, report } = planComparisonCohort(mixed, resolved);
+    expect(report.considered).toBe(6);
+    expect(report.considered).toBe(report.usable + report.skipped.noResultByEvaluationAsOf + report.skipped.noPublishedEvidenceAtCutoff + report.skipped.sharedCutoffInstant);
+    expect(report).toMatchObject({ usable: 2, skipped: { noResultByEvaluationAsOf: 2, noPublishedEvidenceAtCutoff: 1, sharedCutoffInstant: 1 } });
+    expect(eligible.map((item) => item.id)).toEqual(["d", "f"]);
+    const reversed = planComparisonCohort([...mixed].reverse(), resolved);
+    expect(reversed.eligible.map((item) => item.id)).toEqual(["d", "f"]);
+    expect(reversed.report).toEqual(report);
+    expect(buildComparisonPlanPair(range, [...mixed].reverse()).pairId).toBe(buildComparisonPlanPair(range, mixed).pairId);
+  });
+
+  it("compares ids by code units, not by locale", () => {
+    const tied = [fixture("a", "2026-08-10T18:00:00.000Z"), fixture("B", "2026-08-10T18:00:00.000Z")];
+    expect(planComparisonCohort(tied, resolveComparisonParams(range)).eligible.map((item) => item.id)).toEqual(["B"]);
   });
 
   it("skips fixtures without a result known by evaluationAsOf and outside the kickoff range", () => {
     const windows = buildComparisonWindows([fixture("none", "2026-08-05T12:00:00.000Z", null), fixture("late", "2026-08-05T12:00:00.000Z", 100), fixture("out", "2026-09-05T12:00:00.000Z"), fixture("ok", "2026-08-05T12:00:00.000Z")], resolveComparisonParams(range), "p");
     expect(windows.map((w) => w.fixtureId)).toEqual(["ok"]);
+  });
+
+  it("marks a fixture as evidence-backed only when BOTH teams have a PUBLISHED build at the exact cutoff", async () => {
+    const kickoff = (id: string, day: number, home: string, away: string) => ({ id, kickoffUtc: new Date(Date.UTC(2026, 7, day, 18)), homeTeamId: home, awayTeamId: away, resultVersions: [{ effectiveAt: new Date(Date.UTC(2026, 7, day, 20)) }] });
+    const cutoffMs = (day: number, offsetMs = 0) => Date.UTC(2026, 7, day, 18) - PRE_MATCH_CUTOFF_LEAD_MS + offsetMs;
+    const rows = [kickoff("both", 10, "h1", "a1"), kickoff("one", 11, "h2", "a2"), kickoff("early", 12, "h3", "a3"), kickoff("none", 13, "h4", "a4")];
+    const findBuilds = vi.fn(async () => [
+      { teamId: "h1", cutoff: new Date(cutoffMs(10)) }, { teamId: "a1", cutoff: new Date(cutoffMs(10)) },
+      { teamId: "h2", cutoff: new Date(cutoffMs(11)) },
+      { teamId: "h3", cutoff: new Date(cutoffMs(12, -1)) }, { teamId: "a3", cutoff: new Date(cutoffMs(12)) },
+    ]);
+    const database = { fixture: { findMany: async () => rows }, evidenceBuild: { findMany: findBuilds } };
+    const listed = await listComparisonFixtures(database as never, resolveComparisonParams(range));
+    expect(Object.fromEntries(listed.map((item) => [item.id, item.hasEvidenceAtCutoff]))).toEqual({ both: true, one: false, early: false, none: false });
+    expect(findBuilds).toHaveBeenCalledTimes(1);
+    const query = (findBuilds.mock.calls[0] as unknown as [{ where: { state: string; teamId: { in: string[] }; cutoff: { in: Date[] } } }])[0].where;
+    expect(query.state).toBe("PUBLISHED");
+    expect([...query.teamId.in].sort()).toEqual(["a1", "a2", "a3", "a4", "h1", "h2", "h3", "h4"]);
+    expect(query.cutoff.in.map((date) => date.getTime()).sort()).toEqual([10, 11, 12, 13].map((day) => cutoffMs(day)));
+  });
+
+  it("does not query evidence builds when there are no fixtures", async () => {
+    const findBuilds = vi.fn(async () => []);
+    const listed = await listComparisonFixtures({ fixture: { findMany: async () => [] }, evidenceBuild: { findMany: findBuilds } } as never, resolveComparisonParams(range));
+    expect(listed).toEqual([]);
+    expect(findBuilds).not.toHaveBeenCalled();
   });
 
   it("builds an admitted pair: one window set, version-specific config hashes, deterministic ids", () => {
@@ -47,6 +121,8 @@ describe("operator model comparison: windows and plans", () => {
     const again = buildComparisonPlanPair(range, [...fixtures].reverse());
     expect([again.left.id, again.left.planHash, again.right.planHash]).toEqual([pair.left.id, pair.left.planHash, pair.right.planHash]);
     expect(buildComparisonPlanPair({ ...range, cutoffHoursBeforeKickoff: 2 }, fixtures).left.id).not.toBe(pair.left.id);
+    expect(pair.windowCount).toBe(2);
+    expect(pair.cohort).toMatchObject({ considered: 3, usable: 2 });
   });
 
   it.each([
@@ -113,10 +189,13 @@ describe("operator model comparison: submit, wait, receipt", () => {
   it("dry-run prints the pair and writes nothing; submit validates input", async () => {
     const stores = fakeStores();
     const lines: string[] = [];
-    const database = { fixture: { findMany: async () => fixtures.map((f) => ({ id: f.id, kickoffUtc: f.kickoffUtc, resultVersions: [{ effectiveAt: f.firstResultEffectiveAt }] })) } };
+    const database = {
+      fixture: { findMany: async () => fixtures.map((f) => ({ id: f.id, kickoffUtc: f.kickoffUtc, homeTeamId: `h-${f.id}`, awayTeamId: `a-${f.id}`, resultVersions: [{ effectiveAt: f.firstResultEffectiveAt }] })) },
+      evidenceBuild: { findMany: async () => fixtures.flatMap((f) => [`h-${f.id}`, `a-${f.id}`].map((teamId) => ({ teamId, cutoff: new Date(f.kickoffUtc.getTime() - PRE_MATCH_CUTOFF_LEAD_MS) }))) },
+    };
     const deps = { database: database as never, receipts: stores.receipts as never, queue: stores.queue, out: (line: string) => lines.push(line) };
     expect(await runModelComparisonCommand(["submit", "--from", range.from, "--to", range.to, "--dry-run", "--json"], deps)).toBe(0);
-    expect(JSON.parse(lines.join("\n"))).toMatchObject({ dryRun: true, windows: 3 });
+    expect(JSON.parse(lines.join("\n"))).toMatchObject({ dryRun: true, windows: 2, cohort: { considered: 3, usable: 2, skipped: { sharedCutoffInstant: 1 } } });
     expect(stores.plans.size).toBe(0);
     await expect(runModelComparisonCommand(["submit", "--from", range.from], deps)).rejects.toThrow("COMPARISON_RANGE_REQUIRED");
     expect(await runModelComparisonCommand(["submit", "--from", range.from, "--to", range.to], deps)).toBe(0);

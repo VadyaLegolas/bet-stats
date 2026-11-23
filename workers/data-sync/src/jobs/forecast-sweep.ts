@@ -4,12 +4,11 @@ import type { PrismaClient } from "@bet-stats/database";
 import { ForecastOrchestrator, type ForecastModelVersion, type ForecastOrchestratorRepository } from "@bet-stats/domain";
 
 import { createPrismaEvidenceRebuildDatabase, runEvidenceRebuild } from "./evidence-rebuild.js";
-import { planForecastPublication, runForecastPublicationJob, type ForecastPublisher } from "./forecasts.js";
+import { PRE_MATCH_CUTOFF_LEAD_MS, planForecastPublication, runForecastPublicationJob, type ForecastPublisher } from "./forecasts.js";
 
 /** Evidence config identity for sweep-issued forecasts; must match runEvidenceRebuild keying. */
 export const EVIDENCE_CONFIG_HASH = createHash("sha256").update("evidence-v1", "utf8").digest("hex");
 
-const PRE_MATCH_OFFSET_MS = 6 * 60 * 60 * 1_000;
 /** Only fixtures inside this window are swept. */
 const SWEEP_HORIZON_MS = 14 * 24 * 60 * 60 * 1_000;
 /** INITIAL issues as soon as a fixture enters the sweep horizon so every upcoming match has a forecast. */
@@ -32,7 +31,7 @@ export function computeDueKinds(input: DueKindsInput): readonly SweepForecastKin
   const issued = new Set(input.issuedKinds);
   const due: SweepForecastKind[] = [];
   if (now >= kickoff - INITIAL_OFFSET_MS && !issued.has("INITIAL")) due.push("INITIAL");
-  if (now >= kickoff - PRE_MATCH_OFFSET_MS && !issued.has("PRE_MATCH")) due.push("PRE_MATCH");
+  if (now >= kickoff - PRE_MATCH_CUTOFF_LEAD_MS && !issued.has("PRE_MATCH")) due.push("PRE_MATCH");
   return due;
 }
 

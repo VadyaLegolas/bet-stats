@@ -17,7 +17,7 @@ const windows: readonly ComparisonWindow[] = [
 const computedAt = "2026-11-23T00:00:00.000Z";
 
 function side(overrides: Partial<ComparisonSide> = {}): ComparisonSide {
-  return { planId: "plan-v1", planHash: "hash-v1", modelVersion: "poisson-ensemble-v1", configHash: "sha256:config-v1", sampleSize: 2, brierScore: 0.2, logLoss: 0.6, ...overrides };
+  return { planId: "plan-v1", planHash: "hash-v1", modelVersion: "poisson-ensemble-v1", configHash: "sha256:config-v1", sampleSize: 40, brierScore: 0.2, logLoss: 0.6, ...overrides };
 }
 
 function receipt(rightBrier: number, rightLogLoss = 0.6, left = side(), right: Partial<ComparisonSide> = {}) {
@@ -34,12 +34,22 @@ function receipt(rightBrier: number, rightLogLoss = 0.6, left = side(), right: P
 
 describe("model comparison verdict", () => {
   it("is material only at the policy threshold", () => {
-    expect(MODEL_COMPARISON_POLICY).toEqual({ version: "model-comparison-v1", deltaMateriality: 0.002 });
-    expect(modelComparisonVerdict(-0.002)).toBe("BETTER");
-    expect(modelComparisonVerdict(-0.0019)).toBe("INCONCLUSIVE");
-    expect(modelComparisonVerdict(0)).toBe("INCONCLUSIVE");
-    expect(modelComparisonVerdict(0.0019)).toBe("INCONCLUSIVE");
-    expect(modelComparisonVerdict(0.002)).toBe("WORSE");
+    expect(MODEL_COMPARISON_POLICY).toEqual({ version: "model-comparison-v2", deltaMateriality: 0.002, minimumSampleSize: 30 });
+    expect(modelComparisonVerdict(-0.002, 40)).toBe("BETTER");
+    expect(modelComparisonVerdict(-0.0019, 40)).toBe("INCONCLUSIVE");
+    expect(modelComparisonVerdict(0, 40)).toBe("INCONCLUSIVE");
+    expect(modelComparisonVerdict(0.0019, 40)).toBe("INCONCLUSIVE");
+    expect(modelComparisonVerdict(0.002, 40)).toBe("WORSE");
+  });
+
+  it("never calls a result better or worse below the minimum sample size (review WR-05)", () => {
+    const minimum = MODEL_COMPARISON_POLICY.minimumSampleSize;
+    expect(modelComparisonVerdict(-0.2, minimum - 1)).toBe("INCONCLUSIVE");
+    expect(modelComparisonVerdict(0.2, 1)).toBe("INCONCLUSIVE");
+    expect(modelComparisonVerdict(-0.2, minimum)).toBe("BETTER");
+    expect(modelComparisonVerdict(0.2, minimum)).toBe("WORSE");
+    expect(receipt(0.1, 0.6, side({ sampleSize: 5 }), { sampleSize: 5 }).verdict).toBe("INCONCLUSIVE");
+    expect(() => modelComparisonVerdict(0.1, 1.5)).toThrow("INVALID_COMPARISON_SAMPLE_SIZE");
   });
 
   it("derives the verdict from the Brier delta only, so a log-loss win cannot mask a Brier loss", () => {
@@ -61,7 +71,7 @@ describe("model comparison receipt", () => {
     const built = receipt(0.1);
     expect(Object.keys(built).sort()).toEqual(["computedAt", "deltas", "from", "left", "market", "right", "to", "verdict", "version", "windowsDigest"]);
     expect(Object.keys(built.left).sort()).toEqual(["brierScore", "configHash", "logLoss", "modelVersion", "planHash", "planId", "sampleSize"]);
-    expect(built.version).toBe("model-comparison-v1");
+    expect(built.version).toBe("model-comparison-v2");
     expect(built.computedAt).toBe(computedAt);
     expect(built.windowsDigest).toMatch(/^sha256:[0-9a-f]{64}$/);
   });
@@ -82,10 +92,10 @@ describe("model comparison receipt", () => {
 
   it("refuses identical plans and cohort mismatches instead of inventing a winner", () => {
     expect(() => receipt(0.1, 0.6, side(), { planId: "plan-v1", planHash: "hash-v1" })).toThrow("IDENTICAL_PLANS");
-    expect(() => receipt(0.1, 0.6, side(), { sampleSize: 3 })).toThrow("COHORT_MISMATCH");
+    expect(() => receipt(0.1, 0.6, side(), { sampleSize: 41 })).toThrow("COHORT_MISMATCH");
     expect(() => receipt(0.1, 0.6, side({ modelVersion: "poisson-ensemble-v9" }))).toThrow("INVALID_COMPARISON_SIDE");
     expect(() => receipt(0.1, 0.6, side(), { brierScore: Number.NaN })).toThrow("INVALID_COMPARISON_SIDE");
-    expect(() => modelComparisonVerdict(Number.NaN)).toThrow("INVALID_COMPARISON_DELTA");
+    expect(() => modelComparisonVerdict(Number.NaN, 40)).toThrow("INVALID_COMPARISON_DELTA");
   });
 });
 
@@ -100,7 +110,7 @@ describe("toModelComparisonResult", () => {
     const result = toModelComparisonResult({
       available: true,
       market: "ONE_X_TWO",
-      sampleSize: 2,
+      sampleSize: 40,
       left: side(),
       right: side({ planId: "plan-dc", planHash: "hash-dc", modelVersion: "dixon-coles-ensemble-v1", configHash: "sha256:config-v2", brierScore: 0.1 }),
       deltas: { brierScore: -0.1, logLoss: 0 },

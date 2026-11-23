@@ -61,11 +61,24 @@ describe("dixon-coles tau convention (D-06)", () => {
 });
 
 describe("dixon-coles rho bounds (D-07 amended)", () => {
-  it("derives three lower and two upper constraints from tau positivity", () => {
+  it("derives two lower and two upper constraints from tau positivity", () => {
     const bounds = dixonColesRhoBounds(lambdaHome, lambdaAway);
-    expect(bounds.min).toBe(Math.max(-1 / (lambdaHome * lambdaAway), -1 / lambdaHome, -1 / lambdaAway));
+    // tau(0,0) = 1 - λh·λa·rho is above 1 for negative rho, so it contributes no lower bound.
+    expect(bounds.min).toBe(Math.max(-1 / lambdaHome, -1 / lambdaAway));
     expect(bounds.max).toBe(Math.min(1 / (lambdaHome * lambdaAway), 1));
     expect(bounds.min).toBeLessThan(bounds.max);
+  });
+
+  it("accepts a legitimate negative rho for high lambdas (review WR-01)", () => {
+    const bounds = dixonColesRhoBounds(2, 2);
+    expect(bounds.min).toBe(-0.5);
+    expect(() => assertDixonColesRho(-0.4, bounds)).not.toThrow();
+    expect(() => assertDixonColesRho(-0.5, bounds)).toThrow("INVALID_DIXON_COLES_RHO");
+  });
+
+  it("throws a coded error for an out-of-band rho (review WR-03)", () => {
+    const bounds = dixonColesRhoBounds(lambdaHome, lambdaAway);
+    expect(() => assertDixonColesRho(bounds.max, bounds)).toThrow(expect.objectContaining({ code: "INVALID_DIXON_COLES_RHO" }));
   });
 
   it.each([
@@ -178,6 +191,15 @@ describe("dixon-coles normalization inside createForecast", () => {
     expect(dc.inputHash).not.toBe(v1.inputHash);
   });
 
+  it("degrades to an explicit rho = 0 when the fitted rho is outside this fixture's band (review WR-03)", () => {
+    const outOfBand = 0.99;
+    const dc = createForecast({ ...base, modelVersion: "dixon-coles-ensemble-v1", dixonColes: { rho: outOfBand, provenance: { ...provenance, rho: outOfBand } } });
+    const zero = createForecast({ ...base, modelVersion: "dixon-coles-ensemble-v1", dixonColes: { rho: 0, provenance: { ...provenance, rho: 0 } } });
+    expect(dc.dixonColes).toMatchObject({ rho: 0, method: "out-of-band-zero", tauMin: 1, sampleSize: provenance.sampleSize });
+    expect(dc.markets).toEqual(zero.markets);
+    expect(dc.assumptions).toContain("fitted rho outside this fixture's feasible band: rho = 0 applied");
+  });
+
   it("reproduces the v1 probabilities exactly at rho = 0", () => {
     const v1 = createForecast(base);
     const dc = createForecast({ ...base, modelVersion: "dixon-coles-ensemble-v1", dixonColes: { rho: 0, provenance: { ...provenance, rho: 0 } } });
@@ -266,6 +288,41 @@ describe("estimateDixonColesRho", () => {
     expect(Object.is(first.rho, second.rho)).toBe(true);
     const shuffled = [...rows].reverse();
     expect(Object.is(estimateDixonColesRho(shuffled, { ...window, minSamples: 100 }).rho, first.rho)).toBe(true);
+  });
+
+  it("is not forced to zero by a single high-lambda row (review WR-01)", () => {
+    const target = -0.15;
+    const size = 1200;
+    const random = lcg(777);
+    const rows = Array.from({ length: size }, (_, index) => {
+      // One row with λh·λa = 10.5 used to lift the shared lower bound to -1/10.5 ≈ -0.095, above the true rho.
+      const [home, away] = index === 0 ? [3.5, 3] : [1.2 + (index % 7) * 0.15, 0.9 + (index % 5) * 0.12];
+      return { lambdaHome: home, lambdaAway: away, ...sampleScore((index + random()) / size, home, away, target) };
+    });
+    const result = estimateDixonColesRho(rows, { ...window, minSamples: 300 });
+    expect(result.method).toBe("mle-low-score-v1");
+    expect(result.rho).toBeLessThan(-0.1);
+  });
+
+  it("does not fall back because of floating-point error at the band endpoints (review WR-02)", () => {
+    // Lambdas for which 1 + λ·(−1/λ) is not exactly 0: the bracket must sit strictly inside the band.
+    const unstable: number[] = [];
+    for (let candidate = 0.5; candidate <= 3; candidate += 0.01) {
+      const lambda = Math.round(candidate * 100) / 100;
+      if (1 + lambda * (-1 / lambda) !== 0) unstable.push(lambda);
+    }
+    expect(unstable.length).toBeGreaterThan(0);
+    const target = -0.08;
+    const size = 900;
+    const random = lcg(31337);
+    const rows = Array.from({ length: size }, (_, index) => {
+      const home = unstable[index % unstable.length]!;
+      const away = unstable[(index * 7 + 3) % unstable.length]!;
+      return { lambdaHome: home, lambdaAway: away, ...sampleScore((index + random()) / size, home, away, target) };
+    });
+    const result = estimateDixonColesRho(rows, { ...window, minSamples: 300 });
+    expect(result.method).toBe("mle-low-score-v1");
+    expect(Number.isFinite(result.rho)).toBe(true);
   });
 
   it("never returns a non-finite rho", () => {

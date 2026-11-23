@@ -126,17 +126,23 @@ export async function compareBacktestPlans(database: PrismaClient, input: { left
   const right = input.leftPlanId === first.id ? second : first;
   const identity = (plan: typeof first) => plan.windows.map((w) => `${w.fixtureId}|${w.forecastCutoff.toISOString()}|${w.evaluationAsOf.toISOString()}`);
   if (left.version !== right.version || JSON.stringify(identity(left)) !== JSON.stringify(identity(right))) return { available: false as const, reason: "COHORT_MISMATCH" };
-  const windows = left.windows.map((window) => ({ fixtureId: window.fixtureId, forecastCutoff: window.forecastCutoff.toISOString(), evaluationAsOf: window.evaluationAsOf.toISOString() }));
   const aggregate = async (plan: typeof first) => {
     const scoreIds = plan.windows.flatMap((window) => window.evaluations.flatMap((evaluation) => evaluation.scoreIds as string[]));
     if (scoreIds.length === 0) throw coded("BACKTEST_SCORE_IDS_EMPTY");
-    const scores = await database.forecastScore.findMany({ where: { id: { in: scoreIds }, market: input.market, kickoffUtc: { gte: new Date(input.from), lte: new Date(input.to) } }, select: { brierScore: true, logLoss: true } });
+    const scores = await database.forecastScore.findMany({ where: { id: { in: scoreIds }, market: input.market, kickoffUtc: { gte: new Date(input.from), lt: new Date(input.to) } }, select: { fixtureId: true, brierScore: true, logLoss: true } });
     if (scores.length === 0) throw coded("COMPARISON_EMPTY_COHORT");
-    return { planId: plan.id, planHash: plan.planHash, modelVersion: plan.modelVersion, configHash: plan.configHash, sampleSize: scores.length, brierScore: scores.reduce((s, x) => s + x.brierScore, 0) / scores.length, logLoss: scores.reduce((s, x) => s + x.logLoss, 0) / scores.length };
+    const fixtureIds = [...new Set(scores.map((score) => score.fixtureId))].sort();
+    const metrics = { planId: plan.id, planHash: plan.planHash, modelVersion: plan.modelVersion, configHash: plan.configHash, sampleSize: scores.length, brierScore: scores.reduce((s, x) => s + x.brierScore, 0) / scores.length, logLoss: scores.reduce((s, x) => s + x.logLoss, 0) / scores.length };
+    return { metrics, fixtureIds };
   };
   try {
-    const leftMetrics = await aggregate(left); const rightMetrics = await aggregate(right);
-    if (leftMetrics.sampleSize !== rightMetrics.sampleSize) return { available: false as const, reason: "COHORT_MISMATCH" };
+    const leftAggregate = await aggregate(left); const rightAggregate = await aggregate(right);
+    const leftMetrics = leftAggregate.metrics; const rightMetrics = rightAggregate.metrics;
+    // Cohort identity, not just size: both sides must have scored exactly the same fixtures in the filtered range.
+    if (leftMetrics.sampleSize !== rightMetrics.sampleSize || JSON.stringify(leftAggregate.fixtureIds) !== JSON.stringify(rightAggregate.fixtureIds)) return { available: false as const, reason: "COHORT_MISMATCH" };
+    // The receipt describes the cohort it was computed on: only windows of fixtures that were actually scored here.
+    const scored = new Set(leftAggregate.fixtureIds);
+    const windows = left.windows.filter((window) => scored.has(window.fixtureId)).map((window) => ({ fixtureId: window.fixtureId, forecastCutoff: window.forecastCutoff.toISOString(), evaluationAsOf: window.evaluationAsOf.toISOString() }));
     return { available: true as const, market: input.market, sampleSize: leftMetrics.sampleSize, windows, left: leftMetrics, right: rightMetrics, deltas: { brierScore: rightMetrics.brierScore - leftMetrics.brierScore, logLoss: rightMetrics.logLoss - leftMetrics.logLoss } };
   } catch (error) { return { available: false as const, reason: (error as { code?: string }).code ?? "COMPARISON_UNAVAILABLE" }; }
 }

@@ -17,10 +17,10 @@ const windows = [
 const compared: RawModelComparison = {
   available: true,
   market: "ONE_X_TWO",
-  sampleSize: 2,
+  sampleSize: 40,
   windows,
-  left: { planId: "plan-v1", planHash: "hash-v1", modelVersion: "poisson-ensemble-v1", configHash: "sha256:config-v1", sampleSize: 2, brierScore: 0.6, logLoss: 0.9 },
-  right: { planId: "plan-dc", planHash: "hash-dc", modelVersion: "dixon-coles-ensemble-v1", configHash: "sha256:config-v2", sampleSize: 2, brierScore: 0.55, logLoss: 0.85 },
+  left: { planId: "plan-v1", planHash: "hash-v1", modelVersion: "poisson-ensemble-v1", configHash: "sha256:config-v1", sampleSize: 40, brierScore: 0.6, logLoss: 0.9 },
+  right: { planId: "plan-dc", planHash: "hash-dc", modelVersion: "dixon-coles-ensemble-v1", configHash: "sha256:config-v2", sampleSize: 40, brierScore: 0.55, logLoss: 0.85 },
   deltas: { brierScore: -0.05, logLoss: -0.05 },
 };
 
@@ -79,7 +79,7 @@ describe("model comparison API boundary", () => {
     expect(first.headers["Cache-Control"]).toBe("private, no-store, max-age=0");
     expect(first.body.available).toBe(true);
     const receipt = first.body.receipt!;
-    expect(receipt).toMatchObject({ version: "model-comparison-v1", market: "ONE_X_TWO", from, to, verdict: "BETTER" });
+    expect(receipt).toMatchObject({ version: "model-comparison-v2", market: "ONE_X_TWO", from, to, verdict: "BETTER" });
     expect((receipt.left as { modelVersion: string }).modelVersion).toBe("poisson-ensemble-v1");
     expect((receipt.right as { modelVersion: string }).modelVersion).toBe("dixon-coles-ensemble-v1");
     expect(receipt.windowsDigest).toMatch(/^sha256:[0-9a-f]{64}$/);

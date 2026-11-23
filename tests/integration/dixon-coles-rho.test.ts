@@ -75,6 +75,7 @@ function allocateScores(lambdaHome: number, lambdaAway: number, count: number, r
 
 interface MatchTweak {
   readonly cutoff?: Date;
+  readonly issuedAt?: Date;
   readonly observedAt?: Date;
   readonly receipt?: Record<string, unknown>;
 }
@@ -85,6 +86,7 @@ interface PlannedMatch {
   readonly kickoff: Date;
   readonly cutoff: Date;
   readonly observedAt: Date;
+  readonly issuedAt: Date | null;
   readonly lambdaHome: number;
   readonly lambdaAway: number;
   readonly homeGoals: number;
@@ -122,6 +124,7 @@ function planLeagueMatches(prefix: string, leagueId: string, count: number, twea
       kickoff,
       cutoff: override.cutoff ?? new Date(kickoff.getTime() - 3_600_000),
       observedAt: override.observedAt ?? new Date(kickoff.getTime() + 7_200_000),
+      issuedAt: override.issuedAt ?? null,
       lambdaHome,
       lambdaAway,
       homeGoals: score.homeGoals,
@@ -190,13 +193,13 @@ async function seedMatches(matches: readonly PlannedMatch[]): Promise<void> {
       confidence: {} as never,
       assumptions: [] as never,
       receipt: match.receipt as never,
-      issuedAt: new Date(match.cutoff.getTime() + 100_000),
+      issuedAt: match.issuedAt ?? new Date(match.cutoff.getTime() + 100_000),
     })),
   });
 }
 
 async function seed(): Promise<void> {
-  const leagues = ["dc-league-a", "dc-league-b", "dc-league-c", "dc-league-empty", "dc-league-lookahead", "dc-league-incomplete"];
+  const leagues = ["dc-league-a", "dc-league-b", "dc-league-c", "dc-league-empty", "dc-league-lookahead", "dc-league-incomplete", "dc-league-backfill"];
   await database.league.createMany({ data: leagues.map((id, index) => ({ id, name: `League ${index}`, countryCode: "GB" })) });
   await database.season.createMany({
     data: leagues.map((id) => ({ id: `dc-season-${id}`, leagueId: id, label: "2026", startsOn: new Date("2025-01-01"), endsOn: new Date("2026-12-31") })),
@@ -214,6 +217,9 @@ async function seed(): Promise<void> {
   await seedMatches(planLeagueMatches("dcl", "dc-league-lookahead", 2, (index) => (index === 0
     ? { cutoff: new Date(BASE_KICKOFF_MS + 3_600_000) }
     : { observedAt: new Date(Date.parse(asOf) + DAY_MS) })));
+
+  // A snapshot issued after asOf (a later backfill / re-run) must never train an earlier fit (review WR-04).
+  await seedMatches(planLeagueMatches("dcf", "dc-league-backfill", 2, () => ({ issuedAt: new Date(Date.parse(asOf) + DAY_MS) })));
 
   // An incomplete historical receipt must be skipped without throwing.
   await seedMatches(planLeagueMatches("dci", "dc-league-incomplete", 1, () => ({ receipt: {} })));
@@ -269,6 +275,17 @@ describe("dixon-coles rho from leakage-safe league history", () => {
     expect(fitted.provenance.method).toBe("pooled-fallback-v1");
     // A leaked lookahead row would move rho away from the pool-only estimate.
     expect(fitted.rho).toBe(reference.rho);
+  });
+
+  it("ignores snapshots issued after asOf so a fit is reproducible (review WR-04)", async () => {
+    const reference = await fitLeagueDixonColesParameters(database, { leagueId: "dc-league-empty", asOf });
+    const fitted = await fitLeagueDixonColesParameters(database, { leagueId: "dc-league-backfill", asOf });
+    expect(fitted.provenance.sampleSize).toBe(0);
+    expect(fitted.rho).toBe(reference.rho);
+    // Re-fitting the same (league, asOf) is bit-identical.
+    const again = await fitLeagueDixonColesParameters(database, { leagueId: "dc-league-a", asOf });
+    const first = await fitLeagueDixonColesParameters(database, { leagueId: "dc-league-a", asOf });
+    expect(Object.is(first.rho, again.rho)).toBe(true);
   });
 
   it("skips incomplete receipts without throwing", async () => {

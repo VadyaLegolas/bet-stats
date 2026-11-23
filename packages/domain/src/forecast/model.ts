@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { EvidenceProjectionDto, EvidenceSourceRef } from "../evidence/contract.js";
 import { calculateConfidence } from "./confidence.js";
 import { fairOddsForProbability, FORECAST_CONFIG, FORECAST_CONFIGS, FORECAST_CONFIG_VERSION_BY_MODEL, type ForecastConfigVersion } from "./config.js";
-import { applyDixonColesCorrection, type DixonColesProvenance } from "./dixon-coles.js";
+import { applyDixonColesCorrection, dixonColesRhoBounds, isDixonColesRhoWithinBounds, type DixonColesProvenance } from "./dixon-coles.js";
 import type { ForecastModelVersion } from "./model-version.js";
 
 export type ForecastMarket = "ONE_X_TWO" | "OVER_UNDER_2_5" | "BTTS";
@@ -30,6 +30,8 @@ export interface ForecastEvent {
 }
 
 export interface ForecastDraft {
+  /** Provenance of the rho actually applied to this fixture (set only for `dixon-coles-ensemble-v1`). */
+  readonly dixonColes?: DixonColesProvenance;
   readonly fixtureId: string;
   readonly forecastSnapshotId: string;
   readonly cutoff: string;
@@ -152,7 +154,13 @@ export function createForecast(input: ForecastInput): ForecastDraft {
   const homeMultiplier = homeAdjustment.multiplier;
   const awayMultiplier = awayAdjustment.multiplier;
   const expectedGoals = { home: clamp(FORECAST_CONFIG.baselineGoals.home * homeMultiplier, FORECAST_CONFIG.lambdaBounds), away: clamp(FORECAST_CONFIG.baselineGoals.away * awayMultiplier, FORECAST_CONFIG.lambdaBounds) };
-  const dixonColes = modelVersion === "dixon-coles-ensemble-v1" ? input.dixonColes : undefined;
+  const fitted = modelVersion === "dixon-coles-ensemble-v1" ? input.dixonColes : undefined;
+  // A rho fitted over a league's history can lie outside THIS fixture's own feasible band
+  // (extreme lambdas). Never clamp it and never fail the forecast: apply an explicit
+  // rho = 0 and record that fact in the provenance (method `out-of-band-zero`).
+  const dixonColes = fitted && !isDixonColesRhoWithinBounds(fitted.rho, dixonColesRhoBounds(expectedGoals.home, expectedGoals.away))
+    ? { rho: 0, provenance: { ...fitted.provenance, rho: 0, method: "out-of-band-zero" as const, tauMin: 1 } }
+    : fitted;
   const raw: Array<{ homeGoals: number; awayGoals: number; probability: number }> = [];
   for (let homeGoals = 0; homeGoals <= 7; homeGoals += 1) for (let awayGoals = 0; awayGoals <= 7; awayGoals += 1) raw.push({ homeGoals, awayGoals, probability: poisson(homeGoals, expectedGoals.home) * poisson(awayGoals, expectedGoals.away) });
   // The low-score correction is applied BEFORE the retained-mass renormalization so
@@ -195,6 +203,7 @@ export function createForecast(input: ForecastInput): ForecastDraft {
   return {
     fixtureId: input.fixtureId, forecastSnapshotId: input.forecastSnapshotId, cutoff: input.cutoff,
     modelVersion, configVersion, configHash: hash(FORECAST_CONFIGS[modelVersion]), inputHash: hash(canonicalInput), evidenceBuildIds,
+    ...(dixonColes ? { dixonColes: dixonColes.provenance } : {}),
     expectedGoals, scoreMatrix, retainedMass, tailMass: Math.max(0, 1 - retainedMass), tailWarning: 1 - retainedMass > FORECAST_CONFIG.tailWarningThreshold,
     normalizationVersion: "retained-mass-v1", rawMarginals, adjustments: { home: homeAdjustment, away: awayAdjustment },
     markets: { ONE_X_TWO: [event("HOME", home), event("DRAW", draw), event("AWAY", 1 - home - draw)], OVER_UNDER_2_5: [event("OVER_2_5", over), event("UNDER_2_5", 1 - over)], BTTS: [event("YES", yes), event("NO", 1 - yes)] },
@@ -204,6 +213,7 @@ export function createForecast(input: ForecastInput): ForecastDraft {
       "0..7 score grid normalized by retained mass",
       "starting policy pending Phase 4 calibration",
       ...(dixonColes ? ["dixon-coles low-score correction applied before retained-mass normalization"] : []),
+      ...(dixonColes && dixonColes.provenance.method === "out-of-band-zero" ? ["fitted rho outside this fixture's feasible band: rho = 0 applied"] : []),
     ],
   };
 }

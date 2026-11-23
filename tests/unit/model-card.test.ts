@@ -35,7 +35,7 @@ describe("model card v1.1.0", () => {
     for (const formula of ["τ(0,0)=1−λh·λa·ρ", "τ(1,0)=1+λa·ρ", "τ(0,1)=1+λh·ρ", "τ(1,1)=1−ρ"]) {
       expect(dixonColes.tau).toContain(formula);
     }
-    expect(dixonColes.rhoBounds).toBe("max(−1/(λh·λa), −1/λh, −1/λa) < ρ < min(1/(λh·λa), 1)");
+    expect(dixonColes.rhoBounds).toBe("max(−1/λh, −1/λa) < ρ < min(1/(λh·λa), 1)");
   });
 
   it("derives rho policy from the frozen config instead of hardcoding it", () => {

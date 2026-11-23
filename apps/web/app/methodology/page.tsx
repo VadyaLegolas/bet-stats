@@ -53,8 +53,8 @@ export default function MethodologyPage() {
         <ul>{card.forecast.dixonColes.effects.map((effect) => <li key={effect}>{effect}</li>)}</ul>
         <p><strong>Ограничения:</strong></p>
         <ul>{card.forecast.dixonColes.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul>
-        <p>Рынок тотала 2.5 при фиксированных λ и μ нейтрален по построению.</p>
-        <p><Link href="/scorecards#formula-policy-receipts">Сравнение моделей и квитанции формул</Link> показывают, как гибридная версия соотносится с V1 на одинаковых окнах.</p>
+        <p>Рынок тотала 2.5 при фиксированных ожидаемых голах λh и λa нейтрален по построению.</p>
+        <p>Версия V1 остаётся доступной для отката и сравнения. Сравнение выполняется оператором по воспроизводимой процедуре бэктестов на одинаковых окнах; публичного сравнения моделей пока нет. Точные идентификаторы формул и политик — в <Link href="/scorecards#formula-policy-receipts">квитанциях формул ведомостей результатов</Link>.</p>
       </TechnicalDetails>
     </section>
 

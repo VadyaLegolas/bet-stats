@@ -133,7 +133,7 @@ export class ForecastOrchestrator {
       probabilities: forecast.markets, confidence: forecast.confidence, limitations: forecast.limitations,
       tail: { retainedMass: forecast.retainedMass, tailMass: forecast.tailMass, warning: forecast.tailWarning, normalizationVersion: forecast.normalizationVersion },
       assumptions: forecast.assumptions,
-      receipt: { forecastSnapshotId: snapshotId, officialLineupObservationId, evidenceBuildIds, sourceRefs: forecast.sources, expectedGoals: forecast.expectedGoals, adjustments: forecast.adjustments, ...(dixonColes ? { dixonColes: dixonColes.provenance } : {}) },
+      receipt: { forecastSnapshotId: snapshotId, officialLineupObservationId, evidenceBuildIds, sourceRefs: forecast.sources, expectedGoals: forecast.expectedGoals, adjustments: forecast.adjustments, ...(forecast.dixonColes ? { dixonColes: forecast.dixonColes } : {}) },
       issuedAt: new Date().toISOString(),
     };
     parseForecastResponse(draft);

@@ -133,7 +133,7 @@ function dixonColesProvenance(value: unknown): asserts value is DixonColesProven
   exactKeys(block, ["rho", "convention", "method", "windowFrom", "windowTo", "sampleSize", "tauMin"], "INVALID_FORECAST_RECEIPT");
   if (typeof block.rho !== "number" || !Number.isFinite(block.rho) || block.rho <= -1 || block.rho >= 1) throw new Error("INVALID_FORECAST_RECEIPT");
   if (block.convention !== DIXON_COLES_CONVENTION) throw new Error("INVALID_FORECAST_RECEIPT");
-  if (block.method !== "mle-low-score-v1" && block.method !== "pooled-fallback-v1" && block.method !== "insufficient-sample-zero") throw new Error("INVALID_FORECAST_RECEIPT");
+  if (block.method !== "mle-low-score-v1" && block.method !== "pooled-fallback-v1" && block.method !== "insufficient-sample-zero" && block.method !== "out-of-band-zero") throw new Error("INVALID_FORECAST_RECEIPT");
   instant(block.windowFrom, "INVALID_FORECAST_RECEIPT");
   instant(block.windowTo, "INVALID_FORECAST_RECEIPT");
   if (block.windowFrom > block.windowTo) throw new Error("INVALID_FORECAST_RECEIPT");

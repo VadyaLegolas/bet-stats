@@ -56,8 +56,8 @@ function expectedGoalsOf(snapshotReceipt: unknown): { home: number; away: number
  * Collects leakage-safe (lambda, observed score) rows for one league or, when
  * `leagueId` is omitted, for every league in the window.
  *
- * A snapshot qualifies only when it was issued before its fixture kicked off and
- * the fixture kicked off at or before `asOf`. Results are read through the
+ * A snapshot qualifies only when it was issued (and cut off) before its fixture kicked
+ * off, was issued at or before `asOf`, and the fixture kicked off at or before `asOf`. Results are read through the
  * historical lineage graph at `asOf`, so a later correction cannot leak back.
  */
 async function collectRows(
@@ -69,6 +69,9 @@ async function collectRows(
       state: "ISSUED",
       kind: "PRE_MATCH",
       cutoff: { lt: input.asOf },
+      // Reproducibility (review WR-04): only what had been issued by `asOf` may train the fit,
+      // so a later backfill or a re-run backtest cannot change rho for the same (league, asOf).
+      issuedAt: { lte: input.asOf },
       fixture: {
         ...(input.leagueId ? { leagueId: input.leagueId } : {}),
         kickoffUtc: { gte: input.windowFrom, lte: input.asOf },
@@ -82,10 +85,12 @@ async function collectRows(
   const seenFixtures = new Set<string>();
   for (const snapshot of snapshots) {
     if (seenFixtures.has(snapshot.fixtureId)) continue;
-    seenFixtures.add(snapshot.fixtureId);
+    // Revisions arrive newest first: take the newest one that is itself pre-kickoff and usable,
+    // instead of dropping the whole fixture when only its latest revision qualifies badly.
     if (snapshot.cutoff.getTime() >= snapshot.fixture.kickoffUtc.getTime()) continue;
     const goals = expectedGoalsOf(snapshot.receipt);
     if (!goals) continue;
+    seenFixtures.add(snapshot.fixtureId);
     candidates.push({ fixtureId: snapshot.fixtureId, lambdaHome: goals.home, lambdaAway: goals.away });
   }
   if (candidates.length === 0) return [];

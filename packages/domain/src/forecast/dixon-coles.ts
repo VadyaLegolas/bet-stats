@@ -9,7 +9,7 @@ import { DIXON_COLES_CONFIG } from "./config.js";
  */
 export const DIXON_COLES_CONVENTION = "tau-1x2-v1" as const;
 
-export type DixonColesEstimationMethod = "mle-low-score-v1" | "pooled-fallback-v1" | "insufficient-sample-zero";
+export type DixonColesEstimationMethod = "mle-low-score-v1" | "pooled-fallback-v1" | "insufficient-sample-zero" | "out-of-band-zero";
 
 export interface DixonColesProvenance {
   readonly rho: number;
@@ -62,26 +62,37 @@ export function dixonColesTau(homeGoals: number, awayGoals: number, lambdaHome: 
 }
 
 /**
- * Feasible `rho` band derived from strict positivity of all four tau factors
- * (D-07 amended): `max(-1/(λh·λa), -1/λh, -1/λa) < rho < min(1/(λh·λa), 1)`.
+ * Feasible `rho` band derived from strict positivity of all four tau factors:
+ * `tau(1,0) > 0` gives `rho > -1/λa`, `tau(0,1) > 0` gives `rho > -1/λh`,
+ * `tau(0,0) > 0` gives `rho < 1/(λh·λa)` and `tau(1,1) > 0` gives `rho < 1`.
+ * `tau(0,0) = 1 - λh·λa·rho` exceeds 1 for negative rho, so it adds no lower bound:
+ * `max(-1/λh, -1/λa) < rho < min(1/(λh·λa), 1)`.
  */
 export function dixonColesRhoBounds(lambdaHome: number, lambdaAway: number): DixonColesRhoBounds {
   if (!Number.isFinite(lambdaHome) || !Number.isFinite(lambdaAway) || lambdaHome <= 0 || lambdaAway <= 0) throw new Error("INVALID_DIXON_COLES_LAMBDA");
-  const product = lambdaHome * lambdaAway;
   return {
-    min: Math.max(-1 / product, -1 / lambdaHome, -1 / lambdaAway),
-    max: Math.min(1 / product, 1),
+    min: Math.max(-1 / lambdaHome, -1 / lambdaAway),
+    max: Math.min(1 / (lambdaHome * lambdaAway), 1),
   };
 }
 
-/** Fail-closed band check: rejects an out-of-band or non-finite rho, never clamps it. */
+/** Non-throwing band check shared by the fail-closed assertion and the forecast-time degrade path. */
+export function isDixonColesRhoWithinBounds(
+  rho: number,
+  bounds: DixonColesRhoBounds,
+  epsilon: number = DIXON_COLES_CONFIG.dixonColes.boundsEpsilon,
+): boolean {
+  if (!Number.isFinite(rho) || !Number.isFinite(bounds.min) || !Number.isFinite(bounds.max)) return false;
+  return rho > bounds.min + epsilon && rho < bounds.max - epsilon;
+}
+
+/** Fail-closed band check: rejects an out-of-band or non-finite rho with a coded error, never clamps it. */
 export function assertDixonColesRho(
   rho: number,
   bounds: DixonColesRhoBounds,
   epsilon: number = DIXON_COLES_CONFIG.dixonColes.boundsEpsilon,
 ): void {
-  if (!Number.isFinite(rho) || !Number.isFinite(bounds.min) || !Number.isFinite(bounds.max)) throw new Error("INVALID_DIXON_COLES_RHO");
-  if (rho <= bounds.min + epsilon || rho >= bounds.max - epsilon) throw new Error("INVALID_DIXON_COLES_RHO");
+  if (!isDixonColesRhoWithinBounds(rho, bounds, epsilon)) throw Object.assign(new Error("INVALID_DIXON_COLES_RHO"), { code: "INVALID_DIXON_COLES_RHO" });
 }
 
 /** Minimum tau over the four corrected cells — the provenance "worst case" guard. */
@@ -175,13 +186,21 @@ export function estimateDixonColesRho(
     if (bounds.min > min) min = bounds.min;
     if (bounds.max < max) max = bounds.max;
   }
-  if (!(min < max)) return fallback;
+  // Bracket strictly inside the open band, with the same epsilon the forecast-time
+  // assertion uses: at the exact endpoints one tau is 0 by construction and
+  // floating-point error can make it ±1e-16, so the score there is ±Infinity/NaN.
+  const epsilon = DIXON_COLES_CONFIG.dixonColes.boundsEpsilon;
+  const bracketLow = min + epsilon;
+  const bracketHigh = max - epsilon;
+  if (!(bracketLow < bracketHigh)) return fallback;
 
   const score = (rho: number): number => ordered.reduce((sum, row) => sum + scoreTerm(row, rho), 0);
-  if (!(score(min) > 0) || !(score(max) < 0)) return fallback;
+  const scoreLow = score(bracketLow);
+  const scoreHigh = score(bracketHigh);
+  if (!Number.isFinite(scoreLow) || !Number.isFinite(scoreHigh) || !(scoreLow > 0) || !(scoreHigh < 0)) return fallback;
 
-  let low = min;
-  let high = max;
+  let low = bracketLow;
+  let high = bracketHigh;
   for (let iteration = 0; iteration < DIXON_COLES_CONFIG.dixonColes.estimation.bisectionIterations; iteration += 1) {
     const middle = (low + high) / 2;
     if (!Number.isFinite(middle) || middle === low || middle === high) break;

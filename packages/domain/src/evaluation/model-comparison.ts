@@ -10,8 +10,10 @@ import { isForecastModelVersion } from "../forecast/model-version.js";
  * never promoted. Changing this value invalidates previously published receipts.
  */
 export const MODEL_COMPARISON_POLICY = Object.freeze({
-  version: "model-comparison-v1" as const,
+  version: "model-comparison-v2" as const,
   deltaMateriality: 0.002,
+  /** Below this many scored outcomes a point delta is noise: the verdict is always INCONCLUSIVE. */
+  minimumSampleSize: 30,
 });
 
 export type ModelComparisonVerdict = "BETTER" | "WORSE" | "INCONCLUSIVE";
@@ -83,9 +85,14 @@ export function modelComparisonWindowsDigest(windows: readonly ComparisonWindow[
   return `sha256:${createHash("sha256").update(canonical, "utf8").digest("hex")}`;
 }
 
-/** Verdict from the Brier delta only, so a log-loss win can never mask a Brier loss. */
-export function modelComparisonVerdict(brierDelta: number): ModelComparisonVerdict {
+/**
+ * Verdict from the Brier delta only, so a log-loss win can never mask a Brier loss.
+ * A cohort smaller than the policy minimum is never called better or worse.
+ */
+export function modelComparisonVerdict(brierDelta: number, sampleSize: number): ModelComparisonVerdict {
   if (!Number.isFinite(brierDelta)) throw new Error("INVALID_COMPARISON_DELTA");
+  if (!Number.isInteger(sampleSize) || sampleSize < 0) throw new Error("INVALID_COMPARISON_SAMPLE_SIZE");
+  if (sampleSize < MODEL_COMPARISON_POLICY.minimumSampleSize) return "INCONCLUSIVE";
   if (brierDelta <= -MODEL_COMPARISON_POLICY.deltaMateriality) return "BETTER";
   if (brierDelta >= MODEL_COMPARISON_POLICY.deltaMateriality) return "WORSE";
   return "INCONCLUSIVE";
@@ -118,7 +125,7 @@ export function buildModelComparisonReceipt(input: ModelComparisonBuildInput): M
     left: Object.freeze({ ...input.left }),
     right: Object.freeze({ ...input.right }),
     deltas: Object.freeze({ brierScore: input.right.brierScore - input.left.brierScore, logLoss: input.right.logLoss - input.left.logLoss }),
-    verdict: modelComparisonVerdict(input.right.brierScore - input.left.brierScore),
+    verdict: modelComparisonVerdict(input.right.brierScore - input.left.brierScore, input.left.sampleSize),
     computedAt: input.computedAt,
   });
 }

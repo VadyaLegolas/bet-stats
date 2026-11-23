@@ -343,6 +343,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 261016-a87 | Add dynamic eligibility decision timestamp so protected analytics pages pass the guard with region PL | 2026-10-16 | fd38793 | [261016-a87-add-dynamic-eligibility-decision-timesta](./quick/261016-a87-add-dynamic-eligibility-decision-timesta/) |
+| 261123-mcp | Operator CLI entry point for V1 vs Dixon-Coles backtest comparison (UAT 11 item 2) | 2026-11-23 | see git log | [261123-mcp-operator-model-comparison-entry-point](./quick/261123-mcp-operator-model-comparison-entry-point/) |
 | 261016-bf3 | Auto-issue INITIAL and PRE_MATCH forecasts from a periodic evidence-building sweep | 2026-10-16 | 42c0761 | [261016-bf3-auto-issue-initial-and-pre-match-forecas](./quick/261016-bf3-auto-issue-initial-and-pre-match-forecas/) |
 | 261016-d9t | Windowed fixtures backfill and production results-sync endpoint | 2026-10-16 | 2083eaf | [261016-d9t-windowed-fixture-backfill-and-production](./quick/261016-d9t-windowed-fixture-backfill-and-production/) |
 | 261016-exf | Retrieve past finished fixtures in date windows with per-chunk budget reserves | 2026-10-16 | 106ee4e | [261016-exf-retrieve-past-finished-fixtures-in-windo](./quick/261016-exf-retrieve-past-finished-fixtures-in-windo/) |

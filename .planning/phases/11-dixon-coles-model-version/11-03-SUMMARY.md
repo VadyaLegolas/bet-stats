@@ -106,8 +106,13 @@ curl -sS -G "$API/evaluation/model-comparison" \
   --data-urlencode "market=ONE_X_TWO" \
   --data-urlencode "from=2026-07-01T00:00:00.000Z" \
   --data-urlencode "to=2026-07-06T00:00:00.000Z" \
-  -H "Cookie: <eligibility-session>"
+  -H "x-operator-credential: $OPERATOR_CREDENTIAL" \
+  -H "x-eligibility-region: <разрешённый регион>" \
+  -H "x-age-acknowledged: true" \
+  -H "x-eligibility-checked-at: <текущий ISO-момент, не старше часа>"
 ```
+
+> Актуально после фазы 11: эндпоинт защищён `OperatorGuard` (заголовок `x-operator-credential`; без него — 404) поверх `EligibilityGuard`. Подавать планы и получать квитанцию одной командой проще через `scripts/model-comparison.mjs`, см. `11-OPERATOR-COMPARISON.md`.
 
 4. Сохранить ответ как артефакт. `planHash` обеих сторон + `windowsDigest` делают его воспроизводимым; `computedAt` фиксируется один раз при сохранении.
 

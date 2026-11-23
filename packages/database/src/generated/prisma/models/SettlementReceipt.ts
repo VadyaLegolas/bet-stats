@@ -357,7 +357,7 @@ export type SettlementReceiptWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   supersedesSettlementReceiptId?: string
   resultVersionId_forecastSnapshotId_policyHash?: Prisma.SettlementReceiptResultVersionIdForecastSnapshotIdPolicyHashCompoundUniqueInput
-  fixtureId_revision?: Prisma.SettlementReceiptFixtureIdRevisionCompoundUniqueInput
+  fixtureId_forecastSnapshotId_revision?: Prisma.SettlementReceiptFixtureIdForecastSnapshotIdRevisionCompoundUniqueInput
   AND?: Prisma.SettlementReceiptWhereInput | Prisma.SettlementReceiptWhereInput[]
   OR?: Prisma.SettlementReceiptWhereInput[]
   NOT?: Prisma.SettlementReceiptWhereInput | Prisma.SettlementReceiptWhereInput[]
@@ -384,7 +384,7 @@ export type SettlementReceiptWhereUniqueInput = Prisma.AtLeast<{
   supersededBy?: Prisma.XOR<Prisma.SettlementReceiptNullableScalarRelationFilter, Prisma.SettlementReceiptWhereInput> | null
   forecastScores?: Prisma.ForecastScoreListRelationFilter
   valueSettlements?: Prisma.ValueSettlementListRelationFilter
-}, "id" | "supersedesSettlementReceiptId" | "resultVersionId_forecastSnapshotId_policyHash" | "fixtureId_revision">
+}, "id" | "supersedesSettlementReceiptId" | "resultVersionId_forecastSnapshotId_policyHash" | "fixtureId_forecastSnapshotId_revision">
 
 export type SettlementReceiptOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -612,8 +612,9 @@ export type SettlementReceiptResultVersionIdForecastSnapshotIdPolicyHashCompound
   policyHash: string
 }
 
-export type SettlementReceiptFixtureIdRevisionCompoundUniqueInput = {
+export type SettlementReceiptFixtureIdForecastSnapshotIdRevisionCompoundUniqueInput = {
   fixtureId: string
+  forecastSnapshotId: string
   revision: number
 }
 

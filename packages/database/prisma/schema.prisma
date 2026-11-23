@@ -897,7 +897,7 @@ model SettlementReceipt {
   valueSettlements              ValueSettlement[]
 
   @@unique([resultVersionId, forecastSnapshotId, policyHash])
-  @@unique([fixtureId, revision])
+  @@unique([fixtureId, forecastSnapshotId, revision])
   @@index([fixtureId, settledAt])
 }
 

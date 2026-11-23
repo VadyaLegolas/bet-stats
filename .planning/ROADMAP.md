@@ -119,12 +119,15 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   3. An operator can compare rolling-origin backtest metrics of the new version against the frozen baseline, and the methodology card names the exact integration and its limitations (e.g. neutral on O/U 2.5).
 
 **Notes / research flags**: Open product decision for discuss/spec — hybrid Elo/form-derived λ,μ + fitted per-league ρ (recommended, labeled as hybrid) vs full DC attack/defence refit (risks double-counting home advantage). ρ fitting window and decay selection are project-specific. `modelVersion` is hard-pinned as a string literal in ≥10 files — must widen the shared union in one pass.
-**Plans**: 4/4 plans executed
+**Plans**: 4/7 plans executed (11-05..11-07 are gap closure for UAT test 2)
 **Plan list**:
 - [x] 11-01-PLAN.md — Domain foundation: `MODEL_VERSIONS` union, split config (`FORECAST_CONFIG` untouched, `DIXON_COLES_CONFIG`/`forecast-config-v2`), pinned τ math with feasible ρ band, deterministic ρ estimator, contract/orchestrator accept both versions with explicit params, V1 frozen numeric vector
 - [x] 11-02-PLAN.md — Production default: leakage-safe per-league ρ from settled history (pooled/zero fallbacks), repository hook, `FORECAST_MODEL_VERSION` selector with `dixon-coles-ensemble-v1` default, all API/worker paths use one resolver, V1 selectable
 - [x] 11-03-PLAN.md — MODEL-03 comparison: backtest plans pin their own version and fit ρ at `trainingEndsAt`, deterministic comparison receipt with plan hashes + window digest + honest verdict, `GET /evaluation/model-comparison`
 - [x] 11-04-PLAN.md — Honest documentation: `model-card-v1.1.0` names the hybrid integration, τ convention, ρ policy, O/U 2.5 neutrality and V1 rollback path; `/methodology` renders it; e2e pin derives from the card
+- [ ] 11-05-PLAN.md — Gap closure (wave 1): settlement revision chain per (fixtureId, forecastSnapshotId) via a new forward-only migration, so two forecasts of one fixture settle and score independently
+- [ ] 11-06-PLAN.md — Gap closure (wave 1): comparison CLI builds only windows that can succeed (published evidence at the exact cutoff, production lead as default, tie-break instead of +1 ms), honest skipped-fixture report and cohort minimum
+- [ ] 11-07-PLAN.md — Gap closure (wave 2): end-to-end proof on real PostgreSQL/Redis (V1 + DC plans reach SUCCEEDED, model-comparison-v2 receipt), two red runs on old code, operator guide update
 **UI hint**: no
 
 ### Phase 12: Calibration Layer and Versioned Rollback
@@ -218,7 +221,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 | 8. Backups and Restore Verification | 7/7 | Complete    | 2026-10-31 |
 | 9. Degradation Alerting | 8/8 | Complete    | 2026-11-16 |
 | 10. Performance Audit and Budgets | 4/4 | Complete    | 2026-11-17 |
-| 11. Dixon-Coles Model Version | 4/4 | In Progress | - |
+| 11. Dixon-Coles Model Version | 4/7 | In Progress | - |
 | 12. Calibration Layer and Versioned Rollback | 0/0 | Not started | - |
 | 13. CLV Price Diary | 0/0 | Not started | - |
 | 14. Asian Handicap and Exact Score Markets | 0/0 | Not started | - |

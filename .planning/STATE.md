@@ -4,16 +4,16 @@ milestone: v1.1
 current_phase: 11
 current_phase_name: Dixon-Coles Model Version
 status: in_progress
-stopped_at: Completed 11-05-PLAN.md
-last_updated: "2026-11-23T22:24:18.463Z"
+stopped_at: Completed 11-06-PLAN.md
+last_updated: "2026-11-23T22:39:12.594Z"
 last_activity: 2026-11-23
 last_activity_desc: "Phase 11 verified (human_needed): review findings fixed, DC-default-before-comparison accepted as override; real V1-vs-DC comparison and rho-method SQL check pending"
-state_head: b7bbcd2bc3081eac3156e1846224bd357d12b48a
+state_head: 643c52f388cc986f9696a454dd95e1dfb5833204
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 29
-  completed_plans: 27
+  completed_plans: 28
   percent: 40
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -143,6 +143,7 @@ Progress: [████░░░░░░] 40%
 | Phase 10 P10-02 | 10min | 3 tasks | 8 files |
 | Phase 10 P10-03 | 12min | 2 tasks | 6 files |
 | Phase 11 P05 | 2 sessions (blocked by Docker/disk once) | 3 tasks | 7 files |
+| Phase 11 P06 | 15 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -303,6 +304,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 10]: PERF-02 failure path proven locally, not inferred: --assert-only against a doctored budget copy (cls 0.000001) exits 1 naming the breach («cls: 0.08710918036748198 > budget 0.000001»); the committed budget file stays byte-identical; the CI-green half remains a push-time manual check per 10-VALIDATION.md (10-03)
 - [Phase 10]: buildReceipt read the nonexistent lhr.environment.lighthouseVersion path — optional chain yielded undefined, JSON.stringify dropped the key, and --assert-only rejected the harness's own committed receipts (INVALID_RECEIPT); fixed to top-level lhr.lighthouseVersion (Lighthouse 13 types line 31) and both committed receipts repaired with the true 13.6.0 — always round-trip a written receipt through the validator when touching the receipt code (10-03)
 - [Phase 11]: 11-05: SettlementReceipt revision chain per (fixtureId, forecastSnapshotId) via forward-only migration; settlement intake lock held by outer transaction on its own connection before the Serializable snapshot (retry policy unchanged)
+- [Phase 11]: 11-06: cohort keeps one fixture (smallest id) per shared cutoff instant instead of shifting the cutoff by 1 ms; allowSmallCohort stays out of pairId; default lead comes from PRE_MATCH_CUTOFF_LEAD_HOURS
 
 ### Pending Todos
 
@@ -410,6 +412,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-23T22:24:15.971Z
-Stopped at: Completed 11-05-PLAN.md
+Last session: 2026-11-23T22:39:09.968Z
+Stopped at: Completed 11-06-PLAN.md
 Resume file: None

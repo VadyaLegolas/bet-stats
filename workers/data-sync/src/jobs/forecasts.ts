@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
-import type { ForecastKind, ForecastRequestDto, ForecastResponseDto } from "@bet-stats/domain";
+import type { ForecastKind, ForecastModelVersion, ForecastRequestDto, ForecastResponseDto } from "@bet-stats/domain";
 
 export interface ForecastPublicationJobData {
   readonly fixtureId: string;
   readonly kind: ForecastKind;
   readonly cutoff: string;
-  readonly modelVersion: "poisson-ensemble-v1";
+  readonly modelVersion: ForecastModelVersion;
   readonly configHash: string;
   readonly evidenceBuildIds: readonly string[];
 }
@@ -30,7 +30,7 @@ export interface ForecastPublicationPlanInput {
   readonly fixtureId: string;
   readonly kickoffUtc: string;
   readonly initialEligibleCutoff: string | null;
-  readonly modelVersion: "poisson-ensemble-v1";
+  readonly modelVersion: ForecastModelVersion;
   readonly configHash: string;
   evidenceBuildIdsAt(cutoff: string): Promise<readonly string[] | null>;
   officialLineupAt(cutoff: string): Promise<{ readonly id: string; readonly confirmedAt: string } | null>;

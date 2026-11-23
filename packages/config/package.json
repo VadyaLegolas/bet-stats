@@ -16,9 +16,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@bet-stats/domain": "workspace:*",
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@types/node": "24.10.9",
     "typescript": "catalog:",
     "vitest": "4.1.11"
   }

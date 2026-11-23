@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { ConfigValidationError, dependencyReadiness, readBackupConfig, readServerConfig, redactSecrets } from "./index.js";
+import { forecastConfigHashFor } from "@bet-stats/domain";
+
+import { ConfigValidationError, dependencyReadiness, readBackupConfig, readServerConfig, redactSecrets, resolveForecastModelSelection } from "./index.js";
 
 describe("server configuration", () => {
   it("fails closed in production without echoing supplied secret values", () => {
@@ -51,6 +53,35 @@ describe("server configuration", () => {
       ready: false,
       dependencies: { postgres: "ready", redis: "unavailable" },
     });
+  });
+});
+
+describe("forecast model version selection", () => {
+  it("defaults to the dixon-coles version when the variable is absent", () => {
+    expect(readServerConfig({}).FORECAST_MODEL_VERSION).toBe("dixon-coles-ensemble-v1");
+    expect(resolveForecastModelSelection({})).toEqual({
+      modelVersion: "dixon-coles-ensemble-v1",
+      configHash: forecastConfigHashFor("dixon-coles-ensemble-v1"),
+    });
+  });
+
+  it("keeps poisson-ensemble-v1 selectable with its own config hash", () => {
+    const config = readServerConfig({ FORECAST_MODEL_VERSION: "poisson-ensemble-v1" });
+    expect(config.FORECAST_MODEL_VERSION).toBe("poisson-ensemble-v1");
+    expect(resolveForecastModelSelection({ FORECAST_MODEL_VERSION: "poisson-ensemble-v1" })).toEqual({
+      modelVersion: "poisson-ensemble-v1",
+      configHash: forecastConfigHashFor("poisson-ensemble-v1"),
+    });
+  });
+
+  it.each(["dixon-coles-ensemble-v2", "poisson-ensemble", "", "DIXON-COLES-ENSEMBLE-V1"])("fails closed on an unknown version %s instead of defaulting", (value) => {
+    expect(() => readServerConfig({ FORECAST_MODEL_VERSION: value })).toThrowError(ConfigValidationError);
+    expect(() => resolveForecastModelSelection({ FORECAST_MODEL_VERSION: value })).toThrowError(ConfigValidationError);
+    try {
+      resolveForecastModelSelection({ FORECAST_MODEL_VERSION: value });
+    } catch (error) {
+      expect(String(error)).toContain("FORECAST_MODEL_VERSION");
+    }
   });
 });
 

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { DEFAULT_FORECAST_MODEL_VERSION, MODEL_VERSIONS, forecastConfigHashFor, type ForecastModelVersion } from "@bet-stats/domain";
+
 export {
   DEFAULT_FRESHNESS_THRESHOLDS_MS,
   FreshnessConfigValidationError,
@@ -14,6 +16,7 @@ const environmentSchema = z.object({
   REDIS_URL: z.string().startsWith("redis://").optional(),
   FOOTBALL_DATA_API_TOKEN: z.string().min(1).optional(),
   API_FOOTBALL_API_KEY: z.string().min(1).optional(),
+  FORECAST_MODEL_VERSION: z.enum(MODEL_VERSIONS).default(DEFAULT_FORECAST_MODEL_VERSION),
 }).superRefine((value, context) => {
   if (value.NODE_ENV !== "production") return;
 
@@ -46,6 +49,23 @@ export function readServerConfig(input: Record<string, string | undefined>): Ser
     throw new ConfigValidationError(issues);
   }
   return result.data;
+}
+
+const forecastModelVersionSchema = z.enum(MODEL_VERSIONS).default(DEFAULT_FORECAST_MODEL_VERSION);
+
+/**
+ * Single connection point between environment and domain identity (D-01, D-03).
+ *
+ * An unknown value fails closed with `ConfigValidationError` instead of silently
+ * falling back to the default model, and the config hash always matches the
+ * selected version.
+ */
+export function resolveForecastModelSelection(input: Record<string, string | undefined>): { modelVersion: ForecastModelVersion; configHash: string } {
+  const result = forecastModelVersionSchema.safeParse(input.FORECAST_MODEL_VERSION);
+  if (!result.success) {
+    throw new ConfigValidationError([`FORECAST_MODEL_VERSION: ${result.error.issues[0]?.message ?? "invalid forecast model version"}`]);
+  }
+  return { modelVersion: result.data, configHash: forecastConfigHashFor(result.data) };
 }
 
 const sensitiveKey = /(?:token|password|secret|api.?key|authorization|database.?url)/i;

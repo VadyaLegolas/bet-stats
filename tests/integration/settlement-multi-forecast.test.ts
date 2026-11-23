@@ -73,7 +73,7 @@ describe("settlement of two forecasts for one fixture", () => {
     `);
   }, 120_000);
 
-  afterAll(async () => { await prisma?.$disconnect(); try { docker("rm", "--force", container); } catch { /* owned cleanup */ } });
+  afterAll(async () => { await prisma?.$disconnect(); try { docker("rm", "--force", "--volumes", container); } catch { /* owned cleanup */ } });
 
   it("keeps a single persist_settlement_receipt function (no overload)", async () => {
     const rows = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(`SELECT count(*)::bigint AS count FROM pg_proc WHERE proname='persist_settlement_receipt'`);
@@ -163,6 +163,29 @@ describe("settlement of two forecasts for one fixture", () => {
       }
     }
   });
+
+  it("duplicate delivery of one (fixture, result, forecast) yields one receipt", async () => {
+    const service = createSettlementPipelineService({ database: prisma });
+    const match = await seedMatch(prisma, "mf-dup", 18);
+    const outcomes = await Promise.all([
+      service.process(command(match.fixtureId, match.result1, match.forecastA, "corr-dup-1")),
+      service.process(command(match.fixtureId, match.result1, match.forecastA, "corr-dup-2")),
+    ]);
+    expect(outcomes.filter((outcome) => outcome.duplicate)).toHaveLength(1);
+    expect(outcomes[0]!.settlementReceiptId).toBe(outcomes[1]!.settlementReceiptId);
+    expect(await prisma.settlementReceipt.count({ where: { fixtureId: match.fixtureId } })).toBe(1);
+    expect(await prisma.forecastScore.count({ where: { settlementReceipt: { fixtureId: match.fixtureId } } })).toBe(3);
+  });
+
+  it("six simultaneous deliveries of one (fixture, result, forecast) (above the intake cap) yield one receipt", async () => {
+    const service = createSettlementPipelineService({ database: prisma });
+    const match = await seedMatch(prisma, "mf-burst", 19);
+    const outcomes = await Promise.all(Array.from({ length: 6 }, (_, index) => service.process(command(match.fixtureId, match.result1, match.forecastA, `corr-burst-${index}`))));
+    expect(outcomes.filter((outcome) => outcome.duplicate)).toHaveLength(5);
+    expect(new Set(outcomes.map((outcome) => outcome.settlementReceiptId)).size).toBe(1);
+    expect(await prisma.settlementReceipt.count({ where: { fixtureId: match.fixtureId } })).toBe(1);
+    expect(await prisma.forecastScore.count({ where: { settlementReceipt: { fixtureId: match.fixtureId } } })).toBe(3);
+  }, 120_000);
 
   it("concurrent corrections of two forecasts keep independent chains [1,2]", async () => {
     const service = createSettlementPipelineService({ database: prisma });

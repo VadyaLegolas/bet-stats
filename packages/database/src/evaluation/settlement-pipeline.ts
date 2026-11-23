@@ -78,6 +78,51 @@ async function withSerializableRetry<T>(database: PrismaClient, operation: (tran
   }
 }
 
+/**
+ * Intake gate. A Serializable transaction fixes its snapshot at its FIRST statement, so taking the
+ * per-fixture advisory lock inside it makes a waiting duplicate read a snapshot older than the first
+ * caller's commit and fail with SQLSTATE 40001. Postgres cannot take a keyed lock without a snapshot
+ * (DO/SELECT both set one, so SET TRANSACTION ISOLATION LEVEL afterwards raises 25001), therefore the lock
+ * is held by a short outer transaction on its own connection while the Serializable work runs on another.
+ *
+ * Each in-flight call occupies two pool connections (holder + worker), so concurrent holders per client
+ * are capped to leave room for the workers; otherwise holders could starve their own workers.
+ * The key differs from the one used inside `persist_settlement_receipt` (`<fixtureId>:settlement`),
+ * which is taken on the worker connection; sharing a key would deadlock holder against worker.
+ */
+const INTAKE_MAX_HOLDERS = 3;
+const INTAKE_HOLDER_TIMEOUT_MS = 75_000;
+
+class Semaphore {
+  private available: number;
+  private readonly waiters: Array<() => void> = [];
+  constructor(size: number) { this.available = size; }
+  async acquire(): Promise<void> {
+    if (this.available > 0) { this.available -= 1; return; }
+    await new Promise<void>((resolve) => this.waiters.push(resolve));
+  }
+  release(): void {
+    const next = this.waiters.shift();
+    if (next) next(); else this.available += 1;
+  }
+}
+
+const intakeGates = new WeakMap<object, Semaphore>();
+
+async function withIntakeLock<T>(database: PrismaClient, fixtureId: string, work: () => Promise<T>): Promise<T> {
+  let gate = intakeGates.get(database);
+  if (!gate) { gate = new Semaphore(INTAKE_MAX_HOLDERS); intakeGates.set(database, gate); }
+  await gate.acquire();
+  try {
+    return await database.$transaction(async (holder) => {
+      await holder.$executeRawUnsafe("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", `${fixtureId}:settlement-intake`);
+      return work();
+    }, { maxWait: 5_000, timeout: INTAKE_HOLDER_TIMEOUT_MS });
+  } finally {
+    gate.release();
+  }
+}
+
 export function createSettlementPipelineService({ database, afterSettlement }: { database: PrismaClient; afterSettlement?: (settlementReceiptId: string) => void | Promise<void> }) {
   return {
     policyHash: SETTLEMENT_PIPELINE_POLICY_HASH,
@@ -90,7 +135,7 @@ export function createSettlementPipelineService({ database, afterSettlement }: {
       ] as const) requireId(value, code);
       if (command.policyVersion !== SETTLEMENT_POLICY_VERSION) throw Object.assign(new Error("UNKNOWN_SETTLEMENT_POLICY"), { code: "UNKNOWN_SETTLEMENT_POLICY" });
 
-      return withSerializableRetry(database, async (transaction) => {
+      return withIntakeLock(database, command.fixtureId, () => withSerializableRetry(database, async (transaction) => {
         await transaction.$executeRawUnsafe("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", `${command.fixtureId}:settlement`);
         const targetRows = await transaction.$queryRawUnsafe<ResultRow[]>(
           `SELECT id,"fixtureId",status,revision,"observedAt","homeGoals","awayGoals","supersedesResultVersionId" FROM "ResultVersion" WHERE id=$1`,
@@ -119,7 +164,7 @@ export function createSettlementPipelineService({ database, afterSettlement }: {
         }
         if (!targetResult) throw new Error("RESULT_LINEAGE_EMPTY");
         return targetResult;
-      });
+      }));
     },
   };
 }

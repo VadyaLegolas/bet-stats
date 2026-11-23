@@ -2,12 +2,16 @@ import { parseArgs } from "node:util";
 
 import type { PrismaClient } from "@bet-stats/database";
 
+import { PRE_MATCH_CUTOFF_LEAD_HOURS } from "./forecasts.js";
 import {
   COMPARISON_MARKETS,
   buildComparisonPlanPair,
+  cohortBlockReason,
   computeModelComparison,
+  describeCohort,
   describeComparison,
   listComparisonFixtures,
+  planComparisonCohort,
   readPlanProgress,
   resolveComparisonParams,
   submitComparisonPair,
@@ -30,12 +34,17 @@ export const MODEL_COMPARISON_USAGE = `Использование: node scripts/
   --league <id[,id...]>       ограничить лигами (по умолчанию все)
   --market ONE_X_TWO|OVER_UNDER_2_5|BTTS   рынок для квитанции (по умолчанию ONE_X_TWO)
   --concurrency <1..4>        параллелизм плана (по умолчанию 1)
-  --cutoff-hours <n>          прогноз за n часов до матча (по умолчанию 1)
+  --cutoff-hours <n>          прогноз за n часов до матча (по умолчанию ${PRE_MATCH_CUTOFF_LEAD_HOURS}, как у production PRE_MATCH)
   --training-lag-hours <n>    граница обучения (там фитится ρ) раньше прогноза на n часов (по умолчанию 24)
   --evaluation-lag-hours <n>  знание результата через n часов после матча (по умолчанию 48)
-  --dry-run                   только показать пару планов и число окон, ничего не записывать
+  --allow-small-cohort        разрешить когорту меньше минимума политики (вердикт будет INCONCLUSIVE по построению)
+  --dry-run                   только показать отчёт когорты и пару планов, ничего не записывать (код 1, если подача невозможна)
   --timeout-minutes <n>       для run: сколько ждать воркера (по умолчанию 30)
   --json                      печатать только JSON
+
+Окна строятся только по матчам с результатом и опубликованными доказательствами обеих команд на ТОЧНУЮ отсечку;
+на один момент отсечки остаётся матч с наименьшим id, остальные считаются пропущенными (отчёт «Когорта» показывает причины).
+Если пригодных окон меньше минимума политики, подача останавливается до записи (обход: --allow-small-cohort).
 
 Нужны запущенный воркер data-sync (он исполняет планы), DATABASE_URL и REDIS_URL.
 Квитанция информационная: модель не продвигается автоматически, при выборке меньше минимума вердикт INCONCLUSIVE.`;
@@ -77,6 +86,7 @@ function parseParams(values: Record<string, string | boolean | undefined>): Comp
     ...(cutoff !== undefined ? { cutoffHoursBeforeKickoff: cutoff } : {}),
     ...(training !== undefined ? { trainingLagHours: training } : {}),
     ...(evaluation !== undefined ? { evaluationLagHours: evaluation } : {}),
+    ...(values["allow-small-cohort"] === true ? { allowSmallCohort: true } : {}),
   };
 }
 
@@ -88,7 +98,7 @@ export async function runModelComparisonCommand(argv: readonly string[], deps: M
     options: {
       from: { type: "string" }, to: { type: "string" }, league: { type: "string" }, market: { type: "string" }, concurrency: { type: "string" },
       "cutoff-hours": { type: "string" }, "training-lag-hours": { type: "string" }, "evaluation-lag-hours": { type: "string" },
-      left: { type: "string" }, right: { type: "string" }, "timeout-minutes": { type: "string" }, "dry-run": { type: "boolean" }, json: { type: "boolean" }, help: { type: "boolean" },
+      left: { type: "string" }, right: { type: "string" }, "timeout-minutes": { type: "string" }, "dry-run": { type: "boolean" }, "allow-small-cohort": { type: "boolean" }, json: { type: "boolean" }, help: { type: "boolean" },
     },
   });
   const command = positionals[0];
@@ -113,11 +123,24 @@ export async function runModelComparisonCommand(argv: readonly string[], deps: M
   }
 
   const resolved = resolveComparisonParams(params);
-  const pair = buildComparisonPlanPair(params, await listComparisonFixtures(deps.database, resolved));
+  const fixtures = await listComparisonFixtures(deps.database, resolved);
+  const { report } = planComparisonCohort(fixtures, resolved);
+  const blocked = cohortBlockReason(report, resolved.allowSmallCohort);
+  const cohortText = describeCohort(report);
+  if (blocked) {
+    const advice = blocked === "COMPARISON_NO_ELIGIBLE_FIXTURES"
+      ? "Пригодных окон нет. Расширьте диапазон или лиги: окну нужны результат и опубликованные доказательства обеих команд на отсечку."
+      : `Пригодных окон ${report.usable} меньше минимума ${report.minimumRequired}. Расширьте диапазон или лиги, либо укажите --allow-small-cohort (вердикт будет INCONCLUSIVE по построению).`;
+    if (values["dry-run"]) emit({ dryRun: true, runnable: false, reason: blocked, cohort: report, params: resolved }, `Пробный запуск, ничего не записано. Подача невозможна.\n${cohortText}\n${advice}`);
+    else emit({ submitted: false, runnable: false, reason: blocked, cohort: report }, `Подача остановлена, ничего не записано.\n${cohortText}\n${advice}`);
+    return 1;
+  }
+  const pair = buildComparisonPlanPair(params, fixtures);
+  const smallWarning = report.usable < report.minimumRequired ? "\nВнимание: выборка меньше минимума политики: вердикт будет INCONCLUSIVE по построению." : "";
   const summary = { pairId: pair.pairId, leftPlanId: pair.left.id, rightPlanId: pair.right.id, leftModel: pair.left.modelVersion, rightModel: pair.right.modelVersion, windows: pair.windowCount, cohort: pair.cohort, params: pair.params };
-  if (values["dry-run"]) { emit({ dryRun: true, ...summary }, `Пробный запуск, ничего не записано.\nОкон: ${pair.windowCount}\nV1: ${pair.left.id}\nDC: ${pair.right.id}`); return 0; }
+  if (values["dry-run"]) { emit({ dryRun: true, runnable: true, ...summary }, `Пробный запуск, ничего не записано.\n${cohortText}\nОкон: ${pair.windowCount}\nV1: ${pair.left.id}\nDC: ${pair.right.id}${smallWarning}`); return 0; }
   await submitComparisonPair(pair, { receipts: deps.receipts, queue: deps.queue });
-  emit({ submitted: true, ...summary }, `Пара планов подана (повтор с теми же параметрами дубликатов не создаёт). Окон: ${pair.windowCount}\nV1: ${pair.left.id}\nDC: ${pair.right.id}`);
+  emit({ submitted: true, runnable: true, ...summary }, `${cohortText}${smallWarning}\nПара планов подана (повтор с теми же параметрами дубликатов не создаёт). Окон: ${pair.windowCount}\nV1: ${pair.left.id}\nDC: ${pair.right.id}`);
   if (command === "submit") return 0;
 
   const timeoutMinutes = numberOption(typeof values["timeout-minutes"] === "string" ? values["timeout-minutes"] : undefined, "INVALID_TIMEOUT") ?? 30;

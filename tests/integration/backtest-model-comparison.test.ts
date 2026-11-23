@@ -47,33 +47,54 @@ describe("operator model comparison entry point", () => {
       INSERT INTO "Fixture" (id,"leagueId","seasonId","homeTeamId","awayTeamId","kickoffUtc",status,"updatedAt") VALUES
         ('cmp-f1','cmp-league','cmp-season','cmp-home','cmp-away','2026-09-10T18:00:00Z','FINISHED',now()),
         ('cmp-f2','cmp-league','cmp-season','cmp-away','cmp-home','2026-09-12T18:00:00Z','FINISHED',now()),
-        ('cmp-f3','cmp-league','cmp-season','cmp-home','cmp-away','2026-09-14T18:00:00Z','SCHEDULED',now());
+        ('cmp-f3','cmp-league','cmp-season','cmp-home','cmp-away','2026-09-14T18:00:00Z','SCHEDULED',now()),
+        ('cmp-f4','cmp-league','cmp-season','cmp-home','cmp-away','2026-09-16T18:00:00Z','FINISHED',now());
       INSERT INTO "SourceObservation" (id,provider,"endpointFamily","externalIdentity","observedAt","payloadHash","rawPayload","payloadBytes") VALUES
         ('cmp-obs-1','test','RESULTS','cmp-f1','2026-09-10T20:00:00Z','cmp-h1','{}',2),
-        ('cmp-obs-2','test','RESULTS','cmp-f2','2026-09-12T20:00:00Z','cmp-h2','{}',2);
+        ('cmp-obs-2','test','RESULTS','cmp-f2','2026-09-12T20:00:00Z','cmp-h2','{}',2),
+        ('cmp-obs-4','test','RESULTS','cmp-f4','2026-09-16T20:00:00Z','cmp-h4','{}',2);
       INSERT INTO "ResultVersion" (id,"fixtureId","observationId","effectiveAt","observedAt","homeGoals","awayGoals",status,revision) VALUES
         ('cmp-r1','cmp-f1','cmp-obs-1','2026-09-10T20:00:00Z','2026-09-10T20:00:00Z',2,1,'FINISHED',1),
-        ('cmp-r2','cmp-f2','cmp-obs-2','2026-09-12T20:00:00Z','2026-09-12T20:00:00Z',0,0,'FINISHED',1);
+        ('cmp-r2','cmp-f2','cmp-obs-2','2026-09-12T20:00:00Z','2026-09-12T20:00:00Z',0,0,'FINISHED',1),
+        ('cmp-r4','cmp-f4','cmp-obs-4','2026-09-16T20:00:00Z','2026-09-16T20:00:00Z',1,1,'FINISHED',1);
+      INSERT INTO "SyncRun" (id,"logicalKey",revision,provider,"endpointFamily",lane,"windowFrom","windowTo",state,"correlationId","expectedUnits","completedUnits","expectedCaptures","completedCaptures","completionManifest") VALUES
+        ('cmp-sync','cmp-sync',1,'football-data.org','RESULTS','critical','2026-08-01T00:00:00Z','2026-09-12T12:00:00Z','SUCCEEDED','cmp-sync-correlation',1,1,1,1,
+          '{"expectedUnits":["results"],"completedUnits":["results"],"expectedCaptures":["cmp-h1"],"completedCaptures":["cmp-h1"]}'::jsonb);
+      INSERT INTO "EvidenceBuild" (id,"teamId",cutoff,"configVersion","configHash","syncRunId",state,"publishedAt") VALUES
+        ('cmp-eb-1h','cmp-home','2026-09-10T12:00:00Z','evidence-v1','cmp-evidence-hash','cmp-sync','PUBLISHED','2026-09-10T12:00:00Z'),
+        ('cmp-eb-1a','cmp-away','2026-09-10T12:00:00Z','evidence-v1','cmp-evidence-hash','cmp-sync','PUBLISHED','2026-09-10T12:00:00Z'),
+        ('cmp-eb-2h','cmp-home','2026-09-12T12:00:00Z','evidence-v1','cmp-evidence-hash','cmp-sync','PUBLISHED','2026-09-12T12:00:00Z'),
+        ('cmp-eb-2a','cmp-away','2026-09-12T12:00:00Z','evidence-v1','cmp-evidence-hash','cmp-sync','PUBLISHED','2026-09-12T12:00:00Z');
     `);
   }, 120_000);
 
   afterAll(async () => {
     await database?.$disconnect();
-    for (const name of [postgresName, redisName]) try { docker("rm", "--force", name); } catch { /* exact owned cleanup */ }
+    for (const name of [postgresName, redisName]) try { docker("rm", "--force", "--volumes", name); } catch { /* exact owned cleanup */ }
   }, 30_000);
 
   it("submits one V1 and one DC plan over identical windows, idempotently, through the real queue", async () => {
     const receipts = createPrismaBacktestReceiptRepository({ database, settlementService: createSettlementPipelineService({ database }) });
     const queue = createBacktestQueue({ redisUrl, prefix });
     const lines: string[] = [];
-    const args = ["submit", "--from", "2026-09-01T00:00:00.000Z", "--to", "2026-10-01T00:00:00.000Z", "--league", "cmp-league", "--json"];
+    const range = ["--from", "2026-09-01T00:00:00.000Z", "--to", "2026-10-01T00:00:00.000Z", "--league", "cmp-league", "--json"];
+    const args = ["submit", ...range, "--allow-small-cohort"];
     const deps = { database, receipts, queue, out: (line: string) => lines.push(line) };
+
+    // Two usable windows are below the policy minimum: without the explicit flag nothing is written.
+    expect(await runModelComparisonCommand(["submit", ...range], deps)).toBe(1);
+    expect(JSON.parse(lines.splice(0).join("\n"))).toMatchObject({ submitted: false, runnable: false, reason: "COMPARISON_COHORT_BELOW_MINIMUM", cohort: { usable: 2 } });
+    expect(await database.backtestPlan.count({ where: { id: { startsWith: "cmp-" } } })).toBe(0);
 
     expect(await runModelComparisonCommand(args, deps)).toBe(0);
     expect(await runModelComparisonCommand(args, deps)).toBe(0);
-    const [first, second] = lines.map((line) => JSON.parse(line) as { leftPlanId: string; rightPlanId: string; windows: number });
+    type Submitted = { leftPlanId: string; rightPlanId: string; windows: number; cohort: { considered: number; usable: number; skipped: { noResultByEvaluationAsOf: number; noPublishedEvidenceAtCutoff: number; sharedCutoffInstant: number } } };
+    const [first, second] = lines.map((line) => JSON.parse(line) as Submitted);
     expect(second).toEqual(first);
     expect(first!.windows).toBe(2);
+    expect(first!.cohort.usable).toBe(2);
+    expect(first!.cohort.considered).toBe(3);
+    expect(first!.cohort.skipped).toEqual({ noResultByEvaluationAsOf: 0, noPublishedEvidenceAtCutoff: 1, sharedCutoffInstant: 0 });
 
     const plans = await database.backtestPlan.findMany({ where: { id: { in: [first!.leftPlanId, first!.rightPlanId] } }, include: { windows: { orderBy: { ordinal: "asc" } } } });
     expect(plans.map((plan) => [plan.modelVersion, plan.configHash, plan.deliveryState]).sort()).toEqual([

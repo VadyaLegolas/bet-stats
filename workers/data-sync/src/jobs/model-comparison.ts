@@ -45,6 +45,8 @@ export interface ComparisonParams {
   readonly trainingLagHours?: number;
   /** Result knowledge boundary = kickoff plus this many hours. */
   readonly evaluationLagHours?: number;
+  /** Admit a cohort below the policy minimum (the verdict is then INCONCLUSIVE by construction). Not part of the pair identity. */
+  readonly allowSmallCohort?: boolean;
 }
 
 export interface ComparisonFixture {
@@ -88,6 +90,7 @@ export interface ResolvedComparisonParams {
   readonly cutoffHoursBeforeKickoff: number;
   readonly trainingLagHours: number;
   readonly evaluationLagHours: number;
+  readonly allowSmallCohort: boolean;
 }
 
 export interface ComparisonPlanPair {
@@ -131,6 +134,7 @@ export function resolveComparisonParams(params: ComparisonParams): ResolvedCompa
     cutoffHoursBeforeKickoff: positiveHours(params.cutoffHoursBeforeKickoff, PRE_MATCH_CUTOFF_LEAD_HOURS, "INVALID_CUTOFF_HOURS"),
     trainingLagHours: positiveHours(params.trainingLagHours, 24, "INVALID_TRAINING_LAG_HOURS"),
     evaluationLagHours: positiveHours(params.evaluationLagHours, 48, "INVALID_EVALUATION_LAG_HOURS"),
+    allowSmallCohort: params.allowSmallCohort === true,
   });
 }
 
@@ -166,6 +170,28 @@ export function planComparisonCohort(fixtures: readonly ComparisonFixture[], par
   });
 }
 
+/**
+ * The single runnability predicate shared by the CLI and `buildComparisonPlanPair`: no usable window is never runnable;
+ * a cohort below the policy minimum is runnable only with an explicit `allowSmallCohort`.
+ */
+export function isCohortRunnable(report: ComparisonCohortReport, allowSmallCohort: boolean): boolean {
+  return cohortBlockReason(report, allowSmallCohort) === null;
+}
+
+export function cohortBlockReason(report: ComparisonCohortReport, allowSmallCohort: boolean): "COMPARISON_NO_ELIGIBLE_FIXTURES" | "COMPARISON_COHORT_BELOW_MINIMUM" | null {
+  if (report.usable === 0) return "COMPARISON_NO_ELIGIBLE_FIXTURES";
+  if (report.usable < report.minimumRequired && !allowSmallCohort) return "COMPARISON_COHORT_BELOW_MINIMUM";
+  return null;
+}
+
+/** Plain-Russian cohort report; every number comes from the report. */
+export function describeCohort(report: ComparisonCohortReport): string {
+  return [
+    `Когорта: рассмотрено матчей ${report.considered}, пригодных окон ${report.usable} (минимум для вывода: ${report.minimumRequired}).`,
+    `Пропущено: нет результата к evaluationAsOf — ${report.skipped.noResultByEvaluationAsOf}; нет опубликованных доказательств обеих команд на отсечку (матч минус ${report.leadHours} ч) — ${report.skipped.noPublishedEvidenceAtCutoff}; общий момент отсечки — ${report.skipped.sharedCutoffInstant} (на один момент оставлен матч с наименьшим id).`,
+  ].join("\n");
+}
+
 function windowsFor(eligible: readonly ComparisonFixture[], params: ResolvedComparisonParams, idPrefix: string): RollingOriginWindow[] {
   return eligible.map((fixture) => {
     const kickoff = fixture.kickoffUtc.getTime();
@@ -192,10 +218,13 @@ export function buildComparisonWindows(fixtures: readonly ComparisonFixture[], p
 export function buildComparisonPlanPair(params: ComparisonParams, fixtures: readonly ComparisonFixture[]): ComparisonPlanPair {
   const resolved = resolveComparisonParams(params);
   const { eligible, report } = planComparisonCohort(fixtures, resolved);
+  const blocked = cohortBlockReason(report, resolved.allowSmallCohort);
+  if (blocked) throw coded(blocked);
   const windowsForIdentity = windowsFor(eligible, resolved, "w");
-  if (windowsForIdentity.length === 0) throw coded("COMPARISON_NO_ELIGIBLE_FIXTURES");
   if (windowsForIdentity.length > BACKTEST_LIMITS.maxWindows) throw coded("BACKTEST_LIMIT_EXCEEDED");
-  const pairId = createHash("sha256").update(JSON.stringify({ resolved, windows: windowsForIdentity })).digest("hex").slice(0, 12);
+  // The admission flag decides whether to submit, not what the plans contain, so it stays out of the identity.
+  const identity = { ...resolved, allowSmallCohort: undefined }; // JSON.stringify drops undefined: the hash ignores the flag
+  const pairId = createHash("sha256").update(JSON.stringify({ resolved: identity, windows: windowsForIdentity })).digest("hex").slice(0, 12);
   const build = (side: "left" | "right", suffix: string): BacktestPlanReceipt => {
     const modelVersion = COMPARISON_MODELS[side];
     const id = `cmp-${pairId}-${suffix}`;

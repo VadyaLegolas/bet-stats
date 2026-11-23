@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+import { MODEL_CARD } from "@bet-stats/domain";
+
 import { LIVE_FIXTURES } from "./live-provider-stack.js";
 
 test("versioned model card presents plain-language and exact technical evidence", async ({ page }) => {
@@ -9,14 +11,24 @@ test("versioned model card presents plain-language and exact technical evidence"
   await expect(page.getByRole("heading", { level: 1, name: "Как работают прогнозы" })).toBeVisible();
   await expect(page.getByText("Версия карточки модели", { exact: true })).toBeVisible();
   await expect(page.getByText("Дата вступления в силу", { exact: true })).toBeVisible();
-  await expect(page.getByText("poisson-ensemble-v1 / forecast-config-v1", { exact: true })).toBeVisible();
+  await expect(page.getByText(`${MODEL_CARD.currentModel.modelVersion} / ${MODEL_CARD.currentModel.configVersion}`, { exact: true })).toBeVisible();
+  await expect(page.getByText(`${MODEL_CARD.alternatives[0]!.modelVersion} / ${MODEL_CARD.alternatives[0]!.configVersion} (${MODEL_CARD.alternatives[0]!.role})`, { exact: false })).toBeVisible();
 
-  const sectionNames = ["Входы", "Что исключается", "Уверенность", "Ограничения", "Оценка", "Ответственное использование", "История изменений"];
+  const sectionNames = ["Входы", "Поправка на низкие счета", "Что исключается", "Уверенность", "Ограничения", "Оценка", "Ответственное использование", "История изменений"];
   await expect(page.locator("main h2")).toHaveText(sectionNames);
   for (const name of sectionNames.slice(0, -1)) {
     const section = page.getByRole("heading", { level: 2, name }).locator("xpath=..");
     await expect(section.getByText("Технические подробности", { exact: true })).toBeVisible();
   }
+
+  await expect(page.locator("#dixon-coles")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Поправка на низкие счета" })).toBeVisible();
+  await expect(page.locator("#dixon-coles")).toContainText("гибридная интеграция");
+  await page.locator("#dixon-coles").getByText("Технические подробности", { exact: true }).click();
+  await expect(page.locator("#dixon-coles-technical")).toContainText("tau-1x2-v1");
+  await expect(page.locator("#dixon-coles-technical")).toContainText("Рынок тотала 2.5");
+  await expect(page.locator("#dixon-coles-technical")).toContainText("нейтрален по построению");
+  await expect(page.locator("#dixon-coles-technical")).toContainText(String(MODEL_CARD.forecast.dixonColes.rhoPolicy.minLeagueMatches));
 
   await page.locator("#evaluation").getByText("Технические подробности", { exact: true }).click();
   await expect(page.getByRole("region", { name: "Формулы корректных очков" })).toContainText("Brier");
@@ -27,7 +39,7 @@ test("versioned model card presents plain-language and exact technical evidence"
   await expect(page.getByRole("link", { name: "Подробности квитанции прогноза" })).toHaveAttribute("href", "/fixtures#forecast-receipts");
 
   const changes = page.locator("#change-history article");
-  await expect(changes).toHaveCount(2);
+  await expect(changes).toHaveCount(3);
   const effectiveDates = await changes.locator("time").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("datetime")));
   expect(effectiveDates).toEqual([...effectiveDates].sort().reverse());
 

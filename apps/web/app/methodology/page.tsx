@@ -26,6 +26,7 @@ export default function MethodologyPage() {
       <dt>Дата вступления в силу</dt><dd><time dateTime={card.effectiveDate} title={card.effectiveDate}>{formatInstant(card.effectiveDate, timeZone)}</time></dd>
       <dt>Текущая модель/конфиг</dt><dd>{card.currentModel.modelVersion} / {card.currentModel.configVersion}</dd>
       <dt>Хеш текущего конфига</dt><dd><code>{card.currentModel.configHash}</code></dd>
+      <dt>Доступная альтернативная модель</dt><dd>{card.alternatives.map((alternative) => `${alternative.modelVersion} / ${alternative.configVersion} (${alternative.role})`).join("; ")}</dd>
     </dl>
     <RiskDisclosure />
 
@@ -37,6 +38,23 @@ export default function MethodologyPage() {
         <p><strong>Ожидаемые голы:</strong> {card.forecast.expectedGoals}</p>
         <p>Минимальные выборки: темпы голов {minimums.goalRates}; Эло {minimums.elo}; форма {minimums.form5}; поле {minimums.venue}; отдых {minimums.restDays}; личные встречи {minimums.h2h}.</p>
         <p><Link href="/fixtures#forecast-receipts">Подробности квитанции прогноза</Link> показывают точную отсечку, ID сборок доказательств и наблюдения по источникам.</p>
+      </TechnicalDetails>
+    </section>
+
+    <section id="dixon-coles" style={panel}>
+      <h2>Поправка на низкие счета</h2>
+      <p>Мы применяем поправку Диксона-Колза к четырём низким счетам (0-0, 1-0, 0-1, 1-1) поверх уже рассчитанных ожидаемых голов. Это гибридная интеграция: силы атаки и защиты не переоцениваются, домашний фактор учитывается один раз.</p>
+      <TechnicalDetails id="dixon-coles-technical">
+        <p><strong>Конвенция:</strong> <code>{card.forecast.dixonColes.convention}</code></p>
+        <p><strong>Формулы:</strong> <code>{card.forecast.dixonColes.tau}</code></p>
+        <p><strong>Границы ρ:</strong> <code>{card.forecast.dixonColes.rhoBounds}</code></p>
+        <p><strong>Политика ρ:</strong> метод <code>{card.forecast.dixonColes.rhoPolicy.method}</code>; окно {card.forecast.dixonColes.rhoPolicy.windowDays} дней; минимум {card.forecast.dixonColes.rhoPolicy.minLeagueMatches} матчей лиги; объединённый минимум {card.forecast.dixonColes.rhoPolicy.minPooledMatches}; при недостатке истории — fallback <code>{card.forecast.dixonColes.rhoPolicy.fallback}</code>.</p>
+        <p><strong>Эффекты:</strong></p>
+        <ul>{card.forecast.dixonColes.effects.map((effect) => <li key={effect}>{effect}</li>)}</ul>
+        <p><strong>Ограничения:</strong></p>
+        <ul>{card.forecast.dixonColes.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul>
+        <p>Рынок тотала 2.5 при фиксированных λ и μ нейтрален по построению.</p>
+        <p><Link href="/scorecards#formula-policy-receipts">Сравнение моделей и квитанции формул</Link> показывают, как гибридная версия соотносится с V1 на одинаковых окнах.</p>
       </TechnicalDetails>
     </section>
 

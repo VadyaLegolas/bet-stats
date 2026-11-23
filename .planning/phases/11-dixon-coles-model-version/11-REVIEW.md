@@ -168,3 +168,18 @@ This is an authorization gap and an information/load exposure.
 _Reviewed: 2026-11-23_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+## Disposition (2026-11-23)
+
+| Finding | Status | Where |
+|---------|--------|-------|
+| CR-01 | fixed | `2f8cea6` |
+| CR-02 | fixed | `2f8cea6` |
+| WR-01 | fixed | rho bounds `max(-1/λh, -1/λa) < ρ < min(1/(λh·λa), 1)`; test λ=(2,2) |
+| WR-02 | fixed | bisection bracketed at `min+ε` / `max-ε`; non-finite scores fall back |
+| WR-03 | fixed | out-of-band fitted rho degrades to explicit `rho = 0`, method `out-of-band-zero` (recorded in receipt); `assertDixonColesRho` throws a coded error |
+| WR-04 | fixed (partly) | fit uses only snapshots with `issuedAt <= asOf`, newest usable revision per fixture. Residual: snapshots issued by a backtest are indistinguishable from production ones for a fit at `asOf = now` |
+| WR-05 | fixed | scored-cohort windows, fixture-set identity, `[from, to)`, `minimumSampleSize = 30`, policy `model-comparison-v2` |
+| WR-06 | fixed | card bounds string, rho policy/fallbacks, page no longer claims a public comparison view |
+| IN-04 | fixed | «μ» replaced with λh / λa |
+| IN-01, IN-02, IN-03 | open | duplicated `canonical()`, late `configHash` check in plan admission, config errors mapped to HTTP 400 |

@@ -299,8 +299,19 @@ export async function listComparisonFixtures(database: FixtureReader, params: Re
 
 type SubmitDeps = Parameters<typeof admitPersistEnqueueBacktest>[1];
 
+/** State of a plan's queue job, as `createBacktestQueue().inspect` reports it. */
+export interface BacktestJobStatus { readonly state: string; readonly attemptsMade: number; readonly attempts: number }
+export interface BacktestJobRef { readonly planId: string; readonly planHash: string }
+
+/** The backtest queue as the operator entry point uses it; `inspect` is optional so a plain `{ enqueue }` still works. */
+export type ComparisonQueue = SubmitDeps["queue"] & { inspect?: (ref: BacktestJobRef) => Promise<BacktestJobStatus | null> };
+
+/** BullMQ states in which the job still has a run (or a retry) ahead of it; `failed` means the attempts are used up. */
+const LIVE_JOB_STATES: ReadonlySet<string> = new Set(["active", "delayed", "prioritized", "waiting", "waiting-children"]);
+export function jobCanStillRun(status: BacktestJobStatus | null): boolean { return status !== null && LIVE_JOB_STATES.has(status.state); }
+
 /** Idempotent: the same pair resubmitted re-uses the persisted plans and the deterministic queue job ids. */
-export async function submitComparisonPair(pair: ComparisonPlanPair, input: Omit<SubmitDeps, "correlationId">): Promise<{ leftPlanId: string; rightPlanId: string }> {
+export async function submitComparisonPair(pair: ComparisonPlanPair, input: Omit<SubmitDeps, "correlationId" | "queue"> & { queue: ComparisonQueue }): Promise<{ leftPlanId: string; rightPlanId: string }> {
   const correlationId = `model-comparison:${pair.pairId}`;
   await admitPersistEnqueueBacktest(pair.left, { ...input, correlationId });
   await admitPersistEnqueueBacktest(pair.right, { ...input, correlationId });
@@ -334,6 +345,11 @@ export async function waitForPlans(input: {
   sleep?: (ms: number) => Promise<void>;
   now?: () => number;
   onProgress?: (progress: readonly PlanProgress[]) => void;
+  /**
+   * A FAILED window is one failed ATTEMPT: BullMQ retries the job with backoff and the window then goes FAILED -> RUNNING again.
+   * When given, a failed window only ends the wait once the plan's job cannot run any more. Without it the first failure is final.
+   */
+  canStillRun?: (planId: string) => Promise<boolean>;
 }): Promise<{ outcome: WaitOutcome; progress: readonly PlanProgress[] }> {
   const sleep = input.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const now = input.now ?? Date.now;
@@ -341,7 +357,11 @@ export async function waitForPlans(input: {
   for (;;) {
     const progress = await Promise.all(input.planIds.map((id) => input.read(id)));
     input.onProgress?.(progress);
-    if (progress.some((item) => !item.found || (item.windows.FAILED ?? 0) > 0 || item.state === "FAILED")) return { outcome: "FAILED", progress };
+    const failing = progress.filter((item) => !item.found || (item.windows.FAILED ?? 0) > 0 || item.state === "FAILED");
+    if (failing.length > 0) {
+      const final = await Promise.all(failing.map(async (item) => !item.found || item.state === "FAILED" || !(await input.canStillRun?.(item.planId) ?? false)));
+      if (final.some(Boolean)) return { outcome: "FAILED", progress };
+    }
     if (progress.every((item) => item.state === "SUCCEEDED")) return { outcome: "SUCCEEDED", progress };
     if (now() >= deadline) return { outcome: "TIMEOUT", progress };
     await sleep(input.pollMs ?? 5_000);

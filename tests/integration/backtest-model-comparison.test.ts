@@ -5,8 +5,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createPrismaBacktestReceiptRepository, createPrismaClient, createSettlementPipelineService, type PrismaClient } from "@bet-stats/database";
 import { forecastConfigHashFor } from "@bet-stats/domain";
+import { jobCanStillRun, readPlanProgress, waitForPlans } from "../../workers/data-sync/src/jobs/model-comparison.js";
 import { runModelComparisonCommand } from "../../workers/data-sync/src/jobs/model-comparison-cli.js";
-import { createBacktestQueue } from "../../workers/data-sync/src/queues/index.js";
+import { createBacktestQueue, createBacktestWorker } from "../../workers/data-sync/src/queues/index.js";
 
 const root = resolve(import.meta.dirname, "../..");
 const databaseRoot = resolve(root, "packages/database");
@@ -112,4 +113,64 @@ describe("operator model comparison entry point", () => {
     expect(JSON.parse(compareLines.join("\n"))).toEqual({ available: false, reason: "PLAN_NOT_COMPLETE" });
     await queue.close();
   }, 60_000);
+
+  /**
+   * Real queue, real worker wiring, scripted `execute`: it fails the poisson plan's window for the first `failAttempts` calls
+   * exactly like `runBacktestPlan` does (window FAILED, error rethrown so BullMQ retries) and then completes the plan.
+   */
+  async function scriptedRun(label: string, evaluationLagHours: number) {
+    const queuePrefix = `${prefix}-${label}`;
+    const receipts = createPrismaBacktestReceiptRepository({ database, settlementService: createSettlementPipelineService({ database }) });
+    const queue = createBacktestQueue({ redisUrl, prefix: queuePrefix });
+    const lines: string[] = [];
+    const deps = { database, receipts, queue, out: (line: string) => lines.push(line), sleep: (ms: number) => new Promise<void>((done) => setTimeout(done, Math.min(ms, 100))) };
+    const submitArgs = ["submit", "--from", "2026-09-01T00:00:00.000Z", "--to", "2026-10-01T00:00:00.000Z", "--league", "cmp-league", "--evaluation-lag-hours", String(evaluationLagHours), "--allow-small-cohort", "--json"];
+    const control = { failAttempts: 0, poissonCalls: 0 };
+    const worker = createBacktestWorker({
+      redisUrl, prefix: queuePrefix, loadPlan: receipts.findPlan,
+      execute: async (plan) => {
+        if (plan.modelVersion === "poisson-ensemble-v1") {
+          control.poissonCalls += 1;
+          if (control.poissonCalls <= control.failAttempts) { await receipts.failWindow(plan.windows[0]!.id, "SCRIPTED_TRANSIENT"); throw new Error("SCRIPTED_TRANSIENT"); }
+        }
+        await database.backtestWindow.updateMany({ where: { planId: plan.id }, data: { state: "SUCCEEDED" } });
+        await database.backtestPlan.update({ where: { id: plan.id }, data: { state: "SUCCEEDED" } });
+        return { ok: true };
+      },
+    });
+    await worker.waitUntilReady();
+    const submit = async () => {
+      lines.length = 0;
+      expect(await runModelComparisonCommand(submitArgs, deps)).toBe(0);
+      return JSON.parse(lines.join("\n")) as { leftPlanId: string; rightPlanId: string };
+    };
+    const wait = async (ids: { leftPlanId: string; rightPlanId: string }) => {
+      const hashes = new Map((await database.backtestPlan.findMany({ where: { id: { in: [ids.leftPlanId, ids.rightPlanId] } }, select: { id: true, planHash: true } })).map((row) => [row.id, row.planHash]));
+      return waitForPlans({
+        planIds: [ids.leftPlanId, ids.rightPlanId], read: (id) => readPlanProgress(database, id), timeoutMs: 90_000, pollMs: 100,
+        canStillRun: async (planId) => jobCanStillRun(await queue.inspect({ planId, planHash: hashes.get(planId)! })),
+      });
+    };
+    return { control, submit, wait, queue, close: async () => { await worker.close(); await queue.close(); } };
+  }
+
+  it("WR-08: a transient window failure is retried by BullMQ and the wait ends in SUCCEEDED, not FAILED", async () => {
+    const run = await scriptedRun("wr08-transient", 47);
+    try {
+      run.control.failAttempts = 2; // attempts 1 and 2 fail, attempt 3 succeeds
+      const waited = await run.wait(await run.submit());
+      expect({ outcome: waited.outcome, poissonCalls: run.control.poissonCalls }).toEqual({ outcome: "SUCCEEDED", poissonCalls: 3 });
+    } finally { await run.close(); }
+  }, 120_000);
+
+  it("WR-08: the wait reports FAILED only after the job used all of its attempts", async () => {
+    const run = await scriptedRun("wr08-final", 46);
+    try {
+      run.control.failAttempts = Number.POSITIVE_INFINITY;
+      const ids = await run.submit();
+      const waited = await run.wait(ids);
+      expect(waited.outcome).toBe("FAILED");
+      expect(run.control.poissonCalls).toBe(3); // BACKTEST_MAX_ATTEMPTS, not 1
+    } finally { await run.close(); }
+  }, 120_000);
 });

@@ -59,10 +59,17 @@ export function backtestQueue(prefix = "bet-stats"): string {
   if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) throw new Error("Queue prefix contains unsupported characters");
   return `${prefix}-backtest`;
 }
+export function backtestJobId(data: { planId: string; planHash: string }): string { return `backtest-${data.planId}-${data.planHash}`; }
 export function createBacktestQueue(input: { redisUrl: string; prefix?: string }) {
   const queue = new Queue<BacktestJobData>(backtestQueue(input.prefix), { connection: redisConnection(input.redisUrl) });
   return {
-    enqueue: (data: BacktestJobData) => queue.add("rolling-origin", data, { attempts: BACKTEST_MAX_ATTEMPTS, backoff: { type: "exponential", delay: 1_000, jitter: 0.25 }, removeOnComplete: { age: 86_400, count: 1_000 }, removeOnFail: { age: 604_800, count: 5_000 }, jobId: `backtest-${data.planId}-${data.planHash}` }),
+    enqueue: (data: BacktestJobData) => queue.add("rolling-origin", data, { attempts: BACKTEST_MAX_ATTEMPTS, backoff: { type: "exponential", delay: 1_000, jitter: 0.25 }, removeOnComplete: { age: 86_400, count: 1_000 }, removeOnFail: { age: 604_800, count: 5_000 }, jobId: backtestJobId(data) }),
+    /** State of the plan's queue job: `attemptsMade` of `attempts` used; null when the queue holds no such job. */
+    inspect: async (ref: { planId: string; planHash: string }): Promise<{ state: string; attemptsMade: number; attempts: number } | null> => {
+      const job = await queue.getJob(backtestJobId(ref));
+      if (!job) return null;
+      return { state: await job.getState(), attemptsMade: job.attemptsMade, attempts: job.opts.attempts ?? 1 };
+    },
     close: () => queue.close(),
   };
 }

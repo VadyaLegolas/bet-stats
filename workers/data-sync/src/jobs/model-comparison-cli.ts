@@ -10,6 +10,7 @@ import {
   computeModelComparison,
   describeCohort,
   describeComparison,
+  jobCanStillRun,
   listComparisonFixtures,
   planComparisonCohort,
   readPlanProgress,
@@ -17,6 +18,7 @@ import {
   submitComparisonPair,
   waitForPlans,
   type ComparisonMarket,
+  type ComparisonQueue,
   type ComparisonParams,
 } from "./model-comparison.js";
 
@@ -52,7 +54,7 @@ export const MODEL_COMPARISON_USAGE = `Использование: node scripts/
 export interface ModelComparisonCliDeps {
   readonly database: PrismaClient;
   readonly receipts: Parameters<typeof submitComparisonPair>[1]["receipts"];
-  readonly queue: Parameters<typeof submitComparisonPair>[1]["queue"];
+  readonly queue: ComparisonQueue;
   readonly out: (line: string) => void;
   readonly sleep?: (ms: number) => Promise<void>;
   readonly now?: () => Date;
@@ -147,12 +149,14 @@ export async function runModelComparisonCommand(argv: readonly string[], deps: M
   const waited = await waitForPlans({
     planIds: [pair.left.id, pair.right.id],
     read: (id) => readPlanProgress(deps.database, id),
+    // A FAILED window is a failed attempt while BullMQ still retries (WR-08); only a job that cannot run any more is a final failure.
+    ...(deps.queue.inspect ? { canStillRun: async (planId: string) => jobCanStillRun(await deps.queue.inspect!({ planId, planHash: planId === pair.left.id ? pair.left.planHash : pair.right.planHash })) } : {}),
     timeoutMs: timeoutMinutes * 60_000,
     ...(deps.sleep ? { sleep: deps.sleep } : {}),
     onProgress: (progress) => { if (!json) deps.out(`Ожидание: ${progress.map((item) => `${item.modelVersion ?? item.planId}=${item.state}${JSON.stringify(item.windows)}`).join("; ")}`); },
   });
   if (waited.outcome === "TIMEOUT") { emit({ outcome: "TIMEOUT", progress: waited.progress }, `Время ожидания вышло. Проверьте, что воркер data-sync запущен, затем: status --left ${pair.left.id} --right ${pair.right.id}`); return 2; }
-  if (waited.outcome === "FAILED") { emit({ outcome: "FAILED", progress: waited.progress }, "Один из планов завершился ошибкой (см. окна FAILED). Квитанция не строится."); return 1; }
+  if (waited.outcome === "FAILED") { emit({ outcome: "FAILED", progress: waited.progress }, "Один из планов завершился ошибкой после исчерпания повторов очереди (см. окна FAILED). Квитанция не строится."); return 1; }
   const result = await computeModelComparison(deps.database, { leftPlanId: pair.left.id, rightPlanId: pair.right.id, market: pair.params.market, from: pair.params.from, to: pair.params.to }, deps.now);
   emit(result, `${describeComparison(result)}\n${JSON.stringify(result, null, 2)}`);
   return result.available ? 0 : 1;

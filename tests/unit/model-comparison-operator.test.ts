@@ -9,6 +9,7 @@ import {
   describeCohort,
   describeComparison,
   isCohortRunnable,
+  jobCanStillRun,
   listComparisonFixtures,
   planComparisonCohort,
   resolveComparisonParams,
@@ -254,6 +255,36 @@ describe("operator model comparison: submit, wait, receipt", () => {
     expect((await waitForPlans({ planIds: ["a"], read: async () => make("PENDING", { FAILED: 1 }), timeoutMs: 1_000, sleep: async () => undefined })).outcome).toBe("FAILED");
     clock = 0;
     expect((await waitForPlans({ planIds: ["a"], read: async () => make("PENDING"), timeoutMs: 50, sleep: async () => { clock += 100; }, now: () => clock })).outcome).toBe("TIMEOUT");
+  });
+
+  it("WR-08: a failed window is not final while the queue job can still retry", async () => {
+    const make = (state: string, windows: Record<string, number> = {}): PlanProgress => ({ planId: "p", found: true, state, windows });
+    let reads = 0; let asked = 0;
+    // Attempt 1 failed (FAILED window, job delayed for backoff), the retry then succeeded.
+    const retried = await waitForPlans({
+      planIds: ["p"], timeoutMs: 1_000, sleep: async () => undefined,
+      read: async () => (++reads <= 2 ? make("PENDING", { FAILED: 1 }) : make("SUCCEEDED", { SUCCEEDED: 1 })),
+      canStillRun: async () => { asked += 1; return true; },
+    });
+    expect(retried.outcome).toBe("SUCCEEDED");
+    expect(asked).toBe(2);
+    // Attempts used up: the same observation is now final.
+    expect((await waitForPlans({ planIds: ["p"], timeoutMs: 1_000, sleep: async () => undefined, read: async () => make("PENDING", { FAILED: 1 }), canStillRun: async () => false })).outcome).toBe("FAILED");
+    // An unknown plan or a plan-level FAILED never waits.
+    const never = vi.fn(async () => true);
+    expect((await waitForPlans({ planIds: ["p"], timeoutMs: 1_000, sleep: async () => undefined, read: async () => ({ planId: "p", found: false, windows: {} }), canStillRun: never })).outcome).toBe("FAILED");
+    expect((await waitForPlans({ planIds: ["p"], timeoutMs: 1_000, sleep: async () => undefined, read: async () => make("FAILED"), canStillRun: never })).outcome).toBe("FAILED");
+    expect(never).not.toHaveBeenCalled();
+    // A job that keeps retrying still ends in TIMEOUT, not in an endless wait.
+    let clock = 0;
+    expect((await waitForPlans({ planIds: ["p"], timeoutMs: 50, sleep: async () => { clock += 100; }, now: () => clock, read: async () => make("PENDING", { FAILED: 1 }), canStillRun: async () => true })).outcome).toBe("TIMEOUT");
+  });
+
+  it("WR-08: only a live BullMQ state means a run is still ahead", () => {
+    const status = (state: string) => ({ state, attemptsMade: 1, attempts: 3 });
+    for (const state of ["active", "delayed", "waiting", "prioritized", "waiting-children"]) expect(jobCanStillRun(status(state)), state).toBe(true);
+    for (const state of ["failed", "completed", "unknown"]) expect(jobCanStillRun(status(state)), state).toBe(false);
+    expect(jobCanStillRun(null)).toBe(false);
   });
 
   it("describes an INCONCLUSIVE small-sample receipt without claiming DC is not worse", () => {

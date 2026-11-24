@@ -1,10 +1,11 @@
 ---
 phase: 14
 slug: asian-handicap-and-exact-score-markets
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: "2026-11-25"
+reviewed_at: "2026-11-25"
 ---
 
 # Phase 14 — UI Design Contract
@@ -68,7 +69,7 @@ Declared values (multiples of 4) — the existing `--space-*` tokens; no value o
 | `--space-12` | 48px | not used by new sections |
 | `--space-16` | 64px | not used |
 
-Exceptions: interactive controls keep the existing global `min-height: 44px` (the currently implemented convention, which supersedes the 48px stated in the Phase 1 contract; `btn-primary`/`btn-secondary` remain 48px). The first cell of the main-line row carries a 4px inset rail (a border width, not a spacing token). Radii are the existing tokens (`--radius-control` 12px, `--radius-panel` 20px); summary tiles reuse the 16px radius of `.facts-grid > div`.
+Exception: `--space-3` (12px) is an inherited project token used across `globals.css`; it is a multiple of 4, not in the standard 4/8/16/24/32/48/64 set, and is kept deliberately for table cell padding and tile/field gaps so the new surfaces match existing tables (checker FLAG, Dimension 5, closed by this rationale). Exceptions: interactive controls keep the existing global `min-height: 44px` (the currently implemented convention, which supersedes the 48px stated in the Phase 1 contract; `btn-primary`/`btn-secondary` remain 48px). The first cell of the main-line row carries a 4px inset rail (a border width, not a spacing token). Radii are the existing tokens (`--radius-control` 12px, `--radius-panel` 20px); summary tiles reuse the 16px radius of `.facts-grid > div`.
 
 ---
 
@@ -435,12 +436,12 @@ No question was left unanswered; no user interaction was required.
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
-- [ ] Dimension 7 Inventory Provenance: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS (checker FLAG on the inherited `--space-3` 12px token; resolved by the documented exception in "Spacing Scale", not re-run by the checker)
+- [x] Dimension 6 Registry Safety: PASS
+- [x] Dimension 7 Inventory Provenance: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-11-25 (gsd-ui-checker: UI-SPEC VERIFIED, one non-blocking FLAG resolved)

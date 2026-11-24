@@ -157,6 +157,10 @@ describe("calibrator storage: append-only tables, pinned identity, event-derived
     expect(all.ONE_X_TWO).toBeNull();
     const foreign = await repository.findActiveCalibrators(OTHER_CONFIG_IDENTITY);
     expect(Object.values(foreign).every((entry) => entry === null)).toBe(true);
+    // WR-08: seen from the identity the stack issues now, this calibrator is a retired one; never from its own or another model version.
+    expect(await repository.findRetiredActiveIdentities(OTHER_CONFIG_IDENTITY)).toEqual([{ configHash: TEST_IDENTITY.configHash, markets: ["OVER_UNDER_2_5"] }]);
+    expect(await repository.findRetiredActiveIdentities(TEST_IDENTITY)).toEqual([]);
+    expect(await repository.findRetiredActiveIdentities(OTHER_MODEL_IDENTITY)).toEqual([]);
 
     // Repeating the same promotion on the same day adds nothing.
     const repeated = await repository.promoteCalibrator({

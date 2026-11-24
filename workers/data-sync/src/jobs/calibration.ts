@@ -95,6 +95,12 @@ export interface MarketReceipt {
   readonly failures: readonly MarketFailure[];
 }
 
+/** Calibrators still active under a config hash the forecast stack no longer issues (WR-08). Reported, not acted on. */
+export interface RetiredIdentityReceipt {
+  readonly configHash: string;
+  readonly markets: readonly ScoreMarket[];
+}
+
 export interface CalibrationJobReceipt {
   readonly version: typeof CALIBRATION_JOB_RECEIPT_VERSION;
   readonly identity: CalibratorIdentity;
@@ -103,6 +109,8 @@ export interface CalibrationJobReceipt {
   readonly skippedMalformedProbabilities: number;
   readonly skippedUnusableResults: number;
   readonly markets: Readonly<Record<ScoreMarket, MarketReceipt>>;
+  /** Same model version, other config hashes, with an active calibrator: served to their old forecasts but not evaluated or rolled back. */
+  readonly retiredIdentities: readonly RetiredIdentityReceipt[];
 }
 
 function coded(code: string, detail?: string): Error & { code: string } {
@@ -444,6 +452,17 @@ export async function runCalibrationJob(input: CalibrationJobInput): Promise<Cal
     }
   }
 
+  // Observability only: a failed lookup must not fail the run.
+  let retiredIdentities: readonly RetiredIdentityReceipt[] = [];
+  try {
+    retiredIdentities = (await repository.findRetiredActiveIdentities(identity)).map((entry) => ({ configHash: entry.configHash, markets: [...entry.markets] }));
+  } catch (error) {
+    log({ event: "calibration.job.retired_lookup_failed", modelVersion: identity.modelVersion, code: failureCode(error) });
+  }
+  if (retiredIdentities.length > 0) {
+    log({ event: "calibration.job.retired_identities_active", level: "warn", modelVersion: identity.modelVersion, retired: retiredIdentities });
+  }
+
   const receipt: CalibrationJobReceipt = {
     version: CALIBRATION_JOB_RECEIPT_VERSION,
     identity,
@@ -452,6 +471,7 @@ export async function runCalibrationJob(input: CalibrationJobInput): Promise<Cal
     skippedMalformedProbabilities: data.skippedMalformedProbabilities,
     skippedUnusableResults: data.skippedUnusableResults,
     markets,
+    retiredIdentities,
   };
   log({
     event: "calibration.job.completed",

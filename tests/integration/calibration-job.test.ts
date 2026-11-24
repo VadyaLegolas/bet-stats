@@ -95,8 +95,9 @@ describe("calibration job: one run over three markets on a real database", () =>
     const text = JSON.stringify(first);
     expect(JSON.parse(text)).toEqual(first);
     expect(text).not.toMatch(/postgres(ql)?:\/\/|password|secret|token|apikey/i);
-    expect(Object.keys(first).sort()).toEqual(["asOf", "calibrationConfigVersion", "identity", "markets", "skippedMalformedProbabilities", "skippedUnusableResults", "version"]);
+    expect(Object.keys(first).sort()).toEqual(["asOf", "calibrationConfigVersion", "identity", "markets", "retiredIdentities", "skippedMalformedProbabilities", "skippedUnusableResults", "version"]);
     expect(first.calibrationConfigVersion).toBe("calibration-config-v1");
+    expect(first.retiredIdentities).toEqual([]);
   });
 
   it("a repeat of the same run adds neither calibrators nor events", async () => {

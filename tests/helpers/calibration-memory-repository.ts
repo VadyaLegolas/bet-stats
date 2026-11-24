@@ -177,6 +177,13 @@ export function createMemoryCalibrationRepository(): MemoryCalibrationRepository
       return events.some((event) => event.calibratorId === calibratorId && event.type === "ROLLED_BACK");
     },
 
+    async findRetiredActiveIdentities(current) {
+      const hashes = [...new Set(events.filter((event) => event.modelVersion === current.modelVersion && event.configHash !== current.configHash).map((event) => event.configHash))].sort();
+      return hashes
+        .map((configHash) => ({ configHash, markets: MARKETS.filter((market) => activeOf({ modelVersion: current.modelVersion, configHash }, market) !== null) }))
+        .filter((entry) => entry.markets.length > 0);
+    },
+
     async findLatestRollback(identity, market): Promise<LatestRollback | null> {
       const latest = [...events].reverse().find(
         (event) => event.type === "ROLLED_BACK" && event.modelVersion === identity.modelVersion && event.configHash === identity.configHash && event.market === market,

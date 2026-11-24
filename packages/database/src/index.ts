@@ -30,6 +30,7 @@ export type {
   PromoteCalibratorInput,
   PromoteCalibratorResult,
   RecordEvaluationInput,
+  RetiredActiveIdentity,
   RollbackCalibratorInput,
   RollbackWithEvaluationInput,
   RollbackWithEvaluationResult,

@@ -214,3 +214,39 @@ describe("WR-03: the evaluation that completes the series and the rollback are o
     expect(await repository.hasBeenRolledBack(active)).toBe(true);
   });
 });
+
+describe("WR-08: calibrators of an identity the stack no longer issues are reported, not hidden and not touched", () => {
+  const RETIRED: CalibratorIdentity = { modelVersion: DC.modelVersion, configHash: `sha256:${"b".repeat(64)}` };
+
+  function retiredWorld(): { repository: MemoryCalibrationRepository; retiredId: string } {
+    const repository = createMemoryCalibrationRepository();
+    const calibrator = makeFitted({ market: "OVER_UNDER_2_5", identity: RETIRED, seed: 5 });
+    return { repository, retiredId: repository.seedPromotion(calibrator, calibrator.fittedAsOf) };
+  }
+
+  it("lists the retired identity with its markets in the receipt and logs a warning; the retired calibrator stays untouched", async () => {
+    const { repository, retiredId } = retiredWorld();
+    const logs: Array<Record<string, unknown>> = [];
+    const eventsBefore = repository.events.length;
+    const receipt = await runCalibrationJob({
+      database: DATABASE, ...DC, asOf: JOB_AS_OF, log: (event) => logs.push(event),
+      dependencies: { repository, readFitData: fitData({ ONE_X_TWO: training("ONE_X_TWO") }) },
+    });
+    expect(receipt.retiredIdentities).toEqual([{ configHash: RETIRED.configHash, markets: ["OVER_UNDER_2_5"] }]);
+    expect(logs.find((entry) => entry.event === "calibration.job.retired_identities_active")).toMatchObject({ level: "warn", modelVersion: DC.modelVersion });
+    // Reporting is all that happens: the retired calibrator is neither evaluated nor rolled back nor superseded.
+    expect(repository.events.filter((event) => event.configHash === RETIRED.configHash)).toHaveLength(eventsBefore);
+    expect((await repository.findActiveCalibrator(RETIRED, "OVER_UNDER_2_5"))?.calibratorId).toBe(retiredId);
+  });
+
+  it("has an empty list when nothing is retired, and a failed lookup does not fail the job", async () => {
+    const clean = await run(createMemoryCalibrationRepository(), {});
+    expect(clean.retiredIdentities).toEqual([]);
+
+    const failing: CalibrationRepository = { ...createMemoryCalibrationRepository(), findRetiredActiveIdentities: async () => { throw repositoryCode("LOOKUP_DOWN"); } };
+    const logs: Array<Record<string, unknown>> = [];
+    const receipt = await runCalibrationJob({ database: DATABASE, ...DC, asOf: JOB_AS_OF, log: (event) => logs.push(event), dependencies: { repository: failing, readFitData: fitData({}) } });
+    expect(receipt.retiredIdentities).toEqual([]);
+    expect(logs).toContainEqual({ event: "calibration.job.retired_lookup_failed", modelVersion: DC.modelVersion, code: "LOOKUP_DOWN" });
+  });
+});

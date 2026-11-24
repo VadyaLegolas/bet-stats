@@ -99,6 +99,12 @@ export interface LatestRollback {
   readonly asOf: string;
 }
 
+/** A config hash of one model version that still has active calibrators although the forecast stack no longer issues it. */
+export interface RetiredActiveIdentity {
+  readonly configHash: string;
+  readonly markets: readonly ScoreMarket[];
+}
+
 export interface CalibratorEventWriteResult {
   readonly eventId: string;
   readonly created: boolean;
@@ -164,6 +170,11 @@ export interface CalibrationRepository {
   /** Events whose subject is this calibrator, by ascending seq. */
   listCalibratorEvents(calibratorId: string): Promise<readonly CalibratorEventRecord[]>;
   hasBeenRolledBack(calibratorId: string): Promise<boolean>;
+  /**
+   * Active calibrators of the same model version under OTHER config hashes (WR-08). The daily job only runs for the identity the
+   * stack issues now, so these are served but neither evaluated nor rolled back; the job reports them.
+   */
+  findRetiredActiveIdentities(current: CalibratorIdentity): Promise<readonly RetiredActiveIdentity[]>;
   /** Newest ROLLED_BACK event of the identity and market (any calibrator), or null when the market never rolled back. */
   findLatestRollback(identity: CalibratorIdentity, market: ScoreMarket): Promise<LatestRollback | null>;
 }
@@ -556,6 +567,19 @@ export function createPrismaCalibrationRepository(client: PrismaClient): Calibra
     async listCalibratorEvents(calibratorId) {
       const rows = await client.calibratorEvent.findMany({ where: { calibratorId }, orderBy: { seq: "asc" } });
       return rows.map((row) => eventFromRow(row as unknown as EventRow));
+    },
+
+    async findRetiredActiveIdentities(current) {
+      const rows = await client.$queryRaw<Array<{ configHash: string; market: string }>>`
+        SELECT cc."configHash", cc."market" FROM current_calibrators cc
+        WHERE cc."modelVersion" = ${current.modelVersion} AND cc."configHash" <> ${current.configHash}
+        ORDER BY cc."configHash", cc."market"`;
+      const byHash = new Map<string, ScoreMarket[]>();
+      for (const row of rows) {
+        if (!(CALIBRATION_MARKETS as readonly string[]).includes(row.market)) throw repositoryError("CALIBRATOR_ROW_INVALID", "stored calibrator has an unknown market");
+        byHash.set(row.configHash, [...(byHash.get(row.configHash) ?? []), row.market as ScoreMarket]);
+      }
+      return [...byHash].map(([configHash, markets]) => ({ configHash, markets }));
     },
 
     async findLatestRollback(identity, market) {

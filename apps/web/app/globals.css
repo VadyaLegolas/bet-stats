@@ -1342,11 +1342,14 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
 
 .workbench-card {
   display: grid;
+  min-width: 0;
   gap: var(--space-4);
   align-content: start;
   overflow-wrap: anywhere;
 }
-.workbench-card > * { margin-block: 0; }
+.workbench-card > * { margin-block: 0; min-width: 0; }
+/* Длинные option в select не должны растягивать ячейку сетки шире экрана (320px). */
+.workbench-card select, .field select { max-width: 100%; }
 .workbench-card > h3 { font-size: 1.5rem; letter-spacing: -0.01em; }
 .workbench-card > button { justify-self: start; }
 .workbench-card .field label { font-size: 0.875rem; color: var(--color-muted); }
@@ -1356,7 +1359,8 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
   gap: var(--space-6);
   align-items: start;
 }
-.field { display: grid; gap: 6px; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.field > * { min-width: 0; }
 .field br { display: none; }
 .field [role="alert"] { color: var(--color-danger); font-size: 0.875rem; }
 .field--odds input { min-height: 52px; font-size: 1.125rem; font-weight: 600; }

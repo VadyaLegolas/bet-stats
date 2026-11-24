@@ -1,12 +1,9 @@
 import type { CalibratedForecastResponseDto } from "@bet-stats/domain";
-import Link from "next/link";
-
 import { DataStateNotice, type FixtureDataState } from "../../../components/data-state-notice";
 import { RiskDisclosure } from "../../../components/risk-disclosure";
 import { ProviderStateNotice, type ProviderState } from "../../../components/provider-state-notice";
 import { ForecastWorkbench } from "./forecast-workbench";
-import { statusLabel } from "../status-labels";
-import { formatInstant } from "../../../components/time-format";
+import { BackLink, MatchHero } from "./match-hero";
 
 type Fixture = { id: string; competition: { id: string; name: string; season: string }; teams: { home: { id: string; name: string }; away: { id: string; name: string } }; kickoff: string; status: string; dataState: FixtureDataState; providerState: ProviderState };
 const API_ORIGIN = process.env.API_ORIGIN ?? "http://127.0.0.1:3001";
@@ -19,10 +16,10 @@ function safeReturn(value: string | string[] | undefined): string { const candid
 
 export default async function Detail({ params, searchParams }: { params: Promise<{ fixtureId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [{ fixtureId }, search] = await Promise.all([params, searchParams]); const back = safeReturn(search.returnTo); let fixture: Fixture | null;
-  try { fixture = await load(fixtureId); } catch { return <section><h1>Матч недоступен</h1><p role="alert">Не удалось загрузить данные матча.</p><Link href={back}>Назад к матчам</Link></section>; }
-  if (!fixture) return <section><h1>Матч не найден</h1><p>Запрошенный канонический матч не существует.</p><Link href={back}>Назад к матчам</Link></section>;
+  try { fixture = await load(fixtureId); } catch { return <section><h1>Матч недоступен</h1><p role="alert">Не удалось загрузить данные матча.</p><BackLink href={back} /></section>; }
+  if (!fixture) return <section><h1>Матч не найден</h1><p>Запрошенный канонический матч не существует.</p><BackLink href={back} /></section>;
   const forecasts = await loadForecasts(fixture.id);
   const timeZone = process.env.DISPLAY_TIME_ZONE ?? "UTC";
   const evidenceHref = (teamId: string) => `/teams/${encodeURIComponent(teamId)}/evidence?asOf=${encodeURIComponent(fixture!.kickoff)}&fixtureId=${encodeURIComponent(fixture!.id)}`;
-  return <article className="page-column page-column--wrap page-column--inset"><Link href={back}>Назад к матчам</Link><h1>{fixture.teams.home.name} против {fixture.teams.away.name}</h1><dl className="detail-grid"><dt>Соревнование</dt><dd>{fixture.competition.name}</dd><dt>Сезон</dt><dd>{fixture.competition.season}</dd><dt>Начало ({timeZone})</dt><dd><time dateTime={fixture.kickoff} title={fixture.kickoff}>{formatInstant(fixture.kickoff, timeZone)}</time></dd><dt>Статус</dt><dd>{statusLabel(fixture.status)}</dd><dt>Исторические доказательства</dt><dd className="detail-links"><Link className="link-touch" href={evidenceHref(fixture.teams.home.id)}>Доказательства {fixture.teams.home.name} на момент начала</Link><Link className="link-touch" href={evidenceHref(fixture.teams.away.id)}>Доказательства {fixture.teams.away.name} на момент начала</Link></dd></dl><ProviderStateNotice state={fixture.providerState}/><DataStateNotice data={fixture.dataState}/><RiskDisclosure /><ForecastWorkbench fixtureId={fixture.id} forecasts={forecasts} timeZone={timeZone} /></article>;
+  return <article className="page-column page-column--wrap match-page"><BackLink href={back} /><MatchHero fixture={fixture} timeZone={timeZone} evidenceHref={evidenceHref} /><ProviderStateNotice state={fixture.providerState}/><DataStateNotice data={fixture.dataState}/><RiskDisclosure /><ForecastWorkbench fixtureId={fixture.id} forecasts={forecasts} timeZone={timeZone} /></article>;
 }

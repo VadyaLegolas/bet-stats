@@ -162,8 +162,8 @@ h1, h2, h3 {
   color: var(--color-text);
   line-height: 1.18;
 }
-h1 { font-size: clamp(2rem, 4.5vw, 2.9rem); font-weight: 700; letter-spacing: -0.02em; margin-block: 0 0.5em; }
-h2 { font-size: 1.5rem; font-weight: 600; margin-block: 1.6em 0.5em; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-block: 0 0.5em; }
+h2 { font-size: 1.625rem; font-weight: 600; margin-block: 1.6em 0.5em; }
 h3 { font-size: 1.15rem; font-weight: 600; }
 
 button, input, select, textarea, summary, a { font: inherit; }
@@ -1181,8 +1181,9 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 .page-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-6); min-width: 0; }
 .page-stack--narrow { max-width: 760px; }
 .page-stack--wrap { overflow-wrap: anywhere; }
-/* Scoped under .release-main so it outranks `.release-main article` (76ch). */
-.release-main .page-column { max-width: 960px; margin-inline: auto; }
+/* Scoped under .release-main so it outranks `.release-main article` (76ch);
+   the 1200px frame already caps the content width. */
+.release-main .page-column { max-width: none; margin-inline: auto; }
 .page-column--wrap { overflow-wrap: anywhere; }
 .page-column--inset { padding: var(--space-4); }
 .page-head { margin-block-end: var(--space-6); }
@@ -1207,6 +1208,76 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 .detail-grid { display: grid; grid-template-columns: minmax(120px, 1fr) 2fr; gap: var(--space-3); }
 .detail-links { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .link-touch { display: inline-flex; align-items: center; min-height: 48px; width: fit-content; }
+
+/* --- Страница матча: ссылка назад, карточка-шапка, плитки фактов ----------- */
+
+.match-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-6); }
+.match-page > aside { margin-block: 0; }
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  width: fit-content;
+  color: var(--color-accent-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.back-link:hover { color: var(--color-accent-hover); text-decoration: underline; }
+.back-link svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.match-hero {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  padding: 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+@media (min-width: 768px) {
+  .match-hero { padding: 36px; gap: 28px; }
+}
+.match-title {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.match-vs { color: var(--color-muted); font-weight: 500; font-size: 0.58em; }
+.facts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 16px;
+  margin: 0;
+}
+.facts-grid > div {
+  min-width: 0;
+  padding: 18px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+}
+.facts-grid dt { font-size: 13px; color: var(--color-muted); }
+.facts-grid dd {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.25rem;
+  overflow-wrap: anywhere;
+}
+.facts-wide { grid-column: 1 / -1; }
+.facts-grid .detail-links { font-family: var(--font-body); font-size: 1rem; font-weight: 600; }
 .scroll-x { overflow-x: auto; }
 .scroll-auto { overflow: auto; max-width: 100%; }
 .wrap-anywhere { overflow-wrap: anywhere; }
@@ -1300,6 +1371,7 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline-color: Highlight; }
   .release-navigation nav a[aria-current="page"] { border-block-end: 2px solid Highlight; }
   .fixture-list, .evidence-card, .sample-card, .sample-fixtures, .home-card, .panel, .notice, .state-notice, .state-chip { border: 1px solid CanvasText; }
+  .match-hero, .facts-grid > div { border: 1px solid CanvasText; }
   .sync-toast { border: 1px solid CanvasText; }
   .theme-toggle { border: 1px solid CanvasText; color: CanvasText; }
   /* Forced-colors replaces the footer background with the system canvas, so

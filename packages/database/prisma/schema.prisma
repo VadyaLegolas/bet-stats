@@ -80,6 +80,11 @@ enum ForecastSnapshotState {
   FAILED
 }
 
+enum ForecastOrigin {
+  PRODUCTION
+  BACKTEST
+}
+
 enum RetentionSubjectProviderMode {
   SIGNED
 }
@@ -614,6 +619,9 @@ model ForecastSnapshot {
   fixtureId                   String
   kind                        ForecastKind
   state                       ForecastSnapshotState @default(BUILDING)
+  /// Visibility, not identity: the public scorecard, fixture views, value candidates and the rho
+  /// fit read only PRODUCTION snapshots. The revision chain stays shared per (fixtureId, kind).
+  origin                      ForecastOrigin        @default(PRODUCTION)
   revision                    Int
   supersedesForecastId        String?               @unique
   officialLineupObservationId String?

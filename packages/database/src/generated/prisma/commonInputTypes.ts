@@ -386,6 +386,13 @@ export type EnumForecastSnapshotStateFilter<$PrismaModel = never> = {
   not?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel> | $Enums.ForecastSnapshotState
 }
 
+export type EnumForecastOriginFilter<$PrismaModel = never> = {
+  equals?: $Enums.ForecastOrigin | Prisma.EnumForecastOriginFieldRefInput<$PrismaModel>
+  in?: $Enums.ForecastOrigin[] | Prisma.ListEnumForecastOriginFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ForecastOrigin[] | Prisma.ListEnumForecastOriginFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumForecastOriginFilter<$PrismaModel> | $Enums.ForecastOrigin
+}
+
 export type EnumForecastKindWithAggregatesFilter<$PrismaModel = never> = {
   equals?: $Enums.ForecastKind | Prisma.EnumForecastKindFieldRefInput<$PrismaModel>
   in?: $Enums.ForecastKind[] | Prisma.ListEnumForecastKindFieldRefInput<$PrismaModel>
@@ -404,6 +411,16 @@ export type EnumForecastSnapshotStateWithAggregatesFilter<$PrismaModel = never> 
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel>
   _max?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel>
+}
+
+export type EnumForecastOriginWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ForecastOrigin | Prisma.EnumForecastOriginFieldRefInput<$PrismaModel>
+  in?: $Enums.ForecastOrigin[] | Prisma.ListEnumForecastOriginFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ForecastOrigin[] | Prisma.ListEnumForecastOriginFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumForecastOriginWithAggregatesFilter<$PrismaModel> | $Enums.ForecastOrigin
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumForecastOriginFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumForecastOriginFilter<$PrismaModel>
 }
 
 export type EnumRetentionSubjectProviderModeFilter<$PrismaModel = never> = {
@@ -937,6 +954,13 @@ export type NestedEnumForecastSnapshotStateFilter<$PrismaModel = never> = {
   not?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel> | $Enums.ForecastSnapshotState
 }
 
+export type NestedEnumForecastOriginFilter<$PrismaModel = never> = {
+  equals?: $Enums.ForecastOrigin | Prisma.EnumForecastOriginFieldRefInput<$PrismaModel>
+  in?: $Enums.ForecastOrigin[] | Prisma.ListEnumForecastOriginFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ForecastOrigin[] | Prisma.ListEnumForecastOriginFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumForecastOriginFilter<$PrismaModel> | $Enums.ForecastOrigin
+}
+
 export type NestedEnumForecastKindWithAggregatesFilter<$PrismaModel = never> = {
   equals?: $Enums.ForecastKind | Prisma.EnumForecastKindFieldRefInput<$PrismaModel>
   in?: $Enums.ForecastKind[] | Prisma.ListEnumForecastKindFieldRefInput<$PrismaModel>
@@ -955,6 +979,16 @@ export type NestedEnumForecastSnapshotStateWithAggregatesFilter<$PrismaModel = n
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel>
   _max?: Prisma.NestedEnumForecastSnapshotStateFilter<$PrismaModel>
+}
+
+export type NestedEnumForecastOriginWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ForecastOrigin | Prisma.EnumForecastOriginFieldRefInput<$PrismaModel>
+  in?: $Enums.ForecastOrigin[] | Prisma.ListEnumForecastOriginFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ForecastOrigin[] | Prisma.ListEnumForecastOriginFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumForecastOriginWithAggregatesFilter<$PrismaModel> | $Enums.ForecastOrigin
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumForecastOriginFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumForecastOriginFilter<$PrismaModel>
 }
 
 export type NestedEnumRetentionSubjectProviderModeFilter<$PrismaModel = never> = {

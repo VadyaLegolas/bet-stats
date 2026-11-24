@@ -39,6 +39,7 @@ export type ForecastSnapshotMinAggregateOutputType = {
   fixtureId: string | null
   kind: $Enums.ForecastKind | null
   state: $Enums.ForecastSnapshotState | null
+  origin: $Enums.ForecastOrigin | null
   revision: number | null
   supersedesForecastId: string | null
   officialLineupObservationId: string | null
@@ -58,6 +59,7 @@ export type ForecastSnapshotMaxAggregateOutputType = {
   fixtureId: string | null
   kind: $Enums.ForecastKind | null
   state: $Enums.ForecastSnapshotState | null
+  origin: $Enums.ForecastOrigin | null
   revision: number | null
   supersedesForecastId: string | null
   officialLineupObservationId: string | null
@@ -77,6 +79,7 @@ export type ForecastSnapshotCountAggregateOutputType = {
   fixtureId: number
   kind: number
   state: number
+  origin: number
   revision: number
   supersedesForecastId: number
   officialLineupObservationId: number
@@ -111,6 +114,7 @@ export type ForecastSnapshotMinAggregateInputType = {
   fixtureId?: true
   kind?: true
   state?: true
+  origin?: true
   revision?: true
   supersedesForecastId?: true
   officialLineupObservationId?: true
@@ -130,6 +134,7 @@ export type ForecastSnapshotMaxAggregateInputType = {
   fixtureId?: true
   kind?: true
   state?: true
+  origin?: true
   revision?: true
   supersedesForecastId?: true
   officialLineupObservationId?: true
@@ -149,6 +154,7 @@ export type ForecastSnapshotCountAggregateInputType = {
   fixtureId?: true
   kind?: true
   state?: true
+  origin?: true
   revision?: true
   supersedesForecastId?: true
   officialLineupObservationId?: true
@@ -260,6 +266,7 @@ export type ForecastSnapshotGroupByOutputType = {
   fixtureId: string
   kind: $Enums.ForecastKind
   state: $Enums.ForecastSnapshotState
+  origin: $Enums.ForecastOrigin
   revision: number
   supersedesForecastId: string | null
   officialLineupObservationId: string | null
@@ -307,6 +314,7 @@ export type ForecastSnapshotWhereInput = {
   fixtureId?: Prisma.StringFilter<"ForecastSnapshot"> | string
   kind?: Prisma.EnumForecastKindFilter<"ForecastSnapshot"> | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFilter<"ForecastSnapshot"> | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFilter<"ForecastSnapshot"> | $Enums.ForecastOrigin
   revision?: Prisma.IntFilter<"ForecastSnapshot"> | number
   supersedesForecastId?: Prisma.StringNullableFilter<"ForecastSnapshot"> | string | null
   officialLineupObservationId?: Prisma.StringNullableFilter<"ForecastSnapshot"> | string | null
@@ -339,6 +347,7 @@ export type ForecastSnapshotOrderByWithRelationInput = {
   fixtureId?: Prisma.SortOrder
   kind?: Prisma.SortOrder
   state?: Prisma.SortOrder
+  origin?: Prisma.SortOrder
   revision?: Prisma.SortOrder
   supersedesForecastId?: Prisma.SortOrderInput | Prisma.SortOrder
   officialLineupObservationId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -377,6 +386,7 @@ export type ForecastSnapshotWhereUniqueInput = Prisma.AtLeast<{
   fixtureId?: Prisma.StringFilter<"ForecastSnapshot"> | string
   kind?: Prisma.EnumForecastKindFilter<"ForecastSnapshot"> | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFilter<"ForecastSnapshot"> | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFilter<"ForecastSnapshot"> | $Enums.ForecastOrigin
   revision?: Prisma.IntFilter<"ForecastSnapshot"> | number
   officialLineupObservationId?: Prisma.StringNullableFilter<"ForecastSnapshot"> | string | null
   cutoff?: Prisma.DateTimeFilter<"ForecastSnapshot"> | Date | string
@@ -408,6 +418,7 @@ export type ForecastSnapshotOrderByWithAggregationInput = {
   fixtureId?: Prisma.SortOrder
   kind?: Prisma.SortOrder
   state?: Prisma.SortOrder
+  origin?: Prisma.SortOrder
   revision?: Prisma.SortOrder
   supersedesForecastId?: Prisma.SortOrderInput | Prisma.SortOrder
   officialLineupObservationId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -440,6 +451,7 @@ export type ForecastSnapshotScalarWhereWithAggregatesInput = {
   fixtureId?: Prisma.StringWithAggregatesFilter<"ForecastSnapshot"> | string
   kind?: Prisma.EnumForecastKindWithAggregatesFilter<"ForecastSnapshot"> | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateWithAggregatesFilter<"ForecastSnapshot"> | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginWithAggregatesFilter<"ForecastSnapshot"> | $Enums.ForecastOrigin
   revision?: Prisma.IntWithAggregatesFilter<"ForecastSnapshot"> | number
   supersedesForecastId?: Prisma.StringNullableWithAggregatesFilter<"ForecastSnapshot"> | string | null
   officialLineupObservationId?: Prisma.StringNullableWithAggregatesFilter<"ForecastSnapshot"> | string | null
@@ -463,6 +475,7 @@ export type ForecastSnapshotCreateInput = {
   id?: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   cutoff: Date | string
   modelVersion: string
@@ -493,6 +506,7 @@ export type ForecastSnapshotUncheckedCreateInput = {
   fixtureId: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   supersedesForecastId?: string | null
   officialLineupObservationId?: string | null
@@ -521,6 +535,7 @@ export type ForecastSnapshotUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   modelVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -551,6 +566,7 @@ export type ForecastSnapshotUncheckedUpdateInput = {
   fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   supersedesForecastId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   officialLineupObservationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -580,6 +596,7 @@ export type ForecastSnapshotCreateManyInput = {
   fixtureId: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   supersedesForecastId?: string | null
   officialLineupObservationId?: string | null
@@ -603,6 +620,7 @@ export type ForecastSnapshotUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   modelVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -625,6 +643,7 @@ export type ForecastSnapshotUncheckedUpdateManyInput = {
   fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   supersedesForecastId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   officialLineupObservationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -681,6 +700,7 @@ export type ForecastSnapshotCountOrderByAggregateInput = {
   fixtureId?: Prisma.SortOrder
   kind?: Prisma.SortOrder
   state?: Prisma.SortOrder
+  origin?: Prisma.SortOrder
   revision?: Prisma.SortOrder
   supersedesForecastId?: Prisma.SortOrder
   officialLineupObservationId?: Prisma.SortOrder
@@ -709,6 +729,7 @@ export type ForecastSnapshotMaxOrderByAggregateInput = {
   fixtureId?: Prisma.SortOrder
   kind?: Prisma.SortOrder
   state?: Prisma.SortOrder
+  origin?: Prisma.SortOrder
   revision?: Prisma.SortOrder
   supersedesForecastId?: Prisma.SortOrder
   officialLineupObservationId?: Prisma.SortOrder
@@ -728,6 +749,7 @@ export type ForecastSnapshotMinOrderByAggregateInput = {
   fixtureId?: Prisma.SortOrder
   kind?: Prisma.SortOrder
   state?: Prisma.SortOrder
+  origin?: Prisma.SortOrder
   revision?: Prisma.SortOrder
   supersedesForecastId?: Prisma.SortOrder
   officialLineupObservationId?: Prisma.SortOrder
@@ -861,6 +883,10 @@ export type EnumForecastSnapshotStateFieldUpdateOperationsInput = {
   set?: $Enums.ForecastSnapshotState
 }
 
+export type EnumForecastOriginFieldUpdateOperationsInput = {
+  set?: $Enums.ForecastOrigin
+}
+
 export type ForecastSnapshotUpdateOneWithoutSupersededByNestedInput = {
   create?: Prisma.XOR<Prisma.ForecastSnapshotCreateWithoutSupersededByInput, Prisma.ForecastSnapshotUncheckedCreateWithoutSupersededByInput>
   connectOrCreate?: Prisma.ForecastSnapshotCreateOrConnectWithoutSupersededByInput
@@ -951,6 +977,7 @@ export type ForecastSnapshotCreateWithoutFixtureInput = {
   id?: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   cutoff: Date | string
   modelVersion: string
@@ -979,6 +1006,7 @@ export type ForecastSnapshotUncheckedCreateWithoutFixtureInput = {
   id?: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   supersedesForecastId?: string | null
   officialLineupObservationId?: string | null
@@ -1037,6 +1065,7 @@ export type ForecastSnapshotScalarWhereInput = {
   fixtureId?: Prisma.StringFilter<"ForecastSnapshot"> | string
   kind?: Prisma.EnumForecastKindFilter<"ForecastSnapshot"> | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFilter<"ForecastSnapshot"> | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFilter<"ForecastSnapshot"> | $Enums.ForecastOrigin
   revision?: Prisma.IntFilter<"ForecastSnapshot"> | number
   supersedesForecastId?: Prisma.StringNullableFilter<"ForecastSnapshot"> | string | null
   officialLineupObservationId?: Prisma.StringNullableFilter<"ForecastSnapshot"> | string | null
@@ -1060,6 +1089,7 @@ export type ForecastSnapshotCreateWithoutOfficialLineupObservationInput = {
   id?: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   cutoff: Date | string
   modelVersion: string
@@ -1089,6 +1119,7 @@ export type ForecastSnapshotUncheckedCreateWithoutOfficialLineupObservationInput
   fixtureId: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   supersedesForecastId?: string | null
   cutoff: Date | string
@@ -1142,6 +1173,7 @@ export type ForecastSnapshotCreateWithoutSupersededByInput = {
   id?: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   cutoff: Date | string
   modelVersion: string
@@ -1171,6 +1203,7 @@ export type ForecastSnapshotUncheckedCreateWithoutSupersededByInput = {
   fixtureId: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   supersedesForecastId?: string | null
   officialLineupObservationId?: string | null
@@ -1203,6 +1236,7 @@ export type ForecastSnapshotCreateWithoutSupersedesForecastInput = {
   id?: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   cutoff: Date | string
   modelVersion: string
@@ -1232,6 +1266,7 @@ export type ForecastSnapshotUncheckedCreateWithoutSupersedesForecastInput = {
   fixtureId: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   officialLineupObservationId?: string | null
   cutoff: Date | string
@@ -1275,6 +1310,7 @@ export type ForecastSnapshotUpdateWithoutSupersededByInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   modelVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1304,6 +1340,7 @@ export type ForecastSnapshotUncheckedUpdateWithoutSupersededByInput = {
   fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   supersedesForecastId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   officialLineupObservationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1342,6 +1379,7 @@ export type ForecastSnapshotUpdateWithoutSupersedesForecastInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   modelVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1371,6 +1409,7 @@ export type ForecastSnapshotUncheckedUpdateWithoutSupersedesForecastInput = {
   fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   officialLineupObservationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1398,6 +1437,7 @@ export type ForecastSnapshotCreateWithoutMarketsInput = {
   id?: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   cutoff: Date | string
   modelVersion: string
@@ -1427,6 +1467,7 @@ export type ForecastSnapshotUncheckedCreateWithoutMarketsInput = {
   fixtureId: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   supersedesForecastId?: string | null
   officialLineupObservationId?: string | null
@@ -1470,6 +1511,7 @@ export type ForecastSnapshotUpdateWithoutMarketsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   modelVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1499,6 +1541,7 @@ export type ForecastSnapshotUncheckedUpdateWithoutMarketsInput = {
   fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   supersedesForecastId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   officialLineupObservationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1526,6 +1569,7 @@ export type ForecastSnapshotCreateWithoutValueReceiptsInput = {
   id?: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   cutoff: Date | string
   modelVersion: string
@@ -1555,6 +1599,7 @@ export type ForecastSnapshotUncheckedCreateWithoutValueReceiptsInput = {
   fixtureId: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   supersedesForecastId?: string | null
   officialLineupObservationId?: string | null
@@ -1598,6 +1643,7 @@ export type ForecastSnapshotUpdateWithoutValueReceiptsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   modelVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1627,6 +1673,7 @@ export type ForecastSnapshotUncheckedUpdateWithoutValueReceiptsInput = {
   fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   supersedesForecastId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   officialLineupObservationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1654,6 +1701,7 @@ export type ForecastSnapshotCreateWithoutSettlementReceiptsInput = {
   id?: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   cutoff: Date | string
   modelVersion: string
@@ -1683,6 +1731,7 @@ export type ForecastSnapshotUncheckedCreateWithoutSettlementReceiptsInput = {
   fixtureId: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   supersedesForecastId?: string | null
   officialLineupObservationId?: string | null
@@ -1726,6 +1775,7 @@ export type ForecastSnapshotUpdateWithoutSettlementReceiptsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   modelVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1755,6 +1805,7 @@ export type ForecastSnapshotUncheckedUpdateWithoutSettlementReceiptsInput = {
   fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   supersedesForecastId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   officialLineupObservationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1782,6 +1833,7 @@ export type ForecastSnapshotCreateWithoutForecastScoresInput = {
   id?: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   cutoff: Date | string
   modelVersion: string
@@ -1811,6 +1863,7 @@ export type ForecastSnapshotUncheckedCreateWithoutForecastScoresInput = {
   fixtureId: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   supersedesForecastId?: string | null
   officialLineupObservationId?: string | null
@@ -1854,6 +1907,7 @@ export type ForecastSnapshotUpdateWithoutForecastScoresInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   modelVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1883,6 +1937,7 @@ export type ForecastSnapshotUncheckedUpdateWithoutForecastScoresInput = {
   fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   supersedesForecastId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   officialLineupObservationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1910,6 +1965,7 @@ export type ForecastSnapshotCreateManyFixtureInput = {
   id?: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   supersedesForecastId?: string | null
   officialLineupObservationId?: string | null
@@ -1933,6 +1989,7 @@ export type ForecastSnapshotUpdateWithoutFixtureInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   modelVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1961,6 +2018,7 @@ export type ForecastSnapshotUncheckedUpdateWithoutFixtureInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   supersedesForecastId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   officialLineupObservationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1989,6 +2047,7 @@ export type ForecastSnapshotUncheckedUpdateManyWithoutFixtureInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   supersedesForecastId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   officialLineupObservationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2013,6 +2072,7 @@ export type ForecastSnapshotCreateManyOfficialLineupObservationInput = {
   fixtureId: string
   kind: $Enums.ForecastKind
   state?: $Enums.ForecastSnapshotState
+  origin?: $Enums.ForecastOrigin
   revision: number
   supersedesForecastId?: string | null
   cutoff: Date | string
@@ -2035,6 +2095,7 @@ export type ForecastSnapshotUpdateWithoutOfficialLineupObservationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   modelVersion?: Prisma.StringFieldUpdateOperationsInput | string
@@ -2064,6 +2125,7 @@ export type ForecastSnapshotUncheckedUpdateWithoutOfficialLineupObservationInput
   fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   supersedesForecastId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2092,6 +2154,7 @@ export type ForecastSnapshotUncheckedUpdateManyWithoutOfficialLineupObservationI
   fixtureId?: Prisma.StringFieldUpdateOperationsInput | string
   kind?: Prisma.EnumForecastKindFieldUpdateOperationsInput | $Enums.ForecastKind
   state?: Prisma.EnumForecastSnapshotStateFieldUpdateOperationsInput | $Enums.ForecastSnapshotState
+  origin?: Prisma.EnumForecastOriginFieldUpdateOperationsInput | $Enums.ForecastOrigin
   revision?: Prisma.IntFieldUpdateOperationsInput | number
   supersedesForecastId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cutoff?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -2173,6 +2236,7 @@ export type ForecastSnapshotSelect<ExtArgs extends runtime.Types.Extensions.Inte
   fixtureId?: boolean
   kind?: boolean
   state?: boolean
+  origin?: boolean
   revision?: boolean
   supersedesForecastId?: boolean
   officialLineupObservationId?: boolean
@@ -2206,6 +2270,7 @@ export type ForecastSnapshotSelectCreateManyAndReturn<ExtArgs extends runtime.Ty
   fixtureId?: boolean
   kind?: boolean
   state?: boolean
+  origin?: boolean
   revision?: boolean
   supersedesForecastId?: boolean
   officialLineupObservationId?: boolean
@@ -2233,6 +2298,7 @@ export type ForecastSnapshotSelectUpdateManyAndReturn<ExtArgs extends runtime.Ty
   fixtureId?: boolean
   kind?: boolean
   state?: boolean
+  origin?: boolean
   revision?: boolean
   supersedesForecastId?: boolean
   officialLineupObservationId?: boolean
@@ -2260,6 +2326,7 @@ export type ForecastSnapshotSelectScalar = {
   fixtureId?: boolean
   kind?: boolean
   state?: boolean
+  origin?: boolean
   revision?: boolean
   supersedesForecastId?: boolean
   officialLineupObservationId?: boolean
@@ -2279,7 +2346,7 @@ export type ForecastSnapshotSelectScalar = {
   createdAt?: boolean
 }
 
-export type ForecastSnapshotOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "fixtureId" | "kind" | "state" | "revision" | "supersedesForecastId" | "officialLineupObservationId" | "cutoff" | "modelVersion" | "modelHash" | "configVersion" | "configHash" | "inputHash" | "evidenceFingerprint" | "sourceRefs" | "probabilities" | "confidence" | "assumptions" | "receipt" | "issuedAt" | "createdAt", ExtArgs["result"]["forecastSnapshot"]>
+export type ForecastSnapshotOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "fixtureId" | "kind" | "state" | "origin" | "revision" | "supersedesForecastId" | "officialLineupObservationId" | "cutoff" | "modelVersion" | "modelHash" | "configVersion" | "configHash" | "inputHash" | "evidenceFingerprint" | "sourceRefs" | "probabilities" | "confidence" | "assumptions" | "receipt" | "issuedAt" | "createdAt", ExtArgs["result"]["forecastSnapshot"]>
 export type ForecastSnapshotInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   fixture?: boolean | Prisma.FixtureDefaultArgs<ExtArgs>
   officialLineupObservation?: boolean | Prisma.ForecastSnapshot$officialLineupObservationArgs<ExtArgs>
@@ -2319,6 +2386,11 @@ export type $ForecastSnapshotPayload<ExtArgs extends runtime.Types.Extensions.In
     fixtureId: string
     kind: $Enums.ForecastKind
     state: $Enums.ForecastSnapshotState
+    /**
+     * Visibility, not identity: the public scorecard, fixture views, value candidates and the rho
+     * fit read only PRODUCTION snapshots. The revision chain stays shared per (fixtureId, kind).
+     */
+    origin: $Enums.ForecastOrigin
     revision: number
     supersedesForecastId: string | null
     officialLineupObservationId: string | null
@@ -2771,6 +2843,7 @@ export interface ForecastSnapshotFieldRefs {
   readonly fixtureId: Prisma.FieldRef<"ForecastSnapshot", 'String'>
   readonly kind: Prisma.FieldRef<"ForecastSnapshot", 'ForecastKind'>
   readonly state: Prisma.FieldRef<"ForecastSnapshot", 'ForecastSnapshotState'>
+  readonly origin: Prisma.FieldRef<"ForecastSnapshot", 'ForecastOrigin'>
   readonly revision: Prisma.FieldRef<"ForecastSnapshot", 'Int'>
   readonly supersedesForecastId: Prisma.FieldRef<"ForecastSnapshot", 'String'>
   readonly officialLineupObservationId: Prisma.FieldRef<"ForecastSnapshot", 'String'>

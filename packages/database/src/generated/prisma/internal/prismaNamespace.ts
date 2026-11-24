@@ -5095,6 +5095,7 @@ export const ForecastSnapshotScalarFieldEnum = {
   fixtureId: 'fixtureId',
   kind: 'kind',
   state: 'state',
+  origin: 'origin',
   revision: 'revision',
   supersedesForecastId: 'supersedesForecastId',
   officialLineupObservationId: 'officialLineupObservationId',
@@ -5751,6 +5752,20 @@ export type EnumForecastSnapshotStateFieldRefInput<$PrismaModel> = FieldRefInput
  * Reference to a field of type 'ForecastSnapshotState[]'
  */
 export type ListEnumForecastSnapshotStateFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ForecastSnapshotState[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ForecastOrigin'
+ */
+export type EnumForecastOriginFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ForecastOrigin'>
+    
+
+
+/**
+ * Reference to a field of type 'ForecastOrigin[]'
+ */
+export type ListEnumForecastOriginFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ForecastOrigin[]'>
     
 
 

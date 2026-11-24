@@ -115,6 +115,14 @@ export const ForecastSnapshotState = {
 export type ForecastSnapshotState = (typeof ForecastSnapshotState)[keyof typeof ForecastSnapshotState]
 
 
+export const ForecastOrigin = {
+  PRODUCTION: 'PRODUCTION',
+  BACKTEST: 'BACKTEST'
+} as const
+
+export type ForecastOrigin = (typeof ForecastOrigin)[keyof typeof ForecastOrigin]
+
+
 export const RetentionSubjectProviderMode = {
   SIGNED: 'SIGNED'
 } as const

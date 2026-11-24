@@ -565,6 +565,7 @@ export const ForecastSnapshotScalarFieldEnum = {
   fixtureId: 'fixtureId',
   kind: 'kind',
   state: 'state',
+  origin: 'origin',
   revision: 'revision',
   supersedesForecastId: 'supersedesForecastId',
   officialLineupObservationId: 'officialLineupObservationId',

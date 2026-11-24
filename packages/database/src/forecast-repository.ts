@@ -9,6 +9,7 @@ import {
   type EvidenceSourceRef,
   type ForecastFixture,
   type ForecastOrchestratorRepository,
+  type ForecastPublishContext,
   type ForecastRequestDto,
   type ForecastResponseDto,
 } from "@bet-stats/domain";
@@ -21,7 +22,7 @@ export interface ForecastPublicationRepository extends ForecastOrchestratorRepos
   findFixture(fixtureId: string): Promise<ForecastFixture | null>;
   findEvidence(teamId: string, cutoff: string): Promise<EvidenceProjectionDto | null>;
   findOfficialLineup(fixtureId: string, cutoff: string): Promise<{ id: string } | null>;
-  publish(draft: ForecastResponseDto): Promise<ForecastResponseDto>;
+  publish(draft: ForecastResponseDto, context?: ForecastPublishContext): Promise<ForecastResponseDto>;
   findIssued?(fixtureId: string, kind: ForecastRequestDto["kind"], cutoff: string): Promise<ForecastResponseDto | null>;
   listIssued?(fixtureId: string): Promise<readonly ForecastResponseDto[]>;
 }
@@ -61,7 +62,9 @@ export function createPrismaForecastRepository(client: PrismaClient): ForecastPu
       return row ? toDto(row as unknown as StoredForecast) : null;
     },
     listIssued: async (fixtureId) => (await client.forecastSnapshot.findMany({ where: { fixtureId, state: "ISSUED" }, orderBy: [{ issuedAt: "desc" }, { cutoff: "desc" }, { revision: "desc" }, { id: "asc" }] })).map((row) => toDto(row as unknown as StoredForecast)),
-    publish: async (draft) => {
+    publish: async (draft, context) => {
+      // The identity deliberately has no origin: a collision returns the existing snapshot unchanged,
+      // whichever origin it has, and nothing is ever updated or re-labelled (D-02).
       const identity = { fixtureId: draft.fixtureId, kind: draft.kind, cutoff: new Date(draft.cutoff), modelHash: draft.modelHash, configHash: draft.configHash, inputHash: draft.inputHash, evidenceFingerprint: draft.evidenceFingerprint, state: "ISSUED" as const };
       const existing = await client.forecastSnapshot.findFirst({ where: identity });
       if (existing) return toDto(existing as unknown as StoredForecast);
@@ -70,11 +73,13 @@ export function createPrismaForecastRepository(client: PrismaClient): ForecastPu
           await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`${draft.fixtureId}:${draft.kind}`}, 0))`;
           const converged = await tx.forecastSnapshot.findFirst({ where: identity });
           if (converged) return toDto(converged as unknown as StoredForecast);
+          // The guard trigger and the unique keys require a contiguous chain per (fixtureId, kind), so the
+          // revision chain is physical and shared by every origin; origin controls visibility only.
           const latest = await tx.forecastSnapshot.findFirst({ where: { fixtureId: draft.fixtureId, kind: draft.kind }, orderBy: { revision: "desc" } });
           const revision = (latest?.revision ?? 0) + 1;
           const response = { ...draft, revision };
           await tx.forecastSnapshot.create({ data: {
-            id: response.id, fixtureId: response.fixtureId, kind: response.kind, state: "ISSUED", revision, supersedesForecastId: latest?.id ?? null,
+            id: response.id, fixtureId: response.fixtureId, kind: response.kind, state: "ISSUED", origin: context?.origin ?? "PRODUCTION", revision, supersedesForecastId: latest?.id ?? null,
             officialLineupObservationId: response.officialLineupObservationId, cutoff: new Date(response.cutoff), modelVersion: response.modelVersion,
             modelHash: response.modelHash, configVersion: response.configVersion, configHash: response.configHash, inputHash: response.inputHash,
             evidenceFingerprint: response.evidenceFingerprint, sourceRefs: response.receipt.sourceRefs as never, probabilities: response.probabilities as never,

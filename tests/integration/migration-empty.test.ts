@@ -80,7 +80,7 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
 
   afterAll(() => {
     try {
-      docker("rm", "--force", containerName);
+      docker("rm", "--force", "--volumes", containerName);
     } catch {
       // Cleanup is best effort for a container created exclusively by this test.
     }
@@ -295,4 +295,57 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
     );
     expect(preserved).toBe("upgrade-2026:upgrade-pl:2026");
   }, 120_000);
+
+  it("WR-13: ForecastSnapshot.origin is NOT NULL with default PRODUCTION and a two-value enum", () => {
+    expect(sql(`SELECT is_nullable || '|' || column_default FROM information_schema.columns WHERE table_schema='public' AND table_name='ForecastSnapshot' AND column_name='origin';`))
+      .toEqual(["NO|'PRODUCTION'::\"ForecastOrigin\""]);
+    expect(sql(`SELECT udt_name FROM information_schema.columns WHERE table_schema='public' AND table_name='ForecastSnapshot' AND column_name='origin';`)).toEqual(["ForecastOrigin"]);
+    expect(sql(`SELECT enumlabel FROM pg_enum e JOIN pg_type t ON t.oid=e.enumtypid WHERE t.typname='ForecastOrigin' ORDER BY e.enumsortorder;`)).toEqual(["PRODUCTION", "BACKTEST"]);
+  }, 30_000);
+
+  it("WR-13: upgrading a populated schema labels legacy snapshots PRODUCTION, changes nothing else and guards origin", () => {
+    const database = "origin_upgrade";
+    const originMigration = "20261124_phase11_forecast_snapshot_origin";
+    const migrationsRoot = resolve(databaseRoot, "prisma/migrations");
+    const psql = (statement: string): string => dockerInput(["exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", database, "-At"], statement);
+    docker("exec", containerName, "createdb", "-U", "postgres", database);
+    const earlier = readdirSync(migrationsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort().filter((name) => name < originMigration);
+    expect(earlier.length).toBeGreaterThan(0);
+    // Prisma applies every migration in its own transaction; some of them require one.
+    for (const directory of earlier) psql(`BEGIN;\n${readFileSync(join(migrationsRoot, directory, "migration.sql"), "utf8")}\nCOMMIT;`);
+
+    const columns = `id,"fixtureId",kind,state,revision,"supersedesForecastId",cutoff,"modelVersion","modelHash","configVersion","configHash","inputHash","evidenceFingerprint","sourceRefs",probabilities,confidence,assumptions,receipt,"issuedAt"`;
+    psql(`
+      INSERT INTO "League" (id,name,"countryCode","updatedAt") VALUES ('or-league','League','GB',now());
+      INSERT INTO "Season" (id,"leagueId",label,"startsOn","endsOn","updatedAt") VALUES ('or-season','or-league','2026','2026-01-01','2026-12-31',now());
+      INSERT INTO "Team" (id,name,"normalizedName","countryCode","updatedAt") VALUES ('or-home','Home','home','GB',now()),('or-away','Away','away','GB',now());
+      INSERT INTO "Fixture" (id,"leagueId","seasonId","homeTeamId","awayTeamId","kickoffUtc",status,"updatedAt") VALUES ('or-fixture','or-league','or-season','or-home','or-away','2026-10-10T18:00:00Z','SCHEDULED',now());
+      INSERT INTO "ForecastSnapshot" (${columns}) VALUES
+        ('or-legacy-1','or-fixture','PRE_MATCH','ISSUED',1,NULL,'2026-10-10T12:00:00Z','poisson-ensemble-v1','m1','forecast-config-v1','c1','i1','e1','[]','{}','{}','[]','{}','2026-10-10T12:00:01Z');
+      INSERT INTO "ForecastSnapshot" (${columns}) VALUES
+        ('or-legacy-2','or-fixture','PRE_MATCH','ISSUED',2,'or-legacy-1','2026-10-10T13:00:00Z','poisson-ensemble-v1','m1','forecast-config-v1','c1','i2','e2','[]','{}','{}','[]','{}','2026-10-10T13:00:01Z');
+    `);
+    const digest = (): string => psql(`SELECT md5(string_agg((to_jsonb(f) - 'origin')::text, E'\\n' ORDER BY f.id)) FROM "ForecastSnapshot" f;`);
+    const digestBefore = digest();
+    expect(digestBefore).toMatch(/^[0-9a-f]{32}$/);
+
+    psql(`BEGIN;\n${readFileSync(join(migrationsRoot, originMigration, "migration.sql"), "utf8")}\nCOMMIT;`);
+
+    expect(psql(`SELECT id || ':' || origin FROM "ForecastSnapshot" ORDER BY id;`).split(/\r?\n/)).toEqual(["or-legacy-1:PRODUCTION", "or-legacy-2:PRODUCTION"]);
+    expect(digest()).toBe(digestBefore);
+    // origin is immutable once issued.
+    expect(() => psql(`UPDATE "ForecastSnapshot" SET origin='BACKTEST' WHERE id='or-legacy-2';`)).toThrow(/ForecastSnapshot is immutable/);
+    expect(psql(`SELECT origin FROM "ForecastSnapshot" WHERE id='or-legacy-2';`)).toBe("PRODUCTION");
+
+    psql(`INSERT INTO "ForecastSnapshot" (${columns}) VALUES
+      ('or-building','or-fixture','PRE_MATCH','BUILDING',3,'or-legacy-2','2026-10-10T14:00:00Z','poisson-ensemble-v1','m1','forecast-config-v1','c1','i3','e3','[]','{}','{}','[]','{}',NULL);`);
+    // A snapshot inserted without origin reads as PRODUCTION through the column default.
+    expect(psql(`SELECT origin FROM "ForecastSnapshot" WHERE id='or-building';`)).toBe("PRODUCTION");
+    // A BUILDING to ISSUED transition cannot relabel the snapshot ...
+    expect(() => psql(`UPDATE "ForecastSnapshot" SET state='ISSUED', origin='BACKTEST', "issuedAt"=now() WHERE id='or-building';`)).toThrow(/identity and inputs are immutable/);
+    expect(psql(`SELECT state || ':' || origin FROM "ForecastSnapshot" WHERE id='or-building';`)).toBe("BUILDING:PRODUCTION");
+    // ... while the same transition without an origin change still works.
+    psql(`UPDATE "ForecastSnapshot" SET state='ISSUED', "issuedAt"=now() WHERE id='or-building';`);
+    expect(psql(`SELECT state || ':' || origin FROM "ForecastSnapshot" WHERE id='or-building';`)).toBe("ISSUED:PRODUCTION");
+  }, 180_000);
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ForecastOrchestrator, currentForecastConfigHash, type ForecastOrchestratorRepository } from "../../packages/domain/src/evaluation/forecast-orchestrator.js";
+import { ForecastOrchestrator, currentForecastConfigHash, forecastOriginOf, type ForecastOrchestratorRepository, type ForecastPublishContext } from "../../packages/domain/src/evaluation/forecast-orchestrator.js";
 import { parseForecastResponse } from "../../packages/domain/src/forecast/contract.js";
 import { DIXON_COLES_CONFIG, FORECAST_CONFIG, FORECAST_CONFIGS, FORECAST_CONFIG_VERSION_BY_MODEL, forecastConfigHashFor } from "../../packages/domain/src/forecast/config.js";
 import { DIXON_COLES_CONVENTION } from "../../packages/domain/src/forecast/dixon-coles.js";
@@ -203,13 +203,13 @@ describe("forecast response contract across versions", () => {
 });
 
 function repositoryOf(options: { readonly rho?: number; readonly withHook?: boolean } = {}) {
-  const calls = { rho: 0, publish: 0 };
+  const calls: { rho: number; publish: number; contexts: Array<ForecastPublishContext | undefined> } = { rho: 0, publish: 0, contexts: [] };
   const repository: ForecastOrchestratorRepository = {
     assertEligible: async () => undefined,
     findFixture: async (fixtureId) => ({ id: fixtureId, homeTeamId: "home", awayTeamId: "away", leagueId: "league-1", kickoffUtc: "2026-09-14T12:00:00.000Z", canonicalIdentityResolved: true }),
     findEvidence: async (teamId) => projection(teamId === "away" ? "away" : "home"),
     findOfficialLineup: async () => null,
-    publish: async (draft) => { calls.publish += 1; return parseForecastResponse(draft); },
+    publish: async (draft, context) => { calls.publish += 1; calls.contexts.push(context); return parseForecastResponse(draft); },
   };
   if (options.withHook) {
     repository.findDixonColesParameters = async () => {
@@ -284,5 +284,41 @@ describe("forecast orchestrator across model versions", () => {
     const { repository } = repositoryOf({ withHook: true });
     repository.findDixonColesParameters = async () => ({ rho: -0.2, provenance: { ...dcProvenance, rho: -0.1 } });
     await expect(new ForecastOrchestrator().run({ ...orchestratorInput, modelVersion: "dixon-coles-ensemble-v1", configHash: forecastConfigHashFor("dixon-coles-ensemble-v1") }, repository)).rejects.toThrow("DIXON_COLES_RHO_UNAVAILABLE");
+  });
+});
+
+describe("forecast origin (WR-13)", () => {
+  const backtestInitiator = { type: "backtest" as const, correlationId: "correlation-bt", windowId: "window-1", planId: "plan-1" };
+
+  it("derives the origin only from the initiator type", () => {
+    expect(forecastOriginOf({ type: "production", correlationId: "c" })).toBe("PRODUCTION");
+    expect(forecastOriginOf(backtestInitiator)).toBe("BACKTEST");
+  });
+
+  it.each(["poisson-ensemble-v1", "dixon-coles-ensemble-v1"] as const)("publishes %s once with origin PRODUCTION for a production initiator", async (modelVersion) => {
+    const { repository, calls } = repositoryOf({ withHook: true });
+    await new ForecastOrchestrator().run({ ...orchestratorInput, modelVersion, configHash: forecastConfigHashFor(modelVersion) }, repository);
+    expect(calls.publish).toBe(1);
+    expect(calls.contexts).toEqual([{ origin: "PRODUCTION" }]);
+  });
+
+  it.each(["poisson-ensemble-v1", "dixon-coles-ensemble-v1"] as const)("publishes %s once with origin BACKTEST for a backtest initiator", async (modelVersion) => {
+    const { repository, calls } = repositoryOf({ withHook: true });
+    await new ForecastOrchestrator().run({ ...orchestratorInput, initiator: backtestInitiator, modelVersion, configHash: forecastConfigHashFor(modelVersion) }, repository);
+    expect(calls.publish).toBe(1);
+    expect(calls.contexts).toEqual([{ origin: "BACKTEST" }]);
+  });
+
+  it("does not change the draft hashes with the origin", async () => {
+    const run = (initiator: typeof orchestratorInput.initiator | typeof backtestInitiator) => new ForecastOrchestrator().run(
+      { ...orchestratorInput, initiator, modelVersion: "poisson-ensemble-v1", configHash: forecastConfigHashFor("poisson-ensemble-v1") },
+      repositoryOf().repository,
+    );
+    const production = await run(orchestratorInput.initiator);
+    const backtest = await run(backtestInitiator);
+    expect(backtest.id).toBe(production.id);
+    expect(backtest.inputHash).toBe(production.inputHash);
+    expect(backtest.modelHash).toBe(production.modelHash);
+    expect(backtest.configHash).toBe(production.configHash);
   });
 });

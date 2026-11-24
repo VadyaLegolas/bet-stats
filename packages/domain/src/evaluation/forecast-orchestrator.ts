@@ -21,7 +21,8 @@ export interface ForecastOrchestratorRepository {
   findFixture(fixtureId: string): Promise<ForecastFixture | null>;
   findEvidence(teamId: string, cutoff: string): Promise<EvidenceProjectionDto | null>;
   findOfficialLineup(fixtureId: string, cutoff: string): Promise<{ id: string } | null>;
-  publish(draft: ForecastResponseDto): Promise<ForecastResponseDto>;
+  /** The context is optional so every existing one-argument test double stays valid; absent means PRODUCTION. */
+  publish(draft: ForecastResponseDto, context?: ForecastPublishContext): Promise<ForecastResponseDto>;
   /**
    * Resolves rho for a league at a cutoff. Optional to keep every existing
    * repository double compatible; the dixon-coles path fails closed without it.
@@ -32,6 +33,22 @@ export interface ForecastOrchestratorRepository {
 export type ForecastInitiator =
   | Readonly<{ type: "production"; correlationId: string }>
   | Readonly<{ type: "backtest"; correlationId: string; planId?: string; windowId: string }>;
+
+/** Provenance of a published snapshot: PRODUCTION is contemporaneous evidence, BACKTEST is retrospective. */
+export type ForecastOrigin = "PRODUCTION" | "BACKTEST";
+
+export interface ForecastPublishContext {
+  readonly origin: ForecastOrigin;
+}
+
+/**
+ * The origin comes only from the initiator the orchestrator already validates. It is deliberately not a
+ * repository constructor option: one repository instance serves production lineup forecasts and the
+ * backtest worker (workers/data-sync/src/main.ts), so a repository-level default would mislabel one of them.
+ */
+export function forecastOriginOf(initiator: ForecastInitiator): ForecastOrigin {
+  return initiator.type === "backtest" ? "BACKTEST" : "PRODUCTION";
+}
 
 export interface ForecastOrchestratorInput {
   readonly fixtureId: string;
@@ -129,6 +146,6 @@ export class ForecastOrchestrator {
       issuedAt: new Date().toISOString(),
     };
     parseForecastResponse(draft);
-    return repository.publish(draft);
+    return repository.publish(draft, { origin: forecastOriginOf(input.initiator) });
   }
 }

@@ -1,175 +1,182 @@
 ---
 phase: 11-dixon-coles-model-version
-reviewed: 2026-11-23T00:00:00Z
+reviewed: 2026-11-24T00:00:00Z
 depth: standard
-files_reviewed: 26
+files_reviewed: 14
 files_reviewed_list:
-  - apps/api/src/modules/evaluation/evaluation.controller.ts
-  - apps/api/src/modules/evaluation/evaluation.service.ts
-  - apps/api/src/modules/forecasts/forecasts.service.ts
-  - apps/web/app/methodology/page.tsx
-  - packages/config/src/index.ts
-  - packages/database/src/dixon-coles-repository.ts
-  - packages/database/src/evaluation/backtest-repository.ts
-  - packages/database/src/forecast-repository.ts
-  - packages/domain/src/evaluation/forecast-orchestrator.ts
-  - packages/domain/src/evaluation/model-comparison.ts
-  - packages/domain/src/forecast/config.ts
-  - packages/domain/src/forecast/contract.ts
-  - packages/domain/src/forecast/dixon-coles.ts
-  - packages/domain/src/forecast/model-version.ts
-  - packages/domain/src/forecast/model.ts
-  - packages/domain/src/methodology/model-card.ts
-  - workers/data-sync/src/jobs/backtests.ts
+  - packages/database/prisma/migrations/20261123_phase11_settlement_chain_per_forecast/migration.sql
+  - packages/database/prisma/schema.prisma
+  - packages/database/src/evaluation/settlement-pipeline.ts
+  - scripts/model-comparison.mjs
   - workers/data-sync/src/jobs/forecast-sweep.ts
   - workers/data-sync/src/jobs/forecasts.ts
-  - workers/data-sync/src/main.ts
-  - tests/unit/dixon-coles.test.ts
-  - tests/unit/model-card.test.ts
-  - tests/unit/model-comparison.test.ts
-  - tests/e2e/methodology.spec.ts
-  - tests/integration/dixon-coles-rho.test.ts
-  - tests/integration/model-comparison-api.test.ts
+  - workers/data-sync/src/jobs/model-comparison.ts
+  - workers/data-sync/src/jobs/model-comparison-cli.ts
+  - tests/integration/backtest-model-comparison-e2e.test.ts
+  - tests/integration/backtest-model-comparison.test.ts
+  - tests/integration/phase-03-security.test.ts
+  - tests/integration/settlement-chain-upgrade.test.ts
+  - tests/integration/settlement-multi-forecast.test.ts
+  - tests/unit/model-comparison-operator.test.ts
 findings:
-  critical: 2
-  warning: 6
-  info: 4
-  total: 12
+  critical: 1
+  warning: 7
+  info: 5
+  total: 13
 status: issues_found
 ---
 
-# Phase 11: Code Review Report
+# Phase 11: Code Review Report (gap-closure plans 11-05..11-07)
 
-**Reviewed:** 2026-11-23
+**Reviewed:** 2026-11-24
 **Depth:** standard
-**Files Reviewed:** 26 (the four unit/e2e/integration test files other than dixon-coles-rho.test.ts were only checked for obvious problems)
+**Range:** `219998b..HEAD`
+**Files Reviewed:** 14 (generated Prisma client skipped)
 **Status:** issues_found
 
 ## Summary
 
-The tau formulas, the retained-mass normalization order (correction first, then renormalization) and the claim that the 2.5 total is neutral are all mathematically correct. The four tau-weighted cells sum to zero net change, and all four cells lie in Under 2.5. The domain-level model, contract and version pinning (`MODEL_VERSIONS`, fail-closed config, `modelVersion` never inferred from `rho`) are sound.
+Предыдущее ревью (CR-01..IN-04) закрыто, см. таблицу Disposition в конце файла. Здесь только новые находки по правкам 11-05..11-07; они нумеруются дальше: CR-03, WR-07..WR-13, IN-05..IN-09.
 
-The production wiring is not. The rho fitter reads expected goals from a receipt shape that production never writes, so the default `dixon-coles-ensemble-v1` always issues `rho = 0`. The integration test hides this by seeding the same wrong shape. The model-comparison endpoint is described as operator-only but is not behind `OperatorGuard`. The rho estimator also has fragile bounds handling that can silently fall back to zero. The model card makes two claims the code does not support.
+Проверено и признано корректным:
 
-Necessity review was not run: `necessity-review.md` was not loaded, so no `necessity:` count is emitted.
+- Миграция `20261123_phase11_settlement_chain_per_forecast`:
+  - `DROP CONSTRAINT "SettlementReceipt_fixtureId_revision_key"` валиден, потому что исходная миграция `20260908` создавала его как табличный `UNIQUE (...)`, то есть настоящий constraint, а не индекс.
+  - Имя нового уникального индекса совпадает с именем, которое Prisma выводит из `@@unique([fixtureId, forecastSnapshotId, revision])`.
+  - Блок `DO` проверяет непрерывность цепочки `min=1 AND max=count` по `(fixtureId, forecastSnapshotId)`. Под старым уникальным ключом у фикстуры не могло быть больше одной цепочки, так что проверка полна.
+  - Из старых данных ничего не обновляется и не удаляется. Guard-функция не менялась и уже требовала предшественника того же прогноза.
+  - `persist_settlement_receipt` теперь нумерует через `MAX(revision)` по `(fixtureId, forecastSnapshotId)`. Advisory lock по фикстуре остаётся строго шире цепочки, поэтому гонок внутри фикстуры нет.
+- Ключи advisory lock `"<id>:settlement"` и `"<id>:settlement-intake"` не пересекаются: одна строка не может заканчиваться обоими суффиксами. Цикл holder/worker невозможен, потому что внутренний ключ берётся строго после внешнего и никто не берёт их в обратном порядке.
+- Semaphore: `acquire` стоит вне `try`, `release` в `finally`, передача слота ожидающему корректна. Утечки слота при ошибке `work()` нет.
+- Отбор когорты: точная отсечка проверяется равенством `cutoff IN (...)`, tie-break детерминирован по `(kickoff, id)` кодовыми единицами, пропуски считаются в порядке проверок, `allowSmallCohort` исключён из хеша `pairId` через `undefined` в `JSON.stringify`.
+
+Основная проблема новой работы: когорта выбирается по `effectiveAt` результата, а бэктест требует `observedAt`, поэтому «пригодное» окно может гарантированно упасть и утащить за собой весь план (CR-03). Остальное касается блокировки намерения (таймаут без отмены), ожидания воркера в CLI, идентичности пары планов и тестов, которые не проверяют заявленное.
+
+Necessity-review не выполнялся (`necessity-review.md` не загружался), поэтому счётчик `necessity:` не выдаётся.
 
 ## Critical Issues
 
-### CR-01: rho fitter reads `expectedGoals` from the wrong receipt level, so every fit silently degrades to rho = 0
+### CR-03: Когорта отбирает матчи по `effectiveAt` результата, а окно бэктеста требует `observedAt <= evaluationAsOf`, поэтому «пригодный» матч детерминированно роняет весь план
 
-**File:** `packages/database/src/dixon-coles-repository.ts:38-46, 80` (writer: `packages/database/src/forecast-repository.ts:81`)
-**Issue:** `ForecastSnapshot.receipt` is written as the whole `ForecastResponseDto` (`receipt: response as never`). `parseForecastResponse(row.receipt)` in `toDto` confirms this. In that object `expectedGoals` lives at `receipt.receipt.expectedGoals`. `expectedGoalsOf(snapshot.receipt)` reads `receipt.expectedGoals` at the top level, which is always `undefined`. The function returns `null` and `collectRows` skips every snapshot. The result is `sampleSize = 0` and `method: "insufficient-sample-zero"` for every league. The new default model is therefore the Poisson model under a new label. The model card and methodology page describe a league-fitted rho that never happens. Provenance stays honest (`insufficient-sample-zero`), but the feature is non-functional. The integration test `tests/integration/dixon-coles-rho.test.ts:129` seeds `receipt: { forecastSnapshotId, expectedGoals: {...} }`, a shape production never produces, so the suite passes while production is broken.
-**Fix:**
+**File:** `workers/data-sync/src/jobs/model-comparison.ts:160, 248-270` (исполнитель: `packages/database/src/evaluation/backtest-repository.ts:26-30, 88`)
+**Issue:** `listComparisonFixtures` берёт `resultVersions` с `orderBy effectiveAt asc, take 1` и кладёт в `firstResultEffectiveAt` только `effectiveAt`. `planComparisonCohort` проверяет `firstResultEffectiveAt <= kickoff + evaluationLagHours`. Но `evaluateWindow` читает версии результата с `"observedAt" <= asOf AND "effectiveAt" <= asOf`, и `resolveHistoricalResultGraph` при пустом наборе бросает `RESULT_NOT_AVAILABLE`. Достаточно, чтобы результат был залит позже `kickoff + 48h` (бэкфилл, сбой провайдера, free-tier бюджет), и матч:
+
+1. считается пригодным и входит в `report.usable`;
+2. получает прогноз, а затем окно падает в `evaluateWindow`;
+3. помечает окно `FAILED`, а `waitForPlans` возвращает `FAILED`, и квитанция не строится.
+
+Один такой матч из 30 срывает весь запуск. Так как `planId` и `jobId` детерминированы, повтор с теми же параметрами не помогает (см. WR-09). Дополнительно: берётся первая версия по `effectiveAt`, а не «первая известная на момент `asOf`», а статус версии не проверяется. Если результат на `asOf` был `VOID`, `POSTPONED` или `ABANDONED`, а позже стал `FINISHED`, то `fixture.status = FINISHED` пройдёт фильтр, настройка даст `scoreability != SCOREABLE`, и окно упадёт с `BACKTEST_SCORE_IDS_EMPTY`.
+Тесты этого не ловят: во всех сидах `observedAt` совпадает с `effectiveAt` или идёт раньше `asOf`.
+**Fix:** отбирать по тому же предикату, который исполняет бэктест. Либо вернуть из запроса все версии `{id, observedAt, effectiveAt, supersedesResultVersionId, status}` и вызвать `resolveHistoricalResultGraph(rows, id, evaluationAsOf)`, пропуская матч при исключении `RESULT_NOT_AVAILABLE` и при `status !== "FINISHED"` у листа. Либо как минимум считать момент известности как `GREATEST(observedAt, effectiveAt)` по самой ранней версии:
+
 ```ts
-function expectedGoalsOf(receipt: unknown) {
-  const dto = receipt as { receipt?: { expectedGoals?: unknown } } | null;
-  const expectedGoals = dto?.receipt?.expectedGoals;
-  ...
-}
+const knownAt = (v: { observedAt: Date; effectiveAt: Date }) => Math.max(v.observedAt.getTime(), v.effectiveAt.getTime());
+// firstResultKnownAt = min over versions of knownAt(v)
 ```
-Alternatively select the real shape through `parseForecastResponse`. Change the integration test seed to the true DTO shape, `receipt: { ...dto, receipt: { expectedGoals } }`. Better, build the seed through `createPrismaForecastRepository.publish` so a writer/reader mismatch fails the test.
 
-### CR-02: `GET /evaluation/model-comparison` is described as an operator endpoint but has no `OperatorGuard`
-
-**File:** `apps/api/src/modules/evaluation/evaluation.controller.ts:10-11, 35-39` and `apps/api/src/modules/evaluation/evaluation.module.ts:7`
-**Issue:** The controller carries only `@UseGuards(EligibilityGuard)`. That guard trusts client-supplied `x-eligibility-*` headers and is not an authorization control. All other operator surfaces (`fixtures`, `operations`, `provider-policy`, `provider-logo`) use `OperatorGuard`, which answers 404 without `x-operator-credential`. Any caller who can set the eligibility headers can therefore:
-- enumerate plan IDs, `planHash`, `configHash` and model versions;
-- trigger `compareBacktestPlans`, which loads all `scoreIds` for two plans and runs `IN (...)` aggregates with no rate limit.
-
-This is an authorization gap and an information/load exposure.
-**Fix:** Protect the route with `@UseGuards(OperatorGuard)` on `modelComparison` only. `EligibilityGuard` stays class-level for the public routes. Register `OperatorGuard` in `EvaluationModule.providers`. Add an integration test that expects 404 without `x-operator-credential`.
+Добавить тест, где `observedAt = kickoff + 72h`, `effectiveAt = kickoff + 2h`, и матч попадает в `noResultByEvaluationAsOf`.
 
 ## Warnings
 
-### WR-01: Spurious lower bound `-1/(λh·λa)` over-restricts rho, so one high-scoring row can force a zero fallback for a whole league
+### WR-07: Таймаут holder-транзакции не отменяет работу: замок отпускается, пока worker ещё пишет, а слот семафора освобождается раньше соединения
 
-**File:** `packages/domain/src/forecast/dixon-coles.ts:64-75` (also stated in `packages/domain/src/methodology/model-card.ts:74`)
-**Issue:** The doc says the band comes from strict positivity of the four tau factors. Positivity gives only:
-- ρ > −1/λa (from τ10)
-- ρ > −1/λh (from τ01)
-- ρ < 1/(λh·λa) (from τ00)
-- ρ < 1 (from τ11)
+**File:** `packages/database/src/evaluation/settlement-pipeline.ts:81-124` (`withIntakeLock`)
+**Issue:** Holder это интерактивная транзакция Prisma с `timeout: 75_000`. Если она истекает, Prisma откатывает holder (advisory lock снимается) и бросает `P2028`, но `work()` никто не прерывает: Serializable-транзакция worker продолжает выполняться и может закоммитить. Последствия:
 
-τ00 = 1 − λhλaρ is greater than 1 for negative ρ, so `-1/(λh·λa)` is not a positivity bound. For λh, λa ≥ 1 it is the largest of the three lower values (for example λ = (2, 2) gives −0.25 instead of the true −0.5). The estimator intersects the bands of all rows (`min = max over rows`). A single row with a large λ product therefore raises `min` above the true MLE, `score(min) > 0` fails, and the fitter returns zero for the whole window. At forecast time the same bound can make `assertDixonColesRho` reject a legitimate rho. The model card publishes the incorrect bound to users.
-**Fix:** Use `min: Math.max(-1 / lambdaHome, -1 / lambdaAway)`. Fix the formula in `model-card.ts` and the methodology page. Add a unit test for λ = (2, 2) with ρ = −0.4 accepted.
+- Взаимное исключение по фикстуре нарушено ровно тогда, когда работа затянулась. Следующий дубль берёт замок и стартует Serializable-транзакцию, пока предыдущая ещё идёт, то есть возвращается исходная проблема SQLSTATE 40001, ради решения которой замок и введён.
+- Вызывающий видит `P2028`, хотя квитанции записаны. BullMQ повторяет задачу, и результат приходит как `duplicate`. Данные целы благодаря уникальному ключу и идемпотентной ветке, но ошибка вводит в заблуждение.
+- Слот семафора освобождается в `finally` сразу после отказа. Если в этот момент holder ещё ждёт `pg_advisory_xact_lock` (запрос в полёте нельзя отменить `ROLLBACK`-ом на том же соединении), то соединение пула остаётся занятым, а слот уже выдан другому. Допущение «не больше 3 холдеров на клиент» нарушается.
+- У `Semaphore.acquire` нет таймаута. Три зависших дубля одной фикстуры на 75 с блокируют все остальные фикстуры.
 
-### WR-02: Score function is evaluated exactly at the open-interval endpoints where tau = 0
+Запас прочности невелик: худший случай `withSerializableRetry` это 3 × (5 с maxWait + 15 с timeout) = 60 с, а 75 с оставляет 15 с на `afterSettlement` и очереди к пулу.
+**Fix:** передать в `work` `AbortSignal`/дедлайн и проверять его между шагами цепочки (перед каждым `processRevision`); задавать таймаут holder как `ATTEMPTS * (maxWait + timeout) + запас`, вычисляемый из тех же констант, а не отдельным литералом; добавить таймаут ожидания семафора с кодом ошибки. Не освобождать слот, пока holder не завершился (`await` на завершение `$transaction` в `finally`, а не на возврат ошибки таймаута). Покрыть тестом (см. WR-10).
 
-**File:** `packages/domain/src/forecast/dixon-coles.ts:181`
-**Issue:** `score(min)` and `score(max)` are evaluated at points where one tau equals 0 by construction. `1 + λa·(−1/λa)` is not exactly 0 in floating point for roughly 15% of λ values (it can be ±1.1e-16). The term `derivative / tau` then becomes ±huge or ±Infinity, and Infinity − Infinity yields NaN. A slightly negative tau flips the sign of the term, so `!(score(min) > 0)` can be true even though a root exists. The estimator then silently falls back to `rho = 0` depending on the exact lambda values. The behaviour is deterministic but arbitrary.
-**Fix:** Bracket with the same epsilon the forecast assertion uses: `lo = min + eps`, `hi = max - eps`, with `eps = DIXON_COLES_CONFIG.dixonColes.boundsEpsilon`. Evaluate the sign checks at those points. Add a test with λ values for which `x * (1 / x) !== 1`.
+### WR-08: `waitForPlans` объявляет `FAILED` при первом упавшем окне, хотя BullMQ ещё повторит задачу
 
-### WR-03: A fitted rho that is outside the forecast's own band throws an uncoded error (HTTP 500, silent sweep miss)
+**File:** `workers/data-sync/src/jobs/model-comparison.ts:316` (политика повторов: `workers/data-sync/src/queues/index.ts:15, 65`; переход `FAILED -> RUNNING`: `packages/database/src/evaluation/backtest-repository.ts:82`)
+**Issue:** `runBacktestPlan` при исключении ставит окно в `FAILED` и пробрасывает ошибку; задача имеет `attempts: 3` с экспоненциальной задержкой, и `claimWindow` намеренно разрешает `FAILED -> RUNNING`. `waitForPlans` читает каждые 5 с и при `windows.FAILED > 0` сразу возвращает `FAILED` и печатает «Один из планов завершился ошибкой. Квитанция не строится.» и код 1. Любой транзитный сбой (сериализация, соединение, rate limit) превращается в ложный отказ оператору, хотя повтор через секунды завершил бы план. Состояние «попытка упала» и «задача окончательно упала» не различаются.
+**Fix:** считать отказ окончательным только по признаку плана или задачи, а не окна. Например, читать `BacktestPlan.state === "FAILED"` (если воркер выставляет его после исчерпания попыток), либо `Queue.getJob(...).attemptsMade >= attempts`. Иначе подождать ещё `attempts × max backoff`, прежде чем объявлять `FAILED`.
 
-**File:** `packages/domain/src/forecast/dixon-coles.ts:78-85, 107`, `packages/domain/src/forecast/model.ts:160`, `apps/api/src/modules/forecasts/forecasts.service.ts:11-38`, `workers/data-sync/src/jobs/forecast-sweep.ts:172`
-**Issue:** rho is fitted against the intersection of historical bands. The new fixture has its own λ pair, and `applyDixonColesCorrection` calls `assertDixonColesRho`, which throws a plain `Error("INVALID_DIXON_COLES_RHO")` with no `.code`. In the API, `generateForecast` only maps errors that carry a `code`, so it rethrows an unclassified error that surfaces as HTTP 500. In the sweep the error is caught per fixture and logged as `fixture_failed`, and the fixture is retried every tick and never issued. Fail-closed is right in principle, but there is no coded error, no degrade path, and no alert.
-**Fix:** Throw a coded error (`coded("DIXON_COLES_RHO_OUT_OF_BAND")`). In the orchestrator, either clamp the fit into the new fixture's band (then record that in provenance) or fall back to an explicit `rho = 0` with `method: "insufficient-sample-zero"`. Map the code in `failure()`.
+### WR-09: После окончательного сбоя повторный `run` с теми же параметрами не перезапустит плановую задачу
 
-### WR-04: Fitted rho depends on mutable DB state, so receipts are not reproducible for the same (league, asOf)
+**File:** `workers/data-sync/src/jobs/model-comparison.ts:226-243, 275-280` (jobId: `workers/data-sync/src/queues/index.ts:65`)
+**Issue:** `submitComparisonPair` идемпотентен по построению: `planId = cmp-<pairId>-…`, `jobId = backtest-<planId>-<planHash>`, `removeOnFail: { age: 604_800 }`. Вывод основан на семантике BullMQ, не на запуске: `queue.add` с уже существующим `jobId` игнорируется, пока упавшая задача хранится (7 суток). Тогда `admitPersistEnqueueBacktest` отмечает доставку `DELIVERED`, а воркер ничего не делает. `waitForPlans` сразу видит окно `FAILED` и снова возвращает 1. Оператор не может исправить причину (например, добавить недостающие доказательства) и перезапустить без ручного удаления задачи из Redis или смены параметров. Сочетание с CR-03 и WR-08 делает ложный сбой почти необратимым.
+**Fix:** перед повторной подачей проверять состояние плана; для планов с `FAILED` окнами удалять/переставлять задачу (`job.retry()` или `queue.remove(jobId)` перед `add`) и добавить CLI-команду `retry`. Покрыть тестом на реальной очереди (e2e сейчас проверяет только повтор после успеха).
 
-**File:** `packages/database/src/dixon-coles-repository.ts:60-72`
-**Issue:** The snapshot filter uses `cutoff < asOf`, but nothing bounds `issuedAt` or `createdAt` by `asOf`.
-- Snapshots backfilled later, and snapshots published by the backtest itself (`initiator: backtest` goes through the same `publish`), enter the training set of later fits. Re-running a plan, running windows concurrently (`concurrency` up to 4), or re-fitting after a backfill changes `rho`, `sampleSize` and `inputHash` for the same inputs.
-- This contradicts "reproducible" in the project core value. It also makes the poisson-versus-DC backtest comparison depend on execution order.
-- The lambdas themselves are cutoff-safe, so this is not look-ahead leakage. It is non-determinism.
-- The latest revision is chosen per fixture. If that revision has `cutoff >= kickoff` the fixture is dropped entirely instead of falling back to the last pre-kickoff revision.
+### WR-10: Тест «шесть одновременных доставок выше порога» не может упасть при удалении семафора
 
-**Fix:** Filter on `issuedAt: { lte: asOf }` for production fits. For backtests, pin the training set explicitly (for example persist the fixture IDs or a digest of the training rows in the provenance and assert it). Choose the latest revision among those that satisfy `cutoff < min(asOf, kickoff)`.
+**File:** `tests/integration/settlement-multi-forecast.test.ts:180-188`
+**Issue:** Семафор нужен, чтобы холдеры РАЗНЫХ фикстур не заняли весь пул (по умолчанию `pg.Pool` max 10) и не оставили worker-ам соединений. Тест запускает 6 вызовов для ОДНОЙ фикстуры: пять холдеров стоят на одном advisory lock и не требуют worker-соединений, работает только первый. Требуется ~7 соединений из 10, поэтому тест проходит и без `INTAKE_MAX_HOLDERS`. Заявленное в заголовке «above the intake cap» ничего не проверяет. Не проверены ни вытеснение фикстур друг другом, ни таймаут holder, ни освобождение замка и слота при ошибке `work`.
+**Fix:** добавить тест с N > 5 разными фикстурами одновременно (например, 12, пул 10): без семафора он падает с `P2024`/таймаутом, с семафором проходит. Добавить тест, в котором `afterSettlement` бросает исключение: следующий `process` для той же фикстуры должен пройти сразу (замок и слот освобождены). Добавить тест таймаута holder (малое `INTAKE_HOLDER_TIMEOUT_MS`, вынесенное в параметр сервиса).
 
-### WR-05: Comparison receipt does not describe the cohort it was computed on, and the verdict has no sample-size guard
+### WR-11: `describeComparison` жёстко подписывает стороны как V1/DC, хотя `compare` принимает произвольные `--left`/`--right`
 
-**File:** `packages/database/src/evaluation/backtest-repository.ts:128-140`, `packages/domain/src/evaluation/model-comparison.ts:81-92`
-**Issue:**
-- `windows` and `windowsDigest` come from every window of the plan. The Brier and log-loss scores are filtered by `market` and `kickoffUtc BETWEEN from AND to`. A receipt for a sub-range therefore carries a digest of a different cohort ("Stable digest of the evaluated cohort" is false).
-- `sampleSize` equality is a count check, not an identity check. Missing scores on one side could be offset elsewhere.
-- The upper bound is inclusive (`lte: to`). `/evaluation/scorecard` uses `[from, to)`, so the two surfaces disagree at the boundary.
-- `modelComparisonVerdict` returns `BETTER` or `WORSE` from a point Brier delta ≥ 0.002 with no minimum sample size or uncertainty. A one-window plan can be published as `BETTER`, which risks an overclaim given the project's "no certainty" rule.
+**File:** `workers/data-sync/src/jobs/model-comparison.ts:333-346`; `workers/data-sync/src/jobs/model-comparison-cli.ts:117-122`
+**Issue:** Текст вердикта собран из констант («V1», «DC лучше», «DC хуже»), а вердикт в домене означает «правая сторона лучше/хуже левой». При `compare --left <DC plan> --right <V1 plan>` или двух планах одной модели оператор получит «DC лучше» о V1: заключение противоположно фактическому. Для продукта с правилом «никаких overclaim-ов» это содержательная ошибка, а не стиль. Ни одна проверка не требует, чтобы левый план был `poisson-ensemble-v1`, а правый `dixon-coles-ensemble-v1`.
+**Fix:** формировать подписи из `receipt.left.modelVersion` и `receipt.right.modelVersion` («правая модель X лучше левой Y»). В `compare` отказывать (`COMPARISON_MODELS_UNEXPECTED`), если модели сторон не равны `COMPARISON_MODELS`, либо явно печатать обе версии в первой строке.
 
-**Fix:** Derive `windows` from the fixtures that actually have scores in the filtered set. Compare fixture ID sets, not counts. Use `lt: to`. Add a `minimumSampleSize` to `MODEL_COMPARISON_POLICY` and return `INCONCLUSIVE` below it.
+### WR-12: Идентичность пары планов не включает конфигурацию моделей и включает рынок
 
-### WR-06: Methodology page and model card make claims that the product does not back
+**File:** `workers/data-sync/src/jobs/model-comparison.ts:226-227`
+**Issue:** `pairId` = хеш от `{resolved, windows}`. Две стороны:
 
-**File:** `apps/web/app/methodology/page.tsx:57`, `packages/domain/src/methodology/model-card.ts:74, 85-91`
-**Issue:**
-- The page says the scorecards link ("Сравнение моделей ... на одинаковых окнах") shows how the hybrid compares with V1. `/scorecards#formula-policy-receipts` renders only formula and policy identifiers (`scorecard-dashboard.tsx:88`). No UI consumes `/evaluation/model-comparison`.
-- The card describes a league-fitted rho within the window and a pooled fallback. Per CR-01 production never fits.
-- `rhoBounds` publishes the incorrect formula from WR-01.
+- В хеш не входят `configHash`/`modelVersion` сторон. После смены конфигурации DC при тех же параметрах и том же наборе окон `planId` не меняется, а `planHash` меняется, и `createPlan` бросает `BACKTEST_PLAN_ID_CONFLICT`. Оператор не может повторить сравнение за тот же период без искусственного изменения параметров.
+- В хеш входит `market`, хотя окна и обе модели от рынка не зависят (каждая расчётная квитанция даёт скоры по всем трём рынкам, а `compare` выбирает рынок отдельно). `run --market BTTS` после `run --market ONE_X_TWO` создаёт новую пару планов и повторяет всю работу, дублируя прогнозы и расчёты.
 
-**Fix:** Remove or soften the sentence until a comparison view exists. Do not publish the card (version v1.1.0) until CR-01 and WR-01 are fixed, or add an honest note. Correct the bounds string.
+**Fix:** убрать `market` (и `concurrency`, не влияющий на результат) из хеша идентичности; добавить в него `forecastConfigHashFor(COMPARISON_MODELS.left|right)`. Тест: смена рынка даёт тот же `pairId`; смена конфигурации модели даёт новый.
+
+### WR-13: Операторское сравнение пишет ретро-прогнозы и скоры в тот же пул, из которого публичная scorecard считает метрики
+
+**File:** `workers/data-sync/src/jobs/model-comparison.ts:275-280` (запись), `apps/api/src/modules/evaluation/evaluation.service.ts:143-160` (чтение; вне списка файлов, проверено только это место)
+**Issue:** Бэктест публикует PRE_MATCH-снимки через тот же `publish`, то есть новую ревизию в цепочке реальной фикстуры (`supersedesForecastId` = продакшен-прогноз), а после этой миграции каждый такой снимок получает собственную цепочку квитанций и скоры. `load()` scorecard читает все `forecastScore` с `supersededBy: null` без фильтра по инициатору. Для когорты `modelVersion: "all"` одна фикстура вносит скоры продакшен-прогноза, V1-бэктеста и DC-бэктеста, то есть выборка искусственно умножается; в когортах по модели ретро-прогнозы (с `issuedAt` = «сейчас», а не момент отсечки) смешиваются с реальными. Кроме того, `valueByFixture = new Map(values.map(r => [r.fixtureId, ...]))` ключуется по фикстуре и теряет значения, когда у фикстуры теперь возможно несколько расчётных квитанций. Миграция делает это состояние штатным, а команда оператора его массово создаёт.
+**Fix:** пометить снимки бэктеста (`initiator` уже передаётся в оркестратор; сохранять в `ForecastSnapshot`/`ForecastScore` источник `BACKTEST`) и исключить их из `load()` и из `findIssued`/`listIssued` продакшена, либо изолировать отдельным представлением `current_forecast_scores_production`. Ключевать `valueByFixture` по `(fixtureId, settlementReceiptId)`. Добавить интеграционный тест: после `run` публичная scorecard не меняется.
 
 ## Info
 
-### IN-01: Hash canonicalization sorts keys with `localeCompare` (locale/ICU-dependent) in three places
+### IN-05: «Запас в одни сутки» для окна диапазона неверен при `--cutoff-hours` больше 24
 
-**File:** `packages/domain/src/forecast/model.ts:62`, `packages/domain/src/forecast/config.ts:65`, `packages/domain/src/evaluation/forecast-orchestrator.ts:49`
-**Issue:** `localeCompare` ordering depends on ICU and locale. Hash determinism should not depend on the host. Current keys happen to order identically, but any future mixed-case or underscore key can diverge. Hashes are pinned for V1, so a change needs a regression check. Three copies of `canonical()` also drift easily.
-**Fix:** Extract one `canonicalJson` helper with code-unit ordering (`a < b ? -1 : a > b ? 1 : 0`). Assert the V1 hash is unchanged.
+**File:** `workers/data-sync/src/jobs/model-comparison.ts:30-31, 115, 237`; usage в `model-comparison-cli.ts:33`
+**Issue:** `COMPARISON_MAX_SPAN_DAYS = maxSpanDays - 1` рассчитан на сдвиг `rangeFrom` назад на 6 ч. Но `positiveHours` допускает `cutoffHoursBeforeKickoff` до 1440 ч, и `rangeFrom = min(from, windows[0].forecastCutoff)` сдвигается ровно настолько. При диапазоне 365 суток и `--cutoff-hours 48` span = 367 суток, и `admitBacktestPlan` бросает `BACKTEST_LIMIT_EXCEEDED` уже после печати отчёта о когорте. Usage обещает «не больше 365 суток». Отказ безопасный, но сообщение вводит в заблуждение.
+**Fix:** проверять `span + cutoffHours <= maxSpanDays * DAY_MS` в `resolveComparisonParams` с понятным кодом и поправить комментарий и usage.
 
-### IN-02: Backtest plan admission does not validate `configHash` against `modelVersion`
+### IN-06: `--league ""` и `--league ,` молча означают «все лиги»
 
-**File:** `workers/data-sync/src/jobs/backtests.ts:40`
-**Issue:** A plan with a mismatching `configHash` is persisted and enqueued. Every window then fails with `CONFIG_HASH_MISMATCH` inside the orchestrator after claim and failure bookkeeping.
-**Fix:** Check `value.configHash === forecastConfigHashFor(value.modelVersion)` in `admitBacktestPlan` and throw before persisting.
+**File:** `workers/data-sync/src/jobs/model-comparison-cli.ts:83`
+**Issue:** `str("league")` с пустой строкой ложно, поэтому фильтр не применяется. Оператор с неопределённой переменной окружения (`--league "$LEAGUE"`) получит сравнение по всем лигам вместо отказа.
+**Fix:** при наличии флага `--league` с пустым результатом после `split/trim/filter(Boolean)` бросать `INVALID_LEAGUE`. Валидность формата id можно ограничить шаблоном `^[A-Za-z0-9_-]{1,64}$`.
 
-### IN-03: Server-side configuration errors are mapped to HTTP 400
+### IN-07: `process.exit(code)` сразу после записи в stdout
 
-**File:** `apps/api/src/modules/forecasts/forecasts.service.ts:12-15`
-**Issue:** `DIXON_COLES_RHO_UNAVAILABLE`, `MODEL_VERSION_MISMATCH` and `CONFIG_HASH_MISMATCH` are server-side failures but fall through to `BadRequestException`. This misleads clients and monitoring.
-**Fix:** Map them to `ServiceUnavailableException` or 500.
+**File:** `scripts/model-comparison.mjs:24-29`
+**Issue:** После `process.stdout.write` вызывается `process.exit(code)`. На платформах, где запись в pipe асинхронна (например, Windows, где этот репозиторий разрабатывается), длинный JSON квитанции при перенаправлении может быть обрезан. Вывод основан на документации Node по `process.stdout`, не на воспроизведении. Также `createBacktestQueue` вызывается вне `try`: ошибка конструктора пропустит `$disconnect` и даст необработанное исключение вместо кода 1.
+**Fix:** использовать `process.exitCode = code` и дать event loop завершиться (после `queue.close()` и `$disconnect()`); перенести создание очереди внутрь `try`.
 
-### IN-04: Undefined symbol "μ" in user-facing text
+### IN-08: `INTAKE_MAX_HOLDERS = 3` привязан к неявному размеру пула
 
-**File:** `apps/web/app/methodology/page.tsx:56`, `packages/domain/src/methodology/model-card.ts:85`
-**Issue:** The text says "при фиксированных λ и μ", but the formulas use λh and λa. μ is never defined.
-**Fix:** Write "λh и λa".
+**File:** `packages/database/src/evaluation/settlement-pipeline.ts:93-94`
+**Issue:** Комментарий выводит лимит из «двух соединений на вызов», но размер пула нигде не задан и не проверяется: `createPrismaClient` создаёт `PrismaPg({ connectionString })` с дефолтным `max = 10`. Тот же клиент использует вся воркерная часть (settlement-воркер с `concurrency: 2`, бэктесты, прогнозы, evidence), поэтому 3 холдера плюс 3 worker-транзакции плюс остальные задачи могут исчерпать пул; тогда срабатывает `maxWait` 5 с и задача уходит в повтор. Это магические числа без связи с конфигурацией.
+**Fix:** вынести `max` пула и лимит холдеров в общую конфигурацию (`holders = floor((poolMax - reserved) / 2)`), логировать при ожидании семафора.
+
+### IN-09: Тесты фиксируют слабые или тавтологичные проверки
+
+**File:** `tests/integration/backtest-model-comparison-e2e.test.ts:233-236, 265-273`; `tests/unit/model-comparison-operator.test.ts:94-111, 148-151, 305-316`
+**Issue:**
+- e2e утверждает `|Δ Brier| < 1e-9` и `rho = 0` у всех DC-снимков: сравнивается V1 с самим собой под другой версией. Тест доказывает проводку, но не то, что DC-путь вообще отличается от V1; регресс, при котором коррекция никогда не применяется, этот тест не заметит. Ограничение документировано, но оно же закреплено ассертом, который упадёт, когда подстановка rho заработает.
+- Unit-тест `listComparisonFixtures` подменяет `fixture.findMany` и не проверяет `where` (статус `FINISHED`, границы `[from, to)`, фильтр лиг). Фильтр лиг не покрыт нигде: e2e использует одну лигу.
+- Первая половина «keeps the pair identity independent of the small-cohort flag» сравнивает два вызова с одним и тем же флагом (тавтология); реальную проверку делает только вторая половина.
+- В «prints the cohort report before waiting» ожидание завершается `TypeError` от фейковой БД без `backtestPlan`, а `.catch(() => undefined)` гасит любую ошибку, включая сбой подачи; `--timeout-minutes 0` ничего не проверяет.
+
+**Fix:** добавить интеграционный сценарий с историей, достаточной для ненулевого rho, и ассертом `Δ != 0`; проверять `where`, переданный в `findMany`; заменить `.catch` на явный `rejects.toThrow(/backtestPlan|…/)` либо на фейк с `backtestPlan.findUnique`.
 
 ---
 
-_Reviewed: 2026-11-23_
+_Reviewed: 2026-11-24_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
 
-## Disposition (2026-11-23)
+## Disposition of the previous review (CR-01..IN-04), 2026-11-23
+
+Все находки предыдущего ревью закрыты, ссылки на коммиты и решения сохранены без изменений.
 
 | Finding | Status | Where |
 |---------|--------|-------|
@@ -178,10 +185,27 @@ _Depth: standard_
 | WR-01 | fixed | rho bounds `max(-1/λh, -1/λa) < ρ < min(1/(λh·λa), 1)`; test λ=(2,2) |
 | WR-02 | fixed | bisection bracketed at `min+ε` / `max-ε`; non-finite scores fall back |
 | WR-03 | fixed | out-of-band fitted rho degrades to explicit `rho = 0`, method `out-of-band-zero` (recorded in receipt); `assertDixonColesRho` throws a coded error |
-| WR-04 | fixed (partly) | fit uses only snapshots with `issuedAt <= asOf`, newest usable revision per fixture. Residual: snapshots issued by a backtest are indistinguishable from production ones for a fit at `asOf = now` |
+| WR-04 | fixed (partly) | fit uses only snapshots with `issuedAt <= asOf`, newest usable revision per fixture. Residual: snapshots issued by a backtest are indistinguishable from production ones for a fit at `asOf = now` (см. также WR-13 в этом ревью) |
 | WR-05 | fixed | scored-cohort windows, fixture-set identity, `[from, to)`, `minimumSampleSize = 30`, policy `model-comparison-v2` |
 | WR-06 | fixed | card bounds string, rho policy/fallbacks, page no longer claims a public comparison view |
 | IN-04 | fixed | «μ» replaced with λh / λa |
 | IN-01 | fixed (partly) | one shared `canonicalJson` (code-unit key order) replaces the 3 copies; V1 hashes unchanged (regression suite green). Not changed: the `sources` array sort in `model.ts` still uses `localeCompare` on canonical strings, because switching it could re-order sources and shift stored V1 `inputHash` values; `provider-routing.ts` keeps its own copy |
 | IN-02 | fixed | `admitBacktestPlan` throws `BACKTEST_CONFIG_HASH_MISMATCH` before persist/enqueue |
 | IN-03 | fixed | `DIXON_COLES_RHO_UNAVAILABLE`, `MODEL_VERSION_MISMATCH`, `CONFIG_HASH_MISMATCH`, `FORECAST_RUNTIME_IDENTITY_MISMATCH` → HTTP 503 |
+
+## Disposition of this review (CR-03..IN-09), 2026-11-24
+
+Исправления применены агентом gsd-code-fixer, подробности и тесты в `11-REVIEW-FIX.md`. Info-находки вне области этого прохода.
+
+| Finding | Status | Where |
+|---------|--------|-------|
+| CR-03 | fixed | `023b5e5`; когорта проигрывает предикат бэктеста через `resolveHistoricalResultGraph` на `evaluationAsOf` |
+| WR-07 | fixed (partly) | `eee1f38`; дедлайн работы раньше таймаута holder, слот освобождается после завершения holder, ожидание слота ограничено. Остаётся: один уже идущий шаг нельзя прервать |
+| WR-08 | fixed | `36658e4`; FAILED окно финально только когда задача очереди не может больше выполняться |
+| WR-09 | fixed | `d428b22`; повторная подача снимает окончательно упавшую задачу и ставит план заново |
+| WR-10 | fixed | `eb142e0` (тесты); тест holder timeout вошёл в `eee1f38` |
+| WR-11 | fixed | `1cd0fef`; подписи сторон берутся из квитанции |
+| WR-12 | fixed | `c00db87`, `38afdb6`; `pairId` без `market`, с хешами конфигурации моделей; `concurrency` оставлен в идентичности, потому что он часть `planHash`. Идентификаторы прежних пар изменились |
+| WR-13 | needs-decision | код не менялся; в БД нет происхождения снимка, нужны схема и решение пользователя, см. `11-REVIEW-FIX.md` |
+| IN-05..IN-09 | open | вне области прохода |
+

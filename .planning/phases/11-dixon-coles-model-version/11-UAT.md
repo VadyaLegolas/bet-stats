@@ -1,14 +1,14 @@
 ---
-status: partial
+status: complete
 phase: 11-dixon-coles-model-version
 source: [11-VERIFICATION.md]
 started: 2026-11-23T20:45:00Z
-updated: 2026-11-24T06:00:00Z
+updated: 2026-11-24T06:35:00Z
 ---
 
 ## Current Test
 
-[testing paused — 1 item outstanding: test 2 re-run on real data after gap closure 11-05..11-07, review fixes and WR-13]
+[testing complete]
 
 ## Tests
 
@@ -24,7 +24,13 @@ how_to: |
   Команда подаёт пару планов V1/DC на одних окнах, ждёт воркер и печатает квитанцию model-comparison-v2.
   Сохраните вывод (--json) в артефакт и впишите в result размер выборки, дельты и вердикт.
   Выборка меньше 30 даёт INCONCLUSIVE — это «нет доказательства», а не «DC не хуже»; расширьте диапазон.
-result: [pending]
+result: pass
+observed: |
+  2026-11-24, одноразовая копия dev-БД (642 снимка, миграции 20261123 и 20261124 применены на копии), пересобранный dist, backtest-воркер на копии.
+  node scripts/model-comparison.mjs run --from 2026-08-15 --to 2026-11-23: рассмотрено 463 матча, пригодных 57 (noResultByEvaluationAsOf 324,
+  noPublishedEvidenceAtCutoff 29, sharedCutoffInstant 53), оба плана SUCCEEDED на 57 окнах, квитанция model-comparison-v2 выдана.
+  Brier 0.55316 у обеих моделей, logLoss 0.93813, дельты 0, вердикт INCONCLUSIVE (rho = 0, insufficient-sample-zero у всех 57 DC-снимков).
+  Публичный пул не загрязнён: BACKTEST 57, PRODUCTION 642 (прежние). Артефакт: 11-UAT-test2-run.json (сводка подачи и квитанция).
 previous_result: |
   issue (2026-11-23): DC-план падал на первом окне (settlement revision must link predecessor). Закрыто планами 11-05..11-07,
   review-fix (CR-03, WR-07..WR-12) и WR-13 (origin); сквозной тест на настоящих Postgres/Redis зелёный. Нужен повторный реальный прогон
@@ -43,9 +49,9 @@ observed: |
 ## Summary
 
 total: 3
-passed: 2
+passed: 3
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
@@ -53,7 +59,9 @@ blocked: 0
 
 - gap_id: G-11-2
   truth: "Оператор может подать V1 и DC на одни окна и получить квитанцию сравнения (MODEL-03)"
-  status: failed # code fixed by 11-05..11-07; stays open until test 2 re-run passes
+  status: resolved
+  resolved_by: "11-07-PLAN.md"
+  resolved_at: "2026-11-24"
   reason: "Settlement не поддерживает два прогноза на один матч: DC-план падает на первом окне после V1"
   severity: blocker
   test: 2

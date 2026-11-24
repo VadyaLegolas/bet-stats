@@ -1,0 +1,68 @@
+{
+  "submitted": true,
+  "runnable": true,
+  "restartedPlanIds": [],
+  "pairId": "461d96793517",
+  "leftPlanId": "cmp-461d96793517-poisson",
+  "rightPlanId": "cmp-461d96793517-dixon-coles",
+  "leftModel": "poisson-ensemble-v1",
+  "rightModel": "dixon-coles-ensemble-v1",
+  "windows": 57,
+  "cohort": {
+    "considered": 463,
+    "usable": 57,
+    "skipped": {
+      "noResultByEvaluationAsOf": 324,
+      "noPublishedEvidenceAtCutoff": 29,
+      "sharedCutoffInstant": 53
+    },
+    "leadHours": 6,
+    "minimumRequired": 30,
+    "tieBreak": "smallest-fixture-id"
+  },
+  "params": {
+    "from": "2026-08-15T00:00:00.000Z",
+    "to": "2026-11-23T00:00:00.000Z",
+    "leagueIds": [],
+    "market": "ONE_X_TWO",
+    "concurrency": 1,
+    "cutoffHoursBeforeKickoff": 6,
+    "trainingLagHours": 24,
+    "evaluationLagHours": 48,
+    "allowSmallCohort": false
+  }
+}
+{
+  "available": true,
+  "receipt": {
+    "version": "model-comparison-v2",
+    "market": "ONE_X_TWO",
+    "from": "2026-08-15T00:00:00.000Z",
+    "to": "2026-11-23T00:00:00.000Z",
+    "windowsDigest": "sha256:15796cffa35a05343254a9d3963e88969485ca51d7503bd82062f3f4920d5f36",
+    "left": {
+      "planId": "cmp-461d96793517-poisson",
+      "planHash": "779f42e6a24e37c8894c88de00201620a067096e79a6e9159b6d2d52e9784ffc",
+      "modelVersion": "poisson-ensemble-v1",
+      "configHash": "sha256:a08ff17e4ec37822ccce0b68a7ed24ad33c21c5732e2ee812645cac4cc159581",
+      "sampleSize": 57,
+      "brierScore": 0.5531622620951565,
+      "logLoss": 0.938129155410709
+    },
+    "right": {
+      "planId": "cmp-461d96793517-dixon-coles",
+      "planHash": "c62da2137d02d290ce249e267de69471c9db2480e2ab73299b7d4e149e77be9e",
+      "modelVersion": "dixon-coles-ensemble-v1",
+      "configHash": "sha256:ff891567ab4c5358db44e98175174b94190ad8ea321db88d6c83419ea0871a72",
+      "sampleSize": 57,
+      "brierScore": 0.5531622620951565,
+      "logLoss": 0.938129155410709
+    },
+    "deltas": {
+      "brierScore": 0,
+      "logLoss": 0
+    },
+    "verdict": "INCONCLUSIVE",
+    "computedAt": "2026-11-24T06:27:25.114Z"
+  }
+}

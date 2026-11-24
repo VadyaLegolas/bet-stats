@@ -4,17 +4,17 @@ milestone: v1.1
 current_phase: 13
 current_phase_name: CLV Price Diary
 current_plan: 4
-status: executing
-stopped_at: Completed 13-03-PLAN.md
-last_updated: "2026-11-24T22:07:30.522Z"
+status: verifying
+stopped_at: Completed 13-04-PLAN.md
+last_updated: "2026-11-24T22:33:52.948Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 13 execution started
-state_head: dc069bbbe60546d5dd3a1dfac6b794e66a2efef6
+state_head: 1263240d0d8316e5c48c597060fa3899e443a0c3
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 40
-  completed_plans: 39
+  completed_plans: 40
   percent: 50
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 Phase: 13 (CLV Price Diary) — EXECUTING
 Current Plan: 4
 Total Plans in Phase: 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-24 — Phase 13 execution started
 
 Progress: [█████░░░░░] 50%
@@ -158,6 +158,7 @@ Progress: [█████░░░░░] 50%
 | Phase 13 P01 | 10 min | 3 tasks | 5 files |
 | Phase 13 P02 | 21min | 3 tasks | 9 files |
 | Phase 13 P03 | 22min | 3 tasks | 8 files |
+| Phase 13 P04 | 23min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -338,6 +339,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 13]: 13-02: sourceConvention must match an existing ManualOddsSnapshot.source (D-02), checked after domain validation as UNKNOWN_SOURCE_CONVENTION
 - [Phase 13]: 13-03: closing set = same-source rows at latest observedAt before kickoff; calculateNoVigClv decides usability (typed reasons incl. CLOSING_BEFORE_CANDIDATE, SOURCE_CONVENTION_MISMATCH)
 - [Phase 13]: 13-03: D-05 enforced by symbol-level import-graph test (roots: value domain/api, odds, scanner/journal masks) plus byte-identical candidate invariance test
+- [Phase 13]: 13-04: browser form for closing odds deferred; signed proxy does not forward a request body, entry stays API plus CLI (docs/closing-odds-operator.md)
+- [Phase 13]: 13-04: model-card-v1.3.0 adds the CLV block; reason copy is Record<NoVigClvUnavailableReason,string> so a new domain reason fails web compilation
 
 ### Pending Todos
 
@@ -450,6 +453,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-24T22:07:28.355Z
-Stopped at: Completed 13-03-PLAN.md
+Last session: 2026-11-24T22:33:50.818Z
+Stopped at: Completed 13-04-PLAN.md
 Resume file: None

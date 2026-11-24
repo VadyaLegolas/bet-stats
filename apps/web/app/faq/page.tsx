@@ -66,14 +66,14 @@ export default function FaqPage() {
   return (
     <article>
       <h1>FAQ: как пользоваться сайтом</h1>
-      <p>
+      <p className="page-deck">
         Пошаговая инструкция: как запустить сайт, прочитать прогноз, ввести коэффициенты букмекера и проверить
         результаты. Все шаги показаны на настоящих снимках работающего приложения.
       </p>
       <RiskDisclosure />
 
       <h2>Пошаговая инструкция</h2>
-      <ol className="steps-list">
+      <ol className="steps-list" role="list">
         <li>
           <h3>Запуск сайта</h3>
           <p>
@@ -359,7 +359,7 @@ export default function FaqPage() {
 
       <section className="panel panel--stack" aria-labelledby="faq-questions">
         <h2 id="faq-questions">Частые вопросы</h2>
-        <dl>
+        <dl className="faq-list">
           <dt><strong>Почему прогноза на матч ещё нет?</strong></dt>
           <dd>
             Первичный снимок выпускается, когда матч попадает в 14-дневный горизонт свипа, предматчевый — за 6 часов

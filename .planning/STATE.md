@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v1.1
 current_phase: 12
 current_phase_name: Calibration Layer and Versioned Rollback
-current_plan: 5
+current_plan: 6
 status: executing
-stopped_at: Completed 12-04-PLAN.md
-last_updated: "2026-11-24T10:15:45.276Z"
+stopped_at: Completed 12-05-PLAN.md
+last_updated: "2026-11-24T10:51:50.951Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 11 complete, transitioned to Phase 12
-state_head: 094e8c415784a8ee86d5c42363446ea07358a38c
+state_head: ea20f40b6c92cc764bc02dc73acb516a1c2a47c0
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 36
-  completed_plans: 33
+  completed_plans: 34
   percent: 50
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 ## Current Position
 
 Phase: 12 — Calibration Layer and Versioned Rollback
-Current Plan: 5
+Current Plan: 6
 Total Plans in Phase: 7
 Status: Ready to execute
 Last activity: 2026-11-24 — Phase 11 complete, transitioned to Phase 12
@@ -152,6 +152,7 @@ Progress: [█████░░░░░] 50%
 | Phase 12 P02 | 12 min | 3 tasks | 7 files |
 | Phase 12 P03 | 40min | 3 tasks | 9 files |
 | Phase 12 P04 | 35min | 3 tasks | 5 files |
+| Phase 12 P05 | 75min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -323,6 +324,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 12]: 12-03: calibrator event order is a database identity seq re-drawn by the transition trigger after the advisory lock; rollback target is the predecessor of the rolled-back calibrator's PROMOTED event
 - [Phase 12]: 12-03: event decision config defaults to the calibrator's own fit config; Calibrator also stores isotonicHoldoutBrier so rows rebuild an equal FittedCalibrator
 - [Phase 12]: 12-04: calibration fit data reads ForecastMarket probabilities per market from the newest readable pre-kickoff revision; reads of PRODUCTION/exact identity/history at asOf proved by six guard mutations
+- [Phase 12]: 12-05: daily calibration job executes only lifecycle-policy actions; hysteresis series asserted on ONE_X_TWO with fixed seeds (gamma 2.5 base, gamma 1 regression blocks of 90, supersession gain 0.0598); numbers in 12-05-SUMMARY for 12-07
 
 ### Pending Todos
 
@@ -430,6 +432,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-24T10:15:42.277Z
-Stopped at: Completed 12-04-PLAN.md
+Last session: 2026-11-24T10:51:47.880Z
+Stopped at: Completed 12-05-PLAN.md
 Resume file: None

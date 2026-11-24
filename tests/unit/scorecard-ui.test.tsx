@@ -77,6 +77,49 @@ describe("scorecard dashboard", () => {
     expect(markup).toContain("premier-league");
   });
 
+  describe("no-vig CLV column (CLV-02, D-06)", () => {
+    const NO_VIG_REASONS = ["CLOSING_SET_MISSING", "CLOSING_SET_INCOMPLETE", "CANDIDATE_SET_INCOMPLETE", "SOURCE_CONVENTION_MISMATCH", "INVALID_TIMESTAMP", "CLOSING_BEFORE_CANDIDATE", "CLOSING_NOT_PRE_KICKOFF", "INVALID_ODDS"] as const;
+    const page = (clvNoVig: unknown) => ({ items: [{ id: "v-1", selection: "Хозяева", decimalOdds: "2.10", outcome: "WIN", stakeUnits: "1", profitUnits: "1.1", clv: { status: "AVAILABLE", reason: null, value: "0.0450", policyVersion: "odds-ratio-clv-v1" }, clvNoVig }], nextCursor: null, pageTotals: { count: 1, stakeUnits: "1", profitUnits: "1.1" } }) as never;
+    const render = (clvNoVig: unknown) => renderToStaticMarkup(createElement(ScorecardDashboard, { scorecard: model, candidates: page(clvNoVig) }));
+
+    it("shows the de-vigged value with policy label, closing time and source, and keeps the odds-ratio value under its own label", () => {
+      const markup = render({ status: "AVAILABLE", policyVersion: "no-vig-clv-v1", value: "0.052341", pCandidateFair: "0.4500", pCloseFair: "0.4735", closingObservedAt: "2026-11-30T11:00:00.000Z", source: "manual-book-a" });
+      expect(markup).toContain("CLV без маржи");
+      expect(markup).toContain("+5.23 %");
+      expect(markup).toContain("no-vig-clv-v1");
+      expect(markup).toContain("manual-book-a");
+      expect(markup).toContain("30 ноября 2026");
+      expect(markup).toContain("odds-ratio-clv-v1");
+      expect(markup).toContain("0.0450");
+      expect(markup).toContain("CLV по коэффициентам");
+    });
+
+    it.each(NO_VIG_REASONS)("renders a Russian reason for %s and never the raw code", (reason) => {
+      const markup = render({ status: "UNAVAILABLE", policyVersion: "no-vig-clv-v1", reason });
+      expect(markup).not.toContain(reason);
+      expect(markup).toContain("CLV без маржи недоступен:");
+      expect(markup).not.toContain("нет данных");
+    });
+
+    it("gives every reason its own distinct Russian text", () => {
+      const texts = NO_VIG_REASONS.map((reason) => render({ status: "UNAVAILABLE", policyVersion: "no-vig-clv-v1", reason }).match(/CLV без маржи недоступен: ([^<]*)</u)?.[1]);
+      expect(texts.every((text) => typeof text === "string" && /[а-яё]/iu.test(text))).toBe(true);
+      expect(new Set(texts).size).toBe(NO_VIG_REASONS.length);
+    });
+
+    it("degrades to «нет данных» when the API does not carry the field and never prints a negative-zero value as a promise", () => {
+      expect(render(undefined)).toContain("нет данных");
+      expect(render({ status: "AVAILABLE", policyVersion: "no-vig-clv-v1", value: "-0.0312", pCandidateFair: "0.5", pCloseFair: "0.4844", closingObservedAt: "2026-11-30T11:00:00.000Z", source: "s" })).toContain("−3.12 %");
+    });
+
+    it("states that CLV is neither a forecast nor a profit promise and keeps the responsible-use warning", () => {
+      const markup = render({ status: "AVAILABLE", policyVersion: "no-vig-clv-v1", value: "0.01", pCandidateFair: "0.5", pCloseFair: "0.505", closingObservedAt: "2026-11-30T11:00:00.000Z", source: "s" });
+      expect(markup).toContain("не прогноз");
+      expect(markup).toContain("Историческая оценка не гарантирует будущих результатов.");
+      expect(markup).not.toMatch(/гарантированн|гарантируем|верная ставка|точно выигра|прибыль гарантирована|заработа/iu);
+    });
+  });
+
   it("speaks Russian with a calendar period instead of raw API keys and ISO instants", () => {
     const markup = renderToStaticMarkup(createElement(ScorecardDashboard, { scorecard: model, candidates: { items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" } } }));
     for (const label of ["Период с", "Период по", "Версия модели", "Соревнование", "Рынок"]) expect(markup).toContain(label);

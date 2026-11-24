@@ -130,3 +130,36 @@ describe("attachMarketCalibration", () => {
     for (const entry of results) expect(() => parseMarketCalibrationMap(entry.marketCalibration)).not.toThrow();
   });
 });
+
+describe("attachMarketCalibration: a calibrator of another identity is never applied", () => {
+  const OTHER_CONFIG: CalibratorIdentity = { modelVersion: DC.modelVersion, configHash: `sha256:${"b".repeat(64)}` };
+
+  it("a V1 forecast handed a calibrator pinned to Dixon-Coles is UNAVAILABLE/CALIBRATOR_MODEL_MISMATCH on every market", async () => {
+    const stored = forecast(V1);
+    const state: CalibrationState = Object.fromEntries(MARKETS.map((market) => [market, { active: active(market, DC), eligibleSampleSize: 400 }])) as CalibrationState;
+    const [result] = await attachMarketCalibration([stored], deps(async () => state));
+    for (const market of MARKETS) {
+      expect(result!.marketCalibration[market].calibration).toEqual({ state: "UNAVAILABLE", reasonCode: "CALIBRATOR_MODEL_MISMATCH" });
+      expect(result!.marketCalibration[market].rawProbabilities).toEqual(stored.probabilities[market].map((event) => event.probability));
+    }
+  });
+
+  it("the same model version with another config hash is a mismatch as well", async () => {
+    const state: CalibrationState = Object.fromEntries(MARKETS.map((market) => [market, { active: active(market, OTHER_CONFIG), eligibleSampleSize: 400 }])) as CalibrationState;
+    const [result] = await attachMarketCalibration([forecast(DC)], deps(async () => state));
+    for (const market of MARKETS) expect(result!.marketCalibration[market].calibration).toEqual({ state: "UNAVAILABLE", reasonCode: "CALIBRATOR_MODEL_MISMATCH" });
+  });
+
+  it("a calibrator pinned to another market is a market mismatch", async () => {
+    const state: CalibrationState = { ...emptyState(400), ONE_X_TWO: { active: active("BTTS", DC), eligibleSampleSize: 400 } };
+    const [result] = await attachMarketCalibration([forecast(DC)], deps(async () => state));
+    expect(result!.marketCalibration.ONE_X_TWO.calibration).toEqual({ state: "UNAVAILABLE", reasonCode: "CALIBRATOR_MARKET_MISMATCH" });
+  });
+
+  it("a mismatch for one forecast does not touch the matching forecast of the same request", async () => {
+    const state = (identity: CalibratorIdentity): CalibrationState => Object.fromEntries(MARKETS.map((market) => [market, { active: active(market, DC), eligibleSampleSize: 400 }])) as CalibrationState;
+    const [dc, v1] = await attachMarketCalibration([forecast(DC), forecast(V1)], deps(async (identity) => state(identity)));
+    expect(dc!.marketCalibration.ONE_X_TWO.calibration.state).toBe("CALIBRATED");
+    expect(v1!.marketCalibration.ONE_X_TWO.calibration.state).toBe("UNAVAILABLE");
+  });
+});

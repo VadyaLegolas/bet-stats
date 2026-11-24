@@ -25,9 +25,6 @@ export function CohortFilter({ identity }: { identity: CohortIdentity }) {
   const [dayFrom, setDayFrom] = useState(() => toUtcDay(identity.from, false));
   const [dayTo, setDayTo] = useState(() => toUtcDay(identity.to, true));
 
-  const label = { display: "grid", gap: 6, fontSize: "0.875rem", color: "var(--color-text-secondary)" } as const;
-  const field = { width: "100%", minHeight: 44 } as const;
-
   /* `<Form>` with a string action is Next 16's GET form: client-side navigation on submit
    * (no full reload) with a native GET fallback when JS is off. The visible fields carry whole
    * UTC days and the server page converts them to the exact instants the API demands. An
@@ -37,35 +34,31 @@ export function CohortFilter({ identity }: { identity: CohortIdentity }) {
    * with an invalid value submits an empty string. Without it the browser would block the
    * request outright instead of letting the server derive. */
   return (
-    <Form
-      action="/scorecards"
-      noValidate
-      style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12, alignItems: "end" }}
-    >
-      <label style={label}>
+    <Form action="/scorecards" noValidate className="filter-grid">
+      <label className="field field--filter">
         <span>Период с (по UTC)</span>
-        <input type="date" name="from" value={dayFrom} max={dayTo || undefined} onChange={(event) => setDayFrom(event.target.value)} style={field} />
+        <input type="date" name="from" value={dayFrom} max={dayTo || undefined} onChange={(event) => setDayFrom(event.target.value)} className="input-fill" />
       </label>
-      <label style={label}>
+      <label className="field field--filter">
         <span>Период по (включительно, по UTC)</span>
-        <input type="date" name="to" value={dayTo} min={dayFrom || undefined} onChange={(event) => setDayTo(event.target.value)} style={field} />
+        <input type="date" name="to" value={dayTo} min={dayFrom || undefined} onChange={(event) => setDayTo(event.target.value)} className="input-fill" />
       </label>
-      <label style={label}>
+      <label className="field field--filter">
         <span>Версия модели</span>
-        <input name="modelVersion" defaultValue={identity.modelVersion} style={field} />
+        <input name="modelVersion" defaultValue={identity.modelVersion} className="input-fill" />
       </label>
-      <label style={label}>
+      <label className="field field--filter">
         <span>Соревнование</span>
-        <input name="competitionId" defaultValue={identity.competitionId} style={field} />
+        <input name="competitionId" defaultValue={identity.competitionId} className="input-fill" />
       </label>
-      <label style={label}>
+      <label className="field field--filter">
         <span>Рынок</span>
-        <input name="market" defaultValue={identity.market} style={field} />
+        <input name="market" defaultValue={identity.market} className="input-fill" />
       </label>
-      <button type="submit" className="btn-primary" style={{ minHeight: 44, padding: "8px 20px" }}>
+      <button type="submit" className="btn-primary btn-compact">
         Применить точную когорту
       </button>
-      <p className="filter-hint" style={{ gridColumn: "1 / -1" }}>
+      <p className="filter-hint filter-hint--full">
         Выберите период календарём — он считается по UTC, и выбранный день «По» включается целиком.
         Пустая дата означает период по умолчанию: последние 365 дней. Строки «Версия модели»,
         «Соревнование» и «Рынок» — точные идентификаторы когорты: оставьте их пустыми, чтобы не

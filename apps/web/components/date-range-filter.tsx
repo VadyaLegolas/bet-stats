@@ -233,8 +233,6 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
     navigate({ from: first ? startOfUtcDay(first) : undefined, to: second ? endOfUtcDay(second) : undefined });
   };
 
-  const fieldLabel = { display: "flex", flexDirection: "column", gap: 6, fontSize: "0.875rem", color: "var(--color-text-secondary)" } as const;
-
   return (
     <form className="fixtures-filter-card" onSubmit={(event) => { event.preventDefault(); submit(); }}>
       <div className="filter-presets" role="group" aria-label="Быстрый выбор периода">
@@ -251,44 +249,42 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
         ))}
       </div>
       <div className="filter-fields">
-        <label style={fieldLabel}>
+        <label className="field field--filter">
           <span>С (дата, UTC)</span>
           <input
             type="date"
             value={dayFrom}
             max={dayTo || undefined}
             onChange={(event) => setDayFrom(event.target.value)}
-            style={{ minHeight: 44, width: 220, maxWidth: "100%" }}
+            className="input-date"
           />
         </label>
-        <label style={fieldLabel}>
+        <label className="field field--filter">
           <span>По (дата, UTC, включительно)</span>
           <input
             type="date"
             value={dayTo}
             min={dayFrom || undefined}
             onChange={(event) => setDayTo(event.target.value)}
-            style={{ minHeight: 44, width: 220, maxWidth: "100%" }}
+            className="input-date"
           />
         </label>
-        <label style={fieldLabel}>
+        <label className="field field--filter">
           <span>Соревнование</span>
           <select
             value={selectedLeague}
             onChange={(event) => setSelectedLeague(event.target.value)}
-            style={{ minHeight: 44, maxWidth: "100%" }}
           >
             {leagues.length > 1 ? <option value="">Все лиги</option> : null}
             {leagues.map((league) => <option key={league}>{league}</option>)}
           </select>
         </label>
-        <button type="submit" className="btn-primary" style={{ minHeight: 44, padding: "8px 20px" }}>
+        <button type="submit" className="btn-primary btn-compact">
           Применить даты
         </button>
         <button
           type="button"
-          className="btn-secondary"
-          style={{ minHeight: 44, padding: "8px 20px" }}
+          className="btn-secondary btn-compact"
           disabled={syncState.pending || resultsSyncState.pending}
           onClick={() => {
             setMessageOwner("sync");
@@ -299,8 +295,7 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
         </button>
         <button
           type="button"
-          className="btn-secondary"
-          style={{ minHeight: 44, padding: "8px 20px" }}
+          className="btn-secondary btn-compact"
           disabled={syncState.pending || resultsSyncState.pending}
           onClick={() => {
             setMessageOwner("results");
@@ -311,7 +306,7 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
         </button>
       </div>
       {statusState.message ? (
-        <p role="status" aria-live="polite" className="filter-hint" style={statusState.error ? { color: "var(--color-danger)" } : undefined}>
+        <p role="status" aria-live="polite" className={statusState.error ? "filter-hint filter-hint--error" : "filter-hint"}>
           {statusState.message}
         </p>
       ) : null}

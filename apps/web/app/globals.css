@@ -597,6 +597,115 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   color: var(--color-accent-text);
 }
 
+/* --- Design system: surfaces, notices, state chips, form fields ----------- */
+
+.btn-compact { min-height: 44px; padding: 8px 16px; }
+
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  padding: var(--space-4);
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .panel { padding: var(--space-6); }
+}
+.panel--stack { margin-block: var(--space-4); }
+.panel--grid { display: grid; gap: var(--space-4); }
+
+.notice {
+  border: 1px solid var(--color-border);
+  border-inline-start: 4px solid var(--notice-rail, var(--color-signal));
+  border-radius: var(--radius-control);
+  background: var(--notice-bg, var(--color-signal-subtle));
+  padding: var(--space-4);
+  margin-block: var(--space-4);
+  overflow-wrap: anywhere;
+}
+.notice > :first-child { margin-block-start: 0; }
+.notice > :last-child { margin-block-end: 0; }
+.notice--danger { --notice-rail: var(--color-danger); --notice-bg: var(--color-danger-subtle); }
+.notice--spaced { margin-block: var(--space-6); }
+
+.tone-positive {
+  --tone-bg: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  --tone-color: var(--color-accent-text);
+  --tone-border: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  --tone-dot: var(--color-accent);
+}
+.tone-warning {
+  --tone-bg: color-mix(in srgb, var(--color-signal) 18%, transparent);
+  --tone-color: var(--color-warning);
+  --tone-border: color-mix(in srgb, var(--color-signal) 50%, transparent);
+  --tone-dot: var(--color-signal);
+}
+.tone-danger {
+  --tone-bg: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  --tone-color: var(--color-danger);
+  --tone-border: color-mix(in srgb, var(--color-danger) 35%, transparent);
+  --tone-dot: var(--color-danger);
+}
+.tone-neutral {
+  --tone-bg: color-mix(in srgb, var(--color-text-secondary) 9%, transparent);
+  --tone-color: var(--color-text-secondary);
+  --tone-border: color-mix(in srgb, var(--color-text-secondary) 35%, transparent);
+  --tone-dot: var(--color-muted);
+}
+.tone-info {
+  --tone-bg: color-mix(in srgb, var(--color-info) 10%, transparent);
+  --tone-color: var(--color-info);
+  --tone-border: color-mix(in srgb, var(--color-info) 35%, transparent);
+  --tone-dot: var(--color-info);
+}
+
+.state-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--tone-border);
+  background: var(--tone-bg);
+  color: var(--tone-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+.state-chip--md { font-size: 0.875rem; }
+.state-dot { display: inline-block; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--tone-dot); }
+.state-dot--lg { width: 8px; height: 8px; }
+
+.state-notice {
+  border: 1px solid var(--color-border-subtle);
+  border-inline-start: 4px solid var(--tone-dot);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  padding: var(--space-3) var(--space-4);
+  margin-block: var(--space-3);
+  overflow-wrap: anywhere;
+}
+.state-notice-head { display: flex; align-items: center; gap: 8px; margin-block-end: 4px; }
+.state-notice-title { color: var(--tone-color); }
+.state-notice-text { margin: 4px 0; font-size: 0.875rem; color: var(--color-text-secondary); }
+.state-notice-text strong { color: var(--color-text); }
+.state-notice-text--warning { color: var(--color-warning); margin: 4px 0 8px; }
+.state-notice-meta { display: flex; flex-wrap: wrap; gap: 16px; margin-block-start: 8px; font-size: 0.8rem; color: var(--color-muted); }
+.state-notice-meta strong { color: var(--color-text-secondary); }
+.state-notice-warn { color: var(--color-warning); }
+.state-notice-retry { margin-block-start: var(--space-3); font-size: 0.875rem; }
+.state-notice-receipt { margin-block-start: var(--space-3); font-size: 0.85rem; color: var(--color-text-secondary); }
+.state-notice-receipt dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin-block-start: var(--space-2); }
+.state-notice-receipt dt { color: var(--color-muted); }
+.state-notice-receipt dd { margin: 0; }
+
+.field { display: grid; gap: 6px; min-width: 0; }
+.field--filter { font-size: 0.875rem; color: var(--color-text-secondary); }
+.input-fill { width: 100%; }
+.input-date { width: 220px; }
+.filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--space-3); align-items: end; }
+
 /* --- Home ----------------------------------------------------------------
    The homepage owns its full-width bands, so the framed <main> steps aside
    (browsers without :has() keep the framed layout, which stays readable). */
@@ -926,6 +1035,8 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 }
 .filter-fields { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
 .filter-hint { margin: var(--space-3) 0 0; font-size: 0.85rem; color: var(--color-text-secondary); }
+.filter-hint--error { color: var(--color-danger); }
+.filter-hint--full { grid-column: 1 / -1; }
 /* Disappearing popups for the manual sync actions («Обновить матчи» /
    «Загрузить результаты»); the inline status line stays the durable record. */
 .sync-toast-stack {
@@ -1085,7 +1196,7 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 @media (forced-colors: active) {
   :where(a, button, input, select, summary, [tabindex]):focus-visible { outline-color: Highlight; }
   .release-navigation nav a[aria-current="page"] { border-block-end: 2px solid Highlight; }
-  .fixture-card, .evidence-card, .sample-card, .sample-fixtures, .home-card { border: 1px solid CanvasText; }
+  .fixture-card, .evidence-card, .sample-card, .sample-fixtures, .home-card, .panel, .notice, .state-notice, .state-chip { border: 1px solid CanvasText; }
   .sync-toast { border: 1px solid CanvasText; }
   .theme-toggle { border: 1px solid CanvasText; color: CanvasText; }
   /* Forced-colors replaces the footer background with the system canvas, so

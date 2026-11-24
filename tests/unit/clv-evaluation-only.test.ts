@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { posix, resolve, sep } from "node:path";
 
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -21,12 +22,139 @@ interface GraphOptions {
   readonly isForbidden: (path: string) => boolean;
 }
 
-function findViolations(_files: Files, _options: GraphOptions): Violation[] {
-  return [];
+type NamedUse = readonly string[] | "ALL";
+interface ModuleInfo {
+  readonly imports: readonly { readonly specifier: string; readonly names: NamedUse }[];
+  readonly localExports: ReadonlySet<string>;
+  /** exported name -> { specifier, original name } for `export { a as b } from "x"`. */
+  readonly reExports: ReadonlyMap<string, { readonly specifier: string; readonly original: string }>;
+  readonly starExports: readonly string[];
 }
 
-function findObservationTableAccess(_files: Files, _roots: readonly string[]): string[] {
-  return [];
+function parseModule(path: string, source: string): ModuleInfo {
+  const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, path.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const imports: { specifier: string; names: NamedUse }[] = [];
+  const localExports = new Set<string>();
+  const reExports = new Map<string, { specifier: string; original: string }>();
+  const starExports: string[] = [];
+  const hasModifier = (node: ts.Node, kind: ts.SyntaxKind): boolean => (ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined)?.some((modifier) => modifier.kind === kind) ?? false;
+
+  for (const statement of sourceFile.statements) {
+    if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
+      const specifier = statement.moduleSpecifier.text;
+      const clause = statement.importClause;
+      if (!clause) { imports.push({ specifier, names: "ALL" }); continue; }
+      const names: string[] = [];
+      let all = false;
+      if (clause.name) names.push("default");
+      if (clause.namedBindings && ts.isNamespaceImport(clause.namedBindings)) all = true;
+      if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) for (const element of clause.namedBindings.elements) names.push((element.propertyName ?? element.name).text);
+      imports.push({ specifier, names: all ? "ALL" : names });
+    } else if (ts.isExportDeclaration(statement)) {
+      const specifier = statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier) ? statement.moduleSpecifier.text : null;
+      if (specifier === null) {
+        if (statement.exportClause && ts.isNamedExports(statement.exportClause)) for (const element of statement.exportClause.elements) localExports.add(element.name.text);
+      } else if (!statement.exportClause) starExports.push(specifier);
+      else if (ts.isNamespaceExport(statement.exportClause)) imports.push({ specifier, names: "ALL" });
+      else for (const element of statement.exportClause.elements) reExports.set(element.name.text, { specifier, original: (element.propertyName ?? element.name).text });
+    } else if (ts.isExportAssignment(statement)) {
+      localExports.add("default");
+    } else if (hasModifier(statement, ts.SyntaxKind.ExportKeyword)) {
+      if (ts.isVariableStatement(statement)) {
+        for (const declaration of statement.declarationList.declarations) {
+          if (ts.isIdentifier(declaration.name)) localExports.add(declaration.name.text);
+          else for (const element of declaration.name.elements) if (ts.isBindingElement(element) && ts.isIdentifier(element.name)) localExports.add(element.name.text);
+        }
+      } else if ((ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) && statement.name) localExports.add(statement.name.text);
+      else if (ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement) || ts.isEnumDeclaration(statement)) localExports.add(statement.name.text);
+      if (hasModifier(statement, ts.SyntaxKind.DefaultKeyword)) localExports.add("default");
+    }
+  }
+
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && node.arguments.length > 0 && ts.isStringLiteralLike(node.arguments[0]!)) {
+      const callee = node.expression;
+      if (callee.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(callee) && callee.text === "require")) imports.push({ specifier: (node.arguments[0] as ts.StringLiteralLike).text, names: "ALL" });
+    }
+    if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) imports.push({ specifier: node.argument.literal.text, names: "ALL" });
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return { imports, localExports, reExports, starExports };
+}
+
+function findViolations(files: Files, options: GraphOptions): Violation[] {
+  const cache = new Map<string, ModuleInfo>();
+  const info = (path: string): ModuleInfo => {
+    let known = cache.get(path);
+    if (!known) { known = parseModule(path, files.get(path) ?? ""); cache.set(path, known); }
+    return known;
+  };
+  const resolveSpecifier = (from: string, specifier: string): string | null => {
+    if (Object.hasOwn(options.aliases, specifier)) return options.aliases[specifier]!;
+    if (!specifier.startsWith(".")) return null;
+    const base = posix.normalize(posix.join(posix.dirname(from), specifier)).replace(/\.(?:js|jsx|mjs)$/, "");
+    for (const candidate of [`${base}.ts`, `${base}.tsx`, `${base}.mts`, posix.join(base, "index.ts"), posix.join(base, "index.tsx")]) if (files.has(candidate)) return candidate;
+    return null;
+  };
+
+  const reached = new Map<string, readonly string[]>();
+  const queue: string[] = [];
+  const reach = (file: string, chain: readonly string[]): void => {
+    if (reached.has(file)) return;
+    reached.set(file, [...chain, file]);
+    queue.push(file);
+  };
+  /** The module that defines `name` as seen from `file` (following re-exports), or null when it is not found. */
+  const definition = (file: string, name: string, visiting: Set<string>): string | null => {
+    const key = `${file}\u0000${name}`;
+    if (visiting.has(key) || !files.has(file)) return null;
+    visiting.add(key);
+    const module = info(file);
+    if (module.localExports.has(name)) return file;
+    const re = module.reExports.get(name);
+    if (re) {
+      const target = resolveSpecifier(file, re.specifier);
+      return target ? definition(target, re.original, visiting) : null;
+    }
+    for (const star of module.starExports) {
+      const target = resolveSpecifier(file, star);
+      const found = target ? definition(target, name, visiting) : null;
+      if (found) return found;
+    }
+    return null;
+  };
+  const request = (file: string, names: NamedUse, chain: readonly string[], seenAll: Set<string>): void => {
+    if (!files.has(file)) return;
+    if (names === "ALL") {
+      if (seenAll.has(file)) return;
+      seenAll.add(file);
+      reach(file, chain);
+      const module = info(file);
+      for (const { specifier } of module.reExports.values()) { const target = resolveSpecifier(file, specifier); if (target) request(target, "ALL", [...chain, file], seenAll); }
+      for (const specifier of module.starExports) { const target = resolveSpecifier(file, specifier); if (target) request(target, "ALL", [...chain, file], seenAll); }
+      return;
+    }
+    // An imported name that no module defines (for example a type erased elsewhere) conservatively counts as the module itself.
+    for (const name of names) reach(definition(file, name, new Set()) ?? file, chain);
+  };
+
+  const seenAll = new Set<string>();
+  for (const root of options.roots) reach(root, []);
+  for (let index = 0; index < queue.length; index += 1) {
+    const file = queue[index]!;
+    const chain = reached.get(file)!.slice(0, -1);
+    for (const { specifier, names } of info(file).imports) {
+      const target = resolveSpecifier(file, specifier);
+      if (target) request(target, names, [...chain, file], seenAll);
+    }
+  }
+  return [...reached.entries()].filter(([file]) => options.isForbidden(file)).map(([forbidden, chain]) => ({ forbidden, chain })).sort((a, b) => a.forbidden.localeCompare(b.forbidden));
+}
+
+/** Roots must not touch the closing-observation table through Prisma or SQL either (the repository is not the only door). */
+function findObservationTableAccess(files: Files, roots: readonly string[]): string[] {
+  return roots.filter((root) => /closingOddsObservation/i.test(files.get(root) ?? "")).sort();
 }
 
 const FORBIDDEN_BASENAMES = new Set(["clv.ts", "no-vig-clv.ts", "closing-odds.ts", "closing-odds-repository.ts", "no-vig-clv-reader.ts"]);
@@ -161,8 +289,8 @@ describe("CLV is evaluation-only (D-05): the real workspace", () => {
     expect(forbidden).toEqual([
       "packages/database/src/closing-odds-repository.ts",
       "packages/database/src/evaluation/no-vig-clv-reader.ts",
-      "packages/domain/src/evaluation/clv.ts",
       "packages/domain/src/evaluation/closing-odds.ts",
+      "packages/domain/src/evaluation/clv.ts",
       "packages/domain/src/evaluation/no-vig-clv.ts",
     ]);
     for (const required of ["packages/domain/src/value/decision.ts", "packages/domain/src/value/contract.ts", "apps/api/src/modules/value/value.service.ts", "apps/api/src/modules/value/value.controller.ts"]) expect(roots).toContain(required);

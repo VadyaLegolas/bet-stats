@@ -1,6 +1,35 @@
 import { describe, expect, it } from "vitest";
 
-import { formatCountdown, formatRequests, pluralRu } from "./quota-format";
+import { formatCountdown, formatRequests, isQuotaLow, pluralRu, quotaRemainingPercent } from "./quota-format";
+
+describe("quotaRemainingPercent", () => {
+  it("is the rounded remaining share", () => {
+    expect(quotaRemainingPercent(100, 100)).toBe(100);
+    expect(quotaRemainingPercent(0, 100)).toBe(0);
+    expect(quotaRemainingPercent(1, 3)).toBe(33);
+  });
+  it("clamps out-of-range values", () => {
+    expect(quotaRemainingPercent(150, 100)).toBe(100);
+    expect(quotaRemainingPercent(-5, 100)).toBe(0);
+  });
+  it("is zero without an allowance", () => {
+    expect(quotaRemainingPercent(10, 0)).toBe(0);
+  });
+});
+
+describe("isQuotaLow", () => {
+  it("turns low at exactly 20 percent remaining (inclusive)", () => {
+    expect(isQuotaLow(21, 100)).toBe(false);
+    expect(isQuotaLow(20, 100)).toBe(true);
+    expect(isQuotaLow(0, 100)).toBe(true);
+  });
+  it("is not low when full", () => {
+    expect(isQuotaLow(100, 100)).toBe(false);
+  });
+  it("is low when there is no allowance", () => {
+    expect(isQuotaLow(0, 0)).toBe(true);
+  });
+});
 
 describe("pluralRu", () => {
   it("picks the one form", () => {

@@ -60,9 +60,15 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <GatewayHomeRedirect homeOrigin={homeOrigin} />
         <main id="main-content" className="release-frame release-main" tabIndex={-1}>{children}</main>
         <footer className="release-footer">
-          <p className="release-frame">
-            Только футбольные данные и аналитическая информация. Исходы остаются неопределёнными. Если ставки законны там, где вы находитесь, помните о риске финансовых потерь.
-          </p>
+          <div className="release-frame release-footer-inner">
+            <div className="release-disclosure">
+              <span className="release-age-badge">18+</span>
+              <p>
+                Только футбольные данные и аналитическая информация. Исходы остаются неопределёнными. Если ставки законны там, где вы находитесь, помните о риске финансовых потерь.
+              </p>
+            </div>
+            <p className="release-copyright">© Матчдей</p>
+          </div>
         </footer>
       </body>
     </html>

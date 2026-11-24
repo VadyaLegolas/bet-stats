@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { formatCountdown, formatRequests } from "./quota-format";
+import { formatCountdown, formatRequests, isQuotaLow, quotaRemainingPercent } from "./quota-format";
 
 export interface SyncQuotaPayload {
   provider: string;
@@ -67,7 +67,8 @@ export function QuotaCounter() {
   }
 
   const { daily, minute } = quota;
-  const usedPercent = daily.allowance > 0 ? Math.min(100, Math.round((daily.used / daily.allowance) * 100)) : 0;
+  const remainingPercent = quotaRemainingPercent(daily.remaining, daily.allowance);
+  const low = isQuotaLow(daily.remaining, daily.allowance);
   return (
     <section className="quota-counter" aria-label="Лимиты запросов на обновление матчей">
       <p className="quota-counter-label">Лимиты обновления матчей</p>
@@ -78,13 +79,13 @@ export function QuotaCounter() {
       <div
         className="quota-meter"
         role="progressbar"
-        aria-label="Израсходовано запросов на обновление матчей"
+        aria-label="Осталось запросов на обновление матчей"
         aria-valuemin={0}
         aria-valuemax={daily.allowance}
-        aria-valuenow={daily.used}
-        aria-valuetext={`${daily.used} из ${daily.allowance}`}
+        aria-valuenow={daily.remaining}
+        aria-valuetext={`${daily.remaining} из ${daily.allowance}`}
       >
-        <span className="quota-meter-fill" style={{ width: `${usedPercent}%` }} />
+        <span className={low ? "quota-meter-fill quota-meter-fill--low" : "quota-meter-fill"} style={{ width: `${remainingPercent}%` }} />
       </div>
       <p className="quota-counter-reset">
         Сброс через {formatCountdown(Math.max(0, resetInMs))}

@@ -12,6 +12,21 @@ export function formatRequests(count: number): string {
   return `${count} ${pluralRu(count, ["запрос", "запроса", "запросов"])}`;
 }
 
+/** At or below this remaining share the quota meter turns from accent to warm. */
+export const QUOTA_LOW_REMAINING_RATIO = 0.2;
+
+/** Remaining share of the daily allowance as a whole percent, clamped to 0-100 (0 without an allowance). */
+export function quotaRemainingPercent(remaining: number, allowance: number): number {
+  if (allowance <= 0) return 0;
+  return Math.min(100, Math.max(0, Math.round((remaining / allowance) * 100)));
+}
+
+/** True when 20% or less of the allowance is left (boundary inclusive); an empty allowance counts as low. */
+export function isQuotaLow(remaining: number, allowance: number): boolean {
+  if (allowance <= 0) return true;
+  return remaining / allowance <= QUOTA_LOW_REMAINING_RATIO;
+}
+
 /** Live reset countdown: seconds below a minute, minutes below an hour, then hours+minutes. */
 export function formatCountdown(ms: number): string {
   const totalSeconds = Math.max(0, Math.ceil(ms / 1000));

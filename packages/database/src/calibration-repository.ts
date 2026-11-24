@@ -134,6 +134,17 @@ export interface RecordEvaluationInput extends EventScope {
   readonly evaluation: StoredCalibratorEvaluation;
 }
 
+/** The evaluation that completes the rollback series and the rollback it causes, written together (WR-03). */
+export interface RollbackWithEvaluationInput {
+  readonly evaluation: RecordEvaluationInput;
+  readonly rollback: RollbackCalibratorInput;
+}
+
+export interface RollbackWithEvaluationResult {
+  readonly evaluation: CalibratorEventWriteResult;
+  readonly rollback: CalibratorEventWriteResult;
+}
+
 export interface CalibrationRepository {
   persistCalibrator(fitted: FittedCalibrator): Promise<PersistCalibratorResult>;
   findCalibrator(calibratorId: string): Promise<FittedCalibrator | null>;
@@ -142,6 +153,12 @@ export interface CalibrationRepository {
   /** First promotion, or a SUPERSEDED plus PROMOTED pair in one transaction when a predecessor is active. */
   promoteCalibrator(input: PromoteCalibratorInput): Promise<PromoteCalibratorResult>;
   rollbackCalibrator(input: RollbackCalibratorInput): Promise<CalibratorEventWriteResult>;
+  /**
+   * EVALUATED then ROLLED_BACK of the same active calibrator in ONE transaction under one lock (WR-03). Written separately, a
+   * crash between them would move the evaluation-window boundary past the evaluated outcomes and the retry would see an empty
+   * window, so the rollback that was owed would be lost.
+   */
+  rollbackWithEvaluation(input: RollbackWithEvaluationInput): Promise<RollbackWithEvaluationResult>;
   /** State-neutral EVALUATED event for the active calibrator; one per calibrator and UTC day. */
   recordEvaluation(input: RecordEvaluationInput): Promise<CalibratorEventWriteResult>;
   /** Events whose subject is this calibrator, by ascending seq. */
@@ -505,6 +522,24 @@ export function createPrismaCalibrationRepository(client: PrismaClient): Calibra
         client.$transaction(async (tx) => {
           await lock(tx, input.identity, input.market);
           return appendEvent(tx, "ROLLED_BACK", input, { restored: input.restoredCalibratorId }, input.evaluation);
+        }),
+      );
+    },
+
+    async rollbackWithEvaluation(input) {
+      const { evaluation, rollback } = input;
+      if (
+        evaluation.calibratorId !== rollback.calibratorId || evaluation.market !== rollback.market ||
+        evaluation.identity.modelVersion !== rollback.identity.modelVersion || evaluation.identity.configHash !== rollback.identity.configHash
+      ) {
+        throw repositoryError("INVALID_CALIBRATION_EVENT", "evaluation and rollback must concern the same calibrator, identity and market");
+      }
+      return transition(() =>
+        client.$transaction(async (tx) => {
+          await lock(tx, rollback.identity, rollback.market);
+          const evaluated = await appendEvent(tx, "EVALUATED", evaluation, {}, evaluation.evaluation);
+          const rolledBack = await appendEvent(tx, "ROLLED_BACK", rollback, { restored: rollback.restoredCalibratorId }, rollback.evaluation);
+          return { evaluation: evaluated, rollback: rolledBack };
         }),
       );
     },

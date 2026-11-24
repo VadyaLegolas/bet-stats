@@ -252,9 +252,14 @@ async function runMarket(input: {
 
   const actions: ReceiptAction[] = [];
   let concurrentTransition = false;
-  for (const action of decision.actions) {
+  for (const step of planSteps(decision.actions)) {
     try {
-      actions.push(await executeAction({ repository, identity, market, asOf, calibrationConfig, action, evaluation, promotionDetails }));
+      if (step.length === 2) {
+        // The evaluation that completes the series and the rollback it causes are one transaction (WR-03).
+        actions.push(...(await executeRollbackWithEvaluation({ repository, identity, market, asOf, calibrationConfig, evaluationAction: step[0], rollbackAction: step[1], evaluation })));
+      } else {
+        actions.push(await executeAction({ repository, identity, market, asOf, calibrationConfig, action: step[0], evaluation, promotionDetails }));
+      }
     } catch (error) {
       // A concurrent run won this transition. That is not a job failure: re-read the state and stop for this market.
       if (!isTransitionRejection(error)) throw error;
@@ -279,6 +284,81 @@ async function runMarket(input: {
   };
 }
 
+type RecordEvaluationAction = Extract<LifecycleAction, { type: "RECORD_EVALUATION" }>;
+type RollBackAction = Extract<LifecycleAction, { type: "ROLL_BACK" }>;
+
+/** The actions of a decision as execution steps: RECORD_EVALUATION directly followed by ROLL_BACK is one two-action step. */
+function planSteps(actions: readonly LifecycleAction[]): Array<readonly [LifecycleAction] | readonly [RecordEvaluationAction, RollBackAction]> {
+  const steps: Array<readonly [LifecycleAction] | readonly [RecordEvaluationAction, RollBackAction]> = [];
+  for (let index = 0; index < actions.length; index += 1) {
+    const action = actions[index]!;
+    const next = actions[index + 1];
+    if (action.type === "RECORD_EVALUATION" && next?.type === "ROLL_BACK") {
+      steps.push([action, next]);
+      index += 1;
+    } else {
+      steps.push([action]);
+    }
+  }
+  return steps;
+}
+
+function recordEvaluationInput(scope: EventScopeInput, action: RecordEvaluationAction) {
+  return {
+    ...scope,
+    calibratorId: action.calibratorId,
+    reasonCode: EVALUATION_REASON_CODE,
+    evaluation: {
+      sampleSize: action.sampleSize,
+      eligible: action.eligible,
+      verdict: action.verdict,
+      brierRaw: action.brierRaw,
+      brierCalibrated: action.brierCalibrated,
+      delta: action.delta,
+    },
+  };
+}
+
+function rollbackInput(scope: EventScopeInput, action: RollBackAction, evaluation: CalibratorEvaluation | null) {
+  return {
+    ...scope,
+    calibratorId: action.calibratorId,
+    restoredCalibratorId: action.restoreCalibratorId,
+    reasonCode: action.reasonCode,
+    evaluation: {
+      consecutiveWorse: action.consecutiveWorse,
+      sampleSize: evaluation?.sampleSize ?? 0,
+      brierRaw: evaluation?.brierRaw ?? null,
+      brierCalibrated: evaluation?.brierCalibrated ?? null,
+      delta: evaluation?.delta ?? null,
+    },
+  };
+}
+
+type EventScopeInput = { identity: CalibratorIdentity; market: ScoreMarket; asOf: string; calibrationConfig: { version: string; hash: string } };
+
+async function executeRollbackWithEvaluation(input: {
+  repository: CalibrationRepository;
+  identity: CalibratorIdentity;
+  market: ScoreMarket;
+  asOf: string;
+  calibrationConfig: { version: string; hash: string };
+  evaluationAction: RecordEvaluationAction;
+  rollbackAction: RollBackAction;
+  evaluation: CalibratorEvaluation | null;
+}): Promise<[ReceiptAction, ReceiptAction]> {
+  const { repository, identity, market, asOf, calibrationConfig, evaluationAction, rollbackAction } = input;
+  const scope = { identity, market, asOf, calibrationConfig } as const;
+  const written = await repository.rollbackWithEvaluation({
+    evaluation: recordEvaluationInput(scope, evaluationAction),
+    rollback: rollbackInput(scope, rollbackAction, input.evaluation),
+  });
+  return [
+    { type: evaluationAction.type, reasonCode: null, calibratorId: evaluationAction.calibratorId, result: written.evaluation.created ? "WRITTEN" : "ALREADY_RECORDED" },
+    { type: rollbackAction.type, reasonCode: rollbackAction.reasonCode, calibratorId: rollbackAction.calibratorId, result: written.rollback.created ? "WRITTEN" : "ALREADY_RECORDED" },
+  ];
+}
+
 async function executeAction(input: {
   repository: CalibrationRepository;
   identity: CalibratorIdentity;
@@ -293,35 +373,11 @@ async function executeAction(input: {
   const scope = { identity, market, asOf, calibrationConfig } as const;
   switch (action.type) {
     case "RECORD_EVALUATION": {
-      const written = await repository.recordEvaluation({
-        ...scope,
-        calibratorId: action.calibratorId,
-        reasonCode: EVALUATION_REASON_CODE,
-        evaluation: {
-          sampleSize: action.sampleSize,
-          eligible: action.eligible,
-          verdict: action.verdict,
-          brierRaw: action.brierRaw,
-          brierCalibrated: action.brierCalibrated,
-          delta: action.delta,
-        },
-      });
+      const written = await repository.recordEvaluation(recordEvaluationInput(scope, action));
       return { type: action.type, reasonCode: null, calibratorId: action.calibratorId, result: written.created ? "WRITTEN" : "ALREADY_RECORDED" };
     }
     case "ROLL_BACK": {
-      const written = await repository.rollbackCalibrator({
-        ...scope,
-        calibratorId: action.calibratorId,
-        restoredCalibratorId: action.restoreCalibratorId,
-        reasonCode: action.reasonCode,
-        evaluation: {
-          consecutiveWorse: action.consecutiveWorse,
-          sampleSize: input.evaluation?.sampleSize ?? 0,
-          brierRaw: input.evaluation?.brierRaw ?? null,
-          brierCalibrated: input.evaluation?.brierCalibrated ?? null,
-          delta: input.evaluation?.delta ?? null,
-        },
-      });
+      const written = await repository.rollbackCalibrator(rollbackInput(scope, action, input.evaluation));
       return { type: action.type, reasonCode: action.reasonCode, calibratorId: action.calibratorId, result: written.created ? "WRITTEN" : "ALREADY_RECORDED" };
     }
     case "PROMOTE": {

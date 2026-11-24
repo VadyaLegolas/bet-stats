@@ -163,3 +163,54 @@ describe("WR-02: one failing market does not stop the others", () => {
     for (const other of ["OVER_UNDER_2_5", "BTTS"] as const) expect(error.receipt.markets[other].actions.map((action) => action.type)).toEqual(["PROMOTE"]);
   });
 });
+
+describe("WR-03: the evaluation that completes the series and the rollback are one write", () => {
+  /** Counts the repository calls that write events. */
+  function counting(repository: CalibrationRepository): { repository: CalibrationRepository; calls: string[] } {
+    const calls: string[] = [];
+    const wrap = <K extends "recordEvaluation" | "rollbackCalibrator" | "rollbackWithEvaluation">(name: K): CalibrationRepository[K] =>
+      ((input: never) => { calls.push(name); return (repository[name] as (input: never) => unknown)(input); }) as CalibrationRepository[K];
+    return { calls, repository: { ...repository, recordEvaluation: wrap("recordEvaluation"), rollbackCalibrator: wrap("rollbackCalibrator"), rollbackWithEvaluation: wrap("rollbackWithEvaluation") } };
+  }
+
+  it("uses a single repository call for the third WORSE evaluation and its rollback", async () => {
+    const { repository, samples } = worldAtThirdBadWindow();
+    const spy = counting(repository);
+    const receipt = await run(spy.repository, samples);
+    expect(spy.calls).toEqual(["rollbackWithEvaluation"]);
+    // The receipt still reports two actions, in the order of the decision.
+    expect(receipt.markets.ONE_X_TWO.actions.map((action) => [action.type, action.result])).toEqual([["RECORD_EVALUATION", "WRITTEN"], ["ROLL_BACK", "WRITTEN"]]);
+    expect(repository.eventTypes("ONE_X_TWO")).toEqual(["PROMOTED", "EVALUATED", "EVALUATED", "EVALUATED", "ROLLED_BACK"]);
+  });
+
+  it("an evaluation without a rollback keeps its own single write", async () => {
+    const repository = createMemoryCalibrationRepository();
+    const calibrator = makeFitted({ market: "ONE_X_TWO", identity: DC, seed: 5 });
+    repository.seedPromotion(calibrator, calibrator.fittedAsOf);
+    const spy = counting(repository);
+    await run(spy.repository, { ONE_X_TWO: [...training("ONE_X_TWO"), ...calibratedWindow("ONE_X_TWO")] });
+    expect(spy.calls).toEqual(["recordEvaluation"]);
+  });
+
+  it("a crash while writing the rollback loses neither the evaluation window nor the rollback: the retry still rolls back", async () => {
+    const { repository, active, samples } = worldAtThirdBadWindow();
+    let broken = true;
+    const crash = async (): Promise<never> => { throw repositoryCode("PROCESS_KILLED"); };
+    const flaky: CalibrationRepository = {
+      ...repository,
+      rollbackCalibrator: (input) => (broken ? crash() : repository.rollbackCalibrator(input)),
+      rollbackWithEvaluation: (input) => (broken ? crash() : repository.rollbackWithEvaluation(input)),
+    };
+
+    const { error } = await failedRun(flaky, samples);
+    expect(error.receipt.markets.ONE_X_TWO.failures).toEqual([{ stage: "MARKET", code: "PROCESS_KILLED" }]);
+    // The evaluation that would have moved the window boundary was not committed on its own.
+    expect(repository.eventTypes("ONE_X_TWO")).toEqual(["PROMOTED", "EVALUATED", "EVALUATED"]);
+
+    broken = false;
+    const receipt = await run(flaky, samples);
+    expect(receipt.markets.ONE_X_TWO.evaluation).toMatchObject({ windowSize: 60, eligible: true, verdict: "WORSE" });
+    expect(repository.eventTypes("ONE_X_TWO")).toEqual(["PROMOTED", "EVALUATED", "EVALUATED", "EVALUATED", "ROLLED_BACK"]);
+    expect(await repository.hasBeenRolledBack(active)).toBe(true);
+  });
+});

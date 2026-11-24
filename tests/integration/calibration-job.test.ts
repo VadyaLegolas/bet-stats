@@ -202,6 +202,36 @@ interface World {
 }
 
 const worlds: World[] = [];
+
+/**
+ * A client whose ROLLED_BACK insert fails inside the transaction: the process "dies" at the moment the rollback is written
+ * (WR-03). Everything else is the real client over the real database.
+ */
+function crashingOnRollback(real: PrismaClient): PrismaClient {
+  const crash = (): never => { throw Object.assign(new Error("simulated process kill"), { code: "PROCESS_KILLED" }); };
+  return new Proxy(real, {
+    get(target, property) {
+      if (property !== "$transaction") return Reflect.get(target, property) as unknown;
+      return (callback: unknown, options?: unknown) =>
+        (target.$transaction as (callback: unknown, options?: unknown) => Promise<unknown>).call(
+          target,
+          (tx: Record<string, unknown>) =>
+            (callback as (tx: unknown) => Promise<unknown>)(
+              new Proxy(tx, {
+                get(transaction, name) {
+                  if (name !== "calibratorEvent") return Reflect.get(transaction, name) as unknown;
+                  const events = transaction.calibratorEvent as { create: (args: { data: { type: string } }) => Promise<unknown> };
+                  return new Proxy(events, {
+                    get: (model, method) => (method === "create" ? (args: { data: { type: string } }) => (args.data.type === "ROLLED_BACK" ? crash() : model.create(args)) : Reflect.get(model, method) as unknown),
+                  });
+                },
+              }),
+            ),
+          options,
+        );
+    },
+  });
+}
 const numbers: string[] = [];
 
 async function createWorld(name: string): Promise<World> {
@@ -319,6 +349,14 @@ describe("calibration job: hysteresis, evaluation windows and rollback (regressi
 
   it("the third eligible WORSE window rolls back by an appended event; two concurrent runs of that day write it once and do not throw", async () => {
     asOfs.push(await appendBlock(world, { count: BLOCK_SIZE, seed: BAD_SEEDS[2], gamma: 1 }));
+
+    // WR-03: the process dies while the rollback is written. The evaluation that completes the series must not survive on its own,
+    // otherwise the retry would see an empty window and the rollback that is owed would be lost.
+    const crashed = await runCalibrationJob({ database: crashingOnRollback(world.client), ...DC, asOf: asOfs[2]!, log: silent }).then(() => null, (error: unknown) => error as { code?: string });
+    expect(crashed?.code).toBe("CALIBRATION_MARKET_FAILED");
+    expect(types(journal(world, "ONE_X_TWO"))).toEqual(["PROMOTED", "EVALUATED", "EVALUATED"]);
+    expect(await world.repository.findActiveCalibrator(DC, "ONE_X_TWO")).not.toBeNull();
+
     const results = await Promise.allSettled([worldRun(world, asOfs[2]!), worldRun(world, asOfs[2]!)]);
     expect(results.map((result) => result.status)).toEqual(["fulfilled", "fulfilled"]);
     note("bad 3", (results[0] as PromiseFulfilledResult<CalibrationJobReceipt>).value);
@@ -328,6 +366,9 @@ describe("calibration job: hysteresis, evaluation windows and rollback (regressi
     expect(types(rows)).toEqual(["PROMOTED", "EVALUATED", "EVALUATED", "EVALUATED", "ROLLED_BACK"]);
     expect(rows.every((row, index) => index === 0 || row.seq > rows[index - 1]!.seq)).toBe(true);
     expect(rows.at(-1)).toMatchObject({ calibratorId: calibratorC, restored: null, reasonCode: "HOLDOUT_REGRESSION" });
+    // WR-03: the third evaluation and the rollback were written by one transaction (equal xmin); the earlier evaluations by their own.
+    expect(rows.at(-2)!.transaction).toBe(rows.at(-1)!.transaction);
+    expect(rows.at(-3)!.transaction).not.toBe(rows.at(-2)!.transaction);
     expect(await world.repository.findActiveCalibrator(DC, "ONE_X_TWO")).toBeNull();
     expect(await world.repository.hasBeenRolledBack(calibratorC)).toBe(true);
   }, 300_000);

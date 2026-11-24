@@ -31,6 +31,8 @@ export type {
   PromoteCalibratorResult,
   RecordEvaluationInput,
   RollbackCalibratorInput,
+  RollbackWithEvaluationInput,
+  RollbackWithEvaluationResult,
   StoredCalibratorEvaluation,
 } from "./calibration-repository.js";
 export { readCalibrationFitData, readCalibrationState } from "./calibration-fit-data.js";

@@ -150,6 +150,21 @@ export function createMemoryCalibrationRepository(): MemoryCalibrationRepository
       return append("ROLLED_BACK", input, { restored: input.restoredCalibratorId }, input.evaluation);
     },
 
+    async rollbackWithEvaluation(input) {
+      // One transaction: either both events are appended or neither is.
+      const keptEvents = events.length;
+      const keptSeq = seq;
+      try {
+        const evaluation = append("EVALUATED", input.evaluation, {}, input.evaluation.evaluation);
+        const rollback = append("ROLLED_BACK", input.rollback, { restored: input.rollback.restoredCalibratorId }, input.rollback.evaluation);
+        return { evaluation, rollback };
+      } catch (error) {
+        events.length = keptEvents;
+        seq = keptSeq;
+        throw error;
+      }
+    },
+
     async recordEvaluation(input) {
       return append("EVALUATED", input, {}, input.evaluation);
     },

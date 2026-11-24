@@ -128,3 +128,38 @@ describe("FixtureForecastLine block", () => {
     expect(pending).toBe('<div class="fixture-forecast fixture-forecast--pending fixture-row-probs">Прогноз пока не выпущен</div>');
   });
 });
+
+describe("fixtures list stylesheet contract", () => {
+  const raw = readFileSync(resolve(import.meta.dirname, "../../apps/web/app/globals.css"), "utf8");
+  const css = raw.replace(/\/\*[\s\S]*?\*\//g, "");
+  const liveMarkup = render({ status: "IN_PLAY" });
+
+  it("has a selector for every fixture- class the row emits", () => {
+    const classes = new Set<string>();
+    for (const match of liveMarkup.matchAll(/class="([^"]*)"/g)) {
+      for (const token of match[1]!.split(/\s+/)) if (token.startsWith("fixture-")) classes.add(token);
+    }
+    expect(classes.size).toBeGreaterThan(5);
+    for (const token of classes) expect(css, `missing .${token}`).toMatch(new RegExp(`\\.${token}(?![\\w-])`));
+  });
+
+  it("keeps the title link at least 44px tall", () => {
+    const rule = css.match(/\.fixture-row-teams a\s*\{[^}]*\}/);
+    expect(rule).not.toBeNull();
+    expect(rule![0]).toMatch(/min-height:\s*44px/);
+  });
+
+  it("uses only design tokens for colour in the list rules", () => {
+    const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selector]) => /fixture-list|fixture-row|fixture-badges/.test(selector!));
+    expect(rules.length).toBeGreaterThan(5);
+    for (const [, selector, body] of rules) {
+      expect(body, selector!.trim()).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+      expect(body, selector!.trim()).not.toMatch(/rgba?\(/);
+    }
+  });
+
+  it("drops the legacy card selector and lists the new container for forced colors", () => {
+    expect(css).not.toMatch(/\.fixture-card/);
+    expect(css).toMatch(/@media \(forced-colors: active\)[\s\S]*\.fixture-list/);
+  });
+});

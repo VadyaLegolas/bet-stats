@@ -26,9 +26,12 @@ export interface CandidateSpec {
   readonly odds: Readonly<Record<string, string>>;
   readonly market?: OddsMarket;
   readonly selection?: string;
+  /** An open (unsettled) candidate: no result and no settlement receipt, fixture still SCHEDULED. */
+  readonly open?: boolean;
 }
 
-export interface SeededCandidate extends Required<CandidateSpec> {
+export interface SeededCandidate extends Required<Omit<CandidateSpec, "open">> {
+  readonly open: boolean;
   readonly fixtureId: string;
   readonly oddsSnapshotId: string;
   readonly oddsSelectionId: string;
@@ -59,9 +62,11 @@ export async function seedCandidate(db: PrismaClient, spec: CandidateSpec): Prom
   const cutoff = new Date(Date.parse(spec.kickoffUtc) - 60 * 60 * 1_000).toISOString();
   const run = (sql: string, ...params: unknown[]) => db.$executeRawUnsafe(sql, ...params);
 
-  await run(`INSERT INTO "Fixture" (id,"leagueId","seasonId","homeTeamId","awayTeamId","kickoffUtc",status,"updatedAt") VALUES ($1,'${CLV_LEAGUE_ID}','clv-read-season','clv-read-home','clv-read-away',$2::timestamptz,'FINISHED',now())`, fixtureId, spec.kickoffUtc);
-  await run(`INSERT INTO "SourceObservation" (id,provider,"endpointFamily","externalIdentity","observedAt","payloadHash","rawPayload","payloadBytes") VALUES ($1,'test','RESULTS',$2,$3::timestamptz,$4,'{}',2)`, `result-obs-${spec.key}`, fixtureId, spec.settledAt, `result-hash-${spec.key}`);
-  await run(`INSERT INTO "ResultVersion" (id,"fixtureId","observationId","effectiveAt","observedAt","homeGoals","awayGoals",status,revision) VALUES ($1,$2,$3,$4::timestamptz,$5::timestamptz,2,1,'FINISHED',1)`, resultVersionId, fixtureId, `result-obs-${spec.key}`, spec.kickoffUtc, spec.settledAt);
+  await run(`INSERT INTO "Fixture" (id,"leagueId","seasonId","homeTeamId","awayTeamId","kickoffUtc",status,"updatedAt") VALUES ($1,'${CLV_LEAGUE_ID}','clv-read-season','clv-read-home','clv-read-away',$2::timestamptz,$3,now())`, fixtureId, spec.kickoffUtc, spec.open ? "SCHEDULED" : "FINISHED");
+  if (!spec.open) {
+    await run(`INSERT INTO "SourceObservation" (id,provider,"endpointFamily","externalIdentity","observedAt","payloadHash","rawPayload","payloadBytes") VALUES ($1,'test','RESULTS',$2,$3::timestamptz,$4,'{}',2)`, `result-obs-${spec.key}`, fixtureId, spec.settledAt, `result-hash-${spec.key}`);
+    await run(`INSERT INTO "ResultVersion" (id,"fixtureId","observationId","effectiveAt","observedAt","homeGoals","awayGoals",status,revision) VALUES ($1,$2,$3,$4::timestamptz,$5::timestamptz,2,1,'FINISHED',1)`, resultVersionId, fixtureId, `result-obs-${spec.key}`, spec.kickoffUtc, spec.settledAt);
+  }
   await run(`INSERT INTO "ForecastSnapshot" (id,"fixtureId",kind,state,revision,cutoff,"modelVersion","modelHash","configVersion","configHash","inputHash","evidenceFingerprint","sourceRefs",probabilities,confidence,assumptions,receipt,"issuedAt") VALUES ($1,$2,'PRE_MATCH','ISSUED',1,$3::timestamptz,'poisson-v1','model-hash','forecast-config-v1','config-hash',$4,'evidence-hash','[]','{}','{}','[]','{}',$3::timestamptz + interval '1 second')`, forecastSnapshotId, fixtureId, cutoff, `input-${spec.key}`);
   await run(`INSERT INTO "ForecastMarket" (id,"forecastSnapshotId",market,probabilities) VALUES ($1,$2,$3,$4::jsonb)`, `forecast-market-${spec.key}`, forecastSnapshotId, market, FORECAST_MARKETS[market]);
   await run(`INSERT INTO "ManualOddsSnapshot" (id,"fixtureId",market,"inputHash",source,receipt,"submittedAt") VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::timestamptz)`, oddsSnapshotId, fixtureId, market, `odds-hash-${spec.key}`, spec.source, JSON.stringify({ selections: Object.entries(spec.odds).map(([name, decimalOdds]) => ({ selection: name, decimalOdds, noVigProbability: "0.4" })) }), spec.submittedAt);
@@ -71,10 +76,12 @@ export async function seedCandidate(db: PrismaClient, spec: CandidateSpec): Prom
   // Derived fields must agree with the immutable source snapshots (database guard): model 0.6, no-vig 0.4.
   const valueReceipt = JSON.stringify({ market, selection, decimalOdds: spec.odds[selection], modelProbability: "0.6", noVigProbability: "0.4" });
   await run(`INSERT INTO "ValueReceipt" (id,"fixtureId",market,"forecastSnapshotId","oddsSnapshotId",outcome,selection,"modelProbability","noVigProbability","fairOdds",edge,"expectedValue",receipt) VALUES ($1,$2,$3,$4,$5,'VALUE_CANDIDATE',$6,'0.6','0.4',(1/0.6::numeric)::text,'0.2',(0.6*$7::numeric-1)::text,$8::jsonb)`, valueReceiptId, fixtureId, market, forecastSnapshotId, oddsSnapshotId, selection, spec.odds[selection], valueReceipt);
-  const receipt = { fixtureId, resultVersionId, forecastSnapshotId, policyVersion: "settlement-policy-v1", policyHash: "clv-read-policy", lifecycle: "FINISHED", scoreability: "SCOREABLE", financialEligibility: "ELIGIBLE", classOutcome: "SCORED", reason: "RESULT_FINISHED" };
-  await db.$queryRawUnsafe(`SELECT * FROM persist_settlement_receipt($1,$2,$3,$4,'settlement-policy-v1','clv-read-policy','FINISHED','SCOREABLE','ELIGIBLE','SCORED','RESULT_FINISHED',$5::jsonb,$6::timestamptz,NULL,NULL)`, settlementReceiptId, fixtureId, resultVersionId, forecastSnapshotId, JSON.stringify(receipt), spec.settledAt);
+  if (!spec.open) {
+    const receipt = { fixtureId, resultVersionId, forecastSnapshotId, policyVersion: "settlement-policy-v1", policyHash: "clv-read-policy", lifecycle: "FINISHED", scoreability: "SCOREABLE", financialEligibility: "ELIGIBLE", classOutcome: "SCORED", reason: "RESULT_FINISHED" };
+    await db.$queryRawUnsafe(`SELECT * FROM persist_settlement_receipt($1,$2,$3,$4,'settlement-policy-v1','clv-read-policy','FINISHED','SCOREABLE','ELIGIBLE','SCORED','RESULT_FINISHED',$5::jsonb,$6::timestamptz,NULL,NULL)`, settlementReceiptId, fixtureId, resultVersionId, forecastSnapshotId, JSON.stringify(receipt), spec.settledAt);
+  }
 
-  return { market, selection, ...spec, fixtureId, oddsSnapshotId, oddsSelectionId, forecastSnapshotId, valueReceiptId, settlementReceiptId };
+  return { market, selection, open: spec.open ?? false, ...spec, fixtureId, oddsSnapshotId, oddsSelectionId, forecastSnapshotId, valueReceiptId, settlementReceiptId };
 }
 
 /** Frozen flat-unit settlement of a seeded candidate; the optional observation id is the frozen odds-ratio-clv-v1 closing. */

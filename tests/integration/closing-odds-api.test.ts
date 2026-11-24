@@ -1,9 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
+
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { ClosingOddsController } from "../../apps/api/src/modules/closing-odds/closing-odds.controller.js";
 import { ClosingOddsService } from "../../apps/api/src/modules/closing-odds/closing-odds.service.js";
 import { OperatorGuard } from "../../apps/api/src/modules/reconciliation/operator.guard.js";
-import type { ClosingOddsRepository, RecordClosingOddsBookResult, StoredClosingObservation } from "@bet-stats/database";
+import { createPrismaClient, createPrismaClosingOddsRepository, type ClosingOddsRepository, type PrismaClient, type RecordClosingOddsBookResult, type StoredClosingObservation } from "@bet-stats/database";
+import { CLOSING_ODDS_REJECTION_COPY, parseRecordArguments, runClosingOddsCommand } from "../../scripts/closing-odds.mjs";
 
 // @nestjs/common is not resolvable from tests/: HTTP exceptions are inspected by duck typing, POST is RequestMethod.POST (1).
 const METHOD_POST = 1;
@@ -152,4 +156,149 @@ describe("closing odds route: strict body", () => {
     expect(Object.keys(call).sort()).toEqual(["fixtureId", "market", "observedAt", "selections", "sourceConvention"]);
     expect(call).not.toHaveProperty("observationKind");
   });
+});
+
+const validArguments = ["record", "--fixture", "fixture-1", "--market", "ONE_X_TWO", "--source", "BOOKMAKER_BACK", "--observed-at", observedAt, "--odds", "HOME=2.10,DRAW=3.40,AWAY=3.60"];
+const withOdds = (odds: string) => validArguments.map((value) => (value.startsWith("HOME=") ? odds : value));
+
+describe("closing odds CLI: argument parsing", () => {
+  it("parses a complete record command into the same input the route accepts", () => {
+    expect(parseRecordArguments(validArguments)).toEqual({ ok: true, input: body });
+  });
+
+  it("keeps duplicate selections so the domain validator can reject them", () => {
+    expect(parseRecordArguments(withOdds("HOME=2.10,HOME=2.20,AWAY=3.60"))).toMatchObject({ ok: true, input: { selections: [{ selection: "HOME" }, { selection: "HOME" }, { selection: "AWAY" }] } });
+  });
+
+  it.each([
+    ["no command", [], "UNKNOWN_COMMAND"],
+    ["a different command", ["delete", ...validArguments.slice(1)], "UNKNOWN_COMMAND"],
+    ["an unknown option", [...validArguments, "--kind", "MARKET_CLOSE"], "INVALID_ARGUMENTS"],
+    ["a missing --fixture", validArguments.filter((_, index) => index !== 1 && index !== 2), "MISSING_ARGUMENT"],
+    ["a blank --source", validArguments.map((value) => (value === "BOOKMAKER_BACK" ? " " : value)), "MISSING_ARGUMENT"],
+    ["an option without a value", ["record", "--fixture"], "INVALID_ARGUMENTS"],
+    ["an odds pair without a value", withOdds("HOME=,DRAW=3.40,AWAY=3.60"), "INVALID_ODDS_ARGUMENT"],
+    ["an odds pair without a name", withOdds("=2.10,DRAW=3.40,AWAY=3.60"), "INVALID_ODDS_ARGUMENT"],
+    ["an odds pair with two equals signs", withOdds("HOME=2.10=3,DRAW=3.40,AWAY=3.60"), "INVALID_ODDS_ARGUMENT"],
+    ["an empty odds list", withOdds(","), "INVALID_ODDS_ARGUMENT"],
+  ])("rejects %s with a Russian message", (_name, argv, code) => {
+    const parsed = parseRecordArguments(argv);
+    expect(parsed.ok).toBe(false);
+    expect(parsed).toMatchObject({ code });
+    expect((parsed as { message: string }).message).toMatch(/[А-Яа-я]/);
+  });
+
+  it("has a Russian explanation for every repository rejection code", () => {
+    const codes = [
+      "INCOMPLETE_MARKET_SET", "DUPLICATE_SELECTION", "UNSUPPORTED_MARKET", "INVALID_OBSERVED_AT", "OBSERVED_AT_NOT_PRE_KICKOFF", "OBSERVED_AT_IN_FUTURE",
+      "RECORDED_AFTER_KICKOFF", "FIXTURE_ALREADY_SETTLED", "INVALID_ODDS", "INVALID_SOURCE_CONVENTION", "FIXTURE_NOT_FOUND", "UNKNOWN_SOURCE_CONVENTION", "CLOSING_OBSERVATION_CONFLICT",
+    ];
+    for (const code of codes) expect((CLOSING_ODDS_REJECTION_COPY as Record<string, string>)[code]).toMatch(/[А-Яа-я]/);
+  });
+
+  it("answers usage errors and --help without touching a repository", async () => {
+    const lines: string[] = [];
+    const out = (line: string) => { lines.push(line); };
+    expect(await runClosingOddsCommand([], { repository: null, out })).toBe(2);
+    expect(await runClosingOddsCommand(["--help"], { repository: null, out })).toBe(0);
+    expect(await runClosingOddsCommand(["record", "--fixture"], { repository: null, out })).toBe(2);
+    expect(lines.join("\n")).toContain("Использование");
+    expect(lines.join("\n")).toContain("Ошибка");
+  });
+});
+
+const root = resolve(import.meta.dirname, "../..");
+const databaseRoot = resolve(root, "packages/database");
+const prismaCli = resolve(databaseRoot, "node_modules/prisma/build/index.js");
+const typescriptCli = resolve(root, "node_modules/typescript/bin/tsc");
+const cliScript = resolve(root, "scripts/closing-odds.mjs");
+const container = `bet-stats-closing-odds-cli-${process.pid}`;
+
+function docker(...args: string[]): string {
+  return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+}
+
+function waitForPostgres(): void {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    try { docker("exec", container, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "bet_stats"); return; }
+    catch { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500); }
+  }
+  throw new Error("PostgreSQL did not become ready");
+}
+
+describe("closing odds CLI against a throwaway PostgreSQL", () => {
+  let prisma: PrismaClient;
+  let databaseUrl: string;
+  const kickoffUtc = new Date(Date.now() + 7 * 24 * 3_600_000).toISOString();
+  const observedHourAgo = new Date(Date.now() - 3_600_000).toISOString();
+  const observedTwoHoursAgo = new Date(Date.now() - 2 * 3_600_000).toISOString();
+  const cliArguments = (at: string, odds = "HOME=2.10,DRAW=3.40,AWAY=3.60", fixture = "cli-fixture") => ["record", "--fixture", fixture, "--market", "ONE_X_TWO", "--source", "CLI_SOURCE", "--observed-at", at, "--odds", odds];
+
+  beforeAll(async () => {
+    docker("run", "--detach", "--name", container, "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=bet_stats", "--publish", "127.0.0.1::5432", "postgres:18-alpine");
+    waitForPostgres();
+    const port = docker("port", container, "5432/tcp").split(":").at(-1)!;
+    databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${port}/bet_stats`;
+    execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], { cwd: databaseRoot, env: { ...process.env, DATABASE_URL: databaseUrl }, stdio: "pipe" });
+    // The spawned script loads the compiled packages: refresh them so the test never runs against stale output.
+    for (const project of ["packages/domain", "packages/database"]) execFileSync(process.execPath, [typescriptCli, "-p", "tsconfig.json"], { cwd: resolve(root, project), stdio: "pipe" });
+    prisma = createPrismaClient(databaseUrl);
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO "League" (id,name,"countryCode","updatedAt") VALUES ('cli-league','League','GB',now());
+      INSERT INTO "Season" (id,"leagueId",label,"startsOn","endsOn","updatedAt") VALUES ('cli-season','cli-league','2026','2026-01-01','2027-12-31',now());
+      INSERT INTO "Team" (id,name,"normalizedName","countryCode","updatedAt") VALUES ('cli-home','Home','home','GB',now()),('cli-away','Away','away','GB',now());
+      INSERT INTO "Fixture" (id,"leagueId","seasonId","homeTeamId","awayTeamId","kickoffUtc",status,"updatedAt") VALUES ('cli-fixture','cli-league','cli-season','cli-home','cli-away','${kickoffUtc}','SCHEDULED',now());
+      INSERT INTO "ManualOddsSnapshot" (id,"fixtureId",market,"inputHash",source,receipt,"submittedAt") VALUES ('cli-odds','cli-fixture','ONE_X_TWO','cli-odds-hash','CLI_SOURCE','{}',now());
+    `);
+  }, 240_000);
+
+  afterAll(async () => {
+    await prisma?.$disconnect();
+    try { docker("rm", "--force", "--volumes", container); } catch { /* owned cleanup */ }
+  });
+
+  const rowCount = async (): Promise<number> => Number((await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(`SELECT count(*) AS count FROM "ClosingOddsObservation" WHERE "fixtureId"='cli-fixture'`))[0]!.count);
+
+  it("records a set through the shared repository, answers 'already recorded' on replay and refuses a changed price", async () => {
+    const repository = createPrismaClosingOddsRepository({ database: prisma });
+    const lines: string[] = [];
+    const out = (line: string) => { lines.push(line); };
+    expect(await runClosingOddsCommand(cliArguments(observedHourAgo), { repository, out })).toBe(0);
+    expect(lines[0]).toMatch(/^Записано: 3 наблюдений/);
+    expect(await rowCount()).toBe(3);
+
+    lines.length = 0;
+    expect(await runClosingOddsCommand(cliArguments(observedHourAgo), { repository, out })).toBe(0);
+    expect(lines[0]).toMatch(/^Уже записано/);
+    expect(await rowCount()).toBe(3);
+
+    lines.length = 0;
+    expect(await runClosingOddsCommand(cliArguments(observedHourAgo, "HOME=2.10,DRAW=3.40,AWAY=3.70"), { repository, out })).toBe(1);
+    expect(lines[0]).toContain("CLOSING_OBSERVATION_CONFLICT");
+    expect(await rowCount()).toBe(3);
+
+    lines.length = 0;
+    expect(await runClosingOddsCommand(cliArguments(observedHourAgo, "HOME=2.10,DRAW=3.40,AWAY=3.60", "cli-missing"), { repository, out })).toBe(1);
+    expect(lines[0]).toContain("FIXTURE_NOT_FOUND");
+  });
+
+  it("runs end to end as a spawned process: records, then reports 'already recorded'", () => {
+    const run = (args: string[], env: NodeJS.ProcessEnv = { ...process.env, DATABASE_URL: databaseUrl }) => {
+      try { return { code: 0, stdout: execFileSync(process.execPath, [cliScript, ...args], { env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) }; }
+      catch (error) { const failed = error as { status: number; stdout: string; stderr: string }; return { code: failed.status, stdout: `${failed.stdout}${failed.stderr}` }; }
+    };
+    const first = run(cliArguments(observedTwoHoursAgo));
+    expect(first.code).toBe(0);
+    expect(first.stdout).toContain("Записано: 3 наблюдений");
+    expect(first.stdout).not.toContain("Уже записано");
+    const replay = run(cliArguments(observedTwoHoursAgo));
+    expect(replay.code).toBe(0);
+    expect(replay.stdout).toContain("Уже записано");
+    const missingDatabase = run(cliArguments(observedTwoHoursAgo), { ...process.env, DATABASE_URL: "" });
+    expect(missingDatabase.code).toBe(1);
+    expect(missingDatabase.stdout).toContain("DATABASE_URL");
+    const help = run(["--help"], { ...process.env, DATABASE_URL: "" });
+    expect(help.code).toBe(0);
+    expect(help.stdout).toContain("Использование");
+  }, 60_000);
 });

@@ -1,0 +1,27 @@
+TAP version 13
+1..17
+not ok 1 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > records a complete 1X2 set in one transaction with deterministic ids and fixed kind/format # time=10.45ms
+    ---
+    error:
+        name: "AssertionError"
+        message: "expected false to be true // Object.is equality"
+    at: "D:/Documents/Atom/bet-stats/tests/integration/closing-odds-repository.test.ts:98:28"
+    actual: "false"
+    expected: "true"
+    ...
+ok 2 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > returns the existing rows on an identical replay and adds nothing # SKIP
+ok 3 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > rejects the same key with a different price as CLOSING_OBSERVATION_CONFLICT and writes nothing # SKIP
+ok 4 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > appends a correction as a new observation with a later observedAt; the latest pre-kickoff row wins # SKIP
+ok 5 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > records complete totals and BTTS sets # SKIP
+ok 6 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > rejects an incomplete or duplicated set before writing anything # SKIP
+ok 7 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > rejects with RECORDED_AFTER_KICKOFF on a server-side decision and writes nothing # SKIP
+ok 8 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > rejects with OBSERVED_AT_NOT_PRE_KICKOFF on a server-side decision and writes nothing # SKIP
+ok 9 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > rejects with OBSERVED_AT_IN_FUTURE on a server-side decision and writes nothing # SKIP
+ok 10 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > rejects with FIXTURE_ALREADY_SETTLED on a server-side decision and writes nothing # SKIP
+ok 11 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > rejects with FIXTURE_NOT_FOUND on a server-side decision and writes nothing # SKIP
+ok 12 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > rejects with UNKNOWN_SOURCE_CONVENTION on a server-side decision and writes nothing # SKIP
+ok 13 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > rejects with INVALID_OBSERVED_AT on a server-side decision and writes nothing # SKIP
+ok 14 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > serializes concurrent identical requests: one creates, the other replays, three rows exist # SKIP
+ok 15 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > rolls the whole set back when an insert fails midway # SKIP
+ok 16 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > keeps stored observations immutable: UPDATE and DELETE are rejected by the trigger # SKIP
+ok 17 - tests/integration/closing-odds-repository.test.ts > closing odds repository on real PostgreSQL > never touches manual odds, value receipts, value settlements, forecasts or settlement tables # SKIP

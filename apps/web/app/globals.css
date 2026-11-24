@@ -199,37 +199,48 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px var(--color-accent-subtle);
   outline: none;
 }
-/* A <summary> toggles content the way a link navigates, so it carries the link
-   treatment (accent label + underline) instead of reading as plain text. The
-   native marker is suppressed by `display: flex`, so the open state is drawn
-   explicitly with a chevron. */
+/* Раскрывающийся блок: подпись цветом текста, справа шеврон, который
+   поворачивается при открытии. Нативный маркер скрыт через display: flex. */
 summary {
   min-height: 44px;
   display: flex;
   align-items: center;
-  gap: 0.4em;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 8px;
   cursor: pointer;
-  font-weight: 500;
-  color: var(--color-accent-text);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-decoration: none;
 }
-summary:hover { color: var(--color-accent-hover); }
-summary::before { content: "▸"; flex: none; }
-details[open] > summary::before { content: "▾"; }
+summary:hover { color: var(--color-accent-text); }
+summary::after {
+  content: "";
+  flex: none;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  margin-inline-end: 4px;
+  border-inline-end: 2px solid var(--color-muted);
+  border-block-end: 2px solid var(--color-muted);
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+}
+details[open] > summary::after { transform: rotate(-135deg); }
 fieldset { min-width: 0; max-width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-control); }
 code, pre { overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em; }
 pre { background: var(--color-surface-subtle); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-control); padding: var(--space-3); }
 table { border-collapse: separate; border-spacing: 0; width: 100%; }
 th, td { padding: var(--space-3) var(--space-4); text-align: start; }
 th {
-  color: var(--color-text-secondary);
-  font-weight: 600;
-  font-size: 0.82rem;
+  color: var(--color-muted);
+  font-weight: 500;
+  font-size: 0.8125rem;
   border-bottom: 1px solid var(--color-border-strong);
   vertical-align: bottom;
 }
-td { border-bottom: 1px solid var(--color-border-subtle); }
+td, tbody th { padding-block: 14px; border-bottom: 1px solid var(--color-border); }
+tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical-align: baseline; }
 
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--color-accent);
@@ -1314,6 +1325,73 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 .choice { display: block; min-height: 48px; }
 .pre-scroll { overflow: auto; max-height: 240px; max-width: 100%; }
 
+/* --- Страница матча: рабочая область (две карточки, поля, строки вердикта) --- */
+
+.workbench-card {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  overflow-wrap: anywhere;
+}
+.workbench-card > * { margin-block: 0; }
+.workbench-card > h3 { font-size: 1.5rem; letter-spacing: -0.01em; }
+.workbench-card > button { justify-self: start; }
+.workbench-card .field label { font-size: 0.875rem; color: var(--color-muted); }
+.workbench-duo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: var(--space-6);
+  align-items: start;
+}
+.field { display: grid; gap: 6px; }
+.field br { display: none; }
+.field [role="alert"] { color: var(--color-danger); font-size: 0.875rem; }
+.field--odds input { min-height: 52px; font-size: 1.125rem; font-weight: 600; }
+.note-strip {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+/* Живая область всегда в разметке, но пустая не занимает строку сетки. */
+.status-line:empty { position: absolute; }
+.ev-rows { display: grid; gap: var(--space-3); margin: 0; }
+.ev-rows > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+}
+.ev-rows dt { font-weight: 600; }
+.ev-rows dd {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+.ev-rows .value-chip {
+  font-size: 1rem;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-muted);
+  font-weight: 600;
+}
+.ev-rows .value-chip--positive {
+  background: var(--color-accent-fill);
+  border-color: var(--color-accent-fill);
+  color: var(--color-on-accent);
+  font-weight: 700;
+}
+.outcome-card > ul { padding-inline-start: 1.25rem; }
+
 /* --- Operations: alerts and channel lines -------------------------------- */
 
 .ops-channel { margin: 0; font-size: 0.875rem; font-weight: 600; }
@@ -1372,6 +1450,8 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   .release-navigation nav a[aria-current="page"] { border-block-end: 2px solid Highlight; }
   .fixture-list, .evidence-card, .sample-card, .sample-fixtures, .home-card, .panel, .notice, .state-notice, .state-chip { border: 1px solid CanvasText; }
   .match-hero, .facts-grid > div { border: 1px solid CanvasText; }
+  .workbench-card, .ev-rows > div, .note-strip { border: 1px solid CanvasText; }
+  summary::after { border-color: CanvasText; }
   .sync-toast { border: 1px solid CanvasText; }
   .theme-toggle { border: 1px solid CanvasText; color: CanvasText; }
   /* Forced-colors replaces the footer background with the system canvas, so

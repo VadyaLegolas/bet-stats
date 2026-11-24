@@ -46,9 +46,9 @@
 
 ### CLV Price Diary (CLV)
 
-- [ ] **CLV-01**: An operator can record a closing-odds observation per fixture, market, and selection with a UTC observed-at timestamp validated as pre-kickoff and pre-settlement.
+- [x] **CLV-01**: An operator can record a closing-odds observation per fixture, market, and selection with a UTC observed-at timestamp validated as pre-kickoff and pre-settlement.
 - [ ] **CLV-02**: A user can see closing-line value per value candidate computed from de-vigged forecast-time and closing prices on the same line; a missing closing price renders as explicit unavailable and is never synthesized.
-- [ ] **CLV-03**: Closing observations are append-only, and CLV never influences value ranking, scanner ordering, or journal decisions; it is evaluation-only.
+- [x] **CLV-03**: Closing observations are append-only, and CLV never influences value ranking, scanner ordering, or journal decisions; it is evaluation-only.
 
 ### New Markets: Asian Handicap and Exact Score (MKT)
 
@@ -115,9 +115,9 @@ _Milestone v1.1 roadmap (2026-10-19): every requirement maps to exactly one phas
 | CALIB-02 | Phase 12 | Complete |
 | CALIB-03 | Phase 12 | Complete |
 | CALIB-04 | Phase 12 | Complete |
-| CLV-01 | Phase 13 | Pending |
+| CLV-01 | Phase 13 | Complete |
 | CLV-02 | Phase 13 | Pending |
-| CLV-03 | Phase 13 | Pending |
+| CLV-03 | Phase 13 | Complete |
 | MKT-01 | Phase 14 | Pending |
 | MKT-02 | Phase 14 | Pending |
 | MKT-03 | Phase 14 | Pending |

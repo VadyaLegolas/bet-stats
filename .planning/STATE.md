@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v1.1
 current_phase: 13
 current_phase_name: CLV Price Diary
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-11-24T20:54:33.102Z"
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-11-24T21:20:52.645Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 13 execution started
-state_head: 627f6c12e111c78c40cb220530d3a2f681cf4b25
+state_head: 8ba69ee1ef92ebbcf7b81f6074534935e9608613
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 40
-  completed_plans: 37
+  completed_plans: 38
   percent: 50
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 ## Current Position
 
 Phase: 13 (CLV Price Diary) — EXECUTING
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 4
 Status: Ready to execute
 Last activity: 2026-11-24 — Phase 13 execution started
@@ -156,6 +156,7 @@ Progress: [█████░░░░░] 50%
 | Phase 12 P06 | 60min | 2 tasks | 6 files |
 | Phase 12 P07 | 100min | 3 tasks | 11 files |
 | Phase 13 P01 | 10 min | 3 tasks | 5 files |
+| Phase 13 P02 | 21min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -332,6 +333,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 12]: 12-07: calibration panel and methodology (model card v1.2.0) shipped; panel treats absent or malformed marketCalibration as unavailable; version number is the market's promotion number; browser proof on the owned stack (28 tests); phase verification pending
 - [Phase 13]: 13-01: closing observation id is closing_<sha256> over JSON array of (fixtureId, market, selection, sourceConvention, observedAt); odds excluded from the key — Replay with different odds collides on id so the service can return CLOSING_OBSERVATION_CONFLICT
 - [Phase 13]: 13-01: NoVigClvUnavailableReason gains INVALID_TIMESTAMP beyond the plan list — Pure read-time layer must not throw on non-canonical instants and must not mislabel them
+- [Phase 13]: 13-02: closing-odds writes rejected after kickoff even for an already-recorded identical set; 404 stays reserved for the operator guard (server rejections are 422 with code)
+- [Phase 13]: 13-02: sourceConvention must match an existing ManualOddsSnapshot.source (D-02), checked after domain validation as UNKNOWN_SOURCE_CONVENTION
 
 ### Pending Todos
 
@@ -444,6 +447,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-24T20:54:30.070Z
-Stopped at: Completed 13-01-PLAN.md
+Last session: 2026-11-24T21:20:49.521Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None

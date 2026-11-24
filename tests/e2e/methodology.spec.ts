@@ -14,7 +14,7 @@ test("versioned model card presents plain-language and exact technical evidence"
   await expect(page.getByText(`${MODEL_CARD.currentModel.modelVersion} / ${MODEL_CARD.currentModel.configVersion}`, { exact: true })).toBeVisible();
   await expect(page.getByText(`${MODEL_CARD.alternatives[0]!.modelVersion} / ${MODEL_CARD.alternatives[0]!.configVersion} (${MODEL_CARD.alternatives[0]!.role})`, { exact: false })).toBeVisible();
 
-  const sectionNames = ["Входы", "Поправка на низкие счета", "Что исключается", "Уверенность", "Ограничения", "Оценка", "Калибровка вероятностей", "Ответственное использование", "История изменений"];
+  const sectionNames = ["Входы", "Поправка на низкие счета", "Что исключается", "Уверенность", "Ограничения", "Оценка", "Калибровка вероятностей", "Сравнение с закрытием линии (CLV)", "Ответственное использование", "История изменений"];
   await expect(page.locator("main h2")).toHaveText(sectionNames);
   for (const name of sectionNames.slice(0, -1)) {
     const section = page.getByRole("heading", { level: 2, name }).locator("xpath=..");

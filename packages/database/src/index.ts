@@ -14,3 +14,19 @@ export { createProviderRoutingRepository } from "./provider-routing/repository.j
 export type { AppendAttemptInput, AppendRouteInput, CapabilityApprovalInput, ProviderAdmissionInput, QuotaObservationInput } from "./provider-routing/repository.js";
 export { DEFAULT_KICKOFF_TOLERANCE_MS, PROVIDER_FIXTURE_RESOLVER_VERSION, resolveProviderFixture } from "./reconciliation/provider-fixture-resolver.js";
 export type { ProviderFixtureResolution } from "./reconciliation/provider-fixture-resolver.js";
+export { CALIBRATION_MARKETS, createPrismaCalibrationRepository } from "./calibration-repository.js";
+export type {
+  ActiveCalibratorState,
+  CalibrationConfigRef,
+  CalibrationRepository,
+  CalibrationRepositoryError,
+  CalibrationRepositoryErrorCode,
+  CalibratorEventDetails,
+  CalibratorEventRecord,
+  CalibratorEventType,
+  CalibratorEventWriteResult,
+  PersistCalibratorResult,
+  PromoteCalibratorInput,
+  PromoteCalibratorResult,
+  StoredCalibratorEvaluation,
+} from "./calibration-repository.js";

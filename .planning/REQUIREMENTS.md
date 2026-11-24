@@ -42,7 +42,7 @@
 - [ ] **CALIB-01**: A user can see calibrated probabilities (Platt first; isotonic only above a configured sample threshold) alongside raw model probabilities with a calibrator version label.
 - [x] **CALIB-02**: The system fits calibrators per exact model version on held-out settled windows with minimum-sample gates and structurally refuses calibrators whose pinned model version does not match the served forecast.
 - [x] **CALIB-03**: A promoted calibrator rolls back automatically under materiality and hysteresis gates when holdout Brier regresses; frozen snapshots are never modified.
-- [ ] **CALIB-04**: Below minimum sample thresholds, the user sees an explicit insufficient-data-to-calibrate state instead of a fitted layer.
+- [x] **CALIB-04**: Below minimum sample thresholds, the user sees an explicit insufficient-data-to-calibrate state instead of a fitted layer.
 
 ### CLV Price Diary (CLV)
 
@@ -114,7 +114,7 @@ _Milestone v1.1 roadmap (2026-10-19): every requirement maps to exactly one phas
 | CALIB-01 | Phase 12 | Pending |
 | CALIB-02 | Phase 12 | Complete |
 | CALIB-03 | Phase 12 | Complete |
-| CALIB-04 | Phase 12 | Pending |
+| CALIB-04 | Phase 12 | Complete |
 | CLV-01 | Phase 13 | Pending |
 | CLV-02 | Phase 13 | Pending |
 | CLV-03 | Phase 13 | Pending |

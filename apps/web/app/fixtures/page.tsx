@@ -107,9 +107,9 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
     result = await load(search);
   } catch {
     return (
-      <section style={{ maxWidth: 960, marginInline: "auto" }}>
+      <section className="page-column">
         <h1 className="page-title">Предстоящие матчи</h1>
-        <p role="alert" style={{ color: "var(--color-danger)", background: "var(--color-danger-subtle)", padding: 16, borderRadius: "var(--radius-control)" }}>
+        <p role="alert" className="notice notice--danger">
           Не удалось загрузить матчи. Ваша фильтрация сохранена. Выберите «Повторить загрузку матчей».
         </p>
         <Filters search={search} leagues={leagues} autoSync={autoSync} retry />
@@ -134,8 +134,8 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
   const returnTo = `/fixtures${query.size ? `?${query}` : ""}`;
 
   return (
-    <section style={{ maxWidth: 960, marginInline: "auto" }}>
-      <div style={{ marginBottom: 24 }}>
+    <section className="page-column">
+      <div className="page-head">
         <h1 className="page-title">Предстоящие матчи</h1>
         <p className="page-deck">
           Время указано в часовом поясе {timeZone}. По умолчанию показан ближайшие 48 часов.
@@ -152,15 +152,15 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
         </div>
       ) : (
         [...groups].map(([label, fixtures]) => (
-          <section key={label} style={{ marginTop: 32 }}>
+          <section key={label} className="date-group">
             <h2 className="date-group-heading">{label}</h2>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+            <ul className="stack stack--tight">
               {fixtures.map((fixture) => (
                 <li key={fixture.id} className="fixture-card">
                   <div className="fixture-header">
                     <h3 className="fixture-title">
                       <Link href={`/fixtures/${encodeURIComponent(fixture.id)}?returnTo=${encodeURIComponent(returnTo)}`}>
-                        {fixture.teams.home.name} <span style={{ color: "var(--color-text-secondary)", fontWeight: 400 }}>против</span> {fixture.teams.away.name}
+                        {fixture.teams.home.name} <span className="fixture-vs">против</span> {fixture.teams.away.name}
                       </Link>
                     </h3>
                     <div className="fixture-meta">
@@ -172,23 +172,7 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
                       <span>·</span>
                       <span>{statusLabel(fixture.status)}</span>
                       {isLiveStatus(fixture.status) && (
-                        <span
-                          className="fixture-live-badge"
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                            padding: "2px 8px",
-                            borderRadius: 9999,
-                            background: "var(--color-danger)",
-                            color: "#fff",
-                            fontSize: "0.75rem",
-                            fontWeight: 600,
-                            letterSpacing: "0.05em",
-                            textTransform: "uppercase",
-                            boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
-                          }}
-                        >
+                        <span className="fixture-live-badge">
                           LIVE
                         </span>
                       )}

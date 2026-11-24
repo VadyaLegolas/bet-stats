@@ -127,6 +127,8 @@ describe("design tokens: contrast (>= 4.5:1)", () => {
         for (const bg of ["--color-surface", "--color-page"]) pairs.push([fg, bg]);
       }
 
+      pairs.push(["--color-on-danger", "--color-danger"]);
+
       it.each(pairs)("%s on %s", (fg, bg) => {
         expect(contrast(colour(theme, fg), colour(theme, bg))).toBeGreaterThanOrEqual(4.5);
       });

@@ -2,8 +2,6 @@ import Link from "next/link";
 
 import { RiskDisclosure } from "../../components/risk-disclosure";
 
-const panel = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, marginBlock: 18 } as const;
-const shotStyle = { display: "block", maxWidth: "100%", height: "auto", borderRadius: 6, border: "1px solid var(--color-border)", marginBlock: 14 } as const;
 
 type ShotId = "home" | "fixtures" | "workbench" | "odds" | "scorecards" | "evidence" | "operations";
 
@@ -59,7 +57,7 @@ function Screenshot({ id }: { id: ShotId }) {
   return (
     <p>
       {/* eslint-disable-next-line @next/next/no-img-element -- same-origin guide screenshots with explicit intrinsic width/height; the next/image optimizer adds nothing for static local PNGs */}
-      <img src={shot.src} alt={shot.alt} width={shot.width} height={shot.height} style={shotStyle} loading="lazy" />
+      <img src={shot.src} alt={shot.alt} width={shot.width} height={shot.height} className="faq-shot" loading="lazy" />
     </p>
   );
 }
@@ -75,7 +73,7 @@ export default function FaqPage() {
       <RiskDisclosure />
 
       <h2>Пошаговая инструкция</h2>
-      <ol style={{ display: "grid", gap: 24, paddingInlineStart: 24 }}>
+      <ol className="steps-list">
         <li>
           <h3>Запуск сайта</h3>
           <p>
@@ -359,7 +357,7 @@ export default function FaqPage() {
         </li>
       </ol>
 
-      <section style={panel} aria-labelledby="faq-questions">
+      <section className="panel panel--stack" aria-labelledby="faq-questions">
         <h2 id="faq-questions">Частые вопросы</h2>
         <dl>
           <dt><strong>Почему прогноза на матч ещё нет?</strong></dt>

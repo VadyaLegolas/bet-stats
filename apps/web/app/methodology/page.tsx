@@ -5,11 +5,9 @@ import type { ReactNode } from "react";
 import { RiskDisclosure } from "../../components/risk-disclosure";
 import { formatInstant } from "../../components/time-format";
 
-const panel = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, marginBlock: 18 } as const;
-const technical = { marginBlockStart: 16, padding: 16, background: "var(--color-surface-subtle)", borderRadius: 4 } as const;
 
 function TechnicalDetails({ id, children }: { id: string; children: ReactNode }) {
-  return <details id={id} style={technical}><summary>Технические подробности</summary>{children}</details>;
+  return <details id={id} className="well"><summary>Технические подробности</summary>{children}</details>;
 }
 
 export default function MethodologyPage() {
@@ -21,7 +19,7 @@ export default function MethodologyPage() {
     <p>Мы оцениваем вероятности событий футбольных матчей на основе исторических темпов забиваемых голов и ограниченных доказательств силы команд, недавней формы, поля, отдыха и необязательных личных встреч. Результат — оценка вероятности с неизменяемой квитанцией доказательств, а не прогноз с гарантией.</p>
     <p>Ручные коэффициенты букмекеров можно сравнивать с точно выбранным замороженным прогнозом. Результат называется кандидатом value, только если пройдены все проверки: идентичность, время, качество данных, уверенность, край и ожидаемое value.</p>
 
-    <dl aria-label="Метаданные текущей карточки модели" style={panel}>
+    <dl aria-label="Метаданные текущей карточки модели" className="panel panel--stack">
       <dt>Версия карточки модели</dt><dd><strong>{card.version}</strong></dd>
       <dt>Дата вступления в силу</dt><dd><time dateTime={card.effectiveDate} title={card.effectiveDate}>{formatInstant(card.effectiveDate, timeZone)}</time></dd>
       <dt>Текущая модель/конфиг</dt><dd>{card.currentModel.modelVersion} / {card.currentModel.configVersion}</dd>
@@ -30,7 +28,7 @@ export default function MethodologyPage() {
     </dl>
     <RiskDisclosure />
 
-    <section id="inputs" style={panel}>
+    <section id="inputs" className="panel panel--stack">
       <h2>Входы</h2>
       <p>Модель использует ограниченные по времени темпы забиваемых голов команд, силу Эло, недавнюю форму, результаты на своём поле и отдых. Доказательства личных встреч необязательны и строго ограничены. Каждый источник должен быть набран не позднее отсечки прогноза.</p>
       <TechnicalDetails id="inputs-technical">
@@ -41,7 +39,7 @@ export default function MethodologyPage() {
       </TechnicalDetails>
     </section>
 
-    <section id="dixon-coles" style={panel}>
+    <section id="dixon-coles" className="panel panel--stack">
       <h2>Поправка на низкие счета</h2>
       <p>Мы применяем поправку Диксона-Колза к четырём низким счетам (0-0, 1-0, 0-1, 1-1) поверх уже рассчитанных ожидаемых голов. Это гибридная интеграция: силы атаки и защиты не переоцениваются, домашний фактор учитывается один раз.</p>
       <TechnicalDetails id="dixon-coles-technical">
@@ -58,7 +56,7 @@ export default function MethodologyPage() {
       </TechnicalDetails>
     </section>
 
-    <section id="what-is-excluded" style={panel}>
+    <section id="what-is-excluded" className="panel panel--stack">
       <h2>Что исключается</h2>
       <p>Модель не использует платные ленты букмекеров, функции отправки ставок, сигналы live/в игре, персонализированное распределение банка, неофициальную информацию о будущем и доказательства, набранные после отсечки прогноза.</p>
       <TechnicalDetails id="what-is-excluded-technical">
@@ -67,7 +65,7 @@ export default function MethodologyPage() {
       </TechnicalDetails>
     </section>
 
-    <section id="confidence" style={panel}>
+    <section id="confidence" className="panel panel--stack">
       <h2>Уверенность</h2>
       <p>Уверенность описывает полноту и качество доказательств. Это не вероятность того, что решение о ставке выиграет. Отсутствующие, устаревшие или несогласованные доказательства заставляют систему воздерживаться, а не заполнять пробелы выдуманными значениями.</p>
       <TechnicalDetails id="confidence-technical">
@@ -76,7 +74,7 @@ export default function MethodologyPage() {
       </TechnicalDetails>
     </section>
 
-    <section id="limitations" style={panel}>
+    <section id="limitations" className="panel panel--stack">
       <h2>Ограничения</h2>
       <p>Исходы футбола неопределённы. Малые выборки, устаревшие доказательства, травмы или составы, не отражённые до отсечки, сбои поставщиков, неверная спецификация модели и меняющееся поведение команд могут делать оценки менее надёжными. Положительное ожидаемое value остаётся оценкой, а не обещанием прибыли.</p>
       <TechnicalDetails id="limitations-technical">
@@ -85,11 +83,11 @@ export default function MethodologyPage() {
       </TechnicalDetails>
     </section>
 
-    <section id="evaluation" style={panel}>
+    <section id="evaluation" className="panel panel--stack">
       <h2>Оценка</h2>
       <p>Завершённые матчи оцениваются против замороженных прематч-вероятностей. Корректные очки, корзины надёжности и точные знаменатели показывают качество вероятностей; плоские единицы и сравнение с закрывающей линией — вторичные описательные виды.</p>
       <TechnicalDetails id="evaluation-technical">
-        <div role="region" aria-label="Формулы корректных очков" style={{ overflowWrap: "anywhere" }}>
+        <div role="region" aria-label="Формулы корректных очков" className="wrap-anywhere">
           <p><code>{card.evaluation.brier}</code></p>
           <p><code>{card.evaluation.logLoss}</code></p>
         </div>
@@ -100,7 +98,7 @@ export default function MethodologyPage() {
       </TechnicalDetails>
     </section>
 
-    <section id="calibration" style={panel}>
+    <section id="calibration" className="panel panel--stack">
       <h2>Калибровка вероятностей</h2>
       <p>Калибровка — отдельный слой поверх сырого прогноза: по завершённым матчам подбирается поправка, которая сопоставляет сырым вероятностям калиброванные. Сырой прогноз остаётся основным и неизменным, а калиброванные вероятности показываются рядом с подписью версии калибратора и размером отложенной выборки. Расчёт value по-прежнему использует сырые вероятности.</p>
       <p>Пока исходов недостаточно, интерфейс прямо сообщает, сколько их нужно и сколько есть. Калибратор проверяется по более поздним данным и автоматически откатывается, если несколько оценок подряд оказываются хуже сырого прогноза.</p>
@@ -115,7 +113,7 @@ export default function MethodologyPage() {
       </TechnicalDetails>
     </section>
 
-    <section id="responsible-use" style={panel}>
+    <section id="responsible-use" className="panel panel--stack">
       <h2>Ответственное использование</h2>
       <p>Используйте эти оценки только как прозрачные аналитические доказательства. Не рассматривайте их как инструкции, не ставьте больше, чем можете позволить себе потерять, и не делайте ставки там, где это незаконно или не соответствует вашему возрасту.</p>
       <TechnicalDetails id="responsible-use-technical">
@@ -123,9 +121,9 @@ export default function MethodologyPage() {
       </TechnicalDetails>
     </section>
 
-    <section id="change-history" style={panel}>
+    <section id="change-history" className="panel panel--stack">
       <h2>История изменений</h2>
-      {card.changeHistory.map((change) => <article key={change.version} style={{ borderBlockStart: "1px solid var(--color-border)", paddingBlock: 14 }}>
+      {card.changeHistory.map((change) => <article key={change.version} className="history-entry">
         <h3>{change.version}</h3>
         <p><strong>Вступил в силу:</strong> <time dateTime={change.effectiveDate} title={change.effectiveDate}>{formatInstant(change.effectiveDate, timeZone)}</time></p>
         <p>{change.summary}</p>

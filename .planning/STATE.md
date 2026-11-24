@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v1.1
 current_phase: 12
 current_phase_name: Calibration Layer and Versioned Rollback
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 12-02-PLAN.md
-last_updated: "2026-11-24T09:15:17.003Z"
+stopped_at: Completed 12-03-PLAN.md
+last_updated: "2026-11-24T10:00:19.508Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 11 complete, transitioned to Phase 12
-state_head: 444dc77399f740a4d13c78ebd5e41b8eb02f6372
+state_head: 64c6676cfab6ccbecaf0702188ba44c42fbd9f66
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 36
-  completed_plans: 31
+  completed_plans: 32
   percent: 50
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 ## Current Position
 
 Phase: 12 — Calibration Layer and Versioned Rollback
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 7
 Status: Ready to execute
 Last activity: 2026-11-24 — Phase 11 complete, transitioned to Phase 12
@@ -150,6 +150,7 @@ Progress: [█████░░░░░] 50%
 | Phase 11 P07 | 25 min | 3 tasks | 2 files |
 | Phase 12 P01 | 10 min | 2 tasks | 11 files |
 | Phase 12 P02 | 12 min | 3 tasks | 7 files |
+| Phase 12 P03 | 40min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -318,6 +319,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 12]: Promotion gate is strict: holdout Brier delta (calibrated minus raw) must be < 0.002, aligned with the inclusive WORSE boundary — A calibrator that would be judged WORSE on the same threshold must never be promoted
 - [Phase 12]: Rollback series counts only eligible (sample >= 30) evaluations; ineligible ones are skipped, eligible non-WORSE resets, current evaluation must be eligible — One noisy or tiny window must not roll back a calibrator (D-07, D-10)
 - [Phase 12]: Market calibration view carries method, holdoutBrierRaw, holdoutBrierCalibrated beyond D-11 fields; optional fields are absent keys, never undefined — UI can name the method and show holdout numbers honestly (D-12)
+- [Phase 12]: 12-03: calibrator event order is a database identity seq re-drawn by the transition trigger after the advisory lock; rollback target is the predecessor of the rolled-back calibrator's PROMOTED event
+- [Phase 12]: 12-03: event decision config defaults to the calibrator's own fit config; Calibrator also stores isotonicHoldoutBrier so rows rebuild an equal FittedCalibrator
 
 ### Pending Todos
 
@@ -425,6 +428,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-24T09:15:13.908Z
-Stopped at: Completed 12-02-PLAN.md
+Last session: 2026-11-24T10:00:16.298Z
+Stopped at: Completed 12-03-PLAN.md
 Resume file: None

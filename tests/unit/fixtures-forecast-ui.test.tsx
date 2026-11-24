@@ -57,7 +57,11 @@ describe("FixtureForecastLine", () => {
 
   it("renders the exact Russian percentage line for a valid forecast", () => {
     const markup = renderToStaticMarkup(createElement(FixtureForecastLine, { forecast: valid }));
-    expect(markup).toBe("<div class=\"fixture-forecast\">Прогноз: П1 52% · Х 26% · П2 22%</div>");
+    expect(markup).toBe(
+      "<div class=\"fixture-forecast fixture-row-probs\"><span class=\"sr-only\">Прогноз: </span>" +
+        "<div class=\"prob-bar prob-bar--sm\" aria-hidden=\"true\"><span class=\"prob-bar-home\" style=\"width:52%\"></span><span class=\"prob-bar-draw\" style=\"width:26%\"></span><span class=\"prob-bar-away\" style=\"width:22%\"></span></div>" +
+        "<p class=\"fixture-row-numbers\"><span><span class=\"sr-only\">победа хозяев </span>52%</span><span><span class=\"sr-only\">ничья </span>26%</span><span><span class=\"sr-only\">победа гостей </span>22%</span></p></div>",
+    );
   });
 
   it("renders the pending fallback for a missing forecast", () => {

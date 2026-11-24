@@ -2,8 +2,9 @@ import Link from "next/link";
 import { DateRangeFilter } from "../../components/date-range-filter";
 import { DataStateNotice, type FixtureDataState } from "../../components/data-state-notice";
 import { ProviderStateNotice, type ProviderState } from "../../components/provider-state-notice";
+import { ProbBar, PROB_OUTCOME_LABELS } from "../../components/prob-bar";
 import { statusLabel, isLiveStatus } from "./status-labels";
-type Fixture = { id: string; competition: { id: string; name: string; season: string }; teams: { home: { id: string; name: string }; away: { id: string; name: string } }; kickoff: string; status: string; dataState: FixtureDataState; providerState: ProviderState; forecast?: { kind?: string; cutoff?: string; probabilities?: { home?: unknown; draw?: unknown; away?: unknown } } | null };
+export type Fixture ={ id: string; competition: { id: string; name: string; season: string }; teams: { home: { id: string; name: string }; away: { id: string; name: string } }; kickoff: string; status: string; dataState: FixtureDataState; providerState: ProviderState; forecast?: { kind?: string; cutoff?: string; probabilities?: { home?: unknown; draw?: unknown; away?: unknown } } | null };
 type Result = { items: readonly Fixture[]; range: { from: string; to: string } }; type Search = Record<string, string | string[] | undefined>;
 const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
 
@@ -33,19 +34,65 @@ export function forecastPercentages(probabilities: { home: number; draw: number;
   return result;
 }
 
-/** Inline quick 1X2 forecast for a fixture card. Display-only and defensive: raw enum codes
- * (HOME/DRAW/AWAY, kind codes) must never reach the markup — only the Russian labels and the
- * integer percentages, or the honest pending fallback when no forecast has been issued yet
- * (a manual fixture sync may outrun the forecast sweep) or the payload is not usable.
+/** Блок вероятностей 1X2 в строке матча: маленькая полоса и три целых процента (как в примере
+ * списка на главной) либо честный текст «Прогноз пока не выпущен». Display-only and defensive:
+ * raw enum codes (HOME/DRAW/AWAY, kind codes) must never reach the markup — only the Russian
+ * labels and the integer percentages, or the pending fallback when no forecast has been issued
+ * yet (a manual fixture sync may outrun the forecast sweep) or the payload is not usable.
  * `| undefined` on the prop keeps `exactOptionalPropertyTypes` honest for a stale API that
  * omits `forecast` entirely. */
 export function FixtureForecastLine({ forecast }: { forecast?: { kind?: string; cutoff?: string; probabilities?: { home?: unknown; draw?: unknown; away?: unknown } } | null | undefined }) {
   const probabilities = forecast?.probabilities;
   const triple = probabilities && typeof probabilities.home === "number" && typeof probabilities.draw === "number" && typeof probabilities.away === "number" ? { home: probabilities.home, draw: probabilities.draw, away: probabilities.away } : null;
   const percentages = forecastPercentages(triple);
-  return percentages
-    ? <div className="fixture-forecast">Прогноз: П1 {percentages.home}% · Х {percentages.draw}% · П2 {percentages.away}%</div>
-    : <div className="fixture-forecast fixture-forecast--pending">Прогноз пока не выпущен</div>;
+  if (!percentages) return <div className="fixture-forecast fixture-forecast--pending fixture-row-probs">Прогноз пока не выпущен</div>;
+  const values = [percentages.home, percentages.draw, percentages.away] as const;
+  return (
+    <div className="fixture-forecast fixture-row-probs">
+      <span className="sr-only">Прогноз: </span>
+      <ProbBar probs={values} small />
+      <p className="fixture-row-numbers">
+        {values.map((value, index) => (
+          <span key={PROB_OUTCOME_LABELS[index]}>
+            <span className="sr-only">{PROB_OUTCOME_LABELS[index]} </span>
+            {value}%
+          </span>
+        ))}
+      </p>
+    </div>
+  );
+}
+
+/** Одна строка списка матчей: соревнование и время слева, ссылка на матч, блок вероятностей
+ * и справа статус, значок LIVE и компактные отметки состояния данных. Значок value здесь
+ * намеренно не выводится: у API нет такого признака для матча без введённых коэффициентов. */
+export function FixtureRow({ fixture, returnTo, timeZone }: { fixture: Fixture; returnTo: string; timeZone: string }) {
+  return (
+    <li className="fixture-row">
+      <div className="fixture-row-when">
+        <span>{fixture.competition.name}</span>
+        <span className="fixture-time">
+          {new Intl.DateTimeFormat("ru-RU", { timeStyle: "short", timeZone }).format(new Date(fixture.kickoff))}
+        </span>
+      </div>
+      <h3 className="fixture-row-teams">
+        <Link href={`/fixtures/${encodeURIComponent(fixture.id)}?returnTo=${encodeURIComponent(returnTo)}`}>
+          {fixture.teams.home.name} <span className="fixture-vs">против</span> {fixture.teams.away.name}
+        </Link>
+      </h3>
+      <FixtureForecastLine forecast={fixture.forecast} />
+      <div className="fixture-row-side">
+        <p className="fixture-row-status">
+          <span>{statusLabel(fixture.status)}</span>
+          {isLiveStatus(fixture.status) && <span className="fixture-live-badge">LIVE</span>}
+        </p>
+        <div className="fixture-badges">
+          <ProviderStateNotice state={fixture.providerState} compact />
+          <DataStateNotice data={fixture.dataState} compact />
+        </div>
+      </div>
+    </li>
+  );
 }
 
 function Filters({ search, leagues, autoSync, retry = false }: { search: Search; leagues: readonly string[]; autoSync: boolean; retry?: boolean }) {
@@ -154,36 +201,9 @@ export default async function FixturesPage({ searchParams }: { searchParams: Pro
         [...groups].map(([label, fixtures]) => (
           <section key={label} className="date-group">
             <h2 className="date-group-heading">{label}</h2>
-            <ul className="stack stack--tight">
+            <ul className="fixture-list">
               {fixtures.map((fixture) => (
-                <li key={fixture.id} className="fixture-card">
-                  <div className="fixture-header">
-                    <h3 className="fixture-title">
-                      <Link href={`/fixtures/${encodeURIComponent(fixture.id)}?returnTo=${encodeURIComponent(returnTo)}`}>
-                        {fixture.teams.home.name} <span className="fixture-vs">против</span> {fixture.teams.away.name}
-                      </Link>
-                    </h3>
-                    <div className="fixture-meta">
-                      <span className="fixture-time">
-                        {new Intl.DateTimeFormat("ru-RU", { timeStyle: "short", timeZone }).format(new Date(fixture.kickoff))}
-                      </span>
-                      <span>·</span>
-                      <span>{fixture.competition.name}</span>
-                      <span>·</span>
-                      <span>{statusLabel(fixture.status)}</span>
-                      {isLiveStatus(fixture.status) && (
-                        <span className="fixture-live-badge">
-                          LIVE
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <FixtureForecastLine forecast={fixture.forecast} />
-                  <div className="fixture-badges">
-                    <ProviderStateNotice state={fixture.providerState} compact />
-                    <DataStateNotice data={fixture.dataState} compact />
-                  </div>
-                </li>
+                <FixtureRow key={fixture.id} fixture={fixture} returnTo={returnTo} timeZone={timeZone} />
               ))}
             </ul>
           </section>

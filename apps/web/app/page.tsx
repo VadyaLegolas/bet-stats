@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProbBar, PROB_OUTCOME_LABELS } from "../components/prob-bar";
 
 const CONTENTS = [
   { label: "Матчи", href: "/fixtures", detail: "Предстоящие матчи, сгруппированные по местной дате, с честной отметкой состояния данных." },
@@ -24,8 +25,6 @@ const SAMPLE_FIXTURES = [
   { league: "Лига Г", when: "Вс 18:30", home: "Команда Ж", away: "Команда З", probs: [49, 25, 26], value: false },
 ] as const;
 
-const SAMPLE_PROB_LABELS = ["победа хозяев", "ничья", "победа гостей"] as const;
-
 const QUALITY_POINTS = [
   "Бэктесты без утечки данных из будущего",
   "Версия модели и конфигурации в каждом снимке",
@@ -42,16 +41,6 @@ const CALIBRATION_POINTS = [
   [320, 58],
   [365, 38],
 ] as const;
-
-function ProbBar({ probs, small = false }: { probs: readonly number[]; small?: boolean }) {
-  return (
-    <div className={small ? "prob-bar prob-bar--sm" : "prob-bar"} aria-hidden="true">
-      <span className="prob-bar-home" style={{ width: `${probs[0]}%` }} />
-      <span className="prob-bar-draw" style={{ width: `${probs[1]}%` }} />
-      <span className="prob-bar-away" style={{ width: `${probs[2]}%` }} />
-    </div>
-  );
-}
 
 export default function HomePage() {
   const curve = CALIBRATION_POINTS.map(([x, y]) => `${x},${y}`).join(" ");
@@ -148,8 +137,8 @@ export default function HomePage() {
                 <ProbBar probs={fixture.probs} small />
                 <p className="sample-row-numbers">
                   {fixture.probs.map((value, index) => (
-                    <span key={SAMPLE_PROB_LABELS[index]}>
-                      <span className="sr-only">{SAMPLE_PROB_LABELS[index]} </span>
+                    <span key={PROB_OUTCOME_LABELS[index]}>
+                      <span className="sr-only">{PROB_OUTCOME_LABELS[index]} </span>
                       {value}%
                     </span>
                   ))}

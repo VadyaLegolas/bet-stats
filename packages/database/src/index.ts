@@ -25,6 +25,7 @@ export type {
   CalibratorEventRecord,
   CalibratorEventType,
   CalibratorEventWriteResult,
+  LatestRollback,
   PersistCalibratorResult,
   PromoteCalibratorInput,
   PromoteCalibratorResult,

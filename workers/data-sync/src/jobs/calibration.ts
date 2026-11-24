@@ -4,6 +4,7 @@ import {
   CALIBRATION_CONFIG,
   CALIBRATION_CONFIG_HASH,
   assessCalibrationData,
+  assessRollbackLineage,
   decideCalibrationLifecycle,
   evaluateCalibrator,
   fitMarketCalibrator,
@@ -11,12 +12,15 @@ import {
   isForecastModelVersion,
   isPromotable,
   MODEL_VERSIONS,
+  rollbackLineageApplies,
   type CalibratorEvaluation,
   type CalibratorIdentity,
+  type FittedCalibrator,
   type LifecycleAction,
   type LifecycleActive,
   type LifecycleCandidate,
   type PriorEvaluation,
+  type RollbackLineage,
   type ScoreMarket,
 } from "@bet-stats/domain";
 import {
@@ -127,6 +131,26 @@ async function evaluationInputs(
   return { lifecycleActive: { calibratorId: active.calibratorId, restoreTargetId: active.restoreTargetId, priorEvaluations }, boundaryMs };
 }
 
+/**
+ * Evidence of the candidate against the latest rollback of the market (WR-01). Null when the market never rolled back or a
+ * calibrator promoted after that rollback is already active; otherwise the candidate is scored on the outcomes that became
+ * known after the rollback and compared with the rolled-back calibrator.
+ */
+async function rollbackLineageOf(input: {
+  repository: CalibrationRepository;
+  identity: CalibratorIdentity;
+  market: ScoreMarket;
+  active: ActiveCalibratorState | null;
+  fitted: FittedCalibrator;
+  holdout: Parameters<typeof assessRollbackLineage>[0]["holdout"];
+}): Promise<RollbackLineage | null> {
+  const { repository, identity, market, active, fitted, holdout } = input;
+  const rollback = await repository.findLatestRollback(identity, market);
+  if (rollback === null || !rollbackLineageApplies(rollback.seq, active?.activationSeq ?? null)) return null;
+  const rolledBack = await repository.findCalibrator(rollback.calibratorId);
+  return assessRollbackLineage({ rolledBack, rollbackAsOf: rollback.asOf, candidate: fitted, holdout, market, config: CALIBRATION_CONFIG });
+}
+
 async function runMarket(input: {
   repository: CalibrationRepository;
   identity: CalibratorIdentity;
@@ -165,6 +189,7 @@ async function runMarket(input: {
         calibratorId: stored.calibratorId,
         promotion: isPromotable(fitted.calibrator, config),
         everRolledBack: await repository.hasBeenRolledBack(stored.calibratorId),
+        rollbackLineage: await rollbackLineageOf({ repository, identity, market, active, fitted: fitted.calibrator, holdout: assessment.holdout }),
         holdoutBrierCandidate: fitted.calibrator.holdoutBrierCalibrated,
         holdoutBrierActive,
       };

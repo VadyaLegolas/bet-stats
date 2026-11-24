@@ -145,6 +145,12 @@ describe("model card calibration block", () => {
     expect(effects).toContain("закреплён за точной версией модели и конфигурации");
     expect(effects).toContain(`${CALIBRATION_CONFIG.rollback.consecutiveWorse} подряд`);
     expect(effects).toContain(`не меньше ${CALIBRATION_CONFIG.rollback.minimumEvaluationSample} исходов`);
+    // WR-01: the re-promotion rule is the one the lifecycle enforces, with the config numbers, not a bare promise.
+    expect(effects).toContain("Тот же самый калибратор повторно не продвигается");
+    expect(effects).toContain("после отката");
+    expect(effects).toContain(`не меньше ${CALIBRATION_CONFIG.minimumSamples.holdout} в отложенной выборке кандидата`);
+    expect(effects).toContain(`опережать откатанный калибратор не меньше чем на ${CALIBRATION_CONFIG.materiality} по Brier`);
+    expect(effects).not.toContain("откатанный калибратор повторно не продвигается");
     expect(effects).toContain("Замороженные снимки");
     expect(effects).toContain("сырые вероятности");
   });

@@ -358,11 +358,22 @@ describe("calibration job: hysteresis, evaluation windows and rollback (regressi
     expect(await world.repository.findActiveCalibrator(DC, "ONE_X_TWO")).toBeNull();
   }, 300_000);
 
-  it("on broader later data a new candidate may become active, but only as another calibrator", async () => {
+  it("WR-01: a refit on broader data of the same regime is a new content id but is NOT promoted without proof after the rollback", async () => {
     const asOf = await appendBlock(world, { count: 400, seed: GOOD_SEEDS[0], gamma: BASE_GAMMA });
     const receipt = await worldRun(world, asOf);
-    note("broader data", receipt);
+    note("same regime refit", receipt);
+    expect(receipt.markets.ONE_X_TWO.candidateId).not.toBe(calibratorC);
+    expect(receipt.markets.ONE_X_TWO.actions.map((action) => [action.type, action.reasonCode])).toEqual([["NO_CHANGE", "CANDIDATE_NOT_PROVEN_AFTER_ROLLBACK"]]);
+    expect(await world.repository.findActiveCalibrator(DC, "ONE_X_TWO")).toBeNull();
+    expect(journal(world, "ONE_X_TWO").filter((row) => row.type === "PROMOTED" && row.calibratorId === calibratorC)).toHaveLength(1);
+  }, 300_000);
+
+  it("a candidate that beats the rolled-back calibrator on outcomes known after the rollback may become active, but only as another calibrator", async () => {
+    const asOf = await appendBlock(world, { count: 4000, seed: GOOD_SEEDS[1], gamma: 0.5 });
+    const receipt = await worldRun(world, asOf);
+    note("shifted regime", receipt);
     const active = await world.repository.findActiveCalibrator(DC, "ONE_X_TWO");
+    expect(receipt.markets.ONE_X_TWO.actions.map((action) => [action.type, action.reasonCode])).toEqual([["PROMOTE", "FIRST_PROMOTION"]]);
     expect(active).not.toBeNull();
     expect(active!.calibratorId).not.toBe(calibratorC);
     expect(journal(world, "ONE_X_TWO").filter((row) => row.type === "PROMOTED" && row.calibratorId === calibratorC)).toHaveLength(1);

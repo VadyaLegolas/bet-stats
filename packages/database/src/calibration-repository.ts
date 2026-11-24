@@ -91,6 +91,14 @@ export interface PersistCalibratorResult {
   readonly created: boolean;
 }
 
+/** The newest ROLLED_BACK event of one (modelVersion, configHash, market). */
+export interface LatestRollback {
+  readonly calibratorId: string;
+  readonly seq: number;
+  /** ISO-8601 `asOf` of the job run that rolled the calibrator back. */
+  readonly asOf: string;
+}
+
 export interface CalibratorEventWriteResult {
   readonly eventId: string;
   readonly created: boolean;
@@ -139,6 +147,8 @@ export interface CalibrationRepository {
   /** Events whose subject is this calibrator, by ascending seq. */
   listCalibratorEvents(calibratorId: string): Promise<readonly CalibratorEventRecord[]>;
   hasBeenRolledBack(calibratorId: string): Promise<boolean>;
+  /** Newest ROLLED_BACK event of the identity and market (any calibrator), or null when the market never rolled back. */
+  findLatestRollback(identity: CalibratorIdentity, market: ScoreMarket): Promise<LatestRollback | null>;
 }
 
 type Transaction = Prisma.TransactionClient;
@@ -511,6 +521,15 @@ export function createPrismaCalibrationRepository(client: PrismaClient): Calibra
     async listCalibratorEvents(calibratorId) {
       const rows = await client.calibratorEvent.findMany({ where: { calibratorId }, orderBy: { seq: "asc" } });
       return rows.map((row) => eventFromRow(row as unknown as EventRow));
+    },
+
+    async findLatestRollback(identity, market) {
+      const row = await client.calibratorEvent.findFirst({
+        where: { modelVersion: identity.modelVersion, configHash: identity.configHash, market, type: "ROLLED_BACK" },
+        orderBy: { seq: "desc" },
+        select: { calibratorId: true, seq: true, asOf: true },
+      });
+      return row ? { calibratorId: row.calibratorId, seq: safeNumber(row.seq, "seq"), asOf: isoOf(row.asOf) } : null;
     },
 
     async hasBeenRolledBack(calibratorId) {

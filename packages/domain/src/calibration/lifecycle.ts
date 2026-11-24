@@ -116,11 +116,32 @@ export interface LifecycleActive {
   readonly priorEvaluations: readonly PriorEvaluation[];
 }
 
+/**
+ * Evidence a candidate must bring in a market whose event log already holds a ROLLED_BACK event (WR-01). The content id of a
+ * refit changes with every new outcome, so "this exact calibrator was rolled back" is not enough: the same calibrator family
+ * would come back one day later. The candidate has to prove itself on outcomes that became known only after the latest
+ * rollback, i.e. on a window disjoint from everything the rolled-back calibrator was fitted, held out and judged on.
+ */
+export interface RollbackLineage {
+  /** Outcomes of the candidate's holdout whose `knownAt` is strictly after the latest rollback of this market. */
+  readonly windowSize: number;
+  /** Mean Brier on exactly those outcomes; null when the window is empty or a number could not be computed. */
+  readonly brierRaw: number | null;
+  readonly brierCandidate: number | null;
+  /** Brier of the latest rolled-back calibrator on the same outcomes; null when it is missing or cannot be applied. */
+  readonly brierRolledBack: number | null;
+}
+
 export interface LifecycleCandidate {
   readonly calibratorId: string;
   readonly promotion: PromotionAssessment;
   /** True when this exact calibrator was ever rolled back. */
   readonly everRolledBack: boolean;
+  /**
+   * Null only when the market's log holds no ROLLED_BACK event. Required (not optional) so that a caller cannot bypass the
+   * rule by forgetting it.
+   */
+  readonly rollbackLineage: RollbackLineage | null;
   /** Candidate's own holdout Brier (calibrated). */
   readonly holdoutBrierCandidate: number;
   /** Brier of the active calibrator on the candidate's holdout window; null when there is no active calibrator. */
@@ -139,6 +160,7 @@ export type NoChangeReasonCode =
   | "NO_CANDIDATE"
   | "CANDIDATE_NOT_PROMOTABLE"
   | "CANDIDATE_PREVIOUSLY_ROLLED_BACK"
+  | "CANDIDATE_NOT_PROVEN_AFTER_ROLLBACK"
   | "CANDIDATE_IS_ACTIVE"
   | "CANDIDATE_NOT_BETTER_THAN_ACTIVE";
 
@@ -199,12 +221,72 @@ function trailingWorseRun(evaluations: readonly NormalisedEvaluation[]): number 
   return run;
 }
 
+/**
+ * A candidate in a market with a rollback in its history is accepted only when, on the outcomes known after the latest
+ * rollback, there are at least `minimumSamples.holdout` of them, it beats the rolled-back calibrator by at least
+ * `materiality`, and it is itself not worse than the raw forecast by `materiality` (the promotion gate, on that window).
+ * Anything unknown fails closed.
+ */
+function provenAfterRollback(lineage: RollbackLineage, config: CalibrationConfig): boolean {
+  const { windowSize, brierRaw, brierCandidate, brierRolledBack } = lineage;
+  if (!Number.isInteger(windowSize) || windowSize < config.minimumSamples.holdout) return false;
+  if (brierRaw === null || brierCandidate === null || brierRolledBack === null) return false;
+  if (![brierRaw, brierCandidate, brierRolledBack].every(Number.isFinite)) return false;
+  return brierRolledBack - brierCandidate >= config.materiality && brierCandidate - brierRaw < config.materiality;
+}
+
+/**
+ * The rollback-lineage gate guards the way back from a rollback. It applies while the latest ROLLED_BACK event of the market
+ * has not yet been followed by the promotion of another calibrator: no calibrator is active (raw only) or the active one is the
+ * restored predecessor (activated by that very rollback). Once a calibrator promoted after the rollback is active, later
+ * candidates only face the supersession rule against it.
+ */
+export function rollbackLineageApplies(latestRollbackSeq: number | null, activeActivationSeq: number | null): boolean {
+  if (latestRollbackSeq === null) return false;
+  return activeActivationSeq === null || activeActivationSeq <= latestRollbackSeq;
+}
+
+export interface RollbackLineageInput {
+  /** The latest rolled-back calibrator of the market; null when it cannot be read. */
+  readonly rolledBack: FittedCalibrator | null;
+  /** `asOf` of the latest ROLLED_BACK event. */
+  readonly rollbackAsOf: string;
+  readonly candidate: FittedCalibrator;
+  /** The candidate's holdout window as assessed by `assessCalibrationData`. */
+  readonly holdout: readonly CalibrationSample[];
+  readonly market: ScoreMarket;
+  readonly config: CalibrationConfig;
+}
+
+/** Scores the candidate and the rolled-back calibrator on the part of the candidate's holdout that is newer than the rollback. */
+export function assessRollbackLineage(input: RollbackLineageInput): RollbackLineage {
+  const { rolledBack, rollbackAsOf, candidate, holdout, market, config } = input;
+  const boundary = Date.parse(rollbackAsOf);
+  if (!Number.isFinite(boundary)) throw calibrationError("INVALID_CALIBRATION_EVALUATION", "rollbackAsOf is not a date");
+  const window = holdout.filter((sample) => Date.parse(sample.knownAt) > boundary);
+  if (window.length === 0) return { windowSize: 0, brierRaw: null, brierCandidate: null, brierRolledBack: null };
+  const own = evaluateCalibrator({ calibrator: candidate, market, samples: window, config });
+  let brierRolledBack: number | null = null;
+  if (rolledBack !== null) {
+    try {
+      brierRolledBack = evaluateCalibrator({ calibrator: rolledBack, market, samples: window, config }).brierCalibrated;
+    } catch {
+      // A rolled-back calibrator that cannot be applied proves nothing: the candidate stays unproven (fail closed).
+      brierRolledBack = null;
+    }
+  }
+  return { windowSize: window.length, brierRaw: own.brierRaw, brierCandidate: own.brierCalibrated, brierRolledBack };
+}
+
 function decideCandidate(input: LifecycleInput, candidate: LifecycleCandidate | null, active: LifecycleActive | null): LifecycleAction {
   const { config } = input;
   if (candidate === null) return { type: "NO_CHANGE", reasonCode: "NO_CANDIDATE" };
   if (active !== null && candidate.calibratorId === active.calibratorId) return { type: "NO_CHANGE", reasonCode: "CANDIDATE_IS_ACTIVE" };
   if (candidate.everRolledBack) return { type: "NO_CHANGE", reasonCode: "CANDIDATE_PREVIOUSLY_ROLLED_BACK" };
   if (!candidate.promotion.promotable) return { type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_PROMOTABLE" };
+  if (candidate.rollbackLineage !== null && !provenAfterRollback(candidate.rollbackLineage, config)) {
+    return { type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_PROVEN_AFTER_ROLLBACK" };
+  }
   if (active === null) {
     return { type: "PROMOTE", calibratorId: candidate.calibratorId, predecessorCalibratorId: null, reasonCode: "FIRST_PROMOTION" };
   }
@@ -224,8 +306,10 @@ function decideCandidate(input: LifecycleInput, candidate: LifecycleCandidate | 
  * - Rollback: the current evaluation is eligible (sample >= `rollback.minimumEvaluationSample`) and the trailing run of
  *   eligible WORSE evaluations, current included, reaches `rollback.consecutiveWorse`. Ineligible evaluations leave the
  *   run unchanged; an eligible non-WORSE one resets it. A run that rolls back promotes nothing (anti-flapping).
- * - Promotion: only a promotable candidate that was never rolled back and is not the active calibrator. With no active
- *   calibrator it is the first promotion; otherwise the candidate must beat the active calibrator on the candidate's
+ * - Promotion: only a promotable candidate that was never rolled back and is not the active calibrator. In a market whose
+ *   log holds a ROLLED_BACK event the candidate must first be proven on the outcomes known after the latest rollback
+ *   (`RollbackLineage`): a refit of the same data family cannot come back as a "new" calibrator the next day. Then, with no
+ *   active calibrator it is the first promotion; otherwise the candidate must beat the active calibrator on the candidate's
  *   own holdout by at least `materiality`.
  * Every input is a fact recoverable from the CalibratorEvent log (active record, evaluations since activation, restore target).
  */

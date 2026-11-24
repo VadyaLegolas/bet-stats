@@ -3,16 +3,19 @@ import { describe, expect, it } from "vitest";
 import { CALIBRATION_CONFIG } from "../../packages/domain/src/calibration/config.js";
 import { fitMarketCalibrator, type CalibratorIdentity, type FittedCalibrator } from "../../packages/domain/src/calibration/calibrator.js";
 import {
+  assessRollbackLineage,
   calibrationVerdict,
   decideCalibrationLifecycle,
   evaluateCalibrator,
   isPromotable,
+  rollbackLineageApplies,
   type CalibratorEvaluation,
   type LifecycleActive,
   type LifecycleCandidate,
   type LifecycleDecision,
   type LifecycleInput,
   type PriorEvaluation,
+  type RollbackLineage,
 } from "../../packages/domain/src/calibration/lifecycle.js";
 import { forecastConfigHashFor } from "../../packages/domain/src/forecast/config.js";
 import { makeCalibrationSamples } from "../helpers/calibration-samples.js";
@@ -145,6 +148,7 @@ describe("end to end: candidate, promotion gate, first promotion, evaluation", (
         calibratorId: "cal-first",
         promotion,
         everRolledBack: false,
+        rollbackLineage: null,
         holdoutBrierCandidate: candidate.holdoutBrierCalibrated,
         holdoutBrierActive: null,
       },
@@ -169,6 +173,7 @@ describe("first-promotion decision without an active calibrator", () => {
       calibratorId: "cal-1",
       promotion: { promotable: true, reasonCode: "OK" },
       everRolledBack: false,
+      rollbackLineage: null,
       holdoutBrierCandidate: 0.4,
       holdoutBrierActive: null,
       ...overrides,
@@ -223,6 +228,7 @@ function candidateOf(overrides: Partial<LifecycleCandidate> = {}): LifecycleCand
     calibratorId: "cal-candidate",
     promotion: { promotable: true, reasonCode: "OK" },
     everRolledBack: false,
+    rollbackLineage: null,
     holdoutBrierCandidate: 0.4,
     holdoutBrierActive: 0.5,
     ...overrides,
@@ -335,6 +341,133 @@ describe("candidate eligibility with an active calibrator (D-09)", () => {
   it("does not promote a candidate that failed the promotion gate", () => {
     const decision = decide({ active: activeOf([]), candidate: candidateOf({ promotion: { promotable: false, reasonCode: "HOLDOUT_WORSE_THAN_RAW" } }) });
     expect(decision.actions).toEqual([{ type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_PROMOTABLE" }]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// WR-01: a refit of a rolled-back calibrator family cannot come back the next day
+// ---------------------------------------------------------------------------------------------
+
+describe("rollback lineage gate (WR-01)", () => {
+  const proven = (overrides: Partial<RollbackLineage> = {}): RollbackLineage => ({ windowSize: 60, brierRaw: 0.5, brierCandidate: 0.5, brierRolledBack: 0.502, ...overrides });
+  const notProven = { type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_PROVEN_AFTER_ROLLBACK" } as const;
+
+  it("lets a candidate in a market without a rollback through, exactly as before", () => {
+    expect(decide({ active: activeOf([]), candidate: candidateOf() }).actions).toEqual([{ type: "PROMOTE", calibratorId: "cal-candidate", predecessorCalibratorId: "cal-active", reasonCode: "SUPERSEDES_ACTIVE" }]);
+    expect(decide({ active: null, candidate: candidateOf({ rollbackLineage: null }) }).actions[0]).toMatchObject({ type: "PROMOTE", reasonCode: "FIRST_PROMOTION" });
+  });
+
+  it("refuses a different content id of the rolled-back family: first promotion after a rollback to raw needs proof", () => {
+    // A new content id (everRolledBack false), promotable, no active calibrator: this used to be promoted at once.
+    const refit = candidateOf({ everRolledBack: false, rollbackLineage: proven({ brierRolledBack: 0.5005 }) });
+    expect(decide({ active: null, candidate: refit }).actions).toEqual([notProven]);
+  });
+
+  it("promotes only when the candidate beats the rolled-back calibrator by at least materiality on a window of at least 60 after the rollback", () => {
+    const first = (lineage: RollbackLineage) => decide({ active: null, candidate: candidateOf({ rollbackLineage: lineage }) }).actions[0];
+    expect(first(proven())).toEqual({ type: "PROMOTE", calibratorId: "cal-candidate", predecessorCalibratorId: null, reasonCode: "FIRST_PROMOTION" });
+    expect(first(proven({ brierRolledBack: 0.50199 }))).toEqual(notProven);
+    expect(first(proven({ windowSize: 59 }))).toEqual(notProven);
+    expect(first(proven({ windowSize: 0, brierRaw: null, brierCandidate: null, brierRolledBack: null }))).toEqual(notProven);
+  });
+
+  it("is not satisfied by a candidate that beats the rolled-back calibrator but is itself worse than raw by materiality", () => {
+    const lineage = proven({ brierRaw: 0.4, brierCandidate: 0.402, brierRolledBack: 0.45 });
+    expect(decide({ active: null, candidate: candidateOf({ rollbackLineage: lineage }) }).actions).toEqual([notProven]);
+  });
+
+  it.each<[string, Partial<RollbackLineage>]>([
+    ["an unknown candidate Brier", { brierCandidate: null }],
+    ["an unknown rolled-back Brier", { brierRolledBack: null }],
+    ["an unknown raw Brier", { brierRaw: null }],
+    ["a non-finite Brier", { brierRolledBack: Number.NaN }],
+  ])("fails closed on %s", (_name, overrides) => {
+    expect(decide({ active: null, candidate: candidateOf({ rollbackLineage: proven(overrides) }) }).actions).toEqual([notProven]);
+  });
+
+  it("also guards supersession of the restored predecessor, after the promotion gate and before the supersession margin", () => {
+    const strong = { holdoutBrierCandidate: 0.1, holdoutBrierActive: 0.9 };
+    expect(decide({ active: activeOf([]), candidate: candidateOf({ ...strong, rollbackLineage: proven({ windowSize: 10 }) }) }).actions).toEqual([notProven]);
+    expect(decide({ active: activeOf([]), candidate: candidateOf({ ...strong, rollbackLineage: proven() }) }).actions[0]).toMatchObject({ type: "PROMOTE", reasonCode: "SUPERSEDES_ACTIVE" });
+    const unpromotable = candidateOf({ ...strong, rollbackLineage: proven(), promotion: { promotable: false, reasonCode: "HOLDOUT_WORSE_THAN_RAW" } });
+    expect(decide({ active: activeOf([]), candidate: unpromotable }).actions).toEqual([{ type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_PROMOTABLE" }]);
+  });
+
+  it("the exact rolled-back calibrator stays refused whatever the evidence", () => {
+    const exact = candidateOf({ everRolledBack: true, rollbackLineage: proven({ brierRolledBack: 0.9 }) });
+    expect(decide({ active: null, candidate: exact }).actions).toEqual([{ type: "NO_CHANGE", reasonCode: "CANDIDATE_PREVIOUSLY_ROLLED_BACK" }]);
+  });
+
+  it("applies until a calibrator promoted after the latest rollback is active", () => {
+    expect(rollbackLineageApplies(null, null)).toBe(false);
+    expect(rollbackLineageApplies(null, 5)).toBe(false);
+    expect(rollbackLineageApplies(40, null)).toBe(true);
+    expect(rollbackLineageApplies(40, 40)).toBe(true);
+    expect(rollbackLineageApplies(40, 12)).toBe(true);
+    expect(rollbackLineageApplies(40, 41)).toBe(false);
+  });
+});
+
+describe("assessRollbackLineage (WR-01)", () => {
+  // R was fitted on a strongly over-confident process and softens hard; the new regime is under-confident (true slope 1.5), where a sharpener helps.
+  const rolledBack = fitFixture(400, 101);
+  const holdout = makeCalibrationSamples({ market: "OVER_UNDER_2_5", count: 200, seed: 77, trueSlope: 1.5, trueIntercept: 0, indexOffset: 2000 });
+  const knownAtOf = (index: number): string => holdout[index]!.knownAt;
+  const fitOn = (seed: number, trueSlope: number, trueIntercept: number, count = 400): FittedCalibrator => {
+    const result = fitMarketCalibrator({
+      identity, market: "OVER_UNDER_2_5", samples: makeCalibrationSamples({ market: "OVER_UNDER_2_5", count, seed, trueSlope, trueIntercept }), asOf: ASOF, config,
+    });
+    if (result.state !== "FITTED") throw new Error("fixture must fit");
+    return result.calibrator;
+  };
+  const input = (overrides: Partial<Parameters<typeof assessRollbackLineage>[0]> = {}): Parameters<typeof assessRollbackLineage>[0] => ({
+    rolledBack, rollbackAsOf: knownAtOf(99), candidate: fitOn(303, 1.5, 0), holdout, market: "OVER_UNDER_2_5", config, ...overrides,
+  });
+
+  it("counts only holdout outcomes known strictly after the rollback", () => {
+    expect(assessRollbackLineage(input({ rollbackAsOf: knownAtOf(139) })).windowSize).toBe(60);
+    expect(assessRollbackLineage(input({ rollbackAsOf: knownAtOf(99) })).windowSize).toBe(100);
+    expect(assessRollbackLineage(input({ rollbackAsOf: knownAtOf(199) })).windowSize).toBe(0);
+    expect(assessRollbackLineage(input({ rollbackAsOf: "2000-01-01T00:00:00.000Z" })).windowSize).toBe(200);
+  });
+
+  it("an empty window carries no numbers", () => {
+    expect(assessRollbackLineage(input({ rollbackAsOf: knownAtOf(199) }))).toEqual({ windowSize: 0, brierRaw: null, brierCandidate: null, brierRolledBack: null });
+  });
+
+  it("scores the candidate and the rolled-back calibrator on the same window", () => {
+    const request = input();
+    const lineage = assessRollbackLineage(request);
+    const window = holdout.slice(100);
+    const own = evaluateCalibrator({ calibrator: request.candidate, market: "OVER_UNDER_2_5", samples: window, config });
+    const old = evaluateCalibrator({ calibrator: rolledBack, market: "OVER_UNDER_2_5", samples: window, config });
+    expect(lineage.brierCandidate).toBeCloseTo(own.brierCalibrated!, 12);
+    expect(lineage.brierRaw).toBeCloseTo(own.brierRaw!, 12);
+    expect(lineage.brierRolledBack).toBeCloseTo(old.brierCalibrated!, 12);
+  });
+
+  it("a candidate fitted on the new regime beats the rolled-back calibrator and is promoted; a refit of the same family is not", () => {
+    const fresh = assessRollbackLineage(input());
+    expect(fresh.windowSize).toBe(100);
+    expect(fresh.brierRolledBack! - fresh.brierCandidate!).toBeGreaterThanOrEqual(config.materiality);
+    expect(decide({ active: null, candidate: candidateOf({ rollbackLineage: fresh }) }).actions[0]).toMatchObject({ type: "PROMOTE", reasonCode: "FIRST_PROMOTION" });
+
+    // Same family as R (fitted on the same over-confident process, a few more days of data): no better than R on the new window.
+    const refit = assessRollbackLineage(input({ candidate: fitOn(102, 0.5, 0.3, 420) }));
+    expect(refit.brierRolledBack! - refit.brierCandidate!).toBeLessThan(config.materiality);
+    expect(decide({ active: null, candidate: candidateOf({ rollbackLineage: refit }) }).actions).toEqual([{ type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_PROVEN_AFTER_ROLLBACK" }]);
+  });
+
+  it("fails closed when the rolled-back calibrator is missing or cannot be applied", () => {
+    expect(assessRollbackLineage(input({ rolledBack: null })).brierRolledBack).toBeNull();
+    const broken = { ...rolledBack, parameters: { epsilon: rolledBack.parameters.epsilon, scalers: [{ slope: Number.NaN, intercept: 0 }] } } as unknown as FittedCalibrator;
+    const lineage = assessRollbackLineage(input({ rolledBack: broken }));
+    expect(lineage.brierRolledBack).toBeNull();
+    expect(decide({ active: null, candidate: candidateOf({ rollbackLineage: lineage }) }).actions).toEqual([{ type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_PROVEN_AFTER_ROLLBACK" }]);
+  });
+
+  it("rejects a rollbackAsOf that is not a date", () => {
+    expect(() => assessRollbackLineage(input({ rollbackAsOf: "soon" }))).toThrowError(expect.objectContaining({ code: "INVALID_CALIBRATION_EVALUATION" }));
   });
 });
 

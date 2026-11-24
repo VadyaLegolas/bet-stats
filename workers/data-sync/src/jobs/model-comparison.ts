@@ -255,7 +255,7 @@ export function comparisonConfigHashes(): ComparisonConfigHashes {
  * A changed model config gives a new id instead of a BACKTEST_PLAN_ID_CONFLICT on the old one.
  */
 export function comparisonPairId(resolved: ResolvedComparisonParams, windows: readonly RollingOriginWindow[], configHashes: ComparisonConfigHashes = comparisonConfigHashes()): string {
-  const { market: _market, allowSmallCohort: _allowSmallCohort, ...identity } = resolved;
+  const identity = { from: resolved.from, to: resolved.to, leagueIds: resolved.leagueIds, concurrency: resolved.concurrency, cutoffHoursBeforeKickoff: resolved.cutoffHoursBeforeKickoff, trainingLagHours: resolved.trainingLagHours, evaluationLagHours: resolved.evaluationLagHours };
   return createHash("sha256").update(JSON.stringify({ resolved: identity, configHashes, windows })).digest("hex").slice(0, 12);
 }
 

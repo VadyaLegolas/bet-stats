@@ -8,7 +8,11 @@ import {
   evaluateCalibrator,
   isPromotable,
   type CalibratorEvaluation,
+  type LifecycleActive,
+  type LifecycleCandidate,
+  type LifecycleDecision,
   type LifecycleInput,
+  type PriorEvaluation,
 } from "../../packages/domain/src/calibration/lifecycle.js";
 import { forecastConfigHashFor } from "../../packages/domain/src/forecast/config.js";
 import { makeCalibrationSamples } from "../helpers/calibration-samples.js";
@@ -187,5 +191,235 @@ describe("first-promotion decision without an active calibrator", () => {
 
   it("is deterministic", () => {
     expect(decideCalibrationLifecycle(base())).toEqual(decideCalibrationLifecycle(base()));
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Task 2: rollback hysteresis (D-07), rollback target and no re-promotion (D-09), supersession
+// ---------------------------------------------------------------------------------------------
+
+type Step = "W" | "N" | "B" | "x";
+
+const DELTA_BY_STEP = { W: 0.01, N: 0, B: -0.01, x: 0.01 } as const;
+
+/** One recorded evaluation: W = WORSE, N = NEUTRAL, B = BETTER, x = WORSE on an ineligible window. */
+function priorOf(step: Step): PriorEvaluation {
+  if (step === "x") return { eligible: false, verdict: "WORSE" };
+  return { eligible: true, verdict: step === "W" ? "WORSE" : step === "B" ? "BETTER" : "NEUTRAL" };
+}
+
+function evaluationOf(step: Step, sampleSize = 60): CalibratorEvaluation {
+  const delta = DELTA_BY_STEP[step];
+  const verdict = step === "W" || step === "x" ? "WORSE" : step === "B" ? "BETTER" : "NEUTRAL";
+  return { sampleSize, brierRaw: 0.5, brierCalibrated: 0.5 + delta, delta, verdict, eligible: sampleSize >= 30 };
+}
+
+function activeOf(steps: readonly Step[], restoreTargetId: string | null = "cal-previous"): LifecycleActive {
+  return { calibratorId: "cal-active", restoreTargetId, priorEvaluations: steps.map(priorOf) };
+}
+
+function candidateOf(overrides: Partial<LifecycleCandidate> = {}): LifecycleCandidate {
+  return {
+    calibratorId: "cal-candidate",
+    promotion: { promotable: true, reasonCode: "OK" },
+    everRolledBack: false,
+    holdoutBrierCandidate: 0.4,
+    holdoutBrierActive: 0.5,
+    ...overrides,
+  };
+}
+
+function decide(overrides: Partial<LifecycleInput>): LifecycleDecision {
+  return decideCalibrationLifecycle({ config, active: null, evaluation: null, candidate: null, ...overrides });
+}
+
+const types = (decision: LifecycleDecision): string[] => decision.actions.map((action) => action.type);
+
+describe("rollback hysteresis (D-07, D-10)", () => {
+  it("records a single WORSE evaluation without rolling back", () => {
+    const decision = decide({ active: activeOf([]), evaluation: evaluationOf("W") });
+    expect(types(decision)).not.toContain("ROLL_BACK");
+    expect(decision.actions[0]).toMatchObject({ type: "RECORD_EVALUATION", calibratorId: "cal-active", verdict: "WORSE", eligible: true, sampleSize: 60 });
+  });
+
+  it("carries the evaluation numbers into the recorded action", () => {
+    const decision = decide({ active: activeOf([]), evaluation: evaluationOf("B", 45) });
+    expect(decision.actions[0]).toEqual({
+      type: "RECORD_EVALUATION",
+      calibratorId: "cal-active",
+      sampleSize: 45,
+      eligible: true,
+      verdict: "BETTER",
+      brierRaw: 0.5,
+      brierCalibrated: 0.49,
+      delta: -0.01,
+    });
+  });
+
+  it.each<[string, readonly Step[], Step, number, boolean]>([
+    ["WORSE, WORSE: two in a row do not roll back", ["W"], "W", 60, false],
+    ["WORSE, WORSE, WORSE: the third in a row rolls back", ["W", "W"], "W", 60, true],
+    ["WORSE, WORSE, NEUTRAL, WORSE: NEUTRAL resets the series", ["W", "W", "N"], "W", 60, false],
+    ["WORSE, WORSE, BETTER, WORSE, WORSE: BETTER resets the series", ["W", "W", "B", "W"], "W", 60, false],
+    ["WORSE, WORSE, BETTER, WORSE, WORSE, WORSE: one more rolls back", ["W", "W", "B", "W", "W"], "W", 60, true],
+    ["NEUTRAL before the series does not matter", ["N", "W", "W"], "W", 60, true],
+    ["WORSE, ineligible, WORSE, WORSE: the ineligible one is skipped", ["W", "x", "W"], "W", 60, true],
+    ["WORSE, WORSE, ineligible (prior), WORSE: skipping does not reset", ["W", "W", "x"], "W", 60, true],
+    ["WORSE, WORSE, ineligible current: no rollback", ["W", "W"], "W", 29, false],
+    ["WORSE, WORSE, current of exactly 30 is eligible: rollback", ["W", "W"], "W", 30, true],
+    ["ineligible current never rolls back whatever the past", ["W", "W", "W", "W"], "W", 0, false],
+    ["current NEUTRAL after two WORSE: no rollback", ["W", "W"], "N", 60, false],
+    ["current BETTER after two WORSE: no rollback", ["W", "W"], "B", 60, false],
+  ])("%s", (_name, priors, current, sampleSize, expectRollback) => {
+    const decision = decide({ active: activeOf(priors), evaluation: evaluationOf(current, sampleSize) });
+    expect(types(decision).includes("ROLL_BACK")).toBe(expectRollback);
+  });
+
+  it("counts the current evaluation toward the series and reports it", () => {
+    const decision = decide({ active: activeOf(["W", "W"]), evaluation: evaluationOf("W") });
+    expect(decision.actions).toEqual([
+      expect.objectContaining({ type: "RECORD_EVALUATION" }),
+      { type: "ROLL_BACK", calibratorId: "cal-active", restoreCalibratorId: "cal-previous", reasonCode: "HOLDOUT_REGRESSION", consecutiveWorse: 3 },
+    ]);
+  });
+
+  it("never rolls back without a current evaluation", () => {
+    expect(types(decide({ active: activeOf(["W", "W", "W"]), evaluation: null }))).not.toContain("ROLL_BACK");
+  });
+
+  it("records an ineligible evaluation as such", () => {
+    const decision = decide({ active: activeOf(["W"]), evaluation: evaluationOf("W", 29) });
+    expect(decision.actions[0]).toMatchObject({ type: "RECORD_EVALUATION", eligible: false, sampleSize: 29 });
+  });
+
+  it("ignores an evaluation when there is no active calibrator", () => {
+    expect(types(decide({ active: null, evaluation: evaluationOf("W") }))).toEqual(["NO_CHANGE"]);
+  });
+});
+
+describe("rollback target (D-09)", () => {
+  it("restores the previous promoted calibrator", () => {
+    const decision = decide({ active: activeOf(["W", "W"], "cal-previous"), evaluation: evaluationOf("W") });
+    expect(decision.actions.at(-1)).toMatchObject({ type: "ROLL_BACK", restoreCalibratorId: "cal-previous" });
+  });
+
+  it("falls back to raw probabilities when there is no predecessor", () => {
+    const decision = decide({ active: activeOf(["W", "W"], null), evaluation: evaluationOf("W") });
+    const rollback = decision.actions.at(-1);
+    expect(rollback).toMatchObject({ type: "ROLL_BACK", restoreCalibratorId: null });
+    expect(rollback).toHaveProperty("restoreCalibratorId", null);
+  });
+
+  it("promotes nothing in a run that rolls back, even with a promotable better candidate", () => {
+    const decision = decide({
+      active: activeOf(["W", "W"]),
+      evaluation: evaluationOf("W"),
+      candidate: candidateOf({ holdoutBrierCandidate: 0.1, holdoutBrierActive: 0.9 }),
+    });
+    expect(types(decision)).toEqual(["RECORD_EVALUATION", "ROLL_BACK"]);
+  });
+});
+
+describe("candidate eligibility with an active calibrator (D-09)", () => {
+  it("never promotes a calibrator that was rolled back before, whatever its metrics", () => {
+    const rolledBack = candidateOf({ everRolledBack: true, holdoutBrierCandidate: 0.01, holdoutBrierActive: 0.9 });
+    expect(decide({ active: activeOf([]), candidate: rolledBack }).actions).toEqual([{ type: "NO_CHANGE", reasonCode: "CANDIDATE_PREVIOUSLY_ROLLED_BACK" }]);
+    expect(decide({ active: null, candidate: rolledBack }).actions).toEqual([{ type: "NO_CHANGE", reasonCode: "CANDIDATE_PREVIOUSLY_ROLLED_BACK" }]);
+  });
+
+  it("ignores a candidate identical to the active calibrator", () => {
+    const decision = decide({ active: activeOf([]), candidate: candidateOf({ calibratorId: "cal-active" }) });
+    expect(decision.actions).toEqual([{ type: "NO_CHANGE", reasonCode: "CANDIDATE_IS_ACTIVE" }]);
+  });
+
+  it("does not promote a candidate that failed the promotion gate", () => {
+    const decision = decide({ active: activeOf([]), candidate: candidateOf({ promotion: { promotable: false, reasonCode: "HOLDOUT_WORSE_THAN_RAW" } }) });
+    expect(decision.actions).toEqual([{ type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_PROMOTABLE" }]);
+  });
+});
+
+describe("supersession of the active calibrator (D-02, D-09)", () => {
+  it("promotes when the active calibrator is worse on the candidate holdout by at least materiality", () => {
+    const decision = decide({ active: activeOf([]), candidate: candidateOf({ holdoutBrierActive: 0.002, holdoutBrierCandidate: 0 }) });
+    expect(decision.actions).toEqual([{ type: "PROMOTE", calibratorId: "cal-candidate", predecessorCalibratorId: "cal-active", reasonCode: "SUPERSEDES_ACTIVE" }]);
+  });
+
+  it("does not promote at a difference of 0.00199", () => {
+    const decision = decide({ active: activeOf([]), candidate: candidateOf({ holdoutBrierActive: 0.00199, holdoutBrierCandidate: 0 }) });
+    expect(decision.actions).toEqual([{ type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_BETTER_THAN_ACTIVE" }]);
+  });
+
+  it("does not promote a worse candidate", () => {
+    const decision = decide({ active: activeOf([]), candidate: candidateOf({ holdoutBrierActive: 0.4, holdoutBrierCandidate: 0.5 }) });
+    expect(decision.actions).toEqual([{ type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_BETTER_THAN_ACTIVE" }]);
+  });
+
+  it("fails closed when the active Brier on the candidate holdout is unknown", () => {
+    const decision = decide({ active: activeOf([]), candidate: candidateOf({ holdoutBrierActive: null }) });
+    expect(decision.actions).toEqual([{ type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_BETTER_THAN_ACTIVE" }]);
+  });
+
+  it("records the evaluation before the promotion", () => {
+    const decision = decide({ active: activeOf([]), evaluation: evaluationOf("N"), candidate: candidateOf() });
+    expect(types(decision)).toEqual(["RECORD_EVALUATION", "PROMOTE"]);
+  });
+
+  it("rejects non-finite candidate numbers instead of guessing", () => {
+    expect(() => decide({ active: activeOf([]), candidate: candidateOf({ holdoutBrierCandidate: Number.NaN }) })).toThrowError(
+      expect.objectContaining({ code: "INVALID_CALIBRATION_EVALUATION" }),
+    );
+  });
+});
+
+describe("determinism and ordering", () => {
+  it("returns equal decisions for equal inputs", () => {
+    const input: LifecycleInput = { config, active: activeOf(["W", "W"]), evaluation: evaluationOf("W"), candidate: candidateOf() };
+    expect(decideCalibrationLifecycle(input)).toEqual(decideCalibrationLifecycle(input));
+  });
+
+  it("does not mutate its input", () => {
+    const active = activeOf(["W", "W"]);
+    const before = JSON.stringify(active);
+    decide({ active, evaluation: evaluationOf("W") });
+    expect(JSON.stringify(active)).toBe(before);
+  });
+});
+
+describe("thresholds come from the config, not from literals (D-07)", () => {
+  const rollbackConfig = { ...config, rollback: { consecutiveWorse: 2, minimumEvaluationSample: 10 } };
+
+  it("rolls back after two WORSE evaluations when the configured series is 2", () => {
+    const input = { active: activeOf(["W"]), evaluation: evaluationOf("W", 60) };
+    expect(types(decide(input))).not.toContain("ROLL_BACK");
+    expect(types(decideCalibrationLifecycle({ config: rollbackConfig, candidate: null, ...input }))).toContain("ROLL_BACK");
+  });
+
+  it("treats a window of 10 as eligible only when the configured minimum is 10", () => {
+    const input = { active: activeOf(["W", "W"]), evaluation: evaluationOf("W", 10) };
+    expect(types(decide(input))).not.toContain("ROLL_BACK");
+    expect(types(decideCalibrationLifecycle({ config: rollbackConfig, candidate: null, ...input }))).toContain("ROLL_BACK");
+  });
+
+  it("does not roll back when the configured minimum is raised above the window", () => {
+    const strict = { ...config, rollback: { consecutiveWorse: 3, minimumEvaluationSample: 100 } };
+    const decision = decideCalibrationLifecycle({ config: strict, active: activeOf(["W", "W"]), evaluation: evaluationOf("W", 60), candidate: null });
+    expect(types(decision)).not.toContain("ROLL_BACK");
+    expect(decision.actions[0]).toMatchObject({ type: "RECORD_EVALUATION", eligible: false });
+  });
+
+  it("evaluateCalibrator follows the configured minimum evaluation sample", () => {
+    const calibrator = fitFixture(400, 101);
+    const window = makeCalibrationSamples({ market: "OVER_UNDER_2_5", count: 15, seed: 404, trueSlope: SLOPE, trueIntercept: INTERCEPT, indexOffset: 9000 });
+    expect(evaluateCalibrator({ calibrator, market: "OVER_UNDER_2_5", samples: window, config }).eligible).toBe(false);
+    expect(evaluateCalibrator({ calibrator, market: "OVER_UNDER_2_5", samples: window, config: rollbackConfig }).eligible).toBe(true);
+  });
+
+  it("promotion gate and verdict follow the configured holdout minimum and materiality", () => {
+    const loose = { ...config, minimumSamples: { ...config.minimumSamples, holdout: 10 }, materiality: 0.5 };
+    expect(isPromotable(stubMetrics(10, 0, 0.4), loose)).toEqual({ promotable: true, reasonCode: "OK" });
+    expect(isPromotable(stubMetrics(10, 0, 0.4), config)).toEqual({ promotable: false, reasonCode: "HOLDOUT_TOO_SMALL" });
+    expect(isPromotable(stubMetrics(60, 0, 0.4), config)).toEqual({ promotable: false, reasonCode: "HOLDOUT_WORSE_THAN_RAW" });
+    expect(calibrationVerdict(0.4, loose)).toBe("NEUTRAL");
+    expect(calibrationVerdict(0.4, config)).toBe("WORSE");
   });
 });

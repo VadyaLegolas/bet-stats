@@ -139,7 +139,8 @@ export type NoChangeReasonCode =
   | "NO_CANDIDATE"
   | "CANDIDATE_NOT_PROMOTABLE"
   | "CANDIDATE_PREVIOUSLY_ROLLED_BACK"
-  | "ACTIVE_CALIBRATOR_PRESENT";
+  | "CANDIDATE_IS_ACTIVE"
+  | "CANDIDATE_NOT_BETTER_THAN_ACTIVE";
 
 export type LifecycleAction =
   | Readonly<{
@@ -163,7 +164,7 @@ export type LifecycleAction =
       type: "PROMOTE";
       calibratorId: string;
       predecessorCalibratorId: string | null;
-      reasonCode: "FIRST_PROMOTION";
+      reasonCode: "FIRST_PROMOTION" | "SUPERSEDES_ACTIVE";
     }>
   | Readonly<{ type: "NO_CHANGE"; reasonCode: NoChangeReasonCode }>;
 
@@ -171,17 +172,95 @@ export interface LifecycleDecision {
   readonly actions: readonly LifecycleAction[];
 }
 
+interface NormalisedEvaluation {
+  readonly eligible: boolean;
+  readonly verdict: CalibrationVerdict | null;
+}
+
 /**
- * Decides what the worker appends to the event log. Task 1 scope: first promotion when there is no
- * active calibrator; otherwise NO_CHANGE.
+ * Eligibility and verdict of the current evaluation are derived from its numbers and the config in
+ * the input, never trusted from flags: the same facts under the same config always give the same decision.
+ */
+function normaliseCurrent(evaluation: CalibratorEvaluation, config: CalibrationConfig): NormalisedEvaluation {
+  const verdict = evaluation.delta === null ? null : calibrationVerdict(evaluation.delta, config);
+  const eligible = verdict !== null && evaluation.sampleSize > 0 && evaluation.sampleSize >= config.rollback.minimumEvaluationSample;
+  return { eligible, verdict };
+}
+
+/** Length of the trailing run of WORSE among the eligible evaluations (ineligible ones are skipped, a non-WORSE one ends the run). */
+function trailingWorseRun(evaluations: readonly NormalisedEvaluation[]): number {
+  let run = 0;
+  for (let index = evaluations.length - 1; index >= 0; index -= 1) {
+    const entry = evaluations[index]!;
+    if (!entry.eligible || entry.verdict === null) continue;
+    if (entry.verdict !== "WORSE") break;
+    run += 1;
+  }
+  return run;
+}
+
+function decideCandidate(input: LifecycleInput, candidate: LifecycleCandidate | null, active: LifecycleActive | null): LifecycleAction {
+  const { config } = input;
+  if (candidate === null) return { type: "NO_CHANGE", reasonCode: "NO_CANDIDATE" };
+  if (active !== null && candidate.calibratorId === active.calibratorId) return { type: "NO_CHANGE", reasonCode: "CANDIDATE_IS_ACTIVE" };
+  if (candidate.everRolledBack) return { type: "NO_CHANGE", reasonCode: "CANDIDATE_PREVIOUSLY_ROLLED_BACK" };
+  if (!candidate.promotion.promotable) return { type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_PROMOTABLE" };
+  if (active === null) {
+    return { type: "PROMOTE", calibratorId: candidate.calibratorId, predecessorCalibratorId: null, reasonCode: "FIRST_PROMOTION" };
+  }
+  assertFinite(candidate.holdoutBrierCandidate, "holdoutBrierCandidate is not finite");
+  const activeBrier = candidate.holdoutBrierActive;
+  // Fail closed: without the active calibrator's Brier on the candidate holdout, superiority is unproven.
+  if (activeBrier === null || !Number.isFinite(activeBrier) || activeBrier - candidate.holdoutBrierCandidate < config.materiality) {
+    return { type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_BETTER_THAN_ACTIVE" };
+  }
+  return { type: "PROMOTE", calibratorId: candidate.calibratorId, predecessorCalibratorId: active.calibratorId, reasonCode: "SUPERSEDES_ACTIVE" };
+}
+
+/**
+ * Decides what the worker appends to the event log (D-07, D-09, D-10). Pure and deterministic.
+ *
+ * Action order is fixed: RECORD_EVALUATION first, then at most one of ROLL_BACK / PROMOTE, otherwise one NO_CHANGE.
+ * - Rollback: the current evaluation is eligible (sample >= `rollback.minimumEvaluationSample`) and the trailing run of
+ *   eligible WORSE evaluations, current included, reaches `rollback.consecutiveWorse`. Ineligible evaluations leave the
+ *   run unchanged; an eligible non-WORSE one resets it. A run that rolls back promotes nothing (anti-flapping).
+ * - Promotion: only a promotable candidate that was never rolled back and is not the active calibrator. With no active
+ *   calibrator it is the first promotion; otherwise the candidate must beat the active calibrator on the candidate's
+ *   own holdout by at least `materiality`.
+ * Every input is a fact recoverable from the CalibratorEvent log (active record, evaluations since activation, restore target).
  */
 export function decideCalibrationLifecycle(input: LifecycleInput): LifecycleDecision {
-  const { active, candidate } = input;
-  if (active !== null) return { actions: [{ type: "NO_CHANGE", reasonCode: "ACTIVE_CALIBRATOR_PRESENT" }] };
-  if (candidate === null) return { actions: [{ type: "NO_CHANGE", reasonCode: "NO_CANDIDATE" }] };
-  if (candidate.everRolledBack) return { actions: [{ type: "NO_CHANGE", reasonCode: "CANDIDATE_PREVIOUSLY_ROLLED_BACK" }] };
-  if (!candidate.promotion.promotable) return { actions: [{ type: "NO_CHANGE", reasonCode: "CANDIDATE_NOT_PROMOTABLE" }] };
-  return {
-    actions: [{ type: "PROMOTE", calibratorId: candidate.calibratorId, predecessorCalibratorId: null, reasonCode: "FIRST_PROMOTION" }],
-  };
+  const { config, active, evaluation, candidate } = input;
+  const actions: LifecycleAction[] = [];
+
+  if (active !== null && evaluation !== null) {
+    const current = normaliseCurrent(evaluation, config);
+    actions.push({
+      type: "RECORD_EVALUATION",
+      calibratorId: active.calibratorId,
+      sampleSize: evaluation.sampleSize,
+      eligible: current.eligible,
+      verdict: current.verdict,
+      brierRaw: evaluation.brierRaw,
+      brierCalibrated: evaluation.brierCalibrated,
+      delta: evaluation.delta,
+    });
+    if (current.eligible) {
+      const run = trailingWorseRun([...active.priorEvaluations, current]);
+      if (run >= config.rollback.consecutiveWorse) {
+        actions.push({
+          type: "ROLL_BACK",
+          calibratorId: active.calibratorId,
+          restoreCalibratorId: active.restoreTargetId,
+          reasonCode: "HOLDOUT_REGRESSION",
+          consecutiveWorse: run,
+        });
+        return { actions };
+      }
+    }
+  }
+
+  actions.push(decideCandidate(input, candidate, active));
+  return { actions };
 }
+

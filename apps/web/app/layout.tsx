@@ -10,7 +10,7 @@ import { ThemeToggle } from "../components/theme-toggle";
 import { ThemeBootstrapScript } from "../components/theme-bootstrap";
 import { GatewayHomeRedirect } from "../components/gateway-home-redirect";
 
-import { plexSans, sourceSerif } from "./fonts";
+import { inter, interCyrillic, spaceGrotesk } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -41,7 +41,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
        stamped value. The script lives in components/theme-bootstrap and is
        emitted by the server render only — the client render returns null, so
        hydration never expects the <script> node and cannot fail on it. */
-    <html lang="ru" data-theme="light" suppressHydrationWarning className={`${sourceSerif.variable} ${plexSans.variable}`}>
+    <html lang="ru" data-theme="light" suppressHydrationWarning className={`${spaceGrotesk.variable} ${inter.variable} ${interCyrillic.variable}`}>
       <head>
         <ThemeBootstrapScript />
       </head>

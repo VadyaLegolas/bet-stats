@@ -1,48 +1,56 @@
 /* ---------------------------------------------------------------------------
-   Матчдей — "Matchday Programme" design system
-   Light, editorial, ruled. Paper, ink, turf green, mustard signal, crimson
-   alert. Hairline borders instead of shadows; no gradients, no glass, no neon.
-   Type: Source Serif 4 (display) + IBM Plex Sans (UI/data, tabular figures).
+   Матчдей — design system
+   Soft rounded surfaces, hairline borders, one green accent with a warm amber
+   signal; light and dark themes share the same token names.
+   Type: Space Grotesk (headings) + Inter (body, latin + cyrillic), both
+   self-hosted through next/font/local.
    --------------------------------------------------------------------------- */
 
 :root {
   color-scheme: light;
 
   /* Surface + ink */
-  --color-page: #f1f3f0;          /* programme paper */
-  --color-surface: #ffffff;       /* panels, tables, rows */
-  --color-surface-hover: #eaebe6; /* row/link hover wash */
-  --color-surface-lifted: #fbfcfa; /* near-invisible lift on card hover */
-  --color-surface-subtle: rgba(23, 33, 29, 0.04);
-  --color-text: #17211d;          /* ink */
-  --color-text-secondary: #46544c;
-  --color-muted: #5c6b62;
+  --color-page: #F6F7F4;          /* page background */
+  --color-surface: #FFFFFF;       /* panels, tables, rows */
+  --color-surface-2: #EEF1EC;     /* bands, footer, secondary wells */
+  --color-surface-hover: #EEF1EC; /* row/link hover wash */
+  --color-surface-lifted: #FBFCFA; /* near-invisible lift on card hover */
+  --color-surface-subtle: rgba(16, 22, 26, 0.04);
+  --color-text: #10161A;
+  --color-text-secondary: #46525B;
+  --color-muted: #55616B;
 
-  /* Anchor: turf */
-  --color-accent: #14503b;
-  --color-accent-hover: #0e3b2b;
-  --color-accent-subtle: rgba(20, 80, 59, 0.08);
-  /* Filled accent surfaces (buttons, chips, skip-link). In light it equals the
-     accent; the dark theme redefines it independently so white labels keep
-     their contrast while accent-as-text lifts for dark backgrounds. */
-  --color-accent-fill: #14503b;
-  --color-accent-fill-hover: #0e3b2b;
-  --color-deep: #0b2c21;          /* colophon footer */
+  /* Anchor: green */
+  --color-accent: #0B7A5A;
+  --color-accent-hover: #075A42;
+  --color-accent-subtle: rgba(11, 122, 90, 0.14);
+  /* Filled accent surfaces (buttons, chips, skip-link) and the label colour
+     that sits on them. The dark theme redefines both independently: its fill is
+     light green, so the label turns near-black instead of white. */
+  --color-accent-fill: #0B7A5A;
+  --color-accent-fill-hover: #075A42;
+  --color-on-accent: #FFFFFF;
+  --color-accent-soft: #DDF1E8;   /* soft accent wells, badges, toggle */
+  --color-accent-text: #075A42;   /* accent as text (links, current nav) */
+  --color-deep: #064A37;          /* pressed-button colour */
+  --color-neutral-bar: #B8C1BA;   /* neutral bar segments (draw) */
+  --color-warm: #C9701D;          /* warm bar segments, low-quota meter */
 
   /* Signals */
-  --color-warning: #7a5600;       /* readable mustard text */
-  --color-signal: #d99a0b;        /* mustard dots, rails, rules */
-  --color-signal-subtle: rgba(217, 154, 11, 0.16);
+  --color-warning: #8A4A0C;       /* readable amber text */
+  --color-signal: #C9701D;        /* amber dots, rails, rules */
+  --color-signal-subtle: rgba(201, 112, 29, 0.14);
   --color-danger: #a32b2b;        /* crimson text */
   --color-danger-subtle: rgba(163, 43, 43, 0.07);
   --color-info: #2c5d82;          /* data blue, provenance only */
-  --color-success: #14503b;
-  --color-success-subtle: rgba(20, 80, 59, 0.09);
+  --color-success: #0B7A5A;
+  --color-success-subtle: rgba(11, 122, 90, 0.1);
 
   /* Rules */
-  --color-border: #c9d2cb;
-  --color-border-subtle: #e3e8e3;
-  --color-rule-ink: #17211d;
+  --color-border: #E1E5DF;
+  --color-border-strong: #C3CBC4;
+  --color-border-subtle: #EAEDE8;
+  --color-rule-ink: #C3CBC4;
 
   /* Space */
   --space-1: 4px;
@@ -54,71 +62,85 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  /* Shape: small radii, printed feel */
-  --radius-control: 3px;
-  --radius-panel: 4px;
+  /* Shape: soft rounded surfaces */
+  --radius-control: 12px;
+  --radius-panel: 20px;
+  --radius-card: 24px;
+  --radius-pill: 999px;
   --radius-full: 9999px;
 
-  /* Shadows: barely-there; borders do the work */
+  /* Shadows: hairline borders do most of the work; the hero card gets depth */
   --shadow-sm: 0 1px 1px rgba(23, 33, 29, 0.05);
   --shadow-md: 0 2px 6px rgba(23, 33, 29, 0.09);
   --shadow-lg: 0 8px 24px rgba(23, 33, 29, 0.12);
+  --shadow-card: 0 24px 48px -24px rgba(16,22,26,0.18);
+
+  /* Type stacks (the variables come from app/fonts.ts via the html className).
+     Space Grotesk has no Cyrillic, so headings fall through to Inter. */
+  --font-body: var(--font-inter), var(--font-inter-cyrillic), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-heading: var(--font-space-grotesk), var(--font-inter), var(--font-inter-cyrillic), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
-/* --- Dark theme: "the programme under floodlights" ------------------------
-   Same design system after dark: the green-black ink becomes the page, the
-   ink itself lifts to floodlight paper, turf green brightens to the colour it
-   reads as under lights, and the mustard signal stays mustard. No neon, no
-   glass — hairline borders keep doing the work. Flipped by data-theme on
-   <html>, which the layout's inline script stamps before the first paint. */
+/* --- Dark theme ------------------------------------------------------------
+   Same token names, deep green-black surfaces and a bright mint accent. The
+   filled accent is light green, so --color-on-accent turns near-black to keep
+   button labels readable. Flipped by data-theme on <html>, which the layout's
+   inline script stamps before the first paint. */
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Surface + ink (the ink becomes the paper) */
-  --color-page: #0e1512;
-  --color-surface: #17211d;
-  --color-surface-hover: #1e2a25;
-  --color-surface-lifted: #1b2621;
-  --color-surface-subtle: rgba(232, 236, 233, 0.05);
-  --color-text: #e8ece9;
-  --color-text-secondary: #b9c3bd;
-  --color-muted: #93a19a;
+  /* Surface + ink */
+  --color-page: #0B100F;
+  --color-surface: #131A18;
+  --color-surface-2: #0F1514;
+  --color-surface-hover: #1A2420;
+  --color-surface-lifted: #17201D;
+  --color-surface-subtle: rgba(237, 242, 239, 0.05);
+  --color-text: #EDF2EF;
+  --color-text-secondary: #BAC6C0;
+  --color-muted: #9DABA5;
 
-  /* Anchor: turf under floodlights (text/borders lift; fills stay dark enough
-     for the white labels on buttons and chips) */
-  --color-accent: #5aab8a;
-  --color-accent-hover: #74c4a1;
-  --color-accent-subtle: rgba(90, 171, 138, 0.14);
-  --color-accent-fill: #1f7355;
-  --color-accent-fill-hover: #22805a;
-  --color-deep: #0b2c21;
+  /* Anchor: mint */
+  --color-accent: #3DDC97;
+  --color-accent-hover: #6BE9B1;
+  --color-accent-subtle: rgba(61, 220, 151, 0.18);
+  --color-accent-fill: #3DDC97;
+  --color-accent-fill-hover: #6BE9B1;
+  --color-on-accent: #04140C;
+  --color-accent-soft: #12301F;
+  --color-accent-text: #6BE9B1;
+  --color-deep: #2BB87F;
+  --color-neutral-bar: #4A5953;
+  --color-warm: #F0A24A;
 
   /* Signals */
-  --color-warning: #d9b45c;       /* readable mustard text on dark */
-  --color-signal: #d99a0b;
-  --color-signal-subtle: rgba(217, 154, 11, 0.14);
+  --color-warning: #F0A24A;       /* readable amber text on dark */
+  --color-signal: #F0A24A;
+  --color-signal-subtle: rgba(240, 162, 74, 0.14);
   --color-danger: #e08b8b;
   --color-danger-subtle: rgba(224, 139, 139, 0.1);
   --color-info: #7fb1d3;
-  --color-success: #5db28d;
-  --color-success-subtle: rgba(93, 178, 141, 0.12);
+  --color-success: #3DDC97;
+  --color-success-subtle: rgba(61, 220, 151, 0.12);
 
   /* Rules */
-  --color-border: #54645c;
-  --color-border-subtle: #2b3733;
-  --color-rule-ink: #6b7a72;
+  --color-border: #22302B;
+  --color-border-strong: #34463F;
+  --color-border-subtle: #1A2623;
+  --color-rule-ink: #34463F;
 
   /* Shadows: on dark surfaces depth reads as darker, not softer */
   --shadow-sm: 0 1px 1px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --shadow-card: 0 24px 48px -24px rgba(0,0,0,0.6);
 }
 
 * { box-sizing: border-box; }
 html {
   background: var(--color-page);
   color: var(--color-text);
-  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
 body {
@@ -134,22 +156,22 @@ body {
 }
 
 h1, h2, h3 {
-  font-family: var(--font-serif), Georgia, "Times New Roman", serif;
+  font-family: var(--font-heading);
   color: var(--color-text);
   line-height: 1.18;
 }
-h1 { font-size: clamp(2rem, 4.5vw, 2.9rem); font-weight: 600; letter-spacing: -0.01em; margin-block: 0 0.5em; }
-h2 { font-size: 1.4rem; font-weight: 600; margin-block: 1.6em 0.5em; }
-h3 { font-size: 1.12rem; font-weight: 600; }
+h1 { font-size: clamp(2rem, 4.5vw, 2.9rem); font-weight: 700; letter-spacing: -0.02em; margin-block: 0 0.5em; }
+h2 { font-size: 1.5rem; font-weight: 600; margin-block: 1.6em 0.5em; }
+h3 { font-size: 1.15rem; font-weight: 600; }
 
 button, input, select, summary, a { font: inherit; }
-a { color: var(--color-accent); text-underline-offset: 2px; }
+a { color: var(--color-accent-text); text-underline-offset: 2px; }
 a:hover { color: var(--color-accent-hover); }
 button, input, select {
   min-height: 44px;
   max-width: 100%;
   border-radius: var(--radius-control);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
   color: var(--color-text);
   padding: 8px 14px;
@@ -159,7 +181,7 @@ button {
   cursor: pointer;
   font-weight: 500;
   background: var(--color-accent-fill);
-  color: #ffffff;
+  color: var(--color-on-accent);
   border-color: var(--color-accent-fill);
   padding: 8px 20px;
 }
@@ -185,7 +207,7 @@ summary {
   gap: 0.4em;
   cursor: pointer;
   font-weight: 500;
-  color: var(--color-accent);
+  color: var(--color-accent-text);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -201,7 +223,7 @@ th {
   color: var(--color-text-secondary);
   font-weight: 600;
   font-size: 0.82rem;
-  border-bottom: 1.5px solid var(--color-rule-ink);
+  border-bottom: 1px solid var(--color-border-strong);
   vertical-align: bottom;
 }
 td { border-bottom: 1px solid var(--color-border-subtle); }
@@ -213,7 +235,7 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 
 .skip-link {
   background: var(--color-accent-fill);
-  color: #ffffff;
+  color: var(--color-on-accent);
   left: var(--space-4);
   padding: var(--space-2) var(--space-4);
   position: fixed;
@@ -270,7 +292,7 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   }
 }
 .release-brand {
-  font-family: var(--font-serif), Georgia, serif;
+  font-family: var(--font-heading);
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -549,21 +571,21 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   justify-content: center;
   gap: 8px;
   background: var(--color-accent-fill);
-  color: #ffffff;
-  padding: 11px 22px;
+  color: var(--color-on-accent);
+  padding: 0 24px;
   border-radius: var(--radius-control);
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
   border: 1px solid var(--color-accent-fill);
   transition: background-color 0.14s ease, border-color 0.14s ease;
-  min-height: 46px;
+  min-height: 48px;
 }
 .btn-primary:hover {
   background: var(--color-accent-fill-hover);
   border-color: var(--color-accent-fill-hover);
   /* `a:hover` (0,1,1) outranks `.btn-primary` (0,1,0); without this the label
      would be painted the same color as the hover background and vanish. */
-  color: #ffffff;
+  color: var(--color-on-accent);
 }
 .btn-secondary {
   display: inline-flex;
@@ -572,22 +594,22 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
   gap: 8px;
   background: var(--color-surface);
   color: var(--color-text);
-  border: 1px solid var(--color-border);
-  padding: 11px 22px;
+  border: 1px solid var(--color-border-strong);
+  padding: 0 24px;
   border-radius: var(--radius-control);
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
   transition: background-color 0.14s ease, border-color 0.14s ease;
-  min-height: 46px;
+  min-height: 48px;
 }
 /* `:not(:disabled)` raises this above the global `button:hover:not(:disabled)`
    (0,2,1): without it a real <button> would get the accent-hover background with
    the same accent-hover label color and the text would vanish. Anchors never
    match :disabled, so <a class="btn-secondary"> keeps its current behavior. */
 .btn-secondary:hover:not(:disabled) {
-  background: var(--color-surface-hover);
+  background: var(--color-surface-2);
   border-color: var(--color-text-secondary);
-  color: var(--color-accent-hover);
+  color: var(--color-accent-text);
 }
 
 /* Programme info box: the "fixtures ledger" panel on the home page */
@@ -640,7 +662,7 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 .principle:first-child { padding-inline-start: 0; }
 .principle:last-child { border-inline-end: 0; padding-inline-end: 0; }
 .principle-number {
-  font-family: var(--font-serif), Georgia, serif;
+  font-family: var(--font-heading);
   font-style: italic;
   font-size: 0.95rem;
   color: var(--color-warning);
@@ -677,7 +699,7 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 .filter-chip {
   background: var(--color-surface);
   color: var(--color-text);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: 999px;
   padding: 8px 16px;
   min-height: 40px;
@@ -697,12 +719,12 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 .filter-chip[aria-pressed="true"] {
   background: var(--color-accent-fill);
   border-color: var(--color-accent-fill);
-  color: #ffffff;
+  color: var(--color-on-accent);
 }
 .filter-chip[aria-pressed="true"]:hover:not(:disabled) {
   background: var(--color-accent-fill-hover);
   border-color: var(--color-accent-fill-hover);
-  color: #ffffff;
+  color: var(--color-on-accent);
 }
 .filter-fields { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
 .filter-hint { margin: var(--space-3) 0 0; font-size: 0.85rem; color: var(--color-text-secondary); }
@@ -755,8 +777,7 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 .fixture-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-inline-start: 3px solid var(--color-accent);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-panel);
   padding: var(--space-4) var(--space-6);
   transition: background-color 0.14s ease, border-color 0.14s ease;
   display: flex;
@@ -766,8 +787,7 @@ td { border-bottom: 1px solid var(--color-border-subtle); }
 }
 .fixture-card:hover {
   background: var(--color-surface-lifted);
-  border-color: var(--color-text-secondary);
-  border-inline-start-color: var(--color-accent-hover);
+  border-color: var(--color-accent);
 }
 .fixture-header {
   display: flex;

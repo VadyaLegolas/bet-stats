@@ -1,0 +1,23 @@
+TAP version 13
+1..13
+not ok 1 - tests/unit/clv-evaluation-only.test.ts > CLV is evaluation-only (D-05): red proof on synthetic graphs > flags a root that imports a CLV function through the package barrel # time=11.59ms
+    ---
+    error:
+        name: "AssertionError"
+        message: "expected [] to have a length of 1 but got +0"
+    at: "D:/Documents/Atom/bet-stats/tests/unit/clv-evaluation-only.test.ts:88:24"
+    actual: "0"
+    expected: "1"
+    ...
+ok 2 - tests/unit/clv-evaluation-only.test.ts > CLV is evaluation-only (D-05): red proof on synthetic graphs > flags a transitive import through a relative helper # SKIP
+ok 3 - tests/unit/clv-evaluation-only.test.ts > CLV is evaluation-only (D-05): red proof on synthetic graphs > flags the observation reader through a named re-export of the database barrel # SKIP
+ok 4 - tests/unit/clv-evaluation-only.test.ts > CLV is evaluation-only (D-05): red proof on synthetic graphs > treats a namespace import of a barrel as reaching everything it exports # SKIP
+ok 5 - tests/unit/clv-evaluation-only.test.ts > CLV is evaluation-only (D-05): red proof on synthetic graphs > treats a side-effect import of a barrel as reaching everything it exports # SKIP
+ok 6 - tests/unit/clv-evaluation-only.test.ts > CLV is evaluation-only (D-05): red proof on synthetic graphs > treats a dynamic import of a barrel as reaching everything it exports # SKIP
+ok 7 - tests/unit/clv-evaluation-only.test.ts > CLV is evaluation-only (D-05): red proof on synthetic graphs > treats a require call of a barrel as reaching everything it exports # SKIP
+ok 8 - tests/unit/clv-evaluation-only.test.ts > CLV is evaluation-only (D-05): red proof on synthetic graphs > does not flag a named import of an unrelated symbol from a barrel that also re-exports CLV modules # SKIP
+ok 9 - tests/unit/clv-evaluation-only.test.ts > CLV is evaluation-only (D-05): red proof on synthetic graphs > discovers scanner and journal modules by path mask, wherever they appear # SKIP
+ok 10 - tests/unit/clv-evaluation-only.test.ts > CLV is evaluation-only (D-05): red proof on synthetic graphs > flags direct access to the closing-observation table from a root # SKIP
+ok 11 - tests/unit/clv-evaluation-only.test.ts > CLV is evaluation-only (D-05): the real workspace > finds the forbidden CLV modules and the guarded roots, so the check cannot pass vacuously # SKIP
+ok 12 - tests/unit/clv-evaluation-only.test.ts > CLV is evaluation-only (D-05): the real workspace > no ranking, candidate-generation, scanner or journal module reaches a CLV module # SKIP
+ok 13 - tests/unit/clv-evaluation-only.test.ts > CLV is evaluation-only (D-05): the real workspace > no root reads the closing-observation table directly # SKIP

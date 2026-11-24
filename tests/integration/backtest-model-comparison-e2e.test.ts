@@ -43,6 +43,8 @@ let redisUrl = "";
 let databaseUrl = "";
 let worker: ReturnType<typeof createBacktestWorker> | undefined;
 let queue: ReturnType<typeof createBacktestQueue> | undefined;
+/** Full worker failure messages: the window failureCode is cut to 64 characters, the job failure keeps the real cause. */
+const workerFailures: string[] = [];
 
 function docker(...args: string[]): string {
   return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
@@ -181,6 +183,7 @@ describe("operator model comparison end to end through the real backtest worker"
         },
       }),
     });
+    worker.on("failed", (_job, error) => { workerFailures.push(error.message); });
     await worker.waitUntilReady();
   }, 180_000);
 
@@ -199,11 +202,12 @@ describe("operator model comparison end to end through the real backtest worker"
     const deps = { database, receipts, queue: queue!, out: (line: string) => documents.push(line), sleep: fastSleep };
 
     const code = await runModelComparisonCommand(runArgs, deps);
+    if (code !== 0) await new Promise<void>((done) => setTimeout(done, 1_500)); // let the worker report its failure event
 
     // 1. Exit code first, with the window failure diagnosis so a red run shows its cause.
     const failedWindows = await database.backtestWindow.findMany({ where: { state: "FAILED" }, select: { planId: true, fixtureId: true, failureCode: true, receipt: true }, take: 3 });
     const failedCount = await database.backtestWindow.count({ where: { state: "FAILED" } });
-    expect({ code, failedCount, failedWindows: failedWindows.map((window) => ({ plan: window.planId, fixtureId: window.fixtureId, failureCode: window.failureCode, receipt: JSON.stringify(window.receipt).slice(0, 400) })) }).toEqual({ code: 0, failedCount: 0, failedWindows: [] });
+    expect({ code, failedCount, workerFailures: workerFailures.slice(0, 2).map((message) => message.slice(-240)), failedWindows: failedWindows.map((window) => ({ plan: window.planId, fixtureId: window.fixtureId, failureCode: window.failureCode, receipt: JSON.stringify(window.receipt).slice(0, 400) })) }).toEqual({ code: 0, failedCount: 0, workerFailures: [], failedWindows: [] });
 
     // 2. Cohort report from the submission summary.
     type Summary = { leftPlanId: string; rightPlanId: string; windows: number; cohort: { considered: number; usable: number; leadHours: number; minimumRequired: number; skipped: { noResultByEvaluationAsOf: number; noPublishedEvidenceAtCutoff: number; sharedCutoffInstant: number } } };

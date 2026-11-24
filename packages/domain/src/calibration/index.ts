@@ -5,3 +5,4 @@ export * from "./metrics.js";
 export * from "./platt.js";
 export * from "./isotonic.js";
 export * from "./calibrator.js";
+export * from "./lifecycle.js";

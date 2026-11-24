@@ -1,14 +1,14 @@
 ---
-status: complete
+status: partial
 phase: 11-dixon-coles-model-version
 source: [11-VERIFICATION.md]
 started: 2026-11-23T20:45:00Z
-updated: 2026-11-23T22:10:00Z
+updated: 2026-11-24T06:00:00Z
 ---
 
 ## Current Test
 
-[testing complete]
+[testing paused — 1 item outstanding: test 2 re-run on real data after gap closure 11-05..11-07, review fixes and WR-13]
 
 ## Tests
 
@@ -24,11 +24,11 @@ how_to: |
   Команда подаёт пару планов V1/DC на одних окнах, ждёт воркер и печатает квитанцию model-comparison-v2.
   Сохраните вывод (--json) в артефакт и впишите в result размер выборки, дельты и вердикт.
   Выборка меньше 30 даёт INCONCLUSIVE — это «нет доказательства», а не «DC не хуже»; расширьте диапазон.
-result: issue
-reported: |
-  Реальный прогон на копии dev-данных (одноразовые Postgres/Redis, воркер в deterministic, 2026-11-23) не дал квитанции.
-  V1-план прошёл целиком: 57/57 окон. DC-план упал на первом окне: Postgres RAISE "settlement revision must link predecessor".
-severity: blocker
+result: [pending]
+previous_result: |
+  issue (2026-11-23): DC-план падал на первом окне (settlement revision must link predecessor). Закрыто планами 11-05..11-07,
+  review-fix (CR-03, WR-07..WR-12) и WR-13 (origin); сквозной тест на настоящих Postgres/Redis зелёный. Нужен повторный реальный прогон
+  на копии dev-данных после pnpm build и prisma migrate deploy на копии; ожидаемо INCONCLUSIVE (rho = 0, истории меньше 300 pre-match снимков).
 
 ### 3. Проверить в рабочей БД, какой метод ρ реально выпускается
 expected: Видна доля mle-low-score-v1 / pooled-fallback-v1 / insufficient-sample-zero / out-of-band-zero. SQL: SELECT receipt->'receipt'->'dixonColes'->>'method', count(*) FROM "ForecastSnapshot" WHERE "modelVersion"='dixon-coles-ensemble-v1' GROUP BY 1
@@ -44,15 +44,16 @@ observed: |
 
 total: 3
 passed: 2
-issues: 1
-pending: 0
+issues: 0
+pending: 1
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-- truth: "Оператор может подать V1 и DC на одни окна и получить квитанцию сравнения (MODEL-03)"
-  status: failed
+- gap_id: G-11-2
+  truth: "Оператор может подать V1 и DC на одни окна и получить квитанцию сравнения (MODEL-03)"
+  status: failed # code fixed by 11-05..11-07; stays open until test 2 re-run passes
   reason: "Settlement не поддерживает два прогноза на один матч: DC-план падает на первом окне после V1"
   severity: blocker
   test: 2

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { compareBacktestPlans, type PrismaClient } from "@bet-stats/database";
+import { compareBacktestPlans, resolveHistoricalResultGraph, type PrismaClient } from "@bet-stats/database";
 import {
   BACKTEST_POLICY_VERSION,
   MODEL_COMPARISON_POLICY,
@@ -49,11 +49,22 @@ export interface ComparisonParams {
   readonly allowSmallCohort?: boolean;
 }
 
+/** One stored result version; the cohort replays the exact predicate the backtest executes (`evaluateWindow`). */
+export interface ComparisonResultVersion {
+  readonly id: string;
+  readonly observedAt: Date;
+  readonly effectiveAt: Date;
+  readonly supersedesResultVersionId: string | null;
+  readonly status: string;
+  readonly homeGoals: number | null;
+  readonly awayGoals: number | null;
+}
+
 export interface ComparisonFixture {
   readonly id: string;
   readonly kickoffUtc: Date;
-  /** Earliest moment a result is known for the fixture; fixtures without a result are not eligible. */
-  readonly firstResultEffectiveAt: Date | null;
+  /** Every stored result version; a fixture is eligible only if the graph resolved at evaluationAsOf yields a FINISHED, scored leaf. */
+  readonly resultVersions: readonly ComparisonResultVersion[];
   /**
    * True only when BOTH teams have a PUBLISHED evidence build whose cutoff is exactly kickoff minus the lead.
    * A window without it cannot complete: an earlier build fails `verifyEvidence` with EVIDENCE_CUTOFF_MISMATCH.
@@ -142,8 +153,25 @@ export function resolveComparisonParams(params: ComparisonParams): ResolvedCompa
 function compareIds(a: string, b: string): number { return a < b ? -1 : a > b ? 1 : 0; }
 
 /**
+ * True when the backtest would find a scoreable result for the fixture at `evaluationAsOf`: a version both observed and
+ * effective by then (`observedAt <= asOf AND effectiveAt <= asOf`, as in `evaluateWindow`), a valid lineage with one leaf,
+ * and a FINISHED leaf with both goals. Anything else makes `evaluateWindow` fail (RESULT_NOT_AVAILABLE,
+ * BACKTEST_SCORE_IDS_EMPTY) and would take the whole plan down with it.
+ */
+function hasScoreableResultAt(fixture: ComparisonFixture, evaluationAsOf: number): boolean {
+  try {
+    const leaf = resolveHistoricalResultGraph(fixture.resultVersions.map((version) => ({ id: version.id, fixtureId: fixture.id, observedAt: version.observedAt, effectiveAt: version.effectiveAt, supersedesResultVersionId: version.supersedesResultVersionId })), fixture.id, new Date(evaluationAsOf));
+    const version = fixture.resultVersions.find((candidate) => candidate.id === leaf.id);
+    return version?.status === "FINISHED" && version.homeGoals !== null && version.awayGoals !== null;
+  } catch (error) {
+    if (typeof (error as { code?: unknown }).code === "string" && (error as { code: string }).code.startsWith("RESULT_")) return false;
+    throw error;
+  }
+}
+
+/**
  * Pure cohort selection. Considers fixtures with `from <= kickoff < to` in (kickoff, id) order and skips, in this order:
- * no result known by evaluationAsOf; no PUBLISHED evidence of both teams at the exact cutoff; a lost tie-break on a
+ * no scoreable result known by evaluationAsOf (observed AND effective by then, FINISHED leaf); no PUBLISHED evidence of both teams at the exact cutoff; a lost tie-break on a
  * shared cutoff instant (the fixture with the smallest id stays). A fixture that fails an earlier check never occupies
  * a tie-break slot. Selection reads neither outcomes nor metrics, so it cannot bias the comparison.
  */
@@ -157,7 +185,7 @@ export function planComparisonCohort(fixtures: readonly ComparisonFixture[], par
   const eligible: ComparisonFixture[] = [];
   for (const fixture of considered) {
     const kickoff = fixture.kickoffUtc.getTime();
-    if (fixture.firstResultEffectiveAt === null || fixture.firstResultEffectiveAt.getTime() > kickoff + params.evaluationLagHours * HOUR_MS) { skipped.noResultByEvaluationAsOf += 1; continue; }
+    if (!hasScoreableResultAt(fixture, kickoff + params.evaluationLagHours * HOUR_MS)) { skipped.noResultByEvaluationAsOf += 1; continue; }
     if (!fixture.hasEvidenceAtCutoff) { skipped.noPublishedEvidenceAtCutoff += 1; continue; }
     const cutoff = kickoff - params.cutoffHoursBeforeKickoff * HOUR_MS;
     if (takenCutoffs.has(cutoff)) { skipped.sharedCutoffInstant += 1; continue; }
@@ -188,7 +216,7 @@ export function cohortBlockReason(report: ComparisonCohortReport, allowSmallCoho
 export function describeCohort(report: ComparisonCohortReport): string {
   return [
     `Когорта: рассмотрено матчей ${report.considered}, пригодных окон ${report.usable} (минимум для вывода: ${report.minimumRequired}).`,
-    `Пропущено: нет результата к evaluationAsOf — ${report.skipped.noResultByEvaluationAsOf}; нет опубликованных доказательств обеих команд на отсечку (матч минус ${report.leadHours} ч) — ${report.skipped.noPublishedEvidenceAtCutoff}; общий момент отсечки — ${report.skipped.sharedCutoffInstant} (на один момент оставлен матч с наименьшим id).`,
+    `Пропущено: нет результата к evaluationAsOf — ${report.skipped.noResultByEvaluationAsOf} (учитывается результат, внесённый и вступивший в силу к evaluationAsOf, с итоговым статусом FINISHED); нет опубликованных доказательств обеих команд на отсечку (матч минус ${report.leadHours} ч) — ${report.skipped.noPublishedEvidenceAtCutoff}; общий момент отсечки — ${report.skipped.sharedCutoffInstant} (на один момент оставлен матч с наименьшим id).`,
   ].join("\n");
 }
 
@@ -248,7 +276,7 @@ type FixtureReader = Pick<PrismaClient, "fixture" | "evidenceBuild">;
 export async function listComparisonFixtures(database: FixtureReader, params: ResolvedComparisonParams): Promise<ComparisonFixture[]> {
   const rows = await database.fixture.findMany({
     where: { status: "FINISHED", kickoffUtc: { gte: new Date(params.from), lt: new Date(params.to) }, ...(params.leagueIds.length > 0 ? { leagueId: { in: [...params.leagueIds] } } : {}) },
-    select: { id: true, kickoffUtc: true, homeTeamId: true, awayTeamId: true, resultVersions: { select: { effectiveAt: true }, orderBy: { effectiveAt: "asc" }, take: 1 } },
+    select: { id: true, kickoffUtc: true, homeTeamId: true, awayTeamId: true, resultVersions: { select: { id: true, observedAt: true, effectiveAt: true, supersedesResultVersionId: true, status: true, homeGoals: true, awayGoals: true }, orderBy: { revision: "asc" } } },
     orderBy: [{ kickoffUtc: "asc" }, { id: "asc" }],
   });
   if (rows.length === 0) return [];
@@ -263,7 +291,7 @@ export async function listComparisonFixtures(database: FixtureReader, params: Re
     return {
       id: row.id,
       kickoffUtc: row.kickoffUtc,
-      firstResultEffectiveAt: row.resultVersions[0]?.effectiveAt ?? null,
+      resultVersions: row.resultVersions,
       hasEvidenceAtCutoff: published.has(`${row.homeTeamId}|${cutoff}`) && published.has(`${row.awayTeamId}|${cutoff}`),
     };
   });

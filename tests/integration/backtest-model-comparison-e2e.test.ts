@@ -64,6 +64,8 @@ interface SeedFixture {
   readonly kickoff: Date;
   readonly status: "FINISHED" | "SCHEDULED";
   readonly goals?: readonly [number, number];
+  /** Hours after kickoff at which the result is OBSERVED (default 2). The result is effective 2 h after kickoff either way. */
+  readonly observedAfterHours?: number;
 }
 
 const teamIds = Array.from({ length: 8 }, (_, index) => `e2e-team-${index + 1}`);
@@ -82,7 +84,7 @@ function roundRobin(size: number): Array<Array<[number, number]>> {
   return rounds;
 }
 
-function buildFixtures(): { history: SeedFixture[]; cohort: SeedFixture[]; twin: SeedFixture; noEvidence: SeedFixture; scheduled: SeedFixture } {
+function buildFixtures(): { history: SeedFixture[]; cohort: SeedFixture[]; twin: SeedFixture; noEvidence: SeedFixture; scheduled: SeedFixture; lateObserved: SeedFixture } {
   const history: SeedFixture[] = [];
   roundRobin(8).slice(0, 6).forEach((pairs, round) => {
     pairs.forEach(([home, away], index) => {
@@ -107,6 +109,9 @@ function buildFixtures(): { history: SeedFixture[]; cohort: SeedFixture[]; twin:
     twin: { id: `${shared.id}-twin`, home: twinHome, away: twinAway, kickoff: shared.kickoff, status: "FINISHED", goals: [1, 1] },
     // Later than every cohort match, so its teams already own older builds: the real-run EVIDENCE_CUTOFF_MISMATCH shape.
     noEvidence: { id: "e2e-fx-no-evidence", home: teamIds[2]!, away: teamIds[5]!, kickoff: new Date(Date.UTC(2026, 9, 12, 18)), status: "FINISHED", goals: [2, 0] },
+    // Effective 2 h after kickoff but only OBSERVED 72 h after it: unknown at evaluationAsOf (kickoff + 48 h). CR-03: the cohort must skip it
+    // instead of letting the backtest window fail with RESULT_NOT_AVAILABLE and take the whole plan down.
+    lateObserved: { id: "e2e-fx-late-observed", home: teamIds[3]!, away: teamIds[6]!, kickoff: new Date(Date.UTC(2026, 9, 3, 12)), status: "FINISHED", goals: [3, 0], observedAfterHours: 72 },
     scheduled: { id: "e2e-fx-scheduled", home: teamIds[0]!, away: teamIds[4]!, kickoff: new Date(Date.UTC(2026, 9, 5, 12)), status: "SCHEDULED" },
   };
 }
@@ -125,9 +130,9 @@ async function seedDatabase(fixtures: SeedFixture[]): Promise<void> {
       ${lines(fixtures.map((fixture) => `('${fixture.id}','${LEAGUE}','e2e-season','${fixture.home}','${fixture.away}','${iso(fixture.kickoff)}','${fixture.status}',now())`))};
     INSERT INTO "SourceObservation" (id,provider,"endpointFamily","externalIdentity","observedAt","payloadHash","rawPayload","payloadBytes") VALUES
       ('e2e-obs-sync','test','RESULTS','e2e-sync','2026-10-20T00:00:00Z','e2e-sync-capture','{}',2),
-      ${lines(finished.map((fixture) => `('e2e-obs-${fixture.id}','test','RESULTS','${fixture.id}','${iso(new Date(fixture.kickoff.getTime() + 2 * HOUR_MS))}','e2e-hash-${fixture.id}','{}',2)`))};
+      ${lines(finished.map((fixture) => `('e2e-obs-${fixture.id}','test','RESULTS','${fixture.id}','${iso(new Date(fixture.kickoff.getTime() + (fixture.observedAfterHours ?? 2) * HOUR_MS))}','e2e-hash-${fixture.id}','{}',2)`))};
     INSERT INTO "ResultVersion" (id,"fixtureId","observationId","effectiveAt","observedAt","homeGoals","awayGoals",status,revision) VALUES
-      ${lines(finished.map((fixture) => `('e2e-result-${fixture.id}','${fixture.id}','e2e-obs-${fixture.id}','${iso(new Date(fixture.kickoff.getTime() + 2 * HOUR_MS))}','${iso(new Date(fixture.kickoff.getTime() + 2 * HOUR_MS))}',${fixture.goals![0]},${fixture.goals![1]},'FINISHED',1)`))};
+      ${lines(finished.map((fixture) => `('e2e-result-${fixture.id}','${fixture.id}','e2e-obs-${fixture.id}','${iso(new Date(fixture.kickoff.getTime() + 2 * HOUR_MS))}','${iso(new Date(fixture.kickoff.getTime() + (fixture.observedAfterHours ?? 2) * HOUR_MS))}',${fixture.goals![0]},${fixture.goals![1]},'FINISHED',1)`))};
     INSERT INTO "SyncRun" (id,"logicalKey",revision,provider,"endpointFamily",lane,"windowFrom","windowTo",state,"correlationId","expectedUnits","completedUnits","expectedCaptures","completedCaptures","completionManifest") VALUES
       ('e2e-sync','e2e-sync',1,'football-data.org','RESULTS','critical','2026-06-01T00:00:00Z','2026-10-20T00:00:00Z','SUCCEEDED','e2e-sync-correlation',1,1,1,1,
         '{"expectedUnits":["results"],"completedUnits":["results"],"expectedCaptures":["e2e-sync-capture"],"completedCaptures":["e2e-sync-capture"]}'::jsonb);
@@ -150,8 +155,8 @@ describe("operator model comparison end to end through the real backtest worker"
     execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], { cwd: databaseRoot, env: { ...process.env, DATABASE_URL: databaseUrl }, stdio: "pipe" });
     database = createPrismaClient(databaseUrl);
 
-    const { history, cohort, twin, noEvidence, scheduled } = fixtureData;
-    await seedDatabase([...history, ...cohort, twin, noEvidence, scheduled]);
+    const { history, cohort, twin, noEvidence, scheduled, lateObserved } = fixtureData;
+    await seedDatabase([...history, ...cohort, twin, noEvidence, scheduled, lateObserved]);
 
     // Real evidence builds at exactly kickoff - 6h, sequentially (parallel work on different fixtures is a known unrelated defect).
     for (const fixture of [...cohort, twin].sort((a, b) => a.kickoff.getTime() - b.kickoff.getTime() || (a.id < b.id ? -1 : 1))) {
@@ -215,8 +220,8 @@ describe("operator model comparison end to end through the real backtest worker"
     expect(summary.windows).toBe(COHORT_SIZE);
     expect(summary.cohort.leadHours).toBe(PRODUCTION_LEAD_HOURS);
     expect(summary.cohort.usable).toBe(COHORT_SIZE);
-    expect(summary.cohort.considered).toBe(COHORT_SIZE + 2);
-    expect(summary.cohort.skipped).toEqual({ noResultByEvaluationAsOf: 0, noPublishedEvidenceAtCutoff: 1, sharedCutoffInstant: 1 });
+    expect(summary.cohort.considered).toBe(COHORT_SIZE + 3);
+    expect(summary.cohort.skipped).toEqual({ noResultByEvaluationAsOf: 1, noPublishedEvidenceAtCutoff: 1, sharedCutoffInstant: 1 });
     expect(summary.cohort.minimumRequired).toBe(MODEL_COMPARISON_POLICY.minimumSampleSize);
     expect(summary.cohort.usable).toBeGreaterThanOrEqual(MODEL_COMPARISON_POLICY.minimumSampleSize);
 
@@ -249,6 +254,7 @@ describe("operator model comparison end to end through the real backtest worker"
     expect(fixtureSets[0]).not.toContain(fixtureData.twin.id);
     expect(fixtureSets[0]).not.toContain(fixtureData.noEvidence.id);
     expect(fixtureSets[0]).not.toContain(fixtureData.scheduled.id);
+    expect(fixtureSets[0]).not.toContain(fixtureData.lateObserved.id);
 
     const settlements = await database.settlementReceipt.findMany({ where: { fixtureId: { in: fixtureData.cohort.map((fixture) => fixture.id) } }, include: { _count: { select: { forecastScores: true } } } });
     const byFixture = new Map<string, typeof settlements>();
@@ -260,7 +266,7 @@ describe("operator model comparison end to end through the real backtest worker"
       expect(rows.every((row) => row.revision === 1 && row.supersedesSettlementReceiptId === null), fixtureId).toBe(true);
       expect(rows.map((row) => row._count.forecastScores), fixtureId).toEqual([3, 3]);
     }
-    expect(await database.settlementReceipt.count({ where: { fixtureId: { in: [fixtureData.twin.id, fixtureData.noEvidence.id, fixtureData.scheduled.id] } } })).toBe(0);
+    expect(await database.settlementReceipt.count({ where: { fixtureId: { in: [fixtureData.twin.id, fixtureData.noEvidence.id, fixtureData.scheduled.id, fixtureData.lateObserved.id] } } })).toBe(0);
 
     // 5. Documented limitation: every DC snapshot was produced with rho = 0 on an empty history.
     const dcPlan = plans.find((plan) => plan.modelVersion === "dixon-coles-ensemble-v1")!;

@@ -15,14 +15,21 @@ import {
   submitComparisonPair,
   waitForPlans,
   type ComparisonFixture,
+  type ComparisonResultVersion,
   type PlanProgress,
 } from "../../workers/data-sync/src/jobs/model-comparison.js";
 import { runModelComparisonCommand } from "../../workers/data-sync/src/jobs/model-comparison-cli.js";
 
 const range = { from: "2026-08-01T00:00:00.000Z", to: "2026-09-01T00:00:00.000Z" };
+const HOUR = 3_600_000;
+function resultVersion(id: string, observedAt: Date, effectiveAt: Date, overrides: Partial<ComparisonResultVersion> = {}): ComparisonResultVersion {
+  return { id, observedAt, effectiveAt, supersedesResultVersionId: null, status: "FINISHED", homeGoals: 2, awayGoals: 1, ...overrides };
+}
+/** resultAfterHours: the single result is both observed and effective that many hours after kickoff; null = no result at all. */
 function fixture(id: string, kickoff: string, resultAfterHours: number | null = 3, hasEvidenceAtCutoff = true): ComparisonFixture {
   const kickoffUtc = new Date(kickoff);
-  return { id, kickoffUtc, firstResultEffectiveAt: resultAfterHours === null ? null : new Date(kickoffUtc.getTime() + resultAfterHours * 3_600_000), hasEvidenceAtCutoff };
+  const at = resultAfterHours === null ? null : new Date(kickoffUtc.getTime() + resultAfterHours * HOUR);
+  return { id, kickoffUtc, resultVersions: at === null ? [] : [resultVersion(`${id}-r1`, at, at)], hasEvidenceAtCutoff };
 }
 const small = { ...range, allowSmallCohort: true };
 /** n fixtures with distinct kickoffs (12 h apart), every one evidence-backed and finished. */
@@ -91,8 +98,37 @@ describe("operator model comparison: windows and plans", () => {
     expect(windows.map((w) => w.fixtureId)).toEqual(["ok"]);
   });
 
+  it("replays the backtest result predicate: a result observed after evaluationAsOf is skipped even if it took effect earlier", () => {
+    const kickoff = new Date("2026-08-05T12:00:00.000Z");
+    const lateObserved: ComparisonFixture = { id: "late-observed", kickoffUtc: kickoff, hasEvidenceAtCutoff: true, resultVersions: [resultVersion("lo-1", new Date(kickoff.getTime() + 72 * HOUR), new Date(kickoff.getTime() + 2 * HOUR))] };
+    const lateEffective: ComparisonFixture = { id: "late-effective", kickoffUtc: new Date(kickoff.getTime() + HOUR), hasEvidenceAtCutoff: true, resultVersions: [resultVersion("le-1", new Date(kickoff.getTime() + 3 * HOUR), new Date(kickoff.getTime() + 100 * HOUR))] };
+    const ok = fixture("ok", "2026-08-06T12:00:00.000Z");
+    const resolved = resolveComparisonParams(range);
+    const { eligible, report } = planComparisonCohort([lateObserved, lateEffective, ok], resolved);
+    expect(eligible.map((item) => item.id)).toEqual(["ok"]);
+    expect(report).toMatchObject({ considered: 3, usable: 1, skipped: { noResultByEvaluationAsOf: 2, noPublishedEvidenceAtCutoff: 0, sharedCutoffInstant: 0 } });
+    expect(buildComparisonWindows([lateObserved, ok], resolved, "p").map((w) => w.fixtureId)).toEqual(["ok"]);
+    // The plan is built from the remaining fixtures only, so it can no longer fail on the skipped one.
+    expect(buildComparisonPlanPair(small, [lateObserved, ok]).windowCount).toBe(1);
+  });
+
+  it("skips a fixture whose result at evaluationAsOf is not a scored FINISHED leaf, but accepts a later correction known in time", () => {
+    const kickoff = new Date("2026-08-05T12:00:00.000Z");
+    const at = (hours: number) => new Date(kickoff.getTime() + hours * HOUR);
+    const make = (id: string, versions: ComparisonResultVersion[]): ComparisonFixture => ({ id, kickoffUtc: kickoff, hasEvidenceAtCutoff: true, resultVersions: versions });
+    const voidThenFinished = make("void-then-finished", [resultVersion("v1", at(3), at(3), { status: "VOID", homeGoals: null, awayGoals: null }), resultVersion("v2", at(60), at(60), { supersedesResultVersionId: "v1" })]);
+    const noGoals = make("no-goals", [resultVersion("g1", at(3), at(3), { homeGoals: null, awayGoals: null })]);
+    const corrected = make("corrected", [resultVersion("c1", at(3), at(3), { homeGoals: 0 }), resultVersion("c2", at(10), at(10), { supersedesResultVersionId: "c1", homeGoals: 1 })]);
+    const broken = make("broken", [resultVersion("b1", at(3), at(3), { supersedesResultVersionId: "missing" })]);
+    const eligibleOf = (item: ComparisonFixture) => planComparisonCohort([item], resolveComparisonParams(range)).report.usable;
+    expect(eligibleOf(voidThenFinished)).toBe(0);
+    expect(eligibleOf(noGoals)).toBe(0);
+    expect(eligibleOf(broken)).toBe(0);
+    expect(eligibleOf(corrected)).toBe(1);
+  });
+
   it("marks a fixture as evidence-backed only when BOTH teams have a PUBLISHED build at the exact cutoff", async () => {
-    const kickoff = (id: string, day: number, home: string, away: string) => ({ id, kickoffUtc: new Date(Date.UTC(2026, 7, day, 18)), homeTeamId: home, awayTeamId: away, resultVersions: [{ effectiveAt: new Date(Date.UTC(2026, 7, day, 20)) }] });
+    const kickoff = (id: string, day: number, home: string, away: string) => ({ id, kickoffUtc: new Date(Date.UTC(2026, 7, day, 18)), homeTeamId: home, awayTeamId: away, resultVersions: [resultVersion(`${id}-r1`, new Date(Date.UTC(2026, 7, day, 20)), new Date(Date.UTC(2026, 7, day, 20)))] });
     const cutoffMs = (day: number, offsetMs = 0) => Date.UTC(2026, 7, day, 18) - PRE_MATCH_CUTOFF_LEAD_MS + offsetMs;
     const rows = [kickoff("both", 10, "h1", "a1"), kickoff("one", 11, "h2", "a2"), kickoff("early", 12, "h3", "a3"), kickoff("none", 13, "h4", "a4")];
     const findBuilds = vi.fn(async () => [
@@ -232,7 +268,7 @@ describe("operator model comparison: submit, wait, receipt", () => {
     const stores = fakeStores();
     const lines: string[] = [];
     const database = {
-      fixture: { findMany: async () => fixtures.map((f) => ({ id: f.id, kickoffUtc: f.kickoffUtc, homeTeamId: `h-${f.id}`, awayTeamId: `a-${f.id}`, resultVersions: [{ effectiveAt: f.firstResultEffectiveAt }] })) },
+      fixture: { findMany: async () => fixtures.map((f) => ({ id: f.id, kickoffUtc: f.kickoffUtc, homeTeamId: `h-${f.id}`, awayTeamId: `a-${f.id}`, resultVersions: f.resultVersions })) },
       evidenceBuild: { findMany: async () => fixtures.flatMap((f) => [`h-${f.id}`, `a-${f.id}`].map((teamId) => ({ teamId, cutoff: new Date(f.kickoffUtc.getTime() - PRE_MATCH_CUTOFF_LEAD_MS) }))) },
     };
     const deps = { database: database as never, receipts: stores.receipts as never, queue: stores.queue, out: (line: string) => lines.push(line) };
@@ -249,7 +285,7 @@ function cliHarness(rows: ComparisonFixture[]) {
   const stores = fakeStores();
   const lines: string[] = [];
   const database = {
-    fixture: { findMany: async () => rows.map((f) => ({ id: f.id, kickoffUtc: f.kickoffUtc, homeTeamId: `h-${f.id}`, awayTeamId: `a-${f.id}`, resultVersions: f.firstResultEffectiveAt ? [{ effectiveAt: f.firstResultEffectiveAt }] : [] })) },
+    fixture: { findMany: async () => rows.map((f) => ({ id: f.id, kickoffUtc: f.kickoffUtc, homeTeamId: `h-${f.id}`, awayTeamId: `a-${f.id}`, resultVersions: f.resultVersions })) },
     evidenceBuild: { findMany: async () => rows.filter((f) => f.hasEvidenceAtCutoff).flatMap((f) => [`h-${f.id}`, `a-${f.id}`].map((teamId) => ({ teamId, cutoff: new Date(f.kickoffUtc.getTime() - PRE_MATCH_CUTOFF_LEAD_MS) }))) },
   };
   const deps = { database: database as never, receipts: stores.receipts as never, queue: stores.queue, out: (line: string) => lines.push(line), sleep: async () => undefined };

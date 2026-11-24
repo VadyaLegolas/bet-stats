@@ -165,7 +165,11 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   3. Closing observations are append-only, and no test or integration path lets CLV influence value ranking, scanner ordering, or journal decisions — it is evaluation-only.
 
 **Notes / research flags**: `ClosingOddsObservation` already exists (schema fits) but has **no write API today** — this phase is wiring + validation + UX, not schema. Validation rules are already coded in `clv.ts`. Retrospective observations must be tagged and excluded (no hindsight/survivorship).
-**Plans**: TBD
+**Plans**: 1/4 plans executed
+- [x] 13-01-PLAN.md
+- [ ] 13-02-PLAN.md
+- [ ] 13-03-PLAN.md
+- [ ] 13-04-PLAN.md
 **UI hint**: yes
 
 ### Phase 14: Asian Handicap and Exact Score Markets
@@ -231,7 +235,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 | 10. Performance Audit and Budgets | 4/4 | Complete    | 2026-11-17 |
 | 11. Dixon-Coles Model Version | 7/7 | Complete    | 2026-11-24 |
 | 12. Calibration Layer and Versioned Rollback | 7/7 | In Progress | - |
-| 13. CLV Price Diary | 0/0 | Not started | - |
+| 13. CLV Price Diary | 1/4 | In Progress | - |
 | 14. Asian Handicap and Exact Score Markets | 0/0 | Not started | - |
 | 15. 7-Day Value Scanner | 0/0 | Not started | - |
 | 16. Paper-Trading Journal | 0/0 | Not started | - |

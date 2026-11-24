@@ -1,0 +1,57 @@
+TAP version 13
+1..47
+not ok 1 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > accepts a complete 1X2 set and returns canonical rows in market order # time=11.32ms
+    ---
+    error:
+        name: "AssertionError"
+        message: "expected false to be true // Object.is equality"
+    at: "D:/Documents/Atom/bet-stats/tests/unit/closing-odds.test.ts:29:23"
+    actual: "false"
+    expected: "true"
+    ...
+ok 2 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > accepts complete totals and BTTS sets # SKIP
+ok 3 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects UNSUPPORTED_MARKET # SKIP
+ok 4 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INVALID_SOURCE_CONVENTION (empty) # SKIP
+ok 5 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INVALID_SOURCE_CONVENTION (blank) # SKIP
+ok 6 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INVALID_SOURCE_CONVENTION (not a string) # SKIP
+ok 7 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INVALID_OBSERVED_AT (no milliseconds) # SKIP
+ok 8 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INVALID_OBSERVED_AT (offset) # SKIP
+ok 9 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INVALID_OBSERVED_AT (impossible date) # SKIP
+ok 10 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects OBSERVED_AT_NOT_PRE_KICKOFF (equal) # SKIP
+ok 11 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects OBSERVED_AT_NOT_PRE_KICKOFF (after) # SKIP
+ok 12 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects OBSERVED_AT_IN_FUTURE # SKIP
+ok 13 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects RECORDED_AFTER_KICKOFF # SKIP
+ok 14 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects RECORDED_AFTER_KICKOFF (later) # SKIP
+ok 15 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects FIXTURE_ALREADY_SETTLED # SKIP
+ok 16 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects DUPLICATE_SELECTION # SKIP
+ok 17 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INCOMPLETE_MARKET_SET (missing) # SKIP
+ok 18 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INCOMPLETE_MARKET_SET (empty) # SKIP
+ok 19 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INCOMPLETE_MARKET_SET (foreign selection) # SKIP
+ok 20 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INCOMPLETE_MARKET_SET (extra) # SKIP
+ok 21 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INCOMPLETE_MARKET_SET (not an array) # SKIP
+ok 22 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INVALID_ODDS (equal to 1) # SKIP
+ok 23 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INVALID_ODDS (below 1) # SKIP
+ok 24 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INVALID_ODDS (not decimal) # SKIP
+ok 25 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > rejects INVALID_ODDS (not a string) # SKIP
+ok 26 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > check order is fixed > market is checked before source convention # SKIP
+ok 27 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > check order is fixed > source convention is checked before observedAt format # SKIP
+ok 28 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > check order is fixed > observedAt format is checked before kickoff and clock checks # SKIP
+ok 29 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > check order is fixed > observedAt not pre-kickoff is checked before observedAt in future # SKIP
+ok 30 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > check order is fixed > observedAt in future is checked before recorded-after-kickoff # SKIP
+ok 31 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > check order is fixed > recorded-after-kickoff is checked before fixture-already-settled # SKIP
+ok 32 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > check order is fixed > fixture-already-settled is checked before selection-set checks # SKIP
+ok 33 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > check order is fixed > duplicate selection is checked before incomplete set # SKIP
+ok 34 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > check order is fixed > incomplete set is checked before odds validity # SKIP
+ok 35 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > is a pure function of its arguments: repeated calls return equal results # SKIP
+ok 36 - tests/unit/closing-odds.test.ts > validateClosingOddsBook > does not mutate its input # SKIP
+ok 37 - tests/unit/closing-odds.test.ts > closingObservationId > is deterministic across calls # SKIP
+ok 38 - tests/unit/closing-odds.test.ts > closingObservationId > is a 64-char sha256 hex digest with a stable prefix # SKIP
+ok 39 - tests/unit/closing-odds.test.ts > closingObservationId > does not depend on the odds value # SKIP
+ok 40 - tests/unit/closing-odds.test.ts > closingObservationId > is deterministic across identical validation calls # SKIP
+ok 41 - tests/unit/closing-odds.test.ts > closingObservationId > row ids equal closingObservationId of the key fields # SKIP
+ok 42 - tests/unit/closing-odds.test.ts > closingObservationId > changes when observedAt changes # SKIP
+ok 43 - tests/unit/closing-odds.test.ts > closingObservationId > changes when fixtureId changes # SKIP
+ok 44 - tests/unit/closing-odds.test.ts > closingObservationId > changes when market changes # SKIP
+ok 45 - tests/unit/closing-odds.test.ts > closingObservationId > changes when selection changes # SKIP
+ok 46 - tests/unit/closing-odds.test.ts > closingObservationId > changes when sourceConvention changes # SKIP
+ok 47 - tests/unit/closing-odds.test.ts > closingObservationId > is not ambiguous across field boundaries # SKIP

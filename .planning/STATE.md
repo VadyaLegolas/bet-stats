@@ -1,20 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.1
-current_phase: 12
-current_phase_name: Calibration Layer and Versioned Rollback
-current_plan: 7
-status: complete
-stopped_at: Completed 12-07-PLAN.md
-last_updated: "2026-11-24T11:29:59.562Z"
+current_phase: 13
+current_phase_name: CLV Price Diary
+current_plan: 2
+status: executing
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-11-24T20:54:33.102Z"
 last_activity: 2026-11-24
-last_activity_desc: Phase 12 complete (verification passed, UAT 3/3)
-state_head: 84e988902e2a15a66e6cf535d6da1be42d73caf6
+last_activity_desc: Phase 13 execution started
+state_head: 627f6c12e111c78c40cb220530d3a2f681cf4b25
 progress:
   total_phases: 10
   completed_phases: 5
-  total_plans: 36
-  completed_plans: 36
+  total_plans: 40
+  completed_plans: 37
   percent: 50
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -26,15 +26,15 @@ milestone_name: Reliability, Model Quality and Value Experience
 See: .planning/PROJECT.md (updated 2026-11-16)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Phase 12 complete — next: Phase 13 (CLV)
+**Current focus:** Phase 13 — CLV Price Diary
 
 ## Current Position
 
-Phase: 12 — Calibration Layer and Versioned Rollback
-Current Plan: 7
-Total Plans in Phase: 7
-Status: Phase complete — ready for verification
-Last activity: 2026-11-24 — Phase 12 complete (verification passed, UAT 3/3)
+Phase: 13 (CLV Price Diary) — EXECUTING
+Current Plan: 2
+Total Plans in Phase: 4
+Status: Ready to execute
+Last activity: 2026-11-24 — Phase 13 execution started
 
 Progress: [█████░░░░░] 50%
 
@@ -155,6 +155,7 @@ Progress: [█████░░░░░] 50%
 | Phase 12 P05 | 75min | 3 tasks | 6 files |
 | Phase 12 P06 | 60min | 2 tasks | 6 files |
 | Phase 12 P07 | 100min | 3 tasks | 11 files |
+| Phase 13 P01 | 10 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -329,6 +330,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 12]: 12-05: daily calibration job executes only lifecycle-policy actions; hysteresis series asserted on ONE_X_TWO with fixed seeds (gamma 2.5 base, gamma 1 regression blocks of 90, supersession gain 0.0598); numbers in 12-05-SUMMARY for 12-07
 - [Phase 12]: 12-06: forecast API attaches marketCalibration at read time from the forecast's own identity (state read once per identity and request), soft UNAVAILABLE on read failure, value unchanged; reader exposed as ForecastsService.calibration test seam
 - [Phase 12]: 12-07: calibration panel and methodology (model card v1.2.0) shipped; panel treats absent or malformed marketCalibration as unavailable; version number is the market's promotion number; browser proof on the owned stack (28 tests); phase verification pending
+- [Phase 13]: 13-01: closing observation id is closing_<sha256> over JSON array of (fixtureId, market, selection, sourceConvention, observedAt); odds excluded from the key — Replay with different odds collides on id so the service can return CLOSING_OBSERVATION_CONFLICT
+- [Phase 13]: 13-01: NoVigClvUnavailableReason gains INVALID_TIMESTAMP beyond the plan list — Pure read-time layer must not throw on non-canonical instants and must not mislabel them
 
 ### Pending Todos
 
@@ -441,6 +444,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-24T11:29:56.124Z
-Stopped at: Completed 12-07-PLAN.md
+Last session: 2026-11-24T20:54:30.070Z
+Stopped at: Completed 13-01-PLAN.md
 Resume file: None

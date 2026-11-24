@@ -65,15 +65,26 @@ function isScoreMarket(value: string): value is ScoreMarket {
   return value === "ONE_X_TWO" || value === "OVER_UNDER_2_5" || value === "BTTS";
 }
 
-async function withSerializableRetry<T>(database: PrismaClient, operation: (transaction: PrismaClient) => Promise<T>): Promise<T> {
+const SERIALIZABLE_ATTEMPTS = 3;
+const SERIALIZABLE_MAX_WAIT_MS = 5_000;
+const SERIALIZABLE_TIMEOUT_MS = 15_000;
+
+/** Raised when the intake gate or its deadline stops a call; none of these leave committed work behind. */
+function intakeError(code: string): Error & { code: string } { return Object.assign(new Error(code), { code }); }
+
+/** Lets the Serializable work notice, between its steps, that the lock-holding transaction is about to expire. */
+interface IntakeGuard { check(): void }
+
+async function withSerializableRetry<T>(database: PrismaClient, guard: IntakeGuard, operation: (transaction: PrismaClient) => Promise<T>): Promise<T> {
   for (let attempt = 1; ; attempt += 1) {
+    guard.check();
     try {
       return await database.$transaction(
         (transaction) => operation(transaction as unknown as PrismaClient),
-        { isolationLevel: "Serializable", maxWait: 5_000, timeout: 15_000 },
+        { isolationLevel: "Serializable", maxWait: SERIALIZABLE_MAX_WAIT_MS, timeout: SERIALIZABLE_TIMEOUT_MS },
       );
     } catch (error) {
-      if (attempt >= 3 || (error as { code?: string }).code !== "P2034") throw error;
+      if (attempt >= SERIALIZABLE_ATTEMPTS || (error as { code?: string }).code !== "P2034") throw error;
     }
   }
 }
@@ -89,41 +100,79 @@ async function withSerializableRetry<T>(database: PrismaClient, operation: (tran
  * are capped to leave room for the workers; otherwise holders could starve their own workers.
  * The key differs from the one used inside `persist_settlement_receipt` (`<fixtureId>:settlement`),
  * which is taken on the worker connection; sharing a key would deadlock holder against worker.
+ *
+ * The holder timeout is derived from the worker's own limits (every Serializable attempt may wait `maxWait` and run
+ * `timeout`), plus a margin for `afterSettlement` and pool queueing. The work is not cancellable once running, so it
+ * checks a deadline that expires BEFORE the holder does: after that it starts no new attempt or revision and does not
+ * commit, which keeps the lock held for as long as anything can still be written. The slot is released only after the
+ * holder callback has settled, so a slot never frees while its connection is still busy.
  */
-const INTAKE_MAX_HOLDERS = 3;
-const INTAKE_HOLDER_TIMEOUT_MS = 75_000;
+export interface SettlementIntakeOptions {
+  /** Concurrent lock-holding transactions per database client. Only the first service created for a client sets it. */
+  maxHolders?: number;
+  /** Lifetime of the lock-holding transaction. */
+  holderTimeoutMs?: number;
+  /** How long a call waits for a free holder slot before failing with SETTLEMENT_INTAKE_BUSY (BullMQ retries it). */
+  acquireTimeoutMs?: number;
+}
+
+const INTAKE_HOLDER_MARGIN_MS = 15_000;
+export const SETTLEMENT_INTAKE_DEFAULTS = Object.freeze({
+  maxHolders: 3,
+  holderTimeoutMs: SERIALIZABLE_ATTEMPTS * (SERIALIZABLE_MAX_WAIT_MS + SERIALIZABLE_TIMEOUT_MS) + INTAKE_HOLDER_MARGIN_MS,
+  acquireTimeoutMs: 60_000,
+});
 
 class Semaphore {
   private available: number;
-  private readonly waiters: Array<() => void> = [];
+  private readonly waiters: Array<{ grant: () => void }> = [];
   constructor(size: number) { this.available = size; }
-  async acquire(): Promise<void> {
-    if (this.available > 0) { this.available -= 1; return; }
-    await new Promise<void>((resolve) => this.waiters.push(resolve));
+  acquire(timeoutMs: number): Promise<void> {
+    if (this.available > 0) { this.available -= 1; return Promise.resolve(); }
+    return new Promise<void>((resolve, reject) => {
+      const waiter = { grant: () => { clearTimeout(timer); resolve(); } };
+      const timer = setTimeout(() => {
+        const index = this.waiters.indexOf(waiter);
+        if (index >= 0) this.waiters.splice(index, 1);
+        reject(intakeError("SETTLEMENT_INTAKE_BUSY"));
+      }, timeoutMs);
+      this.waiters.push(waiter);
+    });
   }
   release(): void {
     const next = this.waiters.shift();
-    if (next) next(); else this.available += 1;
+    if (next) next.grant(); else this.available += 1;
   }
 }
 
 const intakeGates = new WeakMap<object, Semaphore>();
 
-async function withIntakeLock<T>(database: PrismaClient, fixtureId: string, work: () => Promise<T>): Promise<T> {
+async function withIntakeLock<T>(database: PrismaClient, fixtureId: string, options: SettlementIntakeOptions | undefined, work: (guard: IntakeGuard) => Promise<T>): Promise<T> {
+  const maxHolders = options?.maxHolders ?? SETTLEMENT_INTAKE_DEFAULTS.maxHolders;
+  const holderTimeoutMs = options?.holderTimeoutMs ?? SETTLEMENT_INTAKE_DEFAULTS.holderTimeoutMs;
+  const acquireTimeoutMs = options?.acquireTimeoutMs ?? SETTLEMENT_INTAKE_DEFAULTS.acquireTimeoutMs;
   let gate = intakeGates.get(database);
-  if (!gate) { gate = new Semaphore(INTAKE_MAX_HOLDERS); intakeGates.set(database, gate); }
-  await gate.acquire();
+  if (!gate) { gate = new Semaphore(maxHolders); intakeGates.set(database, gate); }
+  await gate.acquire(acquireTimeoutMs);
+  // Conservative: counted from before the holder transaction starts, and ahead of its expiry by a margin.
+  const deadline = Date.now() + holderTimeoutMs - Math.min(5_000, Math.floor(holderTimeoutMs / 5));
+  const guard: IntakeGuard = { check: () => { if (Date.now() >= deadline) throw intakeError("SETTLEMENT_INTAKE_DEADLINE"); } };
+  let settled: Promise<unknown> = Promise.resolve();
   try {
-    return await database.$transaction(async (holder) => {
-      await holder.$executeRawUnsafe("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", `${fixtureId}:settlement-intake`);
-      return work();
-    }, { maxWait: 5_000, timeout: INTAKE_HOLDER_TIMEOUT_MS });
+    return await database.$transaction((holder) => {
+      const run = (async () => {
+        await holder.$executeRawUnsafe("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", `${fixtureId}:settlement-intake`);
+        return work(guard);
+      })();
+      settled = run.then(() => undefined, () => undefined);
+      return run;
+    }, { maxWait: SERIALIZABLE_MAX_WAIT_MS, timeout: holderTimeoutMs });
   } finally {
-    gate.release();
+    try { await settled; } finally { gate.release(); }
   }
 }
 
-export function createSettlementPipelineService({ database, afterSettlement }: { database: PrismaClient; afterSettlement?: (settlementReceiptId: string) => void | Promise<void> }) {
+export function createSettlementPipelineService({ database, afterSettlement, intake }: { database: PrismaClient; afterSettlement?: (settlementReceiptId: string) => void | Promise<void>; intake?: SettlementIntakeOptions }) {
   return {
     policyHash: SETTLEMENT_PIPELINE_POLICY_HASH,
     async process(command: SettlementPipelineCommand): Promise<SettlementPipelineResult> {
@@ -135,7 +184,7 @@ export function createSettlementPipelineService({ database, afterSettlement }: {
       ] as const) requireId(value, code);
       if (command.policyVersion !== SETTLEMENT_POLICY_VERSION) throw Object.assign(new Error("UNKNOWN_SETTLEMENT_POLICY"), { code: "UNKNOWN_SETTLEMENT_POLICY" });
 
-      return withIntakeLock(database, command.fixtureId, () => withSerializableRetry(database, async (transaction) => {
+      return withIntakeLock(database, command.fixtureId, intake, (guard) => withSerializableRetry(database, guard, async (transaction) => {
         await transaction.$executeRawUnsafe("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", `${command.fixtureId}:settlement`);
         const targetRows = await transaction.$queryRawUnsafe<ResultRow[]>(
           `SELECT id,"fixtureId",status,revision,"observedAt","homeGoals","awayGoals","supersedesResultVersionId" FROM "ResultVersion" WHERE id=$1`,
@@ -160,9 +209,11 @@ export function createSettlementPipelineService({ database, afterSettlement }: {
 
         let targetResult: SettlementPipelineResult | undefined;
         for (const result of chain) {
+          guard.check();
           targetResult = await processRevision(transaction, command, result, afterSettlement);
         }
         if (!targetResult) throw new Error("RESULT_LINEAGE_EMPTY");
+        guard.check(); // the commit happens right after this return: never commit once the lock-holding transaction may be gone
         return targetResult;
       }));
     },

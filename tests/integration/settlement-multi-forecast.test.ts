@@ -9,6 +9,8 @@ const databaseRoot = resolve(root, "packages/database");
 const prismaCli = resolve(databaseRoot, "node_modules/prisma/build/index.js");
 const container = `bet-stats-settlement-multi-forecast-${process.pid}`;
 let prisma: PrismaClient;
+let databaseUrl = "";
+const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
 
 function docker(...args: string[]): string {
   return execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
@@ -64,6 +66,7 @@ describe("settlement of two forecasts for one fixture", () => {
     waitForPostgres();
     const port = docker("port", container, "5432/tcp").split(":").at(-1)!;
     const url = `postgresql://postgres:postgres@127.0.0.1:${port}/bet_stats`;
+    databaseUrl = url;
     execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], { cwd: databaseRoot, env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" });
     prisma = createPrismaClient(url);
     await prisma.$executeRawUnsafe(`
@@ -186,6 +189,42 @@ describe("settlement of two forecasts for one fixture", () => {
     expect(await prisma.settlementReceipt.count({ where: { fixtureId: match.fixtureId } })).toBe(1);
     expect(await prisma.forecastScore.count({ where: { settlementReceipt: { fixtureId: match.fixtureId } } })).toBe(3);
   }, 120_000);
+
+  it("WR-07: a call whose lock-holding transaction expires commits nothing; the retry then settles exactly once", async () => {
+    const client = createPrismaClient(databaseUrl);
+    try {
+      const match = await seedMatch(prisma, "mf-holder-timeout", 22);
+      // afterSettlement outlives the 800 ms holder: the work must notice the deadline and roll back instead of committing without the lock.
+      const slow = createSettlementPipelineService({ database: client, intake: { holderTimeoutMs: 800 }, afterSettlement: async () => { await sleep(2_000); } });
+      await expect(slow.process(command(match.fixtureId, match.result1, match.forecastA, "corr-holder-timeout-1"))).rejects.toBeDefined();
+      await sleep(2_500); // long enough for un-cancelled work to commit, if it were still running
+      expect(await prisma.settlementReceipt.count({ where: { fixtureId: match.fixtureId } })).toBe(0);
+      const retried = await createSettlementPipelineService({ database: client }).process(command(match.fixtureId, match.result1, match.forecastA, "corr-holder-timeout-2"));
+      expect(retried.duplicate).toBe(false);
+      expect(await prisma.settlementReceipt.count({ where: { fixtureId: match.fixtureId } })).toBe(1);
+    } finally { await client.$disconnect(); }
+  }, 60_000);
+
+  it("WR-07: waiting for a holder slot is bounded and fails with SETTLEMENT_INTAKE_BUSY, leaving the slot to its owner", async () => {
+    const client = createPrismaClient(databaseUrl);
+    try {
+      const first = await seedMatch(prisma, "mf-busy-1", 23);
+      const second = await seedMatch(prisma, "mf-busy-2", 24);
+      let holding!: () => void;
+      const slotTaken = new Promise<void>((resolve) => { holding = resolve; });
+      let firstCall = true;
+      const service = createSettlementPipelineService({
+        database: client,
+        intake: { maxHolders: 1, acquireTimeoutMs: 300 },
+        afterSettlement: async () => { if (firstCall) { firstCall = false; holding(); await sleep(1_500); } },
+      });
+      const running = service.process(command(first.fixtureId, first.result1, first.forecastA, "corr-busy-1"));
+      await slotTaken;
+      await expect(service.process(command(second.fixtureId, second.result1, second.forecastA, "corr-busy-2"))).rejects.toMatchObject({ code: "SETTLEMENT_INTAKE_BUSY" });
+      expect((await running).forecastScoreIds).toHaveLength(3);
+      expect((await service.process(command(second.fixtureId, second.result1, second.forecastA, "corr-busy-3"))).forecastScoreIds).toHaveLength(3);
+    } finally { await client.$disconnect(); }
+  }, 60_000);
 
   it("concurrent corrections of two forecasts keep independent chains [1,2]", async () => {
     const service = createSettlementPipelineService({ database: prisma });

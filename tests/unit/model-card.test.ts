@@ -10,12 +10,15 @@ import { CALIBRATION_CONFIG, CALIBRATION_CONFIG_HASH } from "../../packages/doma
 import { DIXON_COLES_CONVENTION } from "../../packages/domain/src/forecast/dixon-coles.js";
 import { DEFAULT_FORECAST_MODEL_VERSION } from "../../packages/domain/src/forecast/model-version.js";
 import { MODEL_CARD, MODEL_CARD_SECTION_IDS } from "../../packages/domain/src/methodology/model-card.js";
+import { ODDS_RATIO_CLV_POLICY_VERSION } from "../../packages/domain/src/evaluation/clv.js";
+import { NO_VIG_CLV_POLICY_VERSION } from "../../packages/domain/src/evaluation/no-vig-clv.js";
+import { MARKET_SELECTIONS } from "../../packages/domain/src/odds/contract.js";
 
-describe("model card v1.2.0", () => {
+describe("model card v1.3.0", () => {
   it("names the dixon-coles hybrid and keeps the previous sections, with calibration between evaluation and responsible use", () => {
-    expect(MODEL_CARD.version).toBe("model-card-v1.2.0");
+    expect(MODEL_CARD.version).toBe("model-card-v1.3.0");
     expect(MODEL_CARD.effectiveDate).toBe("2026-11-24");
-    expect([...MODEL_CARD_SECTION_IDS]).toEqual(["inputs", "dixon-coles", "what-is-excluded", "confidence", "limitations", "evaluation", "calibration", "responsible-use"]);
+    expect([...MODEL_CARD_SECTION_IDS]).toEqual(["inputs", "dixon-coles", "what-is-excluded", "confidence", "limitations", "evaluation", "calibration", "clv", "responsible-use"]);
     expect(MODEL_CARD.forecast.dixonColes.integration).toBe("hybrid-elo-form-poisson-with-tau");
     expect(MODEL_CARD.forecast.dixonColes.integration).not.toBe("dixon-coles");
   });
@@ -80,16 +83,21 @@ describe("model card v1.2.0", () => {
 
   it("records the model change without rewriting historical receipts", () => {
     const latest = MODEL_CARD.changeHistory[0]!;
-    expect(latest.version).toBe("model-card-v1.2.0");
-    expect(latest.affected).toContain("calibration-config-v1");
+    expect(latest.version).toBe("model-card-v1.3.0");
+    expect(latest.affected).toContain(NO_VIG_CLV_POLICY_VERSION);
     expect(latest.interpretation).toContain("не переписаны");
     expect(latest.interpretation).toContain("при чтении");
-    const previous = MODEL_CARD.changeHistory[1]!;
+    const calibrationEntry = MODEL_CARD.changeHistory[1]!;
+    expect(calibrationEntry.version).toBe("model-card-v1.2.0");
+    expect(calibrationEntry.affected).toContain("calibration-config-v1");
+    expect(calibrationEntry.interpretation).toContain("не переписаны");
+    expect(calibrationEntry.interpretation).toContain("при чтении");
+    const previous = MODEL_CARD.changeHistory[2]!;
     expect(previous.version).toBe("model-card-v1.1.0");
     expect(previous.affected).toContain("dixon-coles-ensemble-v1");
     expect(previous.affected).toContain("poisson-ensemble-v1");
     expect(previous.interpretation).toContain("не переписаны");
-    expect(MODEL_CARD.changeHistory.map((entry) => entry.version)).toEqual(["model-card-v1.2.0", "model-card-v1.1.0", "model-card-v1.0.0", "model-card-v0.9.0"]);
+    expect(MODEL_CARD.changeHistory.map((entry) => entry.version)).toEqual(["model-card-v1.3.0", "model-card-v1.2.0", "model-card-v1.1.0", "model-card-v1.0.0", "model-card-v0.9.0"]);
     const dates = MODEL_CARD.changeHistory.map((entry) => entry.effectiveDate);
     expect(dates).toEqual([...dates].sort().reverse());
     expect(dates[0]).toBe(MODEL_CARD.effectiveDate);
@@ -174,5 +182,64 @@ describe("model card calibration block", () => {
   it("never promises an improvement or a guarantee", () => {
     const text = [...block.effects, ...block.limitations, MODEL_CARD.changeHistory[0]!.summary, MODEL_CARD.changeHistory[0]!.interpretation].join(" ");
     expect(text).not.toMatch(/гарантир|точно выигра|прибыль гарант|улучш|точнее|надёжнее/iu);
+  });
+});
+
+describe("model card CLV block (Phase 13, D-07)", () => {
+  const block = MODEL_CARD.clv;
+
+  it("takes the policy versions and the market set sizes from the domain constants", () => {
+    expect(block.policyVersion).toBe(NO_VIG_CLV_POLICY_VERSION);
+    expect(block.policyVersion).toBe("no-vig-clv-v1");
+    expect(block.frozenPolicyVersion).toBe(ODDS_RATIO_CLV_POLICY_VERSION);
+    expect(MODEL_CARD.policies.noVigClv).toBe(NO_VIG_CLV_POLICY_VERSION);
+    expect(MODEL_CARD.policies.clv).toBe(ODDS_RATIO_CLV_POLICY_VERSION);
+    const recording = block.recording.join(" ");
+    for (const [market, selections] of Object.entries(MARKET_SELECTIONS)) expect(recording).toContain(`${market} — ${selections.length}`);
+  });
+
+  it("defines CLV and states the no-vig method and its formula", () => {
+    expect(block.definition).toContain("CLV");
+    expect(block.definition).toContain("закрытия");
+    expect(block.formula).toBe("clv = pClose_fair / pCandidate_fair − 1");
+    const method = block.method.join(" ");
+    expect(method).toContain("удаление маржи");
+    expect(method).toContain("полному набору выборов одного рынка и одного источника");
+    expect(method).toContain(ODDS_RATIO_CLV_POLICY_VERSION);
+    expect(method).toContain("не достраивают");
+  });
+
+  it("states the evaluation-only role and that CLV is not a forecast or a profit promise", () => {
+    const role = block.evaluationOnly.join(" ");
+    expect(role).toContain("только для оценки качества");
+    expect(role).toContain("не входит в отбор");
+    expect(role).toContain("сканер");
+    expect(role).toContain("не является прогнозом");
+    expect(role).toContain("не обещает прибыли");
+  });
+
+  it("states that late entries are refused rather than stored with a flag", () => {
+    const recording = block.recording.join(" ");
+    expect(recording).toContain("append-only");
+    expect(recording).toContain("Поздние записи отклоняются");
+    expect(recording).toContain("после начала матча");
+    expect(recording).toContain("после расчёта");
+  });
+
+  it("lists the honest limits: one source, small samples, manual entry, no replacement for proper scores", () => {
+    const limitations = block.limitations.join(" ");
+    expect(limitations).toContain("Один источник");
+    expect(limitations).toContain("Малые выборки");
+    expect(limitations).toContain("вручную");
+    expect(limitations).toContain("Brier");
+  });
+
+  it("is a new card version recorded once in the change history and never promises anything", () => {
+    const latest = MODEL_CARD.changeHistory[0]!;
+    expect(latest.version).toBe(MODEL_CARD.version);
+    expect(MODEL_CARD.changeHistory.filter((entry) => entry.version === "model-card-v1.3.0")).toHaveLength(1);
+    expect(latest.summary).toContain("CLV");
+    const text = [block.definition, block.formula, ...block.method, ...block.evaluationOnly, ...block.recording, ...block.limitations, latest.summary, latest.interpretation].join(" ");
+    expect(text).not.toMatch(/гарантир|точно выигра|прибыль гарант|улучш|точнее|надёжнее|заработ/iu);
   });
 });

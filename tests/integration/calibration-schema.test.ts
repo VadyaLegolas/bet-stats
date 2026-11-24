@@ -67,6 +67,20 @@ function eventInsert(id: string, overrides: Record<string, string> = {}): string
   return `INSERT INTO "CalibratorEvent" (${columns}) VALUES (${Object.values(values).join(",")});`;
 }
 
+/**
+ * The structural tests below insert raw events that are not valid lifecycle transitions. The transition guard is
+ * proved in calibration-transitions.test.ts; here it is switched off around the statement under test so that the
+ * constraint being examined (foreign key, CHECK, append-only trigger) is the one that answers.
+ */
+function withoutTransitionGuard(run: () => void): void {
+  server.psql('ALTER TABLE "CalibratorEvent" DISABLE TRIGGER "CalibratorEvent_guarded_transition";');
+  try {
+    run();
+  } finally {
+    server.psql('ALTER TABLE "CalibratorEvent" ENABLE TRIGGER "CalibratorEvent_guarded_transition";');
+  }
+}
+
 describe("calibrator storage: append-only tables, pinned identity, event-derived active calibrator", () => {
   beforeAll(() => {
     server = startPostgres(`bet-stats-calibration-schema-${process.pid}`);
@@ -151,33 +165,39 @@ describe("calibrator storage: append-only tables, pinned identity, event-derived
   });
 
   it("rejects UPDATE and DELETE on both tables", () => {
-    server.psql(calibratorInsert(calibratorId("1")));
-    server.psql(eventInsert(eventId("1")));
-    expect(() => server.psql(`UPDATE "Calibrator" SET "holdoutBrierRaw"=0.1 WHERE id='${calibratorId("1")}';`)).toThrow(/Calibrator is immutable/);
-    expect(() => server.psql(`DELETE FROM "Calibrator" WHERE id='${calibratorId("1")}';`)).toThrow(/Calibrator is immutable/);
-    expect(() => server.psql(`UPDATE "CalibratorEvent" SET "reasonCode"='OTHER' WHERE id='${eventId("1")}';`)).toThrow(/CalibratorEvent is immutable/);
-    expect(() => server.psql(`DELETE FROM "CalibratorEvent" WHERE id='${eventId("1")}';`)).toThrow(/CalibratorEvent is immutable/);
-    expect(server.lines(`SELECT "holdoutBrierRaw" FROM "Calibrator" WHERE id='${calibratorId("1")}';`)).toEqual(["0.5"]);
+    withoutTransitionGuard(() => {
+      server.psql(calibratorInsert(calibratorId("1")));
+      server.psql(eventInsert(eventId("1")));
+      expect(() => server.psql(`UPDATE "Calibrator" SET "holdoutBrierRaw"=0.1 WHERE id='${calibratorId("1")}';`)).toThrow(/Calibrator is immutable/);
+      expect(() => server.psql(`DELETE FROM "Calibrator" WHERE id='${calibratorId("1")}';`)).toThrow(/Calibrator is immutable/);
+      expect(() => server.psql(`UPDATE "CalibratorEvent" SET "reasonCode"='OTHER' WHERE id='${eventId("1")}';`)).toThrow(/CalibratorEvent is immutable/);
+      expect(() => server.psql(`DELETE FROM "CalibratorEvent" WHERE id='${eventId("1")}';`)).toThrow(/CalibratorEvent is immutable/);
+      expect(server.lines(`SELECT "holdoutBrierRaw" FROM "Calibrator" WHERE id='${calibratorId("1")}';`)).toEqual(["0.5"]);
+    });
   });
 
   it("rejects an event bound to a calibrator of another model version, config hash or market", () => {
-    server.psql(calibratorInsert(calibratorId("2")));
-    const base = { calibratorId: `'${calibratorId("2")}'` };
-    expect(() => server.psql(eventInsert(eventId("2"), { ...base, modelVersion: "'poisson-ensemble-v1'" }))).toThrow(/foreign key/i);
-    expect(() => server.psql(eventInsert(eventId("3"), { ...base, configHash: `'${sha("b")}'` }))).toThrow(/foreign key/i);
-    expect(() => server.psql(eventInsert(eventId("4"), { ...base, market: "'BTTS'" }))).toThrow(/foreign key/i);
-    // The same event with the pinned identity is accepted.
-    server.psql(eventInsert(eventId("5"), base));
-    expect(server.lines(`SELECT count(*) FROM "CalibratorEvent" WHERE id IN ('${eventId("2")}','${eventId("3")}','${eventId("4")}');`)).toEqual(["0"]);
+    withoutTransitionGuard(() => {
+      server.psql(calibratorInsert(calibratorId("2")));
+      const base = { calibratorId: `'${calibratorId("2")}'` };
+      expect(() => server.psql(eventInsert(eventId("2"), { ...base, modelVersion: "'poisson-ensemble-v1'" }))).toThrow(/foreign key/i);
+      expect(() => server.psql(eventInsert(eventId("3"), { ...base, configHash: `'${sha("b")}'` }))).toThrow(/foreign key/i);
+      expect(() => server.psql(eventInsert(eventId("4"), { ...base, market: "'BTTS'" }))).toThrow(/foreign key/i);
+      // The same event with the pinned identity is accepted.
+      server.psql(eventInsert(eventId("5"), base));
+      expect(server.lines(`SELECT count(*) FROM "CalibratorEvent" WHERE id IN ('${eventId("2")}','${eventId("3")}','${eventId("4")}');`)).toEqual(["0"]);
+    });
   });
 
   it("rejects optional calibrator links that belong to another identity", () => {
-    server.psql(calibratorInsert(calibratorId("3"), { configHash: `'${sha("b")}'` }));
-    server.psql(calibratorInsert(calibratorId("4")));
-    // PROMOTED of calibrator 4 whose predecessor was fitted for another config hash.
-    expect(() => server.psql(eventInsert(eventId("6"), { calibratorId: `'${calibratorId("4")}'`, predecessorCalibratorId: `'${calibratorId("3")}'` }))).toThrow(/foreign key/i);
-    expect(() => server.psql(eventInsert(eventId("7"), { type: "'ROLLED_BACK'", calibratorId: `'${calibratorId("4")}'`, restoredCalibratorId: `'${calibratorId("3")}'` }))).toThrow(/foreign key/i);
-    expect(() => server.psql(eventInsert(eventId("8"), { type: "'SUPERSEDED'", calibratorId: `'${calibratorId("4")}'`, successorCalibratorId: `'${calibratorId("3")}'` }))).toThrow(/foreign key/i);
+    withoutTransitionGuard(() => {
+      server.psql(calibratorInsert(calibratorId("3"), { configHash: `'${sha("b")}'` }));
+      server.psql(calibratorInsert(calibratorId("4")));
+      // PROMOTED of calibrator 4 whose predecessor was fitted for another config hash.
+      expect(() => server.psql(eventInsert(eventId("6"), { calibratorId: `'${calibratorId("4")}'`, predecessorCalibratorId: `'${calibratorId("3")}'` }))).toThrow(/foreign key/i);
+      expect(() => server.psql(eventInsert(eventId("7"), { type: "'ROLLED_BACK'", calibratorId: `'${calibratorId("4")}'`, restoredCalibratorId: `'${calibratorId("3")}'` }))).toThrow(/foreign key/i);
+      expect(() => server.psql(eventInsert(eventId("8"), { type: "'SUPERSEDED'", calibratorId: `'${calibratorId("4")}'`, successorCalibratorId: `'${calibratorId("3")}'` }))).toThrow(/foreign key/i);
+    });
   });
 
   it("rejects a calibrator whose windows are not chronological", () => {
@@ -191,36 +211,38 @@ describe("calibrator storage: append-only tables, pinned identity, event-derived
   });
 
   it("rejects malformed identity, market, method, event type and shape", () => {
-    const bad: Array<[string, Record<string, string>]> = [
-      ["config hash", { configHash: "'sha256:xyz'" }],
-      ["config hash (no prefix)", { configHash: `'${"a".repeat(64)}'` }],
-      ["market", { market: "'CORRECT_SCORE'" }],
-      ["method", { method: "'NEURAL'" }],
-      ["id format", { id: "'calibrator_short'" }],
-      ["parameters type", { parameters: "'[]'::jsonb" }],
-      ["calibration config hash", { calibrationConfigHash: "'sha256:short'" }],
-      ["fit sample size", { fitSampleSize: "0" }],
-      ["holdout sample size", { holdoutSampleSize: "0" }],
-      ["empty model version", { modelVersion: "''" }],
-    ];
-    for (const [label, overrides] of bad) {
-      expect(() => server.psql(calibratorInsert(calibratorId("6"), overrides)), label).toThrow(/check constraint|violates/i);
-    }
-    server.psql(calibratorInsert(calibratorId("6")));
-    const badEvents: Array<[string, Record<string, string>]> = [
-      ["type", { type: "'REVERTED'" }],
-      ["id format", { id: "'event-1'" }],
-      ["reason code", { reasonCode: "'lower case'" }],
-      ["evaluation type", { evaluation: "'[]'::jsonb" }],
-      ["market", { market: "'ASIAN'" }],
-      ["PROMOTED with restored", { calibratorId: `'${calibratorId("6")}'`, restoredCalibratorId: `'${calibratorId("6")}'` }],
-      ["PROMOTED with successor", { calibratorId: `'${calibratorId("6")}'`, successorCalibratorId: `'${calibratorId("6")}'` }],
-      ["ROLLED_BACK with predecessor", { type: "'ROLLED_BACK'", calibratorId: `'${calibratorId("6")}'`, predecessorCalibratorId: `'${calibratorId("6")}'` }],
-      ["SUPERSEDED without successor", { type: "'SUPERSEDED'", calibratorId: `'${calibratorId("6")}'` }],
-      ["EVALUATED with predecessor", { type: "'EVALUATED'", calibratorId: `'${calibratorId("6")}'`, predecessorCalibratorId: `'${calibratorId("6")}'` }],
-    ];
-    for (const [label, overrides] of badEvents) {
-      expect(() => server.psql(eventInsert(eventId("9"), { calibratorId: `'${calibratorId("6")}'`, ...overrides })), label).toThrow(/check constraint|violates/i);
-    }
+    withoutTransitionGuard(() => {
+      const bad: Array<[string, Record<string, string>]> = [
+        ["config hash", { configHash: "'sha256:xyz'" }],
+        ["config hash (no prefix)", { configHash: `'${"a".repeat(64)}'` }],
+        ["market", { market: "'CORRECT_SCORE'" }],
+        ["method", { method: "'NEURAL'" }],
+        ["id format", { id: "'calibrator_short'" }],
+        ["parameters type", { parameters: "'[]'::jsonb" }],
+        ["calibration config hash", { calibrationConfigHash: "'sha256:short'" }],
+        ["fit sample size", { fitSampleSize: "0" }],
+        ["holdout sample size", { holdoutSampleSize: "0" }],
+        ["empty model version", { modelVersion: "''" }],
+      ];
+      for (const [label, overrides] of bad) {
+        expect(() => server.psql(calibratorInsert(calibratorId("6"), overrides)), label).toThrow(/check constraint|violates/i);
+      }
+      server.psql(calibratorInsert(calibratorId("6")));
+      const badEvents: Array<[string, Record<string, string>]> = [
+        ["type", { type: "'REVERTED'" }],
+        ["id format", { id: "'event-1'" }],
+        ["reason code", { reasonCode: "'lower case'" }],
+        ["evaluation type", { evaluation: "'[]'::jsonb" }],
+        ["market", { market: "'ASIAN'" }],
+        ["PROMOTED with restored", { calibratorId: `'${calibratorId("6")}'`, restoredCalibratorId: `'${calibratorId("6")}'` }],
+        ["PROMOTED with successor", { calibratorId: `'${calibratorId("6")}'`, successorCalibratorId: `'${calibratorId("6")}'` }],
+        ["ROLLED_BACK with predecessor", { type: "'ROLLED_BACK'", calibratorId: `'${calibratorId("6")}'`, predecessorCalibratorId: `'${calibratorId("6")}'` }],
+        ["SUPERSEDED without successor", { type: "'SUPERSEDED'", calibratorId: `'${calibratorId("6")}'` }],
+        ["EVALUATED with predecessor", { type: "'EVALUATED'", calibratorId: `'${calibratorId("6")}'`, predecessorCalibratorId: `'${calibratorId("6")}'` }],
+      ];
+      for (const [label, overrides] of badEvents) {
+        expect(() => server.psql(eventInsert(eventId("9"), { calibratorId: `'${calibratorId("6")}'`, ...overrides })), label).toThrow(/check constraint|violates/i);
+      }
+    });
   });
 });

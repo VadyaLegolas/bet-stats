@@ -38,14 +38,14 @@ export interface CalibrationConfigRef {
 }
 
 /** Numbers behind a recorded evaluation (RECORD_EVALUATION action of the lifecycle decision). */
-export interface StoredCalibratorEvaluation {
+export type StoredCalibratorEvaluation = {
   readonly sampleSize: number;
   readonly eligible: boolean;
   readonly verdict: "BETTER" | "NEUTRAL" | "WORSE" | null;
   readonly brierRaw: number | null;
   readonly brierCalibrated: number | null;
   readonly delta: number | null;
-}
+};
 
 /** Free-form numbers recorded with a promotion or rollback; must be a JSON object. */
 export type CalibratorEventDetails = Readonly<Record<string, unknown>>;
@@ -111,12 +111,29 @@ export interface PromoteCalibratorResult extends CalibratorEventWriteResult {
   readonly supersededEventId: string | null;
 }
 
+export interface RollbackCalibratorInput extends EventScope {
+  /** Must equal the predecessor recorded by the calibrator's PROMOTED event; null means raw probabilities only. */
+  readonly restoredCalibratorId: string | null;
+  readonly evaluation: CalibratorEventDetails;
+}
+
+export interface RecordEvaluationInput extends EventScope {
+  readonly evaluation: StoredCalibratorEvaluation;
+}
+
 export interface CalibrationRepository {
   persistCalibrator(fitted: FittedCalibrator): Promise<PersistCalibratorResult>;
   findCalibrator(calibratorId: string): Promise<FittedCalibrator | null>;
   findActiveCalibrator(identity: CalibratorIdentity, market: ScoreMarket): Promise<ActiveCalibratorState | null>;
   findActiveCalibrators(identity: CalibratorIdentity): Promise<Record<ScoreMarket, ActiveCalibratorState | null>>;
+  /** First promotion, or a SUPERSEDED plus PROMOTED pair in one transaction when a predecessor is active. */
   promoteCalibrator(input: PromoteCalibratorInput): Promise<PromoteCalibratorResult>;
+  rollbackCalibrator(input: RollbackCalibratorInput): Promise<CalibratorEventWriteResult>;
+  /** State-neutral EVALUATED event for the active calibrator; one per calibrator and UTC day. */
+  recordEvaluation(input: RecordEvaluationInput): Promise<CalibratorEventWriteResult>;
+  /** Events whose subject is this calibrator, by ascending seq. */
+  listCalibratorEvents(calibratorId: string): Promise<readonly CalibratorEventRecord[]>;
+  hasBeenRolledBack(calibratorId: string): Promise<boolean>;
 }
 
 type Transaction = Prisma.TransactionClient;
@@ -241,6 +258,90 @@ function jsonObject(value: CalibratorEventDetails): Prisma.InputJsonObject {
   return JSON.parse(text) as Prisma.InputJsonObject;
 }
 
+interface EventRow {
+  readonly id: string;
+  readonly seq: bigint | number;
+  readonly type: string;
+  readonly modelVersion: string;
+  readonly configHash: string;
+  readonly market: string;
+  readonly calibratorId: string;
+  readonly predecessorCalibratorId: string | null;
+  readonly restoredCalibratorId: string | null;
+  readonly successorCalibratorId: string | null;
+  readonly reasonCode: string;
+  readonly asOf: Date | string;
+  readonly evaluation: unknown;
+  readonly calibrationConfigVersion: string;
+  readonly calibrationConfigHash: string;
+}
+
+function eventFromRow(row: EventRow): CalibratorEventRecord {
+  if (!["PROMOTED", "ROLLED_BACK", "SUPERSEDED", "EVALUATED"].includes(row.type)) throw repositoryError("CALIBRATOR_ROW_INVALID", "unknown event type");
+  if (!(CALIBRATION_MARKETS as readonly string[]).includes(row.market)) throw repositoryError("CALIBRATOR_ROW_INVALID", "stored event has an unknown market");
+  if (!isPlainObject(row.evaluation)) throw repositoryError("CALIBRATOR_ROW_INVALID", "stored event evaluation is not an object");
+  return {
+    id: row.id,
+    seq: safeNumber(row.seq, "seq"),
+    type: row.type as CalibratorEventType,
+    modelVersion: row.modelVersion,
+    configHash: row.configHash,
+    market: row.market as ScoreMarket,
+    calibratorId: row.calibratorId,
+    predecessorCalibratorId: row.predecessorCalibratorId,
+    restoredCalibratorId: row.restoredCalibratorId,
+    successorCalibratorId: row.successorCalibratorId,
+    reasonCode: row.reasonCode,
+    asOf: isoOf(row.asOf),
+    evaluation: row.evaluation,
+    calibrationConfigVersion: row.calibrationConfigVersion,
+    calibrationConfigHash: row.calibrationConfigHash,
+  };
+}
+
+const EVALUATION_KEYS = ["brierCalibrated", "brierRaw", "delta", "eligible", "sampleSize", "verdict"] as const;
+
+/**
+ * Strict reader of the evaluation numbers stored with an EVALUATED event. Anything that is not exactly the stored
+ * shape yields null, so a caller building lifecycle input can fail closed instead of guessing.
+ */
+export function readStoredCalibratorEvaluation(value: unknown): StoredCalibratorEvaluation | null {
+  if (!isPlainObject(value)) return null;
+  const keys = Object.keys(value).sort();
+  if (keys.length !== EVALUATION_KEYS.length || keys.some((key, index) => key !== EVALUATION_KEYS[index])) return null;
+  const nullableNumber = (entry: unknown): entry is number | null => entry === null || (typeof entry === "number" && Number.isFinite(entry));
+  const { sampleSize, eligible, verdict, brierRaw, brierCalibrated, delta } = value;
+  if (typeof sampleSize !== "number" || !Number.isInteger(sampleSize) || sampleSize < 0) return null;
+  if (typeof eligible !== "boolean") return null;
+  if (verdict !== null && verdict !== "BETTER" && verdict !== "NEUTRAL" && verdict !== "WORSE") return null;
+  if (!nullableNumber(brierRaw) || !nullableNumber(brierCalibrated) || !nullableNumber(delta)) return null;
+  return { sampleSize, eligible, verdict, brierRaw, brierCalibrated, delta };
+}
+
+const TRANSITION_REJECTION = "CalibratorEvent transition rejected";
+
+function messageChain(error: unknown): string[] {
+  const messages: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; depth < 6 && current instanceof Error; depth += 1) {
+    messages.push(current.message);
+    current = current.cause;
+  }
+  return messages;
+}
+
+/** Run a write; a refusal raised by the database transition trigger becomes a coded error with the original as `cause`. */
+async function transition<T>(write: () => Promise<T>): Promise<T> {
+  try {
+    return await write();
+  } catch (error) {
+    const rejected = messageChain(error).find((message) => message.includes(TRANSITION_REJECTION));
+    if (rejected === undefined) throw error;
+    const start = rejected.indexOf(TRANSITION_REJECTION);
+    throw repositoryError("CALIBRATOR_TRANSITION_REJECTED", rejected.slice(start).split(/\r?\n/)[0] ?? TRANSITION_REJECTION, error);
+  }
+}
+
 export function createPrismaCalibrationRepository(client: PrismaClient): CalibrationRepository {
   async function lock(tx: Transaction, identity: CalibratorIdentity, market: ScoreMarket): Promise<void> {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey(identity, market)}, 0))`;
@@ -353,11 +454,54 @@ export function createPrismaCalibrationRepository(client: PrismaClient): Calibra
     findActiveCalibrators,
 
     async promoteCalibrator(input) {
-      return client.$transaction(async (tx) => {
-        await lock(tx, input.identity, input.market);
-        const promoted = await appendEvent(tx, "PROMOTED", input, { predecessor: input.predecessorCalibratorId }, input.evaluation);
-        return { ...promoted, supersededEventId: null };
-      });
+      return transition(() =>
+        client.$transaction(async (tx) => {
+          await lock(tx, input.identity, input.market);
+          let supersededEventId: string | null = null;
+          if (input.predecessorCalibratorId !== null) {
+            // The database requires this pair, written in one transaction: the active calibrator is superseded by
+            // the candidate, and only then is the candidate promoted with that predecessor.
+            const superseded = await appendEvent(
+              tx,
+              "SUPERSEDED",
+              { ...input, calibratorId: input.predecessorCalibratorId },
+              { successor: input.calibratorId },
+              input.evaluation,
+            );
+            supersededEventId = superseded.eventId;
+          }
+          const promoted = await appendEvent(tx, "PROMOTED", input, { predecessor: input.predecessorCalibratorId }, input.evaluation);
+          return { ...promoted, supersededEventId };
+        }),
+      );
+    },
+
+    async rollbackCalibrator(input) {
+      return transition(() =>
+        client.$transaction(async (tx) => {
+          await lock(tx, input.identity, input.market);
+          return appendEvent(tx, "ROLLED_BACK", input, { restored: input.restoredCalibratorId }, input.evaluation);
+        }),
+      );
+    },
+
+    async recordEvaluation(input) {
+      return transition(() =>
+        client.$transaction(async (tx) => {
+          await lock(tx, input.identity, input.market);
+          return appendEvent(tx, "EVALUATED", input, {}, input.evaluation);
+        }),
+      );
+    },
+
+    async listCalibratorEvents(calibratorId) {
+      const rows = await client.calibratorEvent.findMany({ where: { calibratorId }, orderBy: { seq: "asc" } });
+      return rows.map((row) => eventFromRow(row as unknown as EventRow));
+    },
+
+    async hasBeenRolledBack(calibratorId) {
+      const row = await client.calibratorEvent.findFirst({ where: { calibratorId, type: "ROLLED_BACK" }, select: { id: true } });
+      return row !== null;
     },
   };
 }

@@ -70,6 +70,17 @@ export function createBacktestQueue(input: { redisUrl: string; prefix?: string }
       if (!job) return null;
       return { state: await job.getState(), attemptsMade: job.attemptsMade, attempts: job.opts.attempts ?? 1 };
     },
+    /**
+     * Drops the plan's job when it is in the terminal `failed` state (kept for 7 days by removeOnFail). BullMQ ignores `add` for an
+     * existing jobId, so without this a plan whose attempts are used up could never be re-submitted. Windows already SUCCEEDED stay
+     * done, FAILED ones are re-claimed by the next run. Returns whether a job was removed; live and completed jobs are never touched.
+     */
+    removeFailed: async (ref: { planId: string; planHash: string }): Promise<boolean> => {
+      const job = await queue.getJob(backtestJobId(ref));
+      if (!job || (await job.getState()) !== "failed") return false;
+      await job.remove();
+      return true;
+    },
     close: () => queue.close(),
   };
 }

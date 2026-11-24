@@ -48,6 +48,8 @@ export const MODEL_COMPARISON_USAGE = `Использование: node scripts/
 на один момент отсечки остаётся матч с наименьшим id, остальные считаются пропущенными (отчёт «Когорта» показывает причины).
 Если пригодных окон меньше минимума политики, подача останавливается до записи (обход: --allow-small-cohort).
 
+Повторный run/submit с теми же параметрами после окончательного сбоя ставит упавшую задачу заново (выполненные окна не пересчитываются).
+
 Нужны запущенный воркер data-sync (он исполняет планы), DATABASE_URL и REDIS_URL.
 Квитанция информационная: модель не продвигается автоматически, при выборке меньше минимума вердикт INCONCLUSIVE.`;
 
@@ -141,8 +143,9 @@ export async function runModelComparisonCommand(argv: readonly string[], deps: M
   const smallWarning = report.usable < report.minimumRequired ? "\nВнимание: выборка меньше минимума политики: вердикт будет INCONCLUSIVE по построению." : "";
   const summary = { pairId: pair.pairId, leftPlanId: pair.left.id, rightPlanId: pair.right.id, leftModel: pair.left.modelVersion, rightModel: pair.right.modelVersion, windows: pair.windowCount, cohort: pair.cohort, params: pair.params };
   if (values["dry-run"]) { emit({ dryRun: true, runnable: true, ...summary }, `Пробный запуск, ничего не записано.\n${cohortText}\nОкон: ${pair.windowCount}\nV1: ${pair.left.id}\nDC: ${pair.right.id}${smallWarning}`); return 0; }
-  await submitComparisonPair(pair, { receipts: deps.receipts, queue: deps.queue });
-  emit({ submitted: true, runnable: true, ...summary }, `${cohortText}${smallWarning}\nПара планов подана (повтор с теми же параметрами дубликатов не создаёт). Окон: ${pair.windowCount}\nV1: ${pair.left.id}\nDC: ${pair.right.id}`);
+  const { restartedPlanIds } = await submitComparisonPair(pair, { receipts: deps.receipts, queue: deps.queue });
+  const restartNote = restartedPlanIds.length > 0 ? `\nЗадача окончательно упавшего плана поставлена заново (${restartedPlanIds.join(", ")}): выполненные окна не пересчитываются, упавшие повторяются.` : "";
+  emit({ submitted: true, runnable: true, restartedPlanIds, ...summary }, `${cohortText}${smallWarning}\nПара планов подана (повтор с теми же параметрами дубликатов не создаёт). Окон: ${pair.windowCount}\nV1: ${pair.left.id}\nDC: ${pair.right.id}${restartNote}`);
   if (command === "submit") return 0;
 
   const timeoutMinutes = numberOption(typeof values["timeout-minutes"] === "string" ? values["timeout-minutes"] : undefined, "INVALID_TIMEOUT") ?? 30;

@@ -173,4 +173,20 @@ describe("operator model comparison entry point", () => {
       expect(run.control.poissonCalls).toBe(3); // BACKTEST_MAX_ATTEMPTS, not 1
     } finally { await run.close(); }
   }, 120_000);
+
+  it("WR-09: after the job failed for good, running the same parameters again retries the plan and completes it", async () => {
+    const run = await scriptedRun("wr09-retry", 45);
+    try {
+      run.control.failAttempts = Number.POSITIVE_INFINITY;
+      const ids = await run.submit();
+      expect((await run.wait(ids)).outcome).toBe("FAILED");
+      expect(run.control.poissonCalls).toBe(3);
+
+      run.control.failAttempts = 0; // the operator fixed the cause
+      const again = await run.submit();
+      expect([again.leftPlanId, again.rightPlanId]).toEqual([ids.leftPlanId, ids.rightPlanId]); // same parameters, same plan ids: nothing new is created
+      const waited = await run.wait(ids);
+      expect({ outcome: waited.outcome, poissonCalls: run.control.poissonCalls }).toEqual({ outcome: "SUCCEEDED", poissonCalls: 4 });
+    } finally { await run.close(); }
+  }, 120_000);
 });

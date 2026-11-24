@@ -247,6 +247,28 @@ describe("operator model comparison: submit, wait, receipt", () => {
     expect([...stores.plans.values()].every((plan) => plan.delivery === "DELIVERED")).toBe(true);
   });
 
+  it("WR-09: a plan whose job failed for good is queued again; healthy jobs are left alone", async () => {
+    const pair = buildComparisonPlanPair(small, fixtures);
+    const stores = fakeStores();
+    const failedJobs = new Set([`${pair.left.id}:${pair.left.planHash}`]);
+    const removed: string[] = [];
+    const queue = {
+      ...stores.queue,
+      // The deterministic jobId stays occupied while a failed job is retained: `enqueue` is a no-op for it, as in BullMQ.
+      enqueue: vi.fn(async (data: { planId: string; planHash: string }) => { const key = `${data.planId}:${data.planHash}`; if (!failedJobs.has(key)) stores.jobs.add(key); }),
+      removeFailed: vi.fn(async (ref: { planId: string; planHash: string }) => { const key = `${ref.planId}:${ref.planHash}`; if (!failedJobs.delete(key)) return false; removed.push(key); return true; }),
+    };
+    const first = await submitComparisonPair(pair, { receipts: stores.receipts as never, queue });
+    expect(first.restartedPlanIds).toEqual([pair.left.id]);
+    expect(removed).toEqual([`${pair.left.id}:${pair.left.planHash}`]);
+    expect(stores.jobs).toEqual(new Set([`${pair.left.id}:${pair.left.planHash}`, `${pair.right.id}:${pair.right.planHash}`])); // the failed plan really got a job again
+    const second = await submitComparisonPair(pair, { receipts: stores.receipts as never, queue });
+    expect(second.restartedPlanIds).toEqual([]);
+    expect(queue.removeFailed).toHaveBeenCalledTimes(4);
+    // A queue without removeFailed (plain `{ enqueue }`) still works.
+    expect((await submitComparisonPair(pair, { receipts: stores.receipts as never, queue: stores.queue })).restartedPlanIds).toEqual([]);
+  });
+
   it("waits until both plans succeed, fails on a failed window, and times out honestly", async () => {
     const make = (state: string, windows: Record<string, number> = {}): PlanProgress => ({ planId: "p", found: true, state, windows });
     let step = 0; let clock = 0;

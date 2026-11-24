@@ -304,18 +304,29 @@ export interface BacktestJobStatus { readonly state: string; readonly attemptsMa
 export interface BacktestJobRef { readonly planId: string; readonly planHash: string }
 
 /** The backtest queue as the operator entry point uses it; `inspect` is optional so a plain `{ enqueue }` still works. */
-export type ComparisonQueue = SubmitDeps["queue"] & { inspect?: (ref: BacktestJobRef) => Promise<BacktestJobStatus | null> };
+export type ComparisonQueue = SubmitDeps["queue"] & {
+  inspect?: (ref: BacktestJobRef) => Promise<BacktestJobStatus | null>;
+  /** Removes a job that is in the terminal failed state so the plan can be queued again; true when one was removed. */
+  removeFailed?: (ref: BacktestJobRef) => Promise<boolean>;
+};
 
 /** BullMQ states in which the job still has a run (or a retry) ahead of it; `failed` means the attempts are used up. */
 const LIVE_JOB_STATES: ReadonlySet<string> = new Set(["active", "delayed", "prioritized", "waiting", "waiting-children"]);
 export function jobCanStillRun(status: BacktestJobStatus | null): boolean { return status !== null && LIVE_JOB_STATES.has(status.state); }
 
-/** Idempotent: the same pair resubmitted re-uses the persisted plans and the deterministic queue job ids. */
-export async function submitComparisonPair(pair: ComparisonPlanPair, input: Omit<SubmitDeps, "correlationId" | "queue"> & { queue: ComparisonQueue }): Promise<{ leftPlanId: string; rightPlanId: string }> {
+/**
+ * Idempotent: the same pair resubmitted re-uses the persisted plans and the deterministic queue job ids. A plan whose job
+ * ended in the terminal `failed` state is the exception: BullMQ would ignore the new `add` for that jobId (WR-09), so the failed
+ * job is removed first and the plan runs again, resuming at its FAILED windows. `restartedPlanIds` lists those plans.
+ */
+export async function submitComparisonPair(pair: ComparisonPlanPair, input: Omit<SubmitDeps, "correlationId" | "queue"> & { queue: ComparisonQueue }): Promise<{ leftPlanId: string; rightPlanId: string; restartedPlanIds: string[] }> {
   const correlationId = `model-comparison:${pair.pairId}`;
-  await admitPersistEnqueueBacktest(pair.left, { ...input, correlationId });
-  await admitPersistEnqueueBacktest(pair.right, { ...input, correlationId });
-  return { leftPlanId: pair.left.id, rightPlanId: pair.right.id };
+  const restartedPlanIds: string[] = [];
+  for (const plan of [pair.left, pair.right]) {
+    if (await input.queue.removeFailed?.({ planId: plan.id, planHash: plan.planHash })) restartedPlanIds.push(plan.id);
+    await admitPersistEnqueueBacktest(plan, { ...input, correlationId });
+  }
+  return { leftPlanId: pair.left.id, rightPlanId: pair.right.id, restartedPlanIds };
 }
 
 export interface PlanProgress {

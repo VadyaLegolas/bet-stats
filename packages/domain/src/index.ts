@@ -34,4 +34,5 @@ export * from "./evaluation/backtest.js";
 export * from "./evaluation/forecast-orchestrator.js";
 export * from "./evaluation/model-comparison.js";
 export * from "./methodology/model-card.js";
+export * from "./calibration/index.js";
 export * from "./privacy/retention.js";

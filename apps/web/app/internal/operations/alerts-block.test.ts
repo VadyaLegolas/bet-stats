@@ -198,7 +198,7 @@ describe("AlertsBlock acknowledge semantics (D-04)", () => {
     expect(markup).toContain("<time dateTime=\"2026-11-11T07:00:00.000Z\"");
     expect(markup).not.toContain("Подтвердить алерт");
     expect(markup).not.toContain(">Подтвердить<");
-    expect(markup).toContain("<dd style=\"font-variant-numeric:tabular-nums\">3</dd>");
+    expect(markup).toContain("<dd class=\"tabular-nums\">3</dd>");
   });
 });
 

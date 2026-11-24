@@ -20,25 +20,22 @@ type Overview = {
   channelState: { configured: boolean; lastDeliveryStatus: number | null; lastDeliveryAt: string | null };
 };
 
-const card = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, overflowWrap: "anywhere" } as const;
-const grid = { display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 18rem), 1fr))" } as const;
-const button = { minHeight: 44, padding: "8px 14px" } as const;
 
 function visibleState(state: Overview["readiness"]["state"]): string { return state === "READY" ? "Готово" : state === "DEGRADED" ? "Деградировано" : "Не готово"; }
 function date(value: string | null): string { return value ? formatInstant(value, Intl.DateTimeFormat().resolvedOptions().timeZone) : "Недоступно"; }
 
 function Block({ title, loading, error, empty, onRetry, children }: { title: string; loading: boolean; error: string; empty: boolean; onRetry(): void; children: React.ReactNode }) {
-  return <section aria-labelledby={`${title.toLowerCase().replace(/[^a-zа-яё]+/g, "-")}-heading`} style={card} aria-busy={loading || undefined}>
+  return <section aria-labelledby={`${title.toLowerCase().replace(/[^a-zа-яё]+/g, "-")}-heading`} className="panel panel--wrap" aria-busy={loading || undefined}>
     <h2 id={`${title.toLowerCase().replace(/[^a-zа-яё]+/g, "-")}-heading`}>{title}</h2>
     {loading && <p role="status">Загрузка: {title.toLowerCase()}…</p>}
-    {error && <div role="alert"><p>{error}</p><button style={button} onClick={onRetry}>Повторить попытку</button></div>}
+    {error && <div role="alert"><p>{error}</p><button onClick={onRetry}>Повторить попытку</button></div>}
     {!loading && !error && empty ? <p>Нет операционных записей, соответствующих этому представлению.</p> : !error ? children : null}
   </section>;
 }
 
 function CopyCorrelation({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
-  return <><button style={button} aria-label={`Скопировать корреляционный ID ${value}`} onClick={async () => { await navigator.clipboard.writeText(value); setCopied(true); }}>{value}</button><span role="status" aria-live="polite">{copied ? "Корреляционный ID скопирован" : ""}</span></>;
+  return <><button aria-label={`Скопировать корреляционный ID ${value}`} onClick={async () => { await navigator.clipboard.writeText(value); setCopied(true); }}>{value}</button><span role="status" aria-live="polite">{copied ? "Корреляционный ID скопирован" : ""}</span></>;
 }
 
 export default function OperationsPage() {
@@ -85,8 +82,8 @@ export default function OperationsPage() {
   // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-mount: the operations overview loads once on page mount
   useEffect(() => { void load(); }, []);
 
-  return <section style={{ display: "grid", gap: 24, minWidth: 0 }}>
-    <header><h1 tabIndex={-1}>Центр операций</h1><p>Только безопасные операционные метаданные. Сырые полезные нагрузки, учётные данные, заголовки, трассировки стека и журналы здесь недоступны никогда.</p><button style={button} disabled={loading} onClick={() => void load()}>{loading && overview ? "Обновление…" : "Обновить операционные данные"}</button></header>
+  return <section className="page-stack">
+    <header><h1 tabIndex={-1}>Центр операций</h1><p>Только безопасные операционные метаданные. Сырые полезные нагрузки, учётные данные, заголовки, трассировки стека и журналы здесь недоступны никогда.</p><button disabled={loading} onClick={() => void load()}>{loading && overview ? "Обновление…" : "Обновить операционные данные"}</button></header>
     <Block title="Алерты" loading={loading && !overview} error={error} empty={false} onRetry={() => void load()}>
       {overview && <AlertsBlock fact={{ alerts: overview.alerts, channel: overview.channelState }} page={alertPage} />}
     </Block>
@@ -97,10 +94,10 @@ export default function OperationsPage() {
       {overview && <BackupStatusBlock backups={overview.backups} pending={triggerPending} notice={triggerNotice} noticeFailed={triggerNoticeFailed} onBackup={() => void trigger("backup")} onDrill={() => void trigger("drill")} />}
     </Block>
     <Block title="Состояние поставщиков" loading={loading && !overview} error={error} empty={overview?.providerHealth.length === 0} onRetry={() => void load()}>
-      <div style={grid}>{overview?.providerHealth.map((provider) => <article key={`${provider.provider}:${provider.endpointFamily}`} style={card}><h3>{provider.provider}</h3><p>{provider.endpointFamily} · {provider.circuitState}</p><p>Последнее успешное наблюдение: <time dateTime={provider.lastSuccessfulObservationAt ?? undefined}>{date(provider.lastSuccessfulObservationAt)}</time></p><p>Безопасная причина: {provider.reason ?? "Нет"}</p></article>)}</div>
+      <div className="card-grid">{overview?.providerHealth.map((provider) => <article key={`${provider.provider}:${provider.endpointFamily}`} className="panel panel--wrap"><h3>{provider.provider}</h3><p>{provider.endpointFamily} · {provider.circuitState}</p><p>Последнее успешное наблюдение: <time dateTime={provider.lastSuccessfulObservationAt ?? undefined}>{date(provider.lastSuccessfulObservationAt)}</time></p><p>Безопасная причина: {provider.reason ?? "Нет"}</p></article>)}</div>
     </Block>
     <Block title="Использование квот" loading={loading && !overview} error={error} empty={overview?.quotas.length === 0} onRetry={() => void load()}>
-      <div style={grid}>{overview?.quotas.map((quota) => <article key={`${quota.provider}:${quota.endpointFamily}`} style={card}><h3>{quota.provider} · {quota.endpointFamily}</h3><p><strong>{quota.used} / {quota.effectiveAllowance ?? "Недоступно"}</strong>{quota.percentage === null ? "" : ` (${quota.percentage}%)`}</p><p>Сброс: <time dateTime={quota.resetAt ?? undefined}>{date(quota.resetAt)}</time></p><p>Критические бронирования: {quota.criticalReservations}</p></article>)}</div>
+      <div className="card-grid">{overview?.quotas.map((quota) => <article key={`${quota.provider}:${quota.endpointFamily}`} className="panel panel--wrap"><h3>{quota.provider} · {quota.endpointFamily}</h3><p><strong>{quota.used} / {quota.effectiveAllowance ?? "Недоступно"}</strong>{quota.percentage === null ? "" : ` (${quota.percentage}%)`}</p><p>Сброс: <time dateTime={quota.resetAt ?? undefined}>{date(quota.resetAt)}</time></p><p>Критические бронирования: {quota.criticalReservations}</p></article>)}</div>
     </Block>
     <Block title="Неудачные задачи и мёртвые письма" loading={loading && !overview} error={error} empty={overview?.failures.groups.length === 0} onRetry={() => void load()}>
       {overview?.failures.groups.map((group) => <details key={`${group.rootCause}:${group.impact}:${group.scope}`}><summary>{group.rootCause} · {group.impact} · {group.count}</summary><dl><dt>Затронутая область</dt><dd>{group.scope}</dd><dt>Первое появление</dt><dd>{date(group.firstOccurrence)}</dd><dt>Последнее появление</dt><dd>{date(group.lastOccurrence)}</dd><dt>Возможность повтора</dt><dd>{group.retryable ? "Можно повторить через проверённое восстановление" : "Повтор невозможен"}</dd></dl></details>)}

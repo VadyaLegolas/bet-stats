@@ -20,8 +20,6 @@ export type BackupStatusFact = {
 
 // Co-located mirrors of the operations page card/button constants — page.tsx
 // cannot be imported here without a cycle, and the plan forbids restyling.
-const card = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, overflowWrap: "anywhere" } as const;
-const button = { minHeight: 44, padding: "8px 14px" } as const;
 
 const DRILL_OVERALL_LABELS: Record<string, string> = { VERIFIED: "Пройдена", FAILED: "Сбой", UNVERIFIED: "Не подтверждена" };
 // Exactly the DrillCleanupState enum (backup-drill.ts) — every occurring value
@@ -43,7 +41,7 @@ export function BackupStatusBlock({ backups, pending, notice, noticeFailed, onBa
 }) {
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const date = (value: string | null): string => (value ? formatInstant(value, zone) : "Недоступно");
-  return <article style={card} data-testid="backup-status" data-state={backups.state}>
+  return <article className="panel panel--wrap" data-testid="backup-status" data-state={backups.state}>
     <p>Общее состояние: <strong>{backupStateLabel(backups.state)}</strong></p>
     <dl>
       <dt>Последняя резервная копия</dt>
@@ -67,8 +65,8 @@ export function BackupStatusBlock({ backups, pending, notice, noticeFailed, onBa
       <dt>Хранится резервных копий</dt>
       <dd>{backups.retentionCount}</dd>
     </dl>
-    <p><button style={button} disabled={pending !== null} onClick={onBackup}>Создать резервную копию сейчас</button></p>
-    <p><button style={button} disabled={pending !== null} onClick={onDrill}>Запустить проверку восстановления сейчас</button></p>
+    <p><button disabled={pending !== null} onClick={onBackup}>Создать резервную копию сейчас</button></p>
+    <p><button disabled={pending !== null} onClick={onDrill}>Запустить проверку восстановления сейчас</button></p>
     <p role={noticeFailed ? "alert" : "status"}>{pending === "backup"
       ? "Резервная копия поставлена в очередь…"
       : pending === "drill"

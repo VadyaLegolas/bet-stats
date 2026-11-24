@@ -30,19 +30,14 @@ export type AlertsChannelState = { configured: boolean; lastDeliveryStatus: numb
 /** The fact the block renders: the API alerts array plus the channel state. */
 export type AlertsBlockFact = { alerts: AlertRow[]; channel: AlertsChannelState };
 
-// Co-located mirrors of the operations page card/button constants — page.tsx
-// cannot be imported here without a cycle, and the plan forbids restyling.
-const card = { border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-surface)", padding: 20, overflowWrap: "anywhere" } as const;
-const button = { minHeight: 44, padding: "8px 14px" } as const;
-
-// Token-driven severity chips (data-state-notice.tsx color-mix pattern): text
-// labels carry the meaning, color is supplemental, dark theme works unchanged.
-const CHIP_STYLES: Record<string, { bg: string; color: string; border: string; dot: string }> = {
-  CRITICAL: { bg: "color-mix(in srgb, var(--color-danger) 10%, transparent)", color: "var(--color-danger)", border: "color-mix(in srgb, var(--color-danger) 35%, transparent)", dot: "var(--color-danger)" },
-  WARNING: { bg: "color-mix(in srgb, var(--color-signal) 18%, transparent)", color: "var(--color-warning)", border: "color-mix(in srgb, var(--color-signal) 50%, transparent)", dot: "var(--color-signal)" },
+// Severity chips use the shared tone classes (globals.css): text labels carry
+// the meaning, colour is supplemental and flips with the theme.
+const SEVERITY_TONES: Record<string, string> = {
+  CRITICAL: "tone-danger",
+  WARNING: "tone-warning",
 };
-const RESOLVED_CHIP = { bg: "color-mix(in srgb, var(--color-text-secondary) 9%, transparent)", color: "var(--color-text-secondary)", border: "color-mix(in srgb, var(--color-text-secondary) 35%, transparent)", dot: "var(--color-muted)" };
-const ACK_CHIP = { bg: "color-mix(in srgb, var(--color-info) 10%, transparent)", color: "var(--color-info)", border: "color-mix(in srgb, var(--color-info) 35%, transparent)", dot: "var(--color-info)" };
+const RESOLVED_TONE = "tone-neutral";
+const ACK_TONE = "tone-info";
 
 /** Mirrored separator for the in-memory dedup key (D-05). The worker tree cannot
  *  be imported from the web app, so this is a mirror of
@@ -57,9 +52,9 @@ const SEVERITY_RANK: Record<string, number> = { CRITICAL: 2, WARNING: 1 };
 
 const PAGE_SIZE = 25;
 
-function chip(label: string, style: { bg: string; color: string; border: string; dot: string }): React.ReactNode {
-  return <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: style.bg, color: style.color, border: `1px solid ${style.border}`, borderRadius: "9999px", padding: "2px 10px", fontSize: "0.75rem", fontWeight: 600, lineHeight: 1.3 }}>
-    <span style={{ width: 6, height: 6, borderRadius: "50%", background: style.dot, display: "inline-block" }} />
+function chip(label: string, tone: string): React.ReactNode {
+  return <span className={`state-chip ${tone}`}>
+    <span className="state-dot" />
     {label}
   </span>;
 }
@@ -76,7 +71,7 @@ export function alertPlural(count: number): string {
 /** Mirrored page-local CopyCorrelation — importing page.tsx would create a cycle. */
 function CopyCorrelation({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
-  return <><button style={button} aria-label={`Скопировать корреляционный ID ${value}`} onClick={async () => { await navigator.clipboard.writeText(value); setCopied(true); }}>{value}</button><span role="status" aria-live="polite">{copied ? "Корреляционный ID скопирован" : ""}</span></>;
+  return <><button aria-label={`Скопировать корреляционный ID ${value}`} onClick={async () => { await navigator.clipboard.writeText(value); setCopied(true); }}>{value}</button><span role="status" aria-live="polite">{copied ? "Корреляционный ID скопирован" : ""}</span></>;
 }
 
 /** Acknowledge success copy (role=status, polite) — D-04: the record stays active. */
@@ -134,54 +129,54 @@ export function AlertsBlock({ fact, page = 1 }: { fact: AlertsBlockFact; page?: 
     const signalLabel = alertSignalLabel(row.signal);
     const isResolved = row.status === "RESOLVED";
     const acknowledgedAt = row.acknowledgedAt ?? localAck[row.id] ?? null;
-    const severityStyle = isResolved ? RESOLVED_CHIP : CHIP_STYLES[row.severity] ?? RESOLVED_CHIP;
-    return <li key={row.id} data-testid="alert-row" data-state={row.status.toLowerCase()} data-severity={row.severity} style={{ border: "1px solid var(--color-border-subtle)", borderRadius: 4, padding: 16, display: "grid", gap: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        {chip(alertSeverityLabel(row.severity), severityStyle)}
-        <span style={{ fontSize: "0.875rem" }}>{alertStatusLabel(row.status)}</span>
-        {acknowledgedAt && <span ref={(element) => { markerRefs.current[row.id] = element; }} tabIndex={-1} style={{ fontSize: "0.875rem", ...ACK_CHIP, background: ACK_CHIP.bg, border: `1px solid ${ACK_CHIP.border}`, color: ACK_CHIP.color, borderRadius: "9999px", padding: "2px 10px" }}>Подтверждён · <time dateTime={acknowledgedAt}>{date(acknowledgedAt)}</time></span>}
+    const severityTone = isResolved ? RESOLVED_TONE : SEVERITY_TONES[row.severity] ?? RESOLVED_TONE;
+    return <li key={row.id} data-testid="alert-row" data-state={row.status.toLowerCase()} data-severity={row.severity} className="alert-row">
+      <div className="cluster">
+        {chip(alertSeverityLabel(row.severity), severityTone)}
+        <span className="ops-line--sm">{alertStatusLabel(row.status)}</span>
+        {acknowledgedAt && <span ref={(element) => { markerRefs.current[row.id] = element; }} tabIndex={-1} className={`state-chip state-chip--md ${ACK_TONE}`}>Подтверждён · <time dateTime={acknowledgedAt}>{date(acknowledgedAt)}</time></span>}
       </div>
-      <p style={{ margin: 0 }}><strong>{signalLabel !== row.signal ? `${signalLabel} · ${row.signal}` : row.signal}</strong></p>
-      <dl style={{ margin: 0, fontSize: "0.875rem", display: "grid", gap: 4 }}>
+      <p className="ops-line"><strong>{signalLabel !== row.signal ? `${signalLabel} · ${row.signal}` : row.signal}</strong></p>
+      <dl className="alert-row-meta">
         <div><dt>Область</dt><dd>{row.scope || "Нет"}</dd></div>
         <div><dt>Появился</dt><dd><time dateTime={row.firstSeen}>{date(row.firstSeen)}</time></dd></div>
         <div><dt>Последний раз</dt><dd><time dateTime={row.lastSeen}>{date(row.lastSeen)}</time></dd></div>
-        <div><dt>Повторений</dt><dd style={{ fontVariantNumeric: "tabular-nums" }}>{row.count}</dd></div>
+        <div><dt>Повторений</dt><dd className="tabular-nums">{row.count}</dd></div>
         {isResolved && <div><dt>Решён</dt><dd><time dateTime={row.resolvedAt ?? undefined}>{date(row.resolvedAt)}</time></dd></div>}
       </dl>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: "0.875rem" }}>
+      <div className="cluster ops-line--sm">
         <span>Корреляционные ID:</span>
         {row.correlationIds.length === 0 ? "Нет" : row.correlationIds.map((value) => <CopyCorrelation key={value} value={value} />)}
       </div>
-      {!isResolved && !acknowledgedAt && <p style={{ margin: 0 }}><button style={button} disabled={pendingId !== null} aria-label={`Подтвердить алерт ${signalLabel}`} onClick={() => void acknowledge(row)}>{pendingId === row.id ? "Подтверждение…" : "Подтвердить"}</button></p>}
-      {localAck[row.id] && pendingId !== row.id && failedId !== row.id && <p role="status" aria-live="polite" style={{ margin: 0, fontSize: "0.875rem" }}>{ACK_SUCCESS}</p>}
-      {failedId === row.id && pendingId !== row.id && <p role="alert" style={{ margin: 0, fontSize: "0.875rem" }}>{ACK_FAILURE}</p>}
+      {!isResolved && !acknowledgedAt && <p className="ops-line"><button disabled={pendingId !== null} aria-label={`Подтвердить алерт ${signalLabel}`} onClick={() => void acknowledge(row)}>{pendingId === row.id ? "Подтверждение…" : "Подтвердить"}</button></p>}
+      {localAck[row.id] && pendingId !== row.id && failedId !== row.id && <p role="status" aria-live="polite" className="ops-line ops-line--sm">{ACK_SUCCESS}</p>}
+      {failedId === row.id && pendingId !== row.id && <p role="alert" className="ops-line ops-line--sm">{ACK_FAILURE}</p>}
     </li>;
   };
 
-  return <article style={card} data-testid="alerts-block" data-state={active.length > 0 ? "active" : "clear"}>
-    <p data-testid="alerts-channel" data-state={channelState} style={{ margin: 0, fontSize: "0.875rem", fontWeight: 600, color: !channel.configured ? "var(--color-warning)" : channelFailed ? "var(--color-danger)" : "var(--color-success)" }}>
+  return <article className="panel panel--wrap" data-testid="alerts-block" data-state={active.length > 0 ? "active" : "clear"}>
+    <p data-testid="alerts-channel" data-state={channelState} className="ops-channel" style={{ color: !channel.configured ? "var(--color-warning)" : channelFailed ? "var(--color-danger)" : "var(--color-success)" }}>
       {!channel.configured
         ? "Канал доставки: не настроен — алерты сохраняются в базе, в вебхук не отправляются."
         : channelFailed
           ? `Канал доставки: вебхук настроен, последняя доставка не удалась (${channel.lastDeliveryStatus}).`
           : "Канал доставки: вебхук настроен."}
     </p>
-    <div style={{ marginTop: 24 }}>
-      <p style={{ margin: 0 }}><strong>Активные</strong>{active.length > 0 && <span> · {alertPlural(active.length)}</span>}</p>
+    <div className="ops-section">
+      <p className="ops-line"><strong>Активные</strong>{active.length > 0 && <span> · {alertPlural(active.length)}</span>}</p>
       {active.length === 0
-        ? <div><p style={{ margin: 0 }}>Активных алертов нет</p><p style={{ margin: 0, fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>Сигналы деградации не обнаружены за последние 7 дней. Проверка выполняется автоматически.</p></div>
-        : <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 16 }}>{visible.filter((row) => row.status !== "RESOLVED").map(renderRow)}</ul>}
+        ? <div><p className="ops-line">Активных алертов нет</p><p className="ops-line ops-line--sm ops-line--muted">Сигналы деградации не обнаружены за последние 7 дней. Проверка выполняется автоматически.</p></div>
+        : <ul className="stack">{visible.filter((row) => row.status !== "RESOLVED").map(renderRow)}</ul>}
     </div>
-    <div style={{ marginTop: 32 }}>
-      <p style={{ margin: 0 }}><strong>Решённые за 7 дней</strong>{resolved.length > 0 && <span> · {alertPlural(resolved.length)}</span>}</p>
+    <div className="ops-section">
+      <p className="ops-line"><strong>Решённые за 7 дней</strong>{resolved.length > 0 && <span> · {alertPlural(resolved.length)}</span>}</p>
       {resolved.length === 0
-        ? <p style={{ margin: 0 }}>Решённых алертов за последние 7 дней нет.</p>
-        : <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 16 }}>{visible.filter((row) => row.status === "RESOLVED").map(renderRow)}</ul>}
+        ? <p className="ops-line">Решённых алертов за последние 7 дней нет.</p>
+        : <ul className="stack">{visible.filter((row) => row.status === "RESOLVED").map(renderRow)}</ul>}
     </div>
-    {pages > 1 && <nav aria-label="Страницы алертов" style={{ marginTop: 24 }}>
-      <p style={{ margin: 0, fontSize: "0.875rem", fontVariantNumeric: "tabular-nums" }}>Показано {start}–{end} из {total}</p>
-      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", gap: 8, flexWrap: "wrap" }}>
+    {pages > 1 && <nav aria-label="Страницы алертов" className="ops-section">
+      <p className="ops-line ops-line--sm tabular-nums">Показано {start}–{end} из {total}</p>
+      <ul className="cluster list-reset">
         {Array.from({ length: pages }, (_, index) => {
           const target = index + 1;
           const params = typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);

@@ -14,7 +14,7 @@ test("versioned model card presents plain-language and exact technical evidence"
   await expect(page.getByText(`${MODEL_CARD.currentModel.modelVersion} / ${MODEL_CARD.currentModel.configVersion}`, { exact: true })).toBeVisible();
   await expect(page.getByText(`${MODEL_CARD.alternatives[0]!.modelVersion} / ${MODEL_CARD.alternatives[0]!.configVersion} (${MODEL_CARD.alternatives[0]!.role})`, { exact: false })).toBeVisible();
 
-  const sectionNames = ["Входы", "Поправка на низкие счета", "Что исключается", "Уверенность", "Ограничения", "Оценка", "Ответственное использование", "История изменений"];
+  const sectionNames = ["Входы", "Поправка на низкие счета", "Что исключается", "Уверенность", "Ограничения", "Оценка", "Калибровка вероятностей", "Ответственное использование", "История изменений"];
   await expect(page.locator("main h2")).toHaveText(sectionNames);
   for (const name of sectionNames.slice(0, -1)) {
     const section = page.getByRole("heading", { level: 2, name }).locator("xpath=..");
@@ -30,6 +30,16 @@ test("versioned model card presents plain-language and exact technical evidence"
   await expect(page.locator("#dixon-coles-technical")).toContainText("нейтрален по построению");
   await expect(page.locator("#dixon-coles-technical")).toContainText(String(MODEL_CARD.forecast.dixonColes.rhoPolicy.minLeagueMatches));
 
+  await expect(page.getByText(MODEL_CARD.version, { exact: true }).first()).toBeVisible();
+  await expect(page.locator("#calibration")).toContainText("Platt");
+  await expect(page.locator("#calibration")).toContainText("сегодняшним калибратором");
+  await expect(page.locator("#calibration")).toContainText("Расчёт value по-прежнему использует сырые вероятности.");
+  await page.locator("#calibration").getByText("Технические подробности", { exact: true }).click();
+  await expect(page.locator("#calibration-technical")).toContainText(MODEL_CARD.calibration.configVersion);
+  await expect(page.locator("#calibration-technical")).toContainText(MODEL_CARD.calibration.configHash);
+  await expect(page.locator("#calibration-technical")).toContainText(`Platt ${MODEL_CARD.calibration.minimumSamples.platt}`);
+  await expect(page.locator("#calibration-technical")).toContainText(`${MODEL_CARD.calibration.rollback.consecutiveWorse} подряд оценок`);
+
   await page.locator("#evaluation").getByText("Технические подробности", { exact: true }).click();
   await expect(page.getByRole("region", { name: "Формулы корректных очков" })).toContainText("Brier");
   await expect(page.locator("#evaluation-technical")).toContainText("proper-score-v1");
@@ -39,7 +49,8 @@ test("versioned model card presents plain-language and exact technical evidence"
   await expect(page.getByRole("link", { name: "Подробности квитанции прогноза" })).toHaveAttribute("href", "/fixtures#forecast-receipts");
 
   const changes = page.locator("#change-history article");
-  await expect(changes).toHaveCount(3);
+  await expect(changes).toHaveCount(MODEL_CARD.changeHistory.length);
+  await expect(changes).toHaveCount(4);
   const effectiveDates = await changes.locator("time").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("datetime")));
   expect(effectiveDates).toEqual([...effectiveDates].sort().reverse());
 

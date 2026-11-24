@@ -1,3 +1,4 @@
+import { CALIBRATION_CONFIG, CALIBRATION_CONFIG_HASH } from "../calibration/config.js";
 import { COHORT_HEALTH_POLICY } from "../evaluation/cohort-health.js";
 import { BACKTEST_POLICY_VERSION } from "../evaluation/backtest.js";
 import { ODDS_RATIO_CLV_POLICY_VERSION } from "../evaluation/clv.js";
@@ -22,12 +23,13 @@ export const MODEL_CARD_SECTION_IDS = [
   "confidence",
   "limitations",
   "evaluation",
+  "calibration",
   "responsible-use",
 ] as const;
 
 export const MODEL_CARD = Object.freeze({
-  version: "model-card-v1.1.0",
-  effectiveDate: "2026-11-21",
+  version: "model-card-v1.2.0",
+  effectiveDate: "2026-11-24",
   currentModel: Object.freeze({
     modelVersion: DEFAULT_FORECAST_MODEL_VERSION,
     configVersion: FORECAST_CONFIG_VERSION_BY_MODEL[DEFAULT_FORECAST_MODEL_VERSION],
@@ -104,7 +106,46 @@ export const MODEL_CARD = Object.freeze({
       populatedBucketEvents: COHORT_HEALTH_POLICY.minimumBucketCount,
     }),
   }),
+  /**
+   * Post-hoc probability calibration (Phase 12, D-07, D-12). Every number comes from the frozen
+   * `calibration-config-v1` object: the card publishes the policy, it never restates it.
+   */
+  calibration: Object.freeze({
+    configVersion: CALIBRATION_CONFIG.version,
+    configHash: CALIBRATION_CONFIG_HASH,
+    markets: CALIBRATION_CONFIG.markets,
+    minimumSamples: CALIBRATION_CONFIG.minimumSamples,
+    holdoutFraction: CALIBRATION_CONFIG.holdoutFraction,
+    materiality: CALIBRATION_CONFIG.materiality,
+    rollback: CALIBRATION_CONFIG.rollback,
+    probabilityClipEpsilon: CALIBRATION_CONFIG.probabilityClipEpsilon,
+    cadence: CALIBRATION_CONFIG.cadence,
+    fit: Object.freeze({ kinds: CALIBRATION_CONFIG.fit.kinds, servedKinds: CALIBRATION_CONFIG.fit.servedKinds }),
+    effects: Object.freeze([
+      "Метод по умолчанию — калибровка Platt: логистическое отображение логита вероятности. Для рынка 1X2 она применяется по схеме «один против всех» к каждому классу, после чего вероятности пересчитываются до суммы 1.",
+      `Вторым методом рассматривается изотоническая регрессия, но только при ${CALIBRATION_CONFIG.minimumSamples.isotonic} и более завершённых исходов и выбирается, только если на отложенной выборке опережает Platt не меньше чем на ${CALIBRATION_CONFIG.materiality} по Brier.`,
+      "Подбор использует предматчевые прогнозы PRODUCTION и результаты в том виде, какими они были известны на момент подбора; калибратор обучается на более ранней части данных и проверяется на более поздней отложенной выборке, которая в обучении не участвовала.",
+      "Калибратор закреплён за точной версией модели и конфигурации прогноза и никогда не применяется к прогнозу другой версии.",
+      `Автоматический откат: после ${CALIBRATION_CONFIG.rollback.consecutiveWorse} подряд оценок хуже сырого прогноза не меньше чем на ${CALIBRATION_CONFIG.materiality} по Brier, каждая не меньше ${CALIBRATION_CONFIG.rollback.minimumEvaluationSample} исходов. Одно плохое окно не откатывает калибратор. После отката действует предыдущий калибратор либо остаются только сырые вероятности; откатанный калибратор повторно не продвигается.`,
+      "Замороженные снимки и квитанции не меняются: калиброванные вероятности вычисляются при чтении ответа и показываются отдельно от сырых. Расчёт value по-прежнему использует сырые вероятности.",
+    ]),
+    limitations: Object.freeze([
+      `Малые выборки: ниже ${CALIBRATION_CONFIG.minimumSamples.platt} исходов на рынок калибратор не строится, пользователь видит состояние «недостаточно данных».`,
+      "Калибровка не обещает более близких к реальности вероятностей: на новых данных она может оказаться хуже сырого прогноза, поэтому действует автоматический откат.",
+      "Ограничение вида: первичный прогноз калибровкой не покрывается, показываются только сырые вероятности.",
+      "Калибратор подбирается по предматчевым снимкам и показывается также для прогнозов по подтверждённому составу; перенос на такие прогнозы отдельно не проверяется, а доли видов прогноза в обучающей выборке и в показе могут различаться.",
+      "Калиброванное состояние вычисляется при чтении на текущий момент: старый прогноз показывается с сегодняшним калибратором и сегодняшним числом доступных исходов, а не с состоянием на момент выпуска.",
+      "Калибровка не многоклассовая: рынок 1X2 калибруется по схеме «один против всех» с пересчётом до суммы 1.",
+    ]),
+  }),
   changeHistory: Object.freeze([
+    Object.freeze({
+      version: "model-card-v1.2.0",
+      effectiveDate: "2026-11-24",
+      summary: "Добавлена post-hoc калибровка вероятностей по рынкам с версиями калибраторов и автоматическим откатом.",
+      affected: "calibration-config-v1, poisson-ensemble-v1, dixon-coles-ensemble-v1",
+      interpretation: "Выданные квитанции и снимки не переписаны: калиброванные вероятности вычисляются при чтении и показываются отдельно от сырых; расчёт value использует сырые вероятности.",
+    }),
     Object.freeze({
       version: "model-card-v1.1.0",
       effectiveDate: "2026-11-21",

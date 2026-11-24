@@ -100,6 +100,21 @@ export default function MethodologyPage() {
       </TechnicalDetails>
     </section>
 
+    <section id="calibration" style={panel}>
+      <h2>Калибровка вероятностей</h2>
+      <p>Калибровка — отдельный слой поверх сырого прогноза: по завершённым матчам подбирается поправка, которая сопоставляет сырым вероятностям калиброванные. Сырой прогноз остаётся основным и неизменным, а калиброванные вероятности показываются рядом с подписью версии калибратора и размером отложенной выборки. Расчёт value по-прежнему использует сырые вероятности.</p>
+      <p>Пока исходов недостаточно, интерфейс прямо сообщает, сколько их нужно и сколько есть. Калибратор проверяется по более поздним данным и автоматически откатывается, если несколько оценок подряд оказываются хуже сырого прогноза.</p>
+      <ul>{card.calibration.effects.map((effect) => <li key={effect}>{effect}</li>)}</ul>
+      <p><strong>Ограничения:</strong></p>
+      <ul>{card.calibration.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul>
+      <TechnicalDetails id="calibration-technical">
+        <p>Конфиг: <code>{card.calibration.configVersion}</code> · <code>{card.calibration.configHash}</code></p>
+        <p>Рынки: {card.calibration.markets.join(", ")}. Виды прогнозов для подбора: {card.calibration.fit.kinds.join(", ")}; виды, для которых показывается калибровка: {card.calibration.fit.servedKinds.join(", ")}.</p>
+        <p>Минимальные выборки: Platt {card.calibration.minimumSamples.platt}; изотоническая регрессия {card.calibration.minimumSamples.isotonic}; отложенная выборка {card.calibration.minimumSamples.holdout}. Доля отложенной выборки: {card.calibration.holdoutFraction}.</p>
+        <p>Порог существенности (Brier): {card.calibration.materiality}. Откат: {card.calibration.rollback.consecutiveWorse} подряд оценок хуже сырого, каждая не меньше {card.calibration.rollback.minimumEvaluationSample} исходов. Отсечение вероятностей: {card.calibration.probabilityClipEpsilon}. Подбор: раз в {card.calibration.cadence.intervalHours} ч.</p>
+      </TechnicalDetails>
+    </section>
+
     <section id="responsible-use" style={panel}>
       <h2>Ответственное использование</h2>
       <p>Используйте эти оценки только как прозрачные аналитические доказательства. Не рассматривайте их как инструкции, не ставьте больше, чем можете позволить себе потерять, и не делайте ставки там, где это незаконно или не соответствует вашему возрасту.</p>

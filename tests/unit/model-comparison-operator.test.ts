@@ -317,6 +317,21 @@ describe("operator model comparison: submit, wait, receipt", () => {
     expect(describeComparison({ available: false, reason: "PLAN_NOT_COMPLETE" })).toContain("PLAN_NOT_COMPLETE");
   });
 
+  it("WR-11: the verdict names the models of the receipt (right vs left), not a fixed V1/DC pair", () => {
+    const side = (planId: string, modelVersion: string, brierScore: number) => ({ planId, planHash: "h", modelVersion, configHash: "c", sampleSize: MODEL_COMPARISON_POLICY.minimumSampleSize, brierScore, logLoss: 0.9 });
+    const result = (leftModel: string, rightModel: string, verdict: string, rightBrier: number) => ({ available: true, receipt: { version: MODEL_COMPARISON_POLICY.version, market: "ONE_X_TWO", from: range.from, to: range.to, windowsDigest: "sha256:x", left: side("l", leftModel, 0.6), right: side("r", rightModel, rightBrier), deltas: { brierScore: rightBrier - 0.6, logLoss: 0 }, verdict, computedAt: range.from } }) as never;
+    // Reversed order: DC on the left, V1 on the right. The right side (V1) is the better one; the old text said "DC лучше".
+    const reversed = describeComparison(result("dixon-coles-ensemble-v1", "poisson-ensemble-v1", "BETTER", 0.5));
+    expect(reversed).toContain("правая модель poisson-ensemble-v1 лучше левой dixon-coles-ensemble-v1");
+    expect(reversed).not.toContain("DC лучше");
+    expect(reversed).toContain("Brier: dixon-coles-ensemble-v1 0.6000, poisson-ensemble-v1 0.5000");
+    const worse = describeComparison(result("poisson-ensemble-v1", "dixon-coles-ensemble-v1", "WORSE", 0.7));
+    expect(worse).toContain("правая модель dixon-coles-ensemble-v1 хуже левой poisson-ensemble-v1");
+    const same = describeComparison(result("poisson-ensemble-v1", "poisson-ensemble-v1", "INCONCLUSIVE", 0.6));
+    expect(same).toContain("обе стороны используют модель poisson-ensemble-v1");
+    expect(same).toContain("INCONCLUSIVE");
+  });
+
   it("dry-run prints the pair and writes nothing; submit validates input", async () => {
     const stores = fakeStores();
     const lines: string[] = [];

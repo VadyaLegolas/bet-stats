@@ -388,18 +388,28 @@ export async function computeModelComparison(database: PrismaClient, input: { le
   return toModelComparisonResult(raw, { from: input.from, to: input.to, computedAt: now().toISOString(), windows: raw.windows ?? [] });
 }
 
-/** Plain-Russian summary for the operator; the JSON receipt stays the source of truth. */
+/**
+ * Plain-Russian summary for the operator; the JSON receipt stays the source of truth. The verdict always reads "right vs left"
+ * and names both models from the receipt, because `compare` accepts any two plans, not only the V1 (left) / DC (right) pair.
+ */
 export function describeComparison(result: ModelComparisonResult): string {
   if (!result.available) return `Сравнение недоступно: ${result.reason}.`;
   const { receipt } = result;
-  const verdict = { BETTER: "DC лучше (дельта Brier не меньше порога)", WORSE: "DC хуже (дельта Brier не меньше порога)", INCONCLUSIVE: "ВЫВОД НЕ СДЕЛАН (INCONCLUSIVE): нет доказательства ни в пользу, ни против" }[receipt.verdict];
+  const left = receipt.left.modelVersion; const right = receipt.right.modelVersion;
+  const verdict = {
+    BETTER: `правая модель ${right} лучше левой ${left} (дельта Brier не меньше порога)`,
+    WORSE: `правая модель ${right} хуже левой ${left} (дельта Brier не меньше порога)`,
+    INCONCLUSIVE: "ВЫВОД НЕ СДЕЛАН (INCONCLUSIVE): нет доказательства ни в пользу, ни против",
+  }[receipt.verdict];
   const lines = [
+    `Левая сторона: ${left}, правая сторона: ${right}. Дельта = правая минус левая; меньше нуля значит, что правая точнее.`,
     `Рынок ${receipt.market}, выборка ${receipt.left.sampleSize} исходов (минимум для вывода: ${MODEL_COMPARISON_POLICY.minimumSampleSize}).`,
-    `Brier: V1 ${receipt.left.brierScore.toFixed(4)}, DC ${receipt.right.brierScore.toFixed(4)}, дельта ${receipt.deltas.brierScore.toFixed(4)} (порог ${MODEL_COMPARISON_POLICY.deltaMateriality}).`,
-    `LogLoss: V1 ${receipt.left.logLoss.toFixed(4)}, DC ${receipt.right.logLoss.toFixed(4)}, дельта ${receipt.deltas.logLoss.toFixed(4)}.`,
+    `Brier: ${left} ${receipt.left.brierScore.toFixed(4)}, ${right} ${receipt.right.brierScore.toFixed(4)}, дельта ${receipt.deltas.brierScore.toFixed(4)} (порог ${MODEL_COMPARISON_POLICY.deltaMateriality}).`,
+    `LogLoss: ${left} ${receipt.left.logLoss.toFixed(4)}, ${right} ${receipt.right.logLoss.toFixed(4)}, дельта ${receipt.deltas.logLoss.toFixed(4)}.`,
     `Вердикт: ${verdict}.`,
   ];
-  if (receipt.verdict === "INCONCLUSIVE" && receipt.left.sampleSize < MODEL_COMPARISON_POLICY.minimumSampleSize) lines.push("Выборка меньше минимума: дельта не интерпретируется. Это не доказывает, что DC не хуже V1.");
+  if (left === right) lines.push(`Внимание: обе стороны используют модель ${left}; это сравнение планов, а не версий модели.`);
+  if (receipt.verdict === "INCONCLUSIVE" && receipt.left.sampleSize < MODEL_COMPARISON_POLICY.minimumSampleSize) lines.push(`Выборка меньше минимума: дельта не интерпретируется. Это не доказывает, что ${right} не хуже ${left}.`);
   lines.push("Отчёт информационный: модель не переключается автоматически, а прошлые результаты не гарантируют будущих.");
   return lines.join("\n");
 }

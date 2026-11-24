@@ -1,20 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.1
-current_phase: 11
-current_phase_name: Dixon-Coles Model Version
-status: in_progress
-stopped_at: Completed 11-07-PLAN.md
-last_updated: "2026-11-24T03:44:12.970Z"
-last_activity: 2026-11-23
-last_activity_desc: "Phase 11 verified (human_needed): review findings fixed, DC-default-before-comparison accepted as override; real V1-vs-DC comparison and rho-method SQL check pending"
-state_head: a78d5a317e556b13d743976a192f037c27580d5b
+current_phase: 12
+current_phase_name: Calibration Layer and Versioned Rollback
+status: planning
+stopped_at: Phase 11 complete, ready to plan Phase 12
+last_updated: "2026-11-24T06:35:19.418Z"
+last_activity: 2026-11-24
+last_activity_desc: Phase 11 complete, transitioned to Phase 12
+state_head: b727200c14a0eb626c5199d871f19b419205dbb3
 progress:
   total_phases: 10
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 29
   completed_plans: 29
-  percent: 40
+  percent: 50
 milestone_name: Reliability, Model Quality and Value Experience
 ---
 
@@ -29,18 +29,18 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 
 ## Current Position
 
-Phase: 11 — Dixon-Coles Model Version
-Plan: 4 of 4 (all plans executed; verification human_needed, phase kept open)
-Status: Awaiting human verification (11-UAT.md tests 2-3)
-Last activity: 2026-11-23 — phase 11 verification human_needed; override accepted; 659/659 unit green
+Phase: 12 — Calibration Layer and Versioned Rollback
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-24 — Phase 11 complete, transitioned to Phase 12
 
-Progress: [████░░░░░░] 40%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 110
+- Total plans completed: 117
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -58,6 +58,7 @@ Progress: [████░░░░░░] 40%
 | 08 | 7 | - | - |
 | 09 | 8 | - | - |
 | 10 | 4 | - | - |
+| 11 | 7 | - | - |
 
 **Recent Trend:**
 
@@ -416,5 +417,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-11-24T03:44:10.297Z
-Stopped at: Completed 11-07-PLAN.md
+Stopped at: Phase 11 complete, ready to plan Phase 12
 Resume file: None

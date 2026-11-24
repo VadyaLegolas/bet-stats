@@ -10,7 +10,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 - [x] **Phase 8: Backups and Restore Verification** - The operator trusts that PostgreSQL can be restored, proven by scheduled restore drills with visible verification status. (completed 2026-11-05)
 - [x] **Phase 9: Degradation Alerting** - The operator is told when providers, workers, HTTP error rates, or backups degrade, through durable alerts viewable in the operations center. (completed 2026-11-16)
 - [x] **Phase 10: Performance Audit and Budgets** - The fixture detail page meets declared Lighthouse budgets, and regressions fail CI instead of shipping. (completed 2026-11-17)
-- [ ] **Phase 11: Dixon-Coles Model Version** - Forecasts can be issued under a corrected, versioned model whose rolling-origin backtests are compared against the frozen baseline before promotion.
+- [x] **Phase 11: Dixon-Coles Model Version** - Forecasts can be issued under a corrected, versioned model whose rolling-origin backtests are compared against the frozen baseline before promotion. (completed 2026-11-24)
 - [ ] **Phase 12: Calibration Layer and Versioned Rollback** - Users see calibrated probabilities with honest labels and insufficient-data states, backed by per-model-version calibrators that roll back on measured regression.
 - [ ] **Phase 13: CLV Price Diary** - Forecast-time and closing prices are compared per candidate, with honest unavailable states and strict evaluation-only semantics.
 - [ ] **Phase 14: Asian Handicap and Exact Score Markets** - Users see and settle Asian handicap and exact-score probabilities derived from the frozen score matrix, with push-aware value receipts.
@@ -119,7 +119,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   3. An operator can compare rolling-origin backtest metrics of the new version against the frozen baseline, and the methodology card names the exact integration and its limitations (e.g. neutral on O/U 2.5).
 
 **Notes / research flags**: Open product decision for discuss/spec — hybrid Elo/form-derived λ,μ + fitted per-league ρ (recommended, labeled as hybrid) vs full DC attack/defence refit (risks double-counting home advantage). ρ fitting window and decay selection are project-specific. `modelVersion` is hard-pinned as a string literal in ≥10 files — must widen the shared union in one pass.
-**Plans**: 7/7 plans executed (11-05..11-07 are gap closure for UAT test 2)
+**Plans**: 7/7 plans complete (11-05..11-07 are gap closure for UAT test 2)
 **Plan list**:
 - [x] 11-01-PLAN.md — Domain foundation: `MODEL_VERSIONS` union, split config (`FORECAST_CONFIG` untouched, `DIXON_COLES_CONFIG`/`forecast-config-v2`), pinned τ math with feasible ρ band, deterministic ρ estimator, contract/orchestrator accept both versions with explicit params, V1 frozen numeric vector
 - [x] 11-02-PLAN.md — Production default: leakage-safe per-league ρ from settled history (pooled/zero fallbacks), repository hook, `FORECAST_MODEL_VERSION` selector with `dixon-coles-ensemble-v1` default, all API/worker paths use one resolver, V1 selectable
@@ -221,7 +221,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 | 8. Backups and Restore Verification | 7/7 | Complete    | 2026-10-31 |
 | 9. Degradation Alerting | 8/8 | Complete    | 2026-11-16 |
 | 10. Performance Audit and Budgets | 4/4 | Complete    | 2026-11-17 |
-| 11. Dixon-Coles Model Version | 7/7 | In Progress | - |
+| 11. Dixon-Coles Model Version | 7/7 | Complete    | 2026-11-24 |
 | 12. Calibration Layer and Versioned Rollback | 0/0 | Not started | - |
 | 13. CLV Price Diary | 0/0 | Not started | - |
 | 14. Asian Handicap and Exact Score Markets | 0/0 | Not started | - |

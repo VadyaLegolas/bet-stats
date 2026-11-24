@@ -26,7 +26,7 @@
     {
       "number": "11",
       "name": "Dixon-Coles Model Version",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "12",
@@ -56,8 +56,8 @@
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step (plan phase 11)",
-    "reason": "Phase 5 of 10 — needs a plan"
+    "label": "Advance to the next step (plan phase 12)",
+    "reason": "Phase 6 of 10 — needs a plan"
   },
-  "updated_at": "2026-11-19T06:27:12.311Z"
+  "updated_at": "2026-11-24T06:35:19.557Z"
 }

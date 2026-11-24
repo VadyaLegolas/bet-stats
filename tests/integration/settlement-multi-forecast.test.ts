@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createPrismaClient, createSettlementPipelineService, SETTLEMENT_PIPELINE_POLICY_HASH, type PrismaClient } from "@bet-stats/database";
+import { createPrismaClient, createSettlementPipelineService, SETTLEMENT_INTAKE_DEFAULTS, SETTLEMENT_PIPELINE_POLICY_HASH, type PrismaClient } from "@bet-stats/database";
 
 const root = resolve(import.meta.dirname, "../..");
 const databaseRoot = resolve(root, "packages/database");
@@ -180,7 +180,8 @@ describe("settlement of two forecasts for one fixture", () => {
     expect(await prisma.forecastScore.count({ where: { settlementReceipt: { fixtureId: match.fixtureId } } })).toBe(3);
   });
 
-  it("six simultaneous deliveries of one (fixture, result, forecast) (above the intake cap) yield one receipt", async () => {
+  it("six simultaneous deliveries of one (fixture, result, forecast) yield one receipt", async () => {
+    // Same-fixture duplicates queue on one advisory lock and need no worker connection, so this test does not exercise the intake cap (see the next one).
     const service = createSettlementPipelineService({ database: prisma });
     const match = await seedMatch(prisma, "mf-burst", 19);
     const outcomes = await Promise.all(Array.from({ length: 6 }, (_, index) => service.process(command(match.fixtureId, match.result1, match.forecastA, `corr-burst-${index}`))));
@@ -189,6 +190,69 @@ describe("settlement of two forecasts for one fixture", () => {
     expect(await prisma.settlementReceipt.count({ where: { fixtureId: match.fixtureId } })).toBe(1);
     expect(await prisma.forecastScore.count({ where: { settlementReceipt: { fixtureId: match.fixtureId } } })).toBe(3);
   }, 120_000);
+
+  // WR-10: holders of DIFFERENT fixtures each pin one pool connection (default pg pool max = 10) while they wait for a worker connection.
+  // Parallel work on different fixtures can still fail with SQLSTATE 40001 (a separate, known defect); these tests therefore never
+  // assert that such calls succeed, only that the holder cap does its own job: bounded concurrency and no pool starvation.
+  const isSerializationConflict = (reason: unknown) => /40001|TransactionWriteConflict|P2034|could not serialize/.test(String(reason));
+
+  async function settleDifferentFixtures(client: PrismaClient, prefix: string, count: number, intake?: { maxHolders: number }) {
+    let inFlight = 0; let maxInFlight = 0;
+    const service = createSettlementPipelineService({
+      database: client,
+      ...(intake ? { intake } : {}),
+      afterSettlement: async () => { inFlight += 1; maxInFlight = Math.max(maxInFlight, inFlight); await sleep(400); inFlight -= 1; },
+    });
+    const matches = [];
+    for (let index = 0; index < count; index += 1) matches.push(await seedMatch(prisma, `${prefix}-${index}`, 1 + index));
+    const settled = await Promise.allSettled(matches.map((match, index) => service.process(command(match.fixtureId, match.result1, match.forecastA, `corr-${prefix}-${index}`))));
+    const infrastructureFailures = settled.flatMap((outcome) => outcome.status === "rejected" && !isSerializationConflict(outcome.reason) ? [String(outcome.reason).slice(0, 160)] : []);
+    return { settled, maxInFlight, infrastructureFailures };
+  }
+
+  it("caps concurrent settlement work across different fixtures at the holder limit", async () => {
+    const capped = createPrismaClient(databaseUrl);
+    const uncapped = createPrismaClient(databaseUrl);
+    try {
+      const withCap = await settleDifferentFixtures(capped, "mf-cap", 6);
+      expect(withCap.infrastructureFailures).toEqual([]);
+      expect(withCap.maxInFlight).toBeGreaterThanOrEqual(2); // the fixtures really ran in parallel
+      expect(withCap.maxInFlight).toBeLessThanOrEqual(SETTLEMENT_INTAKE_DEFAULTS.maxHolders);
+      // Without the cap, 6 holders leave 4 of the 10 pool connections for workers: more work runs at once than the cap allows.
+      const withoutCap = await settleDifferentFixtures(uncapped, "mf-uncap", 6, { maxHolders: 1_000 });
+      expect(withoutCap.maxInFlight).toBeGreaterThan(SETTLEMENT_INTAKE_DEFAULTS.maxHolders);
+    } finally { await capped.$disconnect(); await uncapped.$disconnect(); }
+  }, 120_000);
+
+  it("12 simultaneous fixtures never starve the default pool when holders are capped, and do when they are not", async () => {
+    const capped = createPrismaClient(databaseUrl);
+    const uncapped = createPrismaClient(databaseUrl);
+    try {
+      expect((await settleDifferentFixtures(capped, "mf-pool", 12)).infrastructureFailures).toEqual([]);
+      const starved = await settleDifferentFixtures(uncapped, "mf-nopool", 12, { maxHolders: 1_000 });
+      expect(starved.infrastructureFailures.length).toBeGreaterThan(0); // P2028 / pool timeout: holders occupied every connection
+    } finally { await capped.$disconnect(); await uncapped.$disconnect(); }
+  }, 120_000);
+
+  it("releases the per-fixture lock and the holder slot when the work throws", async () => {
+    const client = createPrismaClient(databaseUrl);
+    try {
+      const match = await seedMatch(prisma, "mf-throws", 25);
+      let failNext = true;
+      const service = createSettlementPipelineService({
+        database: client,
+        intake: { maxHolders: 1, acquireTimeoutMs: 2_000 }, // a leaked slot would make the second call fail with SETTLEMENT_INTAKE_BUSY
+        afterSettlement: async () => { if (failNext) { failNext = false; throw new Error("after-settlement exploded"); } },
+      });
+      await expect(service.process(command(match.fixtureId, match.result1, match.forecastA, "corr-throws-1"))).rejects.toThrow("after-settlement exploded");
+      expect(await prisma.settlementReceipt.count({ where: { fixtureId: match.fixtureId } })).toBe(0); // the whole Serializable transaction rolled back
+      const started = Date.now();
+      const retried = await service.process(command(match.fixtureId, match.result1, match.forecastA, "corr-throws-2"));
+      expect(Date.now() - started).toBeLessThan(2_000);
+      expect(retried.duplicate).toBe(false);
+      expect(await prisma.settlementReceipt.count({ where: { fixtureId: match.fixtureId } })).toBe(1);
+    } finally { await client.$disconnect(); }
+  }, 60_000);
 
   it("WR-07: a call whose lock-holding transaction expires commits nothing; the retry then settles exactly once", async () => {
     const client = createPrismaClient(databaseUrl);

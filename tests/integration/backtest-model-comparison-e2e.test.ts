@@ -12,6 +12,7 @@ import {
   type PrismaClient,
 } from "@bet-stats/database";
 import { ForecastOrchestrator, MODEL_COMPARISON_POLICY } from "@bet-stats/domain";
+import { createPrismaEvaluationRepository } from "../../apps/api/src/modules/evaluation/evaluation.service.js";
 import { runBacktestPlan } from "../../workers/data-sync/src/jobs/backtests.js";
 import { ensureTeamEvidence } from "../../workers/data-sync/src/jobs/forecast-sweep.js";
 import { runModelComparisonCommand } from "../../workers/data-sync/src/jobs/model-comparison-cli.js";
@@ -288,5 +289,24 @@ describe("operator model comparison end to end through the real backtest worker"
     expect(await runModelComparisonCommand(runArgs, { ...deps, out: (line) => rerunDocuments.push(line) })).toBe(0);
     expect((JSON.parse(rerunDocuments.at(-1)!) as Outcome).available).toBe(true);
     expect(await database.backtestPlan.count()).toBe(planCount);
+
+    // 7. WR-13: the public pool never contains backtest forecasts. This database has no production forecast at all, so
+    // every public read must be empty even though the comparison run above produced 64 snapshots and 192 scores.
+    const evaluation = createPrismaEvaluationRepository(database);
+    const empty = { fixtureCount: 0, forecastCount: 0, eventCount: 0, valueCount: 0 };
+    const bounds = { from: RANGE[1], to: RANGE[3] };
+    for (const modelVersion of ["all", "poisson-ensemble-v1", "dixon-coles-ensemble-v1"] as const) {
+      for (const market of ["ONE_X_TWO", "all"] as const) {
+        const cohort = await evaluation.loadCohort({ modelVersion, competitionId: "all", market, ...bounds });
+        expect(cohort.denominators, `public cohort ${modelVersion}/${market}`).toEqual(empty);
+      }
+    }
+    expect(await evaluation.enumerateAvailableCohorts(bounds)).toEqual([]);
+    const candidates = await evaluation.listValueCandidates({ modelVersion: "all", competitionId: "all", market: "all", ...bounds }, null, 10);
+    expect(candidates.items).toEqual([]);
+    expect(await database.forecastSnapshot.count({ where: { origin: "BACKTEST" } })).toBe(2 * COHORT_SIZE);
+    expect(await database.forecastSnapshot.count({ where: { origin: "PRODUCTION" } })).toBe(0);
+    // Backtest-internal readers still see the backtest scores (the receipt assertions above already prove the comparison works).
+    expect(await database.forecastScore.count({ where: { forecastSnapshot: { origin: "BACKTEST" } } })).toBe(2 * COHORT_SIZE * 3);
   }, 240_000);
 });

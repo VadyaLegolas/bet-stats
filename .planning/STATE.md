@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v1.1
 current_phase: 13
 current_phase_name: CLV Price Diary
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 13-02-PLAN.md
-last_updated: "2026-11-24T21:20:52.645Z"
+stopped_at: Completed 13-03-PLAN.md
+last_updated: "2026-11-24T22:07:30.522Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 13 execution started
-state_head: 8ba69ee1ef92ebbcf7b81f6074534935e9608613
+state_head: dc069bbbe60546d5dd3a1dfac6b794e66a2efef6
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 40
-  completed_plans: 38
+  completed_plans: 39
   percent: 50
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 ## Current Position
 
 Phase: 13 (CLV Price Diary) — EXECUTING
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 4
 Status: Ready to execute
 Last activity: 2026-11-24 — Phase 13 execution started
@@ -157,6 +157,7 @@ Progress: [█████░░░░░] 50%
 | Phase 12 P07 | 100min | 3 tasks | 11 files |
 | Phase 13 P01 | 10 min | 3 tasks | 5 files |
 | Phase 13 P02 | 21min | 3 tasks | 9 files |
+| Phase 13 P03 | 22min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -335,6 +336,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 13]: 13-01: NoVigClvUnavailableReason gains INVALID_TIMESTAMP beyond the plan list — Pure read-time layer must not throw on non-canonical instants and must not mislabel them
 - [Phase 13]: 13-02: closing-odds writes rejected after kickoff even for an already-recorded identical set; 404 stays reserved for the operator guard (server rejections are 422 with code)
 - [Phase 13]: 13-02: sourceConvention must match an existing ManualOddsSnapshot.source (D-02), checked after domain validation as UNKNOWN_SOURCE_CONVENTION
+- [Phase 13]: 13-03: closing set = same-source rows at latest observedAt before kickoff; calculateNoVigClv decides usability (typed reasons incl. CLOSING_BEFORE_CANDIDATE, SOURCE_CONVENTION_MISMATCH)
+- [Phase 13]: 13-03: D-05 enforced by symbol-level import-graph test (roots: value domain/api, odds, scanner/journal masks) plus byte-identical candidate invariance test
 
 ### Pending Todos
 
@@ -447,6 +450,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-24T21:20:49.521Z
-Stopped at: Completed 13-02-PLAN.md
+Last session: 2026-11-24T22:07:28.355Z
+Stopped at: Completed 13-03-PLAN.md
 Resume file: None

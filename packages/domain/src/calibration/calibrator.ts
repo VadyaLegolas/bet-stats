@@ -190,6 +190,40 @@ export function calibratorContentId(calibrator: FittedCalibrator): string {
   return `calibrator_${digest.slice("sha256:".length)}`;
 }
 
+/** Instants compare as instants: a stored timestamp always reads back in canonical `toISOString()` form. */
+function instantOf(value: string): string {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : value;
+}
+
+/**
+ * Digest of EVERYTHING a stored calibrator holds except `fittedAsOf`: identity, market, method, parameters, windows, sample
+ * sizes, holdout metrics, samples digest and config. `calibratorContentId` deliberately covers only the inputs of a fit, so the
+ * id alone cannot show that a stored row still equals a fresh fit (WR-05); this digest can. Key order does not matter
+ * (canonical JSON), which is what makes a PostgreSQL jsonb round trip comparable.
+ */
+export function calibratorContentDigest(calibrator: FittedCalibrator): string {
+  return canonicalSha256({
+    identity: { modelVersion: calibrator.identity.modelVersion, configHash: calibrator.identity.configHash },
+    market: calibrator.market,
+    method: calibrator.method,
+    parameters: calibrator.parameters,
+    fitSampleSize: calibrator.fitSampleSize,
+    holdoutSampleSize: calibrator.holdoutSampleSize,
+    fitFrom: instantOf(calibrator.fitFrom),
+    fitTo: instantOf(calibrator.fitTo),
+    holdoutFrom: instantOf(calibrator.holdoutFrom),
+    holdoutTo: instantOf(calibrator.holdoutTo),
+    holdoutBrierRaw: calibrator.holdoutBrierRaw,
+    holdoutBrierCalibrated: calibrator.holdoutBrierCalibrated,
+    plattHoldoutBrier: calibrator.plattHoldoutBrier ?? null,
+    isotonicHoldoutBrier: calibrator.isotonicHoldoutBrier ?? null,
+    samplesDigest: calibrator.samplesDigest,
+    calibrationConfigVersion: calibrator.calibrationConfigVersion,
+    calibrationConfigHash: calibrator.calibrationConfigHash,
+  });
+}
+
 function modelledClassCount(market: ScoreMarket): number {
   return market === "ONE_X_TWO" ? 3 : 1;
 }

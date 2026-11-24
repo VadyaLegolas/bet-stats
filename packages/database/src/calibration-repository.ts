@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import {
+  calibratorContentDigest,
   calibratorContentId,
   isForecastModelVersion,
   type CalibratorIdentity,
@@ -23,7 +24,11 @@ export const CALIBRATION_MARKETS = ["ONE_X_TWO", "OVER_UNDER_2_5", "BTTS"] as co
 
 export type CalibratorEventType = "PROMOTED" | "ROLLED_BACK" | "SUPERSEDED" | "EVALUATED";
 
-export type CalibrationRepositoryErrorCode = "CALIBRATOR_TRANSITION_REJECTED" | "CALIBRATOR_ROW_INVALID" | "INVALID_CALIBRATION_EVENT";
+export type CalibrationRepositoryErrorCode =
+  | "CALIBRATOR_TRANSITION_REJECTED"
+  | "CALIBRATOR_ROW_INVALID"
+  | "CALIBRATOR_CONTENT_MISMATCH"
+  | "INVALID_CALIBRATION_EVENT";
 
 export type CalibrationRepositoryError = Error & { readonly code: CalibrationRepositoryErrorCode };
 
@@ -439,7 +444,16 @@ export function createPrismaCalibrationRepository(client: PrismaClient): Calibra
         ],
         skipDuplicates: true,
       });
-      return { calibratorId, created: created.count === 1 };
+      if (created.count === 1) return { calibratorId, created: true };
+      // `skipDuplicates` kept an existing row. The content id covers the inputs of a fit, not its outputs, so the stored
+      // row must be proven equal to this fit; otherwise the decision (taken on the fresh metrics) would be about a
+      // calibrator other than the one that is served (WR-05). A mismatch is loud and writes nothing.
+      const stored = await client.calibrator.findUnique({ where: { id: calibratorId } });
+      if (!stored) throw repositoryError("CALIBRATOR_ROW_INVALID", "calibrator row disappeared after a duplicate-id insert");
+      if (calibratorContentDigest(fittedFromRow(stored as unknown as CalibratorRow)) !== calibratorContentDigest(fitted)) {
+        throw repositoryError("CALIBRATOR_CONTENT_MISMATCH", `stored calibrator ${calibratorId} differs from a fresh fit with the same content id`);
+      }
+      return { calibratorId, created: false };
     },
 
     async findCalibrator(calibratorId) {

@@ -119,6 +119,9 @@ describe("calibrator storage: append-only tables, pinned identity, event-derived
     expect(first).toEqual({ calibratorId: calibratorContentId(fitted), created: true });
     const second = await repository.persistCalibrator(fitted);
     expect(second).toEqual({ calibratorId: calibratorContentId(fitted), created: false });
+    // WR-05: the same content id with a different fit output must not be silently kept by skipDuplicates (real jsonb round trip).
+    const changed = { ...fitted, holdoutBrierCalibrated: fitted.holdoutBrierCalibrated + 0.01 };
+    await expect(repository.persistCalibrator(changed)).rejects.toMatchObject({ code: "CALIBRATOR_CONTENT_MISMATCH" });
     expect(server.lines(`SELECT count(*) FROM "Calibrator" WHERE id='${first.calibratorId}';`)).toEqual(["1"]);
     expect(await repository.findCalibrator(first.calibratorId)).toEqual(fitted);
     expect(await repository.findCalibrator(calibratorId("9"))).toBeNull();

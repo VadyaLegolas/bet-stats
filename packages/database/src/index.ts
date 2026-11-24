@@ -32,3 +32,5 @@ export type {
   RollbackCalibratorInput,
   StoredCalibratorEvaluation,
 } from "./calibration-repository.js";
+export { readCalibrationFitData, readCalibrationState } from "./calibration-fit-data.js";
+export type { CalibrationFitData, CalibrationFitDataInput, CalibrationState, MarketCalibrationCensus } from "./calibration-fit-data.js";

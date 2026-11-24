@@ -72,6 +72,12 @@ async function collectRows(
       // Reproducibility (review WR-04): only what had been issued by `asOf` may train the fit,
       // so a later backfill or a re-run backtest cannot change rho for the same (league, asOf).
       issuedAt: { lte: input.asOf },
+      // WR-13 / WR-04 residual: backtest snapshots are excluded. Their issuedAt is the wall-clock time
+      // of the run, so for a fit at asOf = now (every production forecast) they would let an operator
+      // comparison move the rho of live forecasts. Backtest and comparison fits (asOf =
+      // window.trainingEndsAt) already exclude them through issuedAt, so nothing changes there.
+      // Legacy backtest rows written before the origin migration are labelled PRODUCTION and stay in.
+      origin: "PRODUCTION",
       fixture: {
         ...(input.leagueId ? { leagueId: input.leagueId } : {}),
         kickoffUtc: { gte: input.windowFrom, lte: input.asOf },

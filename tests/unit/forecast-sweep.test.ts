@@ -80,6 +80,7 @@ describe("forecast sweep DB-only contract", () => {
   it("completes one full tick with zero fixture_failed when the deps supply no enqueue function at all", async () => {
     const nowDate = new Date("2026-11-01T00:00:00.000Z");
     const events: Array<Record<string, unknown>> = [];
+    const snapshotQueries: Array<{ where?: Record<string, unknown> }> = [];
     const database = {
       fixture: {
         findMany: async () => [
@@ -93,7 +94,7 @@ describe("forecast sweep DB-only contract", () => {
           },
         ],
       },
-      forecastSnapshot: { findMany: async () => [] },
+      forecastSnapshot: { findMany: async (args: { where?: Record<string, unknown> }) => { snapshotQueries.push(args); return []; } },
     };
     const deps = {
       database,
@@ -106,6 +107,9 @@ describe("forecast sweep DB-only contract", () => {
     const result = await runForecastPublicationSweep(deps);
 
     expect(result).toEqual({ fixtures: 1, issued: 0, skipped: 0 });
+    // WR-13: a backtest snapshot must never count as "already issued" for the production sweep.
+    expect(snapshotQueries).toHaveLength(1);
+    expect(snapshotQueries[0]!.where).toEqual({ fixtureId: "3f2a1b7c-0000-4000-8000-000000000001", state: "ISSUED", origin: "PRODUCTION" });
     expect(events.some((event) => event.event === "forecast.sweep.completed")).toBe(true);
     expect(events.filter((event) => event.event === "forecast.sweep.fixture_failed")).toEqual([]);
   });

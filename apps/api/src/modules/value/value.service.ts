@@ -90,7 +90,8 @@ function rowToDto(row: { id: string; createdAt: Date; receipt: unknown }): Value
 
 export function createPrismaValueRepository(client: PrismaClient): ValueRepository {
   return {
-    findForecast: async (id) => { const row = await client.forecastSnapshot.findUnique({ where: { id } }); return row?.state === "ISSUED" ? parseForecastResponse(row.receipt) : null; },
+    // WR-13: no value receipt can be created against a retrospective BACKTEST snapshot.
+    findForecast: async (id) => { const row = await client.forecastSnapshot.findFirst({ where: { id, origin: "PRODUCTION" } }); return row?.state === "ISSUED" ? parseForecastResponse(row.receipt) : null; },
     findOdds: async (id) => { const row = await client.manualOddsSnapshot.findUnique({ where: { id } }); return row ? { ...(row.receipt as unknown as ManualOddsSnapshotDto), oddsSnapshotId: row.id, fixtureId: row.fixtureId, market: row.market as ManualOddsSnapshotDto["market"], sourceLabel: row.source, replacementOfOddsSnapshotId: row.replacesOddsId, submittedAt: row.submittedAt.toISOString() } : null; },
     findReceipt: async (forecastSnapshotId, oddsSnapshotId, market, selection) => { const row = await client.valueReceipt.findUnique({ where: { forecastSnapshotId_oddsSnapshotId_market_selection: { forecastSnapshotId, oddsSnapshotId, market, selection } } }); return row ? rowToDto(row) : null; },
     findReceiptById: async (id) => { const row = await client.valueReceipt.findUnique({ where: { id } }); return row ? rowToDto(row) : null; },

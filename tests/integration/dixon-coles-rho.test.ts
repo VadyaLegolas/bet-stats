@@ -78,6 +78,7 @@ interface MatchTweak {
   readonly issuedAt?: Date;
   readonly observedAt?: Date;
   readonly receipt?: Record<string, unknown>;
+  readonly origin?: "PRODUCTION" | "BACKTEST";
 }
 
 interface PlannedMatch {
@@ -92,6 +93,7 @@ interface PlannedMatch {
   readonly homeGoals: number;
   readonly awayGoals: number;
   readonly receipt: Record<string, unknown>;
+  readonly origin: "PRODUCTION" | "BACKTEST";
 }
 
 function planLeagueMatches(prefix: string, leagueId: string, count: number, tweak?: (index: number) => MatchTweak): PlannedMatch[] {
@@ -125,6 +127,7 @@ function planLeagueMatches(prefix: string, leagueId: string, count: number, twea
       cutoff: override.cutoff ?? new Date(kickoff.getTime() - 3_600_000),
       observedAt: override.observedAt ?? new Date(kickoff.getTime() + 7_200_000),
       issuedAt: override.issuedAt ?? null,
+      origin: override.origin ?? "PRODUCTION",
       lambdaHome,
       lambdaAway,
       homeGoals: score.homeGoals,
@@ -180,6 +183,7 @@ async function seedMatches(matches: readonly PlannedMatch[]): Promise<void> {
       fixtureId: match.id,
       kind: "PRE_MATCH" as const,
       state: "ISSUED" as const,
+      origin: match.origin,
       revision: 1,
       cutoff: match.cutoff,
       modelVersion: "poisson-ensemble-v1",
@@ -199,7 +203,7 @@ async function seedMatches(matches: readonly PlannedMatch[]): Promise<void> {
 }
 
 async function seed(): Promise<void> {
-  const leagues = ["dc-league-a", "dc-league-b", "dc-league-c", "dc-league-empty", "dc-league-lookahead", "dc-league-incomplete", "dc-league-backfill"];
+  const leagues = ["dc-league-a", "dc-league-b", "dc-league-c", "dc-league-empty", "dc-league-lookahead", "dc-league-incomplete", "dc-league-backfill", "dc-league-backtest"];
   await database.league.createMany({ data: leagues.map((id, index) => ({ id, name: `League ${index}`, countryCode: "GB" })) });
   await database.season.createMany({
     data: leagues.map((id) => ({ id: `dc-season-${id}`, leagueId: id, label: "2026", startsOn: new Date("2025-01-01"), endsOn: new Date("2026-12-31") })),
@@ -223,6 +227,9 @@ async function seed(): Promise<void> {
 
   // An incomplete historical receipt must be skipped without throwing.
   await seedMatches(planLeagueMatches("dci", "dc-league-incomplete", 1, () => ({ receipt: {} })));
+
+  // Backtest snapshots must never train a fit, even when everything else qualifies (WR-13, D-04).
+  await seedMatches(planLeagueMatches("dcg", "dc-league-backtest", 200, () => ({ origin: "BACKTEST" })));
 }
 
 describe("dixon-coles rho from leakage-safe league history", () => {
@@ -238,7 +245,7 @@ describe("dixon-coles rho from leakage-safe league history", () => {
 
   afterAll(async () => {
     await database?.$disconnect();
-    try { docker("rm", "--force", postgresName); } catch { /* exact owned cleanup */ }
+    try { docker("rm", "--force", "--volumes", postgresName); } catch { /* exact owned cleanup */ }
   }, 30_000);
 
   it("fits per-league MLE when the league sample clears the threshold", async () => {
@@ -274,6 +281,15 @@ describe("dixon-coles rho from leakage-safe league history", () => {
     expect(fitted.provenance.sampleSize).toBe(0);
     expect(fitted.provenance.method).toBe("pooled-fallback-v1");
     // A leaked lookahead row would move rho away from the pool-only estimate.
+    expect(fitted.rho).toBe(reference.rho);
+  });
+
+  it("ignores BACKTEST snapshots so an operator comparison cannot move the rho of live forecasts (WR-13)", async () => {
+    const reference = await fitLeagueDixonColesParameters(database, { leagueId: "dc-league-empty", asOf });
+    const fitted = await fitLeagueDixonColesParameters(database, { leagueId: "dc-league-backtest", asOf });
+    // 200 qualifying BACKTEST rows would clear the league threshold (method mle, sampleSize 200) without the filter.
+    expect(fitted.provenance.sampleSize).toBe(0);
+    expect(fitted.provenance.method).toBe("pooled-fallback-v1");
     expect(fitted.rho).toBe(reference.rho);
   });
 

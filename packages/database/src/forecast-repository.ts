@@ -58,10 +58,10 @@ export function createPrismaForecastRepository(client: PrismaClient): ForecastPu
     findDixonColesParameters: createDixonColesParameterProvider(client).findDixonColesParameters,
     findOfficialLineup: async (fixtureId, cutoff) => client.lineupObservation.findFirst({ where: { fixtureId, status: "OFFICIAL_CONFIRMED", confirmedAt: { lte: new Date(cutoff) }, observation: { observedAt: { lte: new Date(cutoff) }, externalIdentity: fixtureId } }, orderBy: { confirmedAt: "desc" }, select: { id: true } }),
     findIssued: async (fixtureId, kind, cutoff) => {
-      const row = await client.forecastSnapshot.findFirst({ where: { fixtureId, kind, cutoff: new Date(cutoff), state: "ISSUED" }, orderBy: { revision: "desc" } });
+      const row = await client.forecastSnapshot.findFirst({ where: { fixtureId, kind, cutoff: new Date(cutoff), state: "ISSUED", origin: "PRODUCTION" }, orderBy: { revision: "desc" } });
       return row ? toDto(row as unknown as StoredForecast) : null;
     },
-    listIssued: async (fixtureId) => (await client.forecastSnapshot.findMany({ where: { fixtureId, state: "ISSUED" }, orderBy: [{ issuedAt: "desc" }, { cutoff: "desc" }, { revision: "desc" }, { id: "asc" }] })).map((row) => toDto(row as unknown as StoredForecast)),
+    listIssued: async (fixtureId) => (await client.forecastSnapshot.findMany({ where: { fixtureId, state: "ISSUED", origin: "PRODUCTION" }, orderBy: [{ issuedAt: "desc" }, { cutoff: "desc" }, { revision: "desc" }, { id: "asc" }] })).map((row) => toDto(row as unknown as StoredForecast)),
     publish: async (draft, context) => {
       // The identity deliberately has no origin: a collision returns the existing snapshot unchanged,
       // whichever origin it has, and nothing is ever updated or re-labelled (D-02).

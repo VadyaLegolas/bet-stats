@@ -54,7 +54,8 @@ export function createProductionRepository(client: PrismaClient): ForecastCompar
   const forecasts = createPrismaForecastRepository(client);
   return {
     findExact: async (id) => {
-      const row = await client.forecastSnapshot.findUnique({ where: { id }, select: { state: true, receipt: true } });
+      // WR-13: a retrospective BACKTEST snapshot is not retrievable by id through the public comparison endpoint.
+      const row = await client.forecastSnapshot.findFirst({ where: { id, origin: "PRODUCTION" }, select: { state: true, receipt: true } });
       return row ? { ...(row.receipt as unknown as ForecastResponseDto), state: row.state } : null;
     },
     listIssued: async (fixtureId) => forecasts.listIssued?.(fixtureId) ?? [],

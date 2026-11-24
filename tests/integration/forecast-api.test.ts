@@ -118,8 +118,19 @@ describe("forecast API orchestration", () => {
       { id: "initial-1", kind: "INITIAL", revision: 1, cutoff: "2026-09-05T09:43:11.000Z" },
     ]);
     expect(findMany).toHaveBeenCalledWith({
-      where: { fixtureId: "fixture-1", state: "ISSUED" },
+      where: { fixtureId: "fixture-1", state: "ISSUED", origin: "PRODUCTION" },
       orderBy: [{ issuedAt: "desc" }, { cutoff: "desc" }, { revision: "desc" }, { id: "asc" }],
+    });
+  });
+
+  it("findIssued reads only PRODUCTION snapshots (WR-13)", async () => {
+    const findFirst = vi.fn().mockResolvedValue(null);
+    const repository = createPrismaForecastRepository({ forecastSnapshot: { findFirst } } as never);
+
+    await expect(repository.findIssued?.("fixture-1", "PRE_MATCH", "2026-09-06T11:17:23.000Z")).resolves.toBeNull();
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { fixtureId: "fixture-1", kind: "PRE_MATCH", cutoff: new Date("2026-09-06T11:17:23.000Z"), state: "ISSUED", origin: "PRODUCTION" },
+      orderBy: { revision: "desc" },
     });
   });
 

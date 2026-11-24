@@ -120,7 +120,8 @@ export async function runForecastPublicationSweep(deps: ForecastSweepDeps): Prom
   for (const fixture of fixtures) {
     try {
       const kickoffUtc = fixture.kickoffUtc.toISOString();
-      const issuedRows = await deps.database.forecastSnapshot.findMany({ where: { fixtureId: fixture.id, state: "ISSUED" }, select: { kind: true } });
+      // WR-13: a BACKTEST snapshot never counts as "already issued" for the production sweep.
+      const issuedRows = await deps.database.forecastSnapshot.findMany({ where: { fixtureId: fixture.id, state: "ISSUED", origin: "PRODUCTION" }, select: { kind: true } });
       const due = computeDueKinds({ kickoffUtc, now: nowIso, issuedKinds: issuedRows.map((row) => row.kind) });
       if (due.length === 0) continue;
       const initialCutoff = computeInitialCutoff({ kickoffUtc, now: nowIso });

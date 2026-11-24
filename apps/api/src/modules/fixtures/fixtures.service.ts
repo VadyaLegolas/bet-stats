@@ -211,7 +211,7 @@ export class FixturesService implements OnModuleDestroy {
     let snapshotRows: readonly { fixtureId: string; kind: unknown; cutoff: Date; probabilities: unknown }[] = [];
     if (this.database && rows.length > 0) {
       try {
-        snapshotRows = await this.database.forecastSnapshot.findMany({ where: { fixtureId: { in: rows.map((row) => row.id) }, state: "ISSUED" }, orderBy: [{ issuedAt: "desc" }, { cutoff: "desc" }, { revision: "desc" }, { id: "asc" }], select: { fixtureId: true, kind: true, cutoff: true, probabilities: true } });
+        snapshotRows = await this.database.forecastSnapshot.findMany({ where: { fixtureId: { in: rows.map((row) => row.id) }, state: "ISSUED", origin: "PRODUCTION" }, orderBy: [{ issuedAt: "desc" }, { cutoff: "desc" }, { revision: "desc" }, { id: "asc" }], select: { fixtureId: true, kind: true, cutoff: true, probabilities: true } });
       } catch {
         snapshotRows = [];
       }

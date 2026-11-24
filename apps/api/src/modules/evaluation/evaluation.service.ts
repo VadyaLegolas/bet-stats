@@ -147,6 +147,8 @@ export function createPrismaEvaluationRepository(client: PrismaClient): Evaluati
         ...(identity.modelVersion === "all" ? {} : { modelVersion: identity.modelVersion }),
         ...(identity.competitionId === "all" ? {} : { leagueId: identity.competitionId }),
         ...(identity.market === "all" ? {} : { market: identity.market }),
+        // WR-13: the public scorecard holds contemporaneous evidence only, never retrospective backtest forecasts.
+        forecastSnapshot: { origin: "PRODUCTION" },
       },
       orderBy: [{ kickoffUtc: "asc" }, { id: "asc" }],
     });
@@ -195,7 +197,7 @@ export function createPrismaEvaluationRepository(client: PrismaClient): Evaluati
     loadCohort: load,
     comparePlans: (input) => compareBacktestPlans(client, input),
     async enumerateAvailableCohorts(bounds) {
-      const dimensions = await client.forecastScore.findMany({ where: { supersededBy: null, kickoffUtc: { gte: new Date(bounds.from), lt: new Date(bounds.to) } }, distinct: ["modelVersion", "leagueId", "market"], select: { modelVersion: true, leagueId: true, market: true } });
+      const dimensions = await client.forecastScore.findMany({ where: { supersededBy: null, kickoffUtc: { gte: new Date(bounds.from), lt: new Date(bounds.to) }, forecastSnapshot: { origin: "PRODUCTION" } }, distinct: ["modelVersion", "leagueId", "market"], select: { modelVersion: true, leagueId: true, market: true } });
       return Promise.all(dimensions.map((row) => load({ modelVersion: row.modelVersion, competitionId: row.leagueId, market: row.market, ...bounds })));
     },
     async listValueCandidates(identity, cursor, limit) {
@@ -205,7 +207,7 @@ export function createPrismaEvaluationRepository(client: PrismaClient): Evaluati
           ...(identity.market === "all" ? {} : { market: identity.market }),
           settlementReceipt: {
             settledAt: { gte: new Date(identity.from), lt: new Date(identity.to) },
-            forecastSnapshot: identity.modelVersion === "all" ? {} : { modelVersion: identity.modelVersion },
+            forecastSnapshot: { origin: "PRODUCTION", ...(identity.modelVersion === "all" ? {} : { modelVersion: identity.modelVersion }) },
             fixture: identity.competitionId === "all" ? {} : { leagueId: identity.competitionId },
           },
           ...(cursor ? { OR: [

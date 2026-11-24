@@ -5,11 +5,11 @@ current_phase: 14
 current_phase_name: Asian Handicap and Exact Score Markets
 current_plan: Not started
 status: planning
-stopped_at: Phase 13 complete, ready to plan Phase 14
-last_updated: "2026-11-24T22:40:15.264Z"
+stopped_at: Phase 14 context gathered
+last_updated: "2026-11-24T23:05:20.604Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 13 complete, transitioned to Phase 14
-state_head: 4eba659679d3d12263cd87113989e460cbbfad3b
+state_head: 5a9cf3309dd598f8196de998e4e480294f8dd07a
 progress:
   total_phases: 10
   completed_phases: 6
@@ -454,6 +454,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-24T22:33:50.818Z
-Stopped at: Phase 13 complete, ready to plan Phase 14
-Resume file: None
+Last session: 2026-11-24T23:05:18.150Z
+Stopped at: Phase 14 context gathered
+Resume file: .planning/phases/14-asian-handicap-and-exact-score-markets/14-CONTEXT.md

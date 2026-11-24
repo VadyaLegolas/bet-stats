@@ -1181,3 +1181,61 @@ model OpsAlertDelivery {
 
   @@index([at])
 }
+
+/// Phase 12 (CALIB-02): immutable record of one fitted probability calibrator (append-only, frozen by trigger).
+/// Identity (modelVersion, configHash) and market are pinned; the active calibrator is NOT stored here but derived
+/// from "CalibratorEvent" by the SQL view current_calibrators. The composite foreign keys that bind events to the
+/// (id, modelVersion, configHash, market) key, the chronology CHECK of the windows and the views live in SQL
+/// (migration 20261125_phase12_calibrator_tables): Prisma relations cannot express them.
+model Calibrator {
+  id                       String   @id
+  modelVersion             String
+  configHash               String
+  market                   String
+  method                   String
+  parameters               Json
+  calibrationConfigVersion String
+  calibrationConfigHash    String
+  samplesDigest            String
+  fitSampleSize            Int
+  holdoutSampleSize        Int
+  fitWindowFrom            DateTime @db.Timestamptz(3)
+  fitWindowTo              DateTime @db.Timestamptz(3)
+  holdoutFrom              DateTime @db.Timestamptz(3)
+  holdoutTo                DateTime @db.Timestamptz(3)
+  fitAsOf                  DateTime @db.Timestamptz(3)
+  holdoutBrierRaw          Float
+  holdoutBrierCalibrated   Float
+  plattHoldoutBrier        Float?
+  isotonicHoldoutBrier     Float?
+  createdAt                DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([id, modelVersion, configHash, market])
+  @@index([modelVersion, configHash, market])
+}
+
+/// Phase 12 (CALIB-03): append-only log of calibrator lifecycle events (PROMOTED, ROLLED_BACK, SUPERSEDED and the
+/// state-neutral EVALUATED). `seq` is a database identity column that totally orders events; Prisma never writes it.
+/// A rollback is an appended event. Permitted transitions are enforced by a trigger (migration
+/// 20261125_phase12_calibrator_transitions), not by Prisma.
+model CalibratorEvent {
+  id                       String   @id
+  seq                      BigInt   @unique @default(autoincrement())
+  type                     String
+  modelVersion             String
+  configHash               String
+  market                   String
+  calibratorId             String
+  predecessorCalibratorId  String?
+  restoredCalibratorId     String?
+  successorCalibratorId    String?
+  reasonCode               String
+  asOf                     DateTime @db.Timestamptz(3)
+  evaluation               Json
+  calibrationConfigVersion String
+  calibrationConfigHash    String
+  createdAt                DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([modelVersion, configHash, market, seq])
+  @@index([calibratorId, seq])
+}

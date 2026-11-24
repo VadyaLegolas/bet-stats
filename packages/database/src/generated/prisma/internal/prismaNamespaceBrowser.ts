@@ -106,7 +106,9 @@ export const ModelName = {
   ReconciliationDecision: 'ReconciliationDecision',
   OpsAlert: 'OpsAlert',
   OpsAlertTransition: 'OpsAlertTransition',
-  OpsAlertDelivery: 'OpsAlertDelivery'
+  OpsAlertDelivery: 'OpsAlertDelivery',
+  Calibrator: 'Calibrator',
+  CalibratorEvent: 'CalibratorEvent'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1022,6 +1024,55 @@ export const OpsAlertDeliveryScalarFieldEnum = {
 } as const
 
 export type OpsAlertDeliveryScalarFieldEnum = (typeof OpsAlertDeliveryScalarFieldEnum)[keyof typeof OpsAlertDeliveryScalarFieldEnum]
+
+
+export const CalibratorScalarFieldEnum = {
+  id: 'id',
+  modelVersion: 'modelVersion',
+  configHash: 'configHash',
+  market: 'market',
+  method: 'method',
+  parameters: 'parameters',
+  calibrationConfigVersion: 'calibrationConfigVersion',
+  calibrationConfigHash: 'calibrationConfigHash',
+  samplesDigest: 'samplesDigest',
+  fitSampleSize: 'fitSampleSize',
+  holdoutSampleSize: 'holdoutSampleSize',
+  fitWindowFrom: 'fitWindowFrom',
+  fitWindowTo: 'fitWindowTo',
+  holdoutFrom: 'holdoutFrom',
+  holdoutTo: 'holdoutTo',
+  fitAsOf: 'fitAsOf',
+  holdoutBrierRaw: 'holdoutBrierRaw',
+  holdoutBrierCalibrated: 'holdoutBrierCalibrated',
+  plattHoldoutBrier: 'plattHoldoutBrier',
+  isotonicHoldoutBrier: 'isotonicHoldoutBrier',
+  createdAt: 'createdAt'
+} as const
+
+export type CalibratorScalarFieldEnum = (typeof CalibratorScalarFieldEnum)[keyof typeof CalibratorScalarFieldEnum]
+
+
+export const CalibratorEventScalarFieldEnum = {
+  id: 'id',
+  seq: 'seq',
+  type: 'type',
+  modelVersion: 'modelVersion',
+  configHash: 'configHash',
+  market: 'market',
+  calibratorId: 'calibratorId',
+  predecessorCalibratorId: 'predecessorCalibratorId',
+  restoredCalibratorId: 'restoredCalibratorId',
+  successorCalibratorId: 'successorCalibratorId',
+  reasonCode: 'reasonCode',
+  asOf: 'asOf',
+  evaluation: 'evaluation',
+  calibrationConfigVersion: 'calibrationConfigVersion',
+  calibrationConfigHash: 'calibrationConfigHash',
+  createdAt: 'createdAt'
+} as const
+
+export type CalibratorEventScalarFieldEnum = (typeof CalibratorEventScalarFieldEnum)[keyof typeof CalibratorEventScalarFieldEnum]
 
 
 export const SortOrder = {

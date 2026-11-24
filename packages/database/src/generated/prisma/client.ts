@@ -330,3 +330,20 @@ export type OpsAlertTransition = Prisma.OpsAlertTransitionModel
  * trigger) — every attempt is kept, so a failed channel never loses the alert.
  */
 export type OpsAlertDelivery = Prisma.OpsAlertDeliveryModel
+/**
+ * Model Calibrator
+ * Phase 12 (CALIB-02): immutable record of one fitted probability calibrator (append-only, frozen by trigger).
+ * Identity (modelVersion, configHash) and market are pinned; the active calibrator is NOT stored here but derived
+ * from "CalibratorEvent" by the SQL view current_calibrators. The composite foreign keys that bind events to the
+ * (id, modelVersion, configHash, market) key, the chronology CHECK of the windows and the views live in SQL
+ * (migration 20261125_phase12_calibrator_tables): Prisma relations cannot express them.
+ */
+export type Calibrator = Prisma.CalibratorModel
+/**
+ * Model CalibratorEvent
+ * Phase 12 (CALIB-03): append-only log of calibrator lifecycle events (PROMOTED, ROLLED_BACK, SUPERSEDED and the
+ * state-neutral EVALUATED). `seq` is a database identity column that totally orders events; Prisma never writes it.
+ * A rollback is an appended event. Permitted transitions are enforced by a trigger (migration
+ * 20261125_phase12_calibrator_transitions), not by Prisma.
+ */
+export type CalibratorEvent = Prisma.CalibratorEventModel

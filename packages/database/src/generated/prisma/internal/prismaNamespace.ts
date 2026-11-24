@@ -452,7 +452,9 @@ export const ModelName = {
   ReconciliationDecision: 'ReconciliationDecision',
   OpsAlert: 'OpsAlert',
   OpsAlertTransition: 'OpsAlertTransition',
-  OpsAlertDelivery: 'OpsAlertDelivery'
+  OpsAlertDelivery: 'OpsAlertDelivery',
+  Calibrator: 'Calibrator',
+  CalibratorEvent: 'CalibratorEvent'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -468,7 +470,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "enrichmentDecisionReceipt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "retentionSubject" | "retentionConsent" | "retainedOddsHistory" | "retainedViewHistory" | "retentionPurgeAudit" | "backupRun" | "backupVerificationReceipt" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision" | "opsAlert" | "opsAlertTransition" | "opsAlertDelivery"
+    modelProps: "league" | "season" | "providerCapability" | "providerRequestReservation" | "team" | "player" | "fixture" | "backtestPlan" | "backtestWindow" | "backtestEvaluation" | "sourceObservation" | "standingSnapshot" | "standingSnapshotRow" | "replayPlan" | "replayPreview" | "syncRun" | "replayDelivery" | "syncAttempt" | "providerCircuitState" | "providerRouteReceipt" | "providerRouteAttempt" | "enrichmentDecisionReceipt" | "providerQuotaObservation" | "providerThrottleReservation" | "evidenceBuild" | "evidenceComponent" | "lineupObservation" | "forecastSnapshot" | "forecastMarket" | "manualOddsSnapshot" | "retentionSubject" | "retentionConsent" | "retainedOddsHistory" | "retainedViewHistory" | "retentionPurgeAudit" | "backupRun" | "backupVerificationReceipt" | "manualOddsSelection" | "valueReceipt" | "resultVersion" | "settlementReceipt" | "forecastScore" | "closingOddsObservation" | "valueSettlement" | "leagueExternalRef" | "seasonExternalRef" | "teamExternalRef" | "playerExternalRef" | "fixtureExternalRef" | "fixtureProvenance" | "reconciliationCase" | "reconciliationCandidate" | "reconciliationDecision" | "opsAlert" | "opsAlertTransition" | "opsAlertDelivery" | "calibrator" | "calibratorEvent"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -4616,6 +4618,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Calibrator: {
+      payload: Prisma.$CalibratorPayload<ExtArgs>
+      fields: Prisma.CalibratorFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CalibratorFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CalibratorFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorPayload>
+        }
+        findFirst: {
+          args: Prisma.CalibratorFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CalibratorFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorPayload>
+        }
+        findMany: {
+          args: Prisma.CalibratorFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorPayload>[]
+        }
+        create: {
+          args: Prisma.CalibratorCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorPayload>
+        }
+        createMany: {
+          args: Prisma.CalibratorCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CalibratorCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorPayload>[]
+        }
+        delete: {
+          args: Prisma.CalibratorDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorPayload>
+        }
+        update: {
+          args: Prisma.CalibratorUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorPayload>
+        }
+        deleteMany: {
+          args: Prisma.CalibratorDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CalibratorUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CalibratorUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorPayload>[]
+        }
+        upsert: {
+          args: Prisma.CalibratorUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorPayload>
+        }
+        aggregate: {
+          args: Prisma.CalibratorAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCalibrator>
+        }
+        groupBy: {
+          args: Prisma.CalibratorGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CalibratorGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CalibratorCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CalibratorCountAggregateOutputType> | number
+        }
+      }
+    }
+    CalibratorEvent: {
+      payload: Prisma.$CalibratorEventPayload<ExtArgs>
+      fields: Prisma.CalibratorEventFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CalibratorEventFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorEventPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CalibratorEventFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorEventPayload>
+        }
+        findFirst: {
+          args: Prisma.CalibratorEventFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorEventPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CalibratorEventFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorEventPayload>
+        }
+        findMany: {
+          args: Prisma.CalibratorEventFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorEventPayload>[]
+        }
+        create: {
+          args: Prisma.CalibratorEventCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorEventPayload>
+        }
+        createMany: {
+          args: Prisma.CalibratorEventCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CalibratorEventCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorEventPayload>[]
+        }
+        delete: {
+          args: Prisma.CalibratorEventDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorEventPayload>
+        }
+        update: {
+          args: Prisma.CalibratorEventUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorEventPayload>
+        }
+        deleteMany: {
+          args: Prisma.CalibratorEventDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CalibratorEventUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CalibratorEventUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorEventPayload>[]
+        }
+        upsert: {
+          args: Prisma.CalibratorEventUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CalibratorEventPayload>
+        }
+        aggregate: {
+          args: Prisma.CalibratorEventAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCalibratorEvent>
+        }
+        groupBy: {
+          args: Prisma.CalibratorEventGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CalibratorEventGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CalibratorEventCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CalibratorEventCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -5554,6 +5704,55 @@ export const OpsAlertDeliveryScalarFieldEnum = {
 export type OpsAlertDeliveryScalarFieldEnum = (typeof OpsAlertDeliveryScalarFieldEnum)[keyof typeof OpsAlertDeliveryScalarFieldEnum]
 
 
+export const CalibratorScalarFieldEnum = {
+  id: 'id',
+  modelVersion: 'modelVersion',
+  configHash: 'configHash',
+  market: 'market',
+  method: 'method',
+  parameters: 'parameters',
+  calibrationConfigVersion: 'calibrationConfigVersion',
+  calibrationConfigHash: 'calibrationConfigHash',
+  samplesDigest: 'samplesDigest',
+  fitSampleSize: 'fitSampleSize',
+  holdoutSampleSize: 'holdoutSampleSize',
+  fitWindowFrom: 'fitWindowFrom',
+  fitWindowTo: 'fitWindowTo',
+  holdoutFrom: 'holdoutFrom',
+  holdoutTo: 'holdoutTo',
+  fitAsOf: 'fitAsOf',
+  holdoutBrierRaw: 'holdoutBrierRaw',
+  holdoutBrierCalibrated: 'holdoutBrierCalibrated',
+  plattHoldoutBrier: 'plattHoldoutBrier',
+  isotonicHoldoutBrier: 'isotonicHoldoutBrier',
+  createdAt: 'createdAt'
+} as const
+
+export type CalibratorScalarFieldEnum = (typeof CalibratorScalarFieldEnum)[keyof typeof CalibratorScalarFieldEnum]
+
+
+export const CalibratorEventScalarFieldEnum = {
+  id: 'id',
+  seq: 'seq',
+  type: 'type',
+  modelVersion: 'modelVersion',
+  configHash: 'configHash',
+  market: 'market',
+  calibratorId: 'calibratorId',
+  predecessorCalibratorId: 'predecessorCalibratorId',
+  restoredCalibratorId: 'restoredCalibratorId',
+  successorCalibratorId: 'successorCalibratorId',
+  reasonCode: 'reasonCode',
+  asOf: 'asOf',
+  evaluation: 'evaluation',
+  calibrationConfigVersion: 'calibrationConfigVersion',
+  calibrationConfigHash: 'calibrationConfigHash',
+  createdAt: 'createdAt'
+} as const
+
+export type CalibratorEventScalarFieldEnum = (typeof CalibratorEventScalarFieldEnum)[keyof typeof CalibratorEventScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -6115,6 +6314,8 @@ export type GlobalOmitConfig = {
   opsAlert?: Prisma.OpsAlertOmit
   opsAlertTransition?: Prisma.OpsAlertTransitionOmit
   opsAlertDelivery?: Prisma.OpsAlertDeliveryOmit
+  calibrator?: Prisma.CalibratorOmit
+  calibratorEvent?: Prisma.CalibratorEventOmit
 }
 
 /* Types for Logging */

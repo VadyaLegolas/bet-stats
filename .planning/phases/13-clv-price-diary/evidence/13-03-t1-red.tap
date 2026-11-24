@@ -1,0 +1,20 @@
+TAP version 13
+1..10
+not ok 1 - tests/integration/no-vig-clv-reader.test.ts > read-time no-vig CLV reader on real PostgreSQL > is AVAILABLE on a complete set and uses the latest pre-kickoff closing set of the same source # time=9.88ms
+    ---
+    error:
+        name: "AssertionError"
+        message: "expected 'UNAVAILABLE' to be 'AVAILABLE' // Object.is equality"
+    at: "D:/Documents/Atom/bet-stats/tests/integration/no-vig-clv-reader.test.ts:92:23"
+    actual: "UNAVAILABLE"
+    expected: "AVAILABLE"
+    ...
+ok 2 - tests/integration/no-vig-clv-reader.test.ts > read-time no-vig CLV reader on real PostgreSQL > reports a typed reason, never a value, for a missing closing set (neighbouring market is not borrowed) # SKIP
+ok 3 - tests/integration/no-vig-clv-reader.test.ts > read-time no-vig CLV reader on real PostgreSQL > reports CLOSING_SET_INCOMPLETE for a closing set without every selection # SKIP
+ok 4 - tests/integration/no-vig-clv-reader.test.ts > read-time no-vig CLV reader on real PostgreSQL > reports SOURCE_CONVENTION_MISMATCH when only another source closed the market # SKIP
+ok 5 - tests/integration/no-vig-clv-reader.test.ts > read-time no-vig CLV reader on real PostgreSQL > reports CLOSING_BEFORE_CANDIDATE when the latest pre-kickoff closing set predates the candidate # SKIP
+ok 6 - tests/integration/no-vig-clv-reader.test.ts > read-time no-vig CLV reader on real PostgreSQL > reports CANDIDATE_SET_INCOMPLETE when the candidate's own odds set lacks a selection # SKIP
+ok 7 - tests/integration/no-vig-clv-reader.test.ts > read-time no-vig CLV reader on real PostgreSQL > returns an empty map for no candidates and an unavailable reading for an unknown snapshot # SKIP
+ok 8 - tests/integration/no-vig-clv-reader.test.ts > read-time no-vig CLV reader on real PostgreSQL > does not write: row counts of every table stay identical across a read # SKIP
+ok 9 - tests/integration/no-vig-clv-reader.test.ts > read-time no-vig CLV reader on real PostgreSQL > issues a constant number of queries regardless of the number of candidates # SKIP
+ok 10 - tests/integration/no-vig-clv-reader.test.ts > read-time no-vig CLV reader on real PostgreSQL > extends listValueCandidates with clvNoVig while the frozen clv field keeps its meaning # SKIP

@@ -38,5 +38,7 @@ export type {
 } from "./calibration-repository.js";
 export { createPrismaClosingOddsRepository } from "./closing-odds-repository.js";
 export type { ClosingOddsRepository, ClosingOddsRepositoryError, ClosingOddsRepositoryErrorCode, RecordClosingOddsBookResult, StoredClosingObservation } from "./closing-odds-repository.js";
+export { readNoVigClvForCandidates } from "./evaluation/no-vig-clv-reader.js";
+export type { NoVigClvCandidate, NoVigClvReaderClient, NoVigClvReading } from "./evaluation/no-vig-clv-reader.js";
 export { readCalibrationFitData, readCalibrationState } from "./calibration-fit-data.js";
 export type { CalibrationFitData, CalibrationFitDataInput, CalibrationState, MarketCalibrationCensus } from "./calibration-fit-data.js";

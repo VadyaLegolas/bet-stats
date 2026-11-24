@@ -97,7 +97,8 @@ describe("calibration fit data: path of one identity from the database to the ac
 
     const after = await readCalibrationState(client, { ...identity, asOf: ASOF });
     expect(after.OVER_UNDER_2_5.active).toMatchObject({ calibratorId, version: 1, calibrator: fitted });
-    expect(after.OVER_UNDER_2_5.eligibleSampleSize).toBe(12);
+    // WR-06: the count is not computed for a market that has a calibrator.
+    expect(after.OVER_UNDER_2_5.eligibleSampleSize).toBeNull();
     expect(after.ONE_X_TWO).toEqual({ active: null, eligibleSampleSize: 12 });
     expect(after.BTTS).toEqual({ active: null, eligibleSampleSize: 12 });
 

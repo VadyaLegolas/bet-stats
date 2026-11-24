@@ -38,8 +38,12 @@ export interface CalibrationFitData {
 
 export interface MarketCalibrationCensus {
   readonly active: ActiveCalibratorState | null;
-  /** Count of settled, leakage-safe outcomes for the market and the exact identity. */
-  readonly eligibleSampleSize: number;
+  /**
+   * Count of settled, leakage-safe outcomes for the market and the exact identity. Null when it was not computed because a
+   * calibrator is active for the market: the count only feeds the INSUFFICIENT_DATA / NO_PROMOTED states, and the full census
+   * is the expensive part of a read (WR-06).
+   */
+  readonly eligibleSampleSize: number | null;
 }
 
 export type CalibrationState = Readonly<Record<ScoreMarket, MarketCalibrationCensus>>;
@@ -206,13 +210,13 @@ export async function readCalibrationFitData(client: PrismaClient, input: Calibr
  */
 export async function readCalibrationState(client: PrismaClient, input: CalibrationFitDataInput): Promise<CalibrationState> {
   const identity: CalibratorIdentity = { modelVersion: input.modelVersion, configHash: input.configHash };
-  const [data, active] = await Promise.all([
-    readCalibrationFitData(client, input),
-    createPrismaCalibrationRepository(client).findActiveCalibrators(identity),
-  ]);
-  return {
-    ONE_X_TWO: { active: active.ONE_X_TWO, eligibleSampleSize: data.samples.ONE_X_TWO.length },
-    OVER_UNDER_2_5: { active: active.OVER_UNDER_2_5, eligibleSampleSize: data.samples.OVER_UNDER_2_5.length },
-    BTTS: { active: active.BTTS, eligibleSampleSize: data.samples.BTTS.length },
-  };
+  const active = await createPrismaCalibrationRepository(client).findActiveCalibrators(identity);
+  // The census (every PRODUCTION snapshot of the identity plus the result lineage) is read only when some market has no
+  // calibrator and therefore needs its outcome count (WR-06).
+  const data = CALIBRATION_MARKETS.some((market) => active[market] === null) ? await readCalibrationFitData(client, input) : null;
+  const census = (market: ScoreMarket): MarketCalibrationCensus => ({
+    active: active[market],
+    eligibleSampleSize: active[market] !== null || data === null ? null : data.samples[market].length,
+  });
+  return { ONE_X_TWO: census("ONE_X_TWO"), OVER_UNDER_2_5: census("OVER_UNDER_2_5"), BTTS: census("BTTS") };
 }

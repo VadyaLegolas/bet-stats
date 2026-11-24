@@ -8,7 +8,7 @@ import {
 } from "@bet-stats/domain";
 import { resolveForecastModelSelection } from "@bet-stats/config";
 
-import { attachMarketCalibration, type CalibrationEnrichmentDeps } from "./forecast-calibration.js";
+import { attachMarketCalibration, resolveCalibrationStateCacheTtlMs, withCalibrationStateCache, type CalibrationEnrichmentDeps } from "./forecast-calibration.js";
 
 
 /** Server-side configuration/identity failures: the caller did nothing wrong, so they are not a 400 (review IN-03). */
@@ -59,11 +59,12 @@ export class ForecastsService implements OnModuleDestroy {
     this.repository = this.client ? createPrismaForecastRepository(this.client) : null;
     this.selection = resolveForecastModelSelection(process.env);
     const client = this.client;
+    // The cache TTL (CALIBRATION_STATE_CACHE_TTL_MS, default 60 s, max 300 s, 0 = off) bounds how long a promotion or rollback stays unseen.
     this.calibration = {
-      readState: (identity, asOf) => {
+      readState: withCalibrationStateCache((identity, asOf) => {
         if (!client) throw new Error("DATABASE_UNAVAILABLE");
         return readCalibrationState(client, { ...identity, asOf });
-      },
+      }, { ttlMs: resolveCalibrationStateCacheTtlMs(process.env) }),
       now: () => new Date(),
     };
   }

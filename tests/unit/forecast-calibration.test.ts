@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ActiveCalibratorState, CalibrationState } from "@bet-stats/database";
 import { forecastConfigHashFor, parseMarketCalibrationMap, type CalibratedForecastResponseDto, type CalibratorIdentity, type ForecastResponseDto, type ScoreMarket } from "@bet-stats/domain";
 
-import { attachMarketCalibration, type CalibrationEnrichmentDeps } from "../../apps/api/src/modules/forecasts/forecast-calibration.js";
+import { attachMarketCalibration, resolveCalibrationStateCacheTtlMs, withCalibrationStateCache, type CalibrationEnrichmentDeps } from "../../apps/api/src/modules/forecasts/forecast-calibration.js";
 import { makeFitted } from "../helpers/calibration-db.js";
 import { makeForecastDto } from "../helpers/forecast-dto.js";
 
@@ -161,5 +161,103 @@ describe("attachMarketCalibration: a calibrator of another identity is never app
     const [dc, v1] = await attachMarketCalibration([forecast(DC), forecast(V1)], deps(async (identity) => state(identity)));
     expect(dc!.marketCalibration.ONE_X_TWO.calibration.state).toBe("CALIBRATED");
     expect(v1!.marketCalibration.ONE_X_TWO.calibration.state).toBe("UNAVAILABLE");
+  });
+});
+
+describe("WR-06: parallel identity reads and a bounded TTL cache for the calibration state", () => {
+  it("starts the reads of all distinct identities before the first one finishes", async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const readState = async (): Promise<CalibrationState> => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      inFlight -= 1;
+      return emptyState(20);
+    };
+    await attachMarketCalibration([forecast(DC, { id: "a" }), forecast(V1, { id: "b" })], deps(readState));
+    expect(peak).toBe(2);
+  });
+
+  it("serves a state from the cache for the TTL and not a millisecond longer", async () => {
+    let clock = 1_000;
+    const readState = vi.fn(async () => emptyState(20));
+    const cached = withCalibrationStateCache(readState, { ttlMs: 60_000, now: () => clock });
+    await cached(DC, "t0");
+    clock += 59_999;
+    await cached(DC, "t1");
+    expect(readState).toHaveBeenCalledTimes(1);
+    clock += 1;
+    await cached(DC, "t2");
+    expect(readState).toHaveBeenCalledTimes(2);
+  });
+
+  it("keys the cache by the exact identity: another model version or config hash is a separate entry", async () => {
+    const readState = vi.fn(async () => emptyState(20));
+    const cached = withCalibrationStateCache(readState, { ttlMs: 60_000, now: () => 0 });
+    await cached(DC, "t");
+    await cached(V1, "t");
+    await cached({ ...DC, configHash: `sha256:${"c".repeat(64)}` }, "t");
+    expect(readState).toHaveBeenCalledTimes(3);
+  });
+
+  it("shares one in-flight read between concurrent requests and does not cache a failure", async () => {
+    let calls = 0;
+    const readState = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("connection lost");
+      return emptyState(20);
+    });
+    const cached = withCalibrationStateCache(readState, { ttlMs: 60_000, now: () => 0 });
+    const [first, second] = await Promise.allSettled([cached(DC, "t"), cached(DC, "t")]);
+    expect(readState).toHaveBeenCalledTimes(1);
+    expect([first.status, second.status]).toEqual(["rejected", "rejected"]);
+    await expect(cached(DC, "t")).resolves.toEqual(emptyState(20));
+    expect(readState).toHaveBeenCalledTimes(2);
+  });
+
+  it("is bounded: the oldest entry is evicted when the limit is reached", async () => {
+    const readState = vi.fn(async () => emptyState(20));
+    const cached = withCalibrationStateCache(readState, { ttlMs: 60_000, now: () => 0, maxEntries: 2 });
+    const identities = ["a", "b", "c"].map((letter) => ({ ...DC, configHash: `sha256:${letter.repeat(64)}` }));
+    for (const identity of identities) await cached(identity, "t");
+    expect(readState).toHaveBeenCalledTimes(3);
+    await cached(identities[2]!, "t");
+    expect(readState).toHaveBeenCalledTimes(3);
+    await cached(identities[0]!, "t");
+    expect(readState).toHaveBeenCalledTimes(4);
+  });
+
+  it("a promotion or rollback becomes visible once the TTL has passed; with TTL 0 the cache is off", async () => {
+    let clock = 0;
+    let current = emptyState(20);
+    const readState = async (): Promise<CalibrationState> => current;
+    const cached = withCalibrationStateCache(readState, { ttlMs: 1_000, now: () => clock });
+    const promoted: CalibrationState = { ...emptyState(400), BTTS: { active: active("BTTS", DC), eligibleSampleSize: null } };
+    expect((await cached(DC, "t")).BTTS.active).toBeNull();
+    current = promoted;
+    expect((await cached(DC, "t")).BTTS.active).toBeNull();
+    clock = 1_000;
+    expect((await cached(DC, "t")).BTTS.active).not.toBeNull();
+
+    const direct = vi.fn(readState);
+    const off = withCalibrationStateCache(direct, { ttlMs: 0 });
+    await off(DC, "t");
+    await off(DC, "t");
+    expect(direct).toHaveBeenCalledTimes(2);
+  });
+
+  it("the TTL comes from configuration: default 60 s, 0 disables, capped at 300 s, garbage falls back", () => {
+    expect(resolveCalibrationStateCacheTtlMs({})).toBe(60_000);
+    expect(resolveCalibrationStateCacheTtlMs({ CALIBRATION_STATE_CACHE_TTL_MS: "0" })).toBe(0);
+    expect(resolveCalibrationStateCacheTtlMs({ CALIBRATION_STATE_CACHE_TTL_MS: "15000" })).toBe(15_000);
+    expect(resolveCalibrationStateCacheTtlMs({ CALIBRATION_STATE_CACHE_TTL_MS: "99999999" })).toBe(300_000);
+    for (const bad of ["abc", "-5", "1.5", ""]) expect(resolveCalibrationStateCacheTtlMs({ CALIBRATION_STATE_CACHE_TTL_MS: bad })).toBe(60_000);
+  });
+
+  it("a market whose count was not computed (active calibrator) is still served CALIBRATED", async () => {
+    const state: CalibrationState = { ...emptyState(400), BTTS: { active: active("BTTS", DC), eligibleSampleSize: null } };
+    const [result] = await attachMarketCalibration([forecast(DC)], deps(async () => state));
+    expect(result!.marketCalibration.BTTS.calibration.state).toBe("CALIBRATED");
   });
 });

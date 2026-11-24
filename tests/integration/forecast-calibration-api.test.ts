@@ -73,7 +73,10 @@ beforeAll(async () => {
 
   // The service reads DATABASE_URL in its constructor: point it at this container only for the construction.
   process.env.DATABASE_URL = server.url();
+  // These tests assert that a promotion or rollback is visible at once: the read cache (WR-06) is off for them.
+  process.env.CALIBRATION_STATE_CACHE_TTL_MS = "0";
   service = new ForecastsService();
+  delete process.env.CALIBRATION_STATE_CACHE_TTL_MS;
   if (savedEnvironment.DATABASE_URL === undefined) delete process.env.DATABASE_URL;
   else process.env.DATABASE_URL = savedEnvironment.DATABASE_URL;
   controller = new ForecastsController(service);

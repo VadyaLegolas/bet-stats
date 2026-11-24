@@ -19,6 +19,47 @@ import {
  * model can never be shown as active. A failed read degrades to UNAVAILABLE and never fails the forecast.
  */
 
+/**
+ * Read cache of the calibration state (WR-06). The state of one identity needs a full census of its settled outcomes unless every
+ * market has a calibrator, and the list/detail endpoints are public. Entries live `ttlMs` milliseconds: a promotion, a rollback or
+ * a newly settled outcome becomes visible after at most the TTL and never later. Failed reads are not cached, concurrent reads of one
+ * identity share a single in-flight read, and the number of entries is bounded.
+ */
+export const DEFAULT_CALIBRATION_STATE_CACHE_TTL_MS = 60_000;
+export const MAX_CALIBRATION_STATE_CACHE_TTL_MS = 300_000;
+const CALIBRATION_STATE_CACHE_MAX_ENTRIES = 32;
+
+/** `CALIBRATION_STATE_CACHE_TTL_MS`: milliseconds, 0 disables the cache; invalid values fall back to the default; capped at 300000. */
+export function resolveCalibrationStateCacheTtlMs(env: Readonly<Record<string, string | undefined>>): number {
+  const raw = env.CALIBRATION_STATE_CACHE_TTL_MS?.trim();
+  if (raw === undefined || raw === "" || !/^[0-9]+$/.test(raw)) return DEFAULT_CALIBRATION_STATE_CACHE_TTL_MS;
+  return Math.min(Number(raw), MAX_CALIBRATION_STATE_CACHE_TTL_MS);
+}
+
+export function withCalibrationStateCache(
+  readState: CalibrationEnrichmentDeps["readState"],
+  options: { ttlMs: number; now?: () => number; maxEntries?: number },
+): CalibrationEnrichmentDeps["readState"] {
+  const now = options.now ?? (() => Date.now());
+  const maxEntries = options.maxEntries ?? CALIBRATION_STATE_CACHE_MAX_ENTRIES;
+  if (!(options.ttlMs > 0)) return readState;
+  const entries = new Map<string, { expiresAt: number; read: Promise<CalibrationState> }>();
+  return (identity, asOf) => {
+    const key = identityKey(identity);
+    const current = now();
+    const hit = entries.get(key);
+    if (hit && hit.expiresAt > current) return hit.read;
+    entries.delete(key);
+    for (const [other, entry] of entries) if (entry.expiresAt <= current) entries.delete(other);
+    while (entries.size >= maxEntries) entries.delete(entries.keys().next().value as string);
+    const read = Promise.resolve().then(() => readState(identity, asOf));
+    const entry = { expiresAt: current + options.ttlMs, read };
+    entries.set(key, entry);
+    read.catch(() => { if (entries.get(key) === entry) entries.delete(key); });
+    return read;
+  };
+}
+
 export interface CalibrationEnrichmentDeps {
   /** State of the exact forecast identity at `asOf` (ISO-8601 UTC): active calibrator and eligible outcomes per market. */
   readState(identity: CalibratorIdentity, asOf: string): Promise<CalibrationState>;
@@ -35,8 +76,9 @@ function unavailableAll(forecast: ForecastResponseDto): Readonly<Record<Forecast
 }
 
 /**
- * Enriches forecasts for one response. The state is read once per distinct identity and request (no cache between
- * requests); every forecast is resolved against the state of its own identity. Inputs are never mutated.
+ * Enriches forecasts for one response. The state is read once per distinct identity and request, all identities in parallel;
+ * any cache between requests belongs to `deps.readState` (see `withCalibrationStateCache`). Every forecast is resolved against
+ * the state of its own identity. Inputs are never mutated.
  */
 export async function attachMarketCalibration<T extends ForecastResponseDto>(
   forecasts: readonly T[],
@@ -58,6 +100,9 @@ export async function attachMarketCalibration<T extends ForecastResponseDto>(
     return read;
   };
 
+  // Start every distinct identity's read before awaiting any: the reads run in parallel (WR-06).
+  for (const forecast of forecasts) void stateOf(forecast);
+
   const enriched: Array<T & Pick<CalibratedForecastResponseDto, "marketCalibration">> = [];
   for (const forecast of forecasts) {
     const state = await stateOf(forecast);
@@ -70,7 +115,8 @@ export async function attachMarketCalibration<T extends ForecastResponseDto>(
           // The forecast itself carries the identity the calibrator is checked against.
           forecast,
           active: { ONE_X_TWO: state.ONE_X_TWO.active, OVER_UNDER_2_5: state.OVER_UNDER_2_5.active, BTTS: state.BTTS.active },
-          eligibleSampleSize: { ONE_X_TWO: state.ONE_X_TWO.eligibleSampleSize, OVER_UNDER_2_5: state.OVER_UNDER_2_5.eligibleSampleSize, BTTS: state.BTTS.eligibleSampleSize },
+          // Null (not computed) only for a market with an active calibrator, where the count is never read.
+          eligibleSampleSize: { ONE_X_TWO: state.ONE_X_TWO.eligibleSampleSize ?? 0, OVER_UNDER_2_5: state.OVER_UNDER_2_5.eligibleSampleSize ?? 0, BTTS: state.BTTS.eligibleSampleSize ?? 0 },
           config: CALIBRATION_CONFIG,
         });
       } catch {

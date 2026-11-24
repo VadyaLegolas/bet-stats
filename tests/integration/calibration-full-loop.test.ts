@@ -85,7 +85,10 @@ beforeAll(async () => {
   await storeForecast("lp-a", makeForecastDto(DC, { id: "lp-a-pre", fixtureId: "lp-a", cutoff: PRE_MATCH_CUTOFF, issuedAt }));
   await storeForecast("lp-b", makeForecastDto(V1, { id: "lp-b-pre", fixtureId: "lp-b", cutoff: PRE_MATCH_CUTOFF, issuedAt }));
   process.env.DATABASE_URL = server.url();
+  // These tests assert that a promotion or rollback is visible at once: the read cache (WR-06) is off for them.
+  process.env.CALIBRATION_STATE_CACHE_TTL_MS = "0";
   service = new ForecastsService();
+  delete process.env.CALIBRATION_STATE_CACHE_TTL_MS;
   if (savedDatabaseUrl === undefined) delete process.env.DATABASE_URL;
   else process.env.DATABASE_URL = savedDatabaseUrl;
 }, 300_000);

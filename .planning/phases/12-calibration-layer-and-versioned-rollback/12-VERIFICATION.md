@@ -1,14 +1,14 @@
 ---
 phase: 12-calibration-layer-and-versioned-rollback
 verified: 2026-11-24
-status: human_needed
+status: passed
 verifier: orchestrator (inline; the gsd-verifier agent could not be dispatched because a hook rewrote its prompt and auto mode gave no verdict)
 requirements: [CALIB-01, CALIB-02, CALIB-03, CALIB-04]
 ---
 
 # Фаза 12: верификация
 
-Статус `human_needed`: автоматические проверки зелёные, но UAT пользователя не проведён. Фаза не закрыта.
+Статус `passed`: UAT пройден 2026-11-24, владелец принял варианты (a) по WR-04, WR-08, WR-02.
 
 ## Что я проверил сам (в этой сессии)
 - Unit-набор: 71 файл, 1011 тестов, все прошли.

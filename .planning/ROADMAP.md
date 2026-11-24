@@ -11,7 +11,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 - [x] **Phase 9: Degradation Alerting** - The operator is told when providers, workers, HTTP error rates, or backups degrade, through durable alerts viewable in the operations center. (completed 2026-11-16)
 - [x] **Phase 10: Performance Audit and Budgets** - The fixture detail page meets declared Lighthouse budgets, and regressions fail CI instead of shipping. (completed 2026-11-17)
 - [x] **Phase 11: Dixon-Coles Model Version** - Forecasts can be issued under a corrected, versioned model whose rolling-origin backtests are compared against the frozen baseline before promotion. (completed 2026-11-24)
-- [ ] **Phase 12: Calibration Layer and Versioned Rollback** - Users see calibrated probabilities with honest labels and insufficient-data states, backed by per-model-version calibrators that roll back on measured regression.
+- [x] **Phase 12: Calibration Layer and Versioned Rollback** - Users see calibrated probabilities with honest labels and insufficient-data states, backed by per-model-version calibrators that roll back on measured regression.
 - [ ] **Phase 13: CLV Price Diary** - Forecast-time and closing prices are compared per candidate, with honest unavailable states and strict evaluation-only semantics.
 - [ ] **Phase 14: Asian Handicap and Exact Score Markets** - Users see and settle Asian handicap and exact-score probabilities derived from the frozen score matrix, with push-aware value receipts.
 - [ ] **Phase 15: 7-Day Value Scanner** - Users see one consolidated, freshness-aware list of value candidates across the next seven days without N+1 queries or recompute drift.

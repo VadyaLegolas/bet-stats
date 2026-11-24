@@ -4,11 +4,11 @@ milestone: v1.1
 current_phase: 12
 current_phase_name: Calibration Layer and Versioned Rollback
 current_plan: 7
-status: verifying
+status: complete
 stopped_at: Completed 12-07-PLAN.md
 last_updated: "2026-11-24T11:29:59.562Z"
 last_activity: 2026-11-24
-last_activity_desc: Phase 11 complete, transitioned to Phase 12
+last_activity_desc: Phase 12 complete (verification passed, UAT 3/3)
 state_head: 84e988902e2a15a66e6cf535d6da1be42d73caf6
 progress:
   total_phases: 10
@@ -26,7 +26,7 @@ milestone_name: Reliability, Model Quality and Value Experience
 See: .planning/PROJECT.md (updated 2026-11-16)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Phase 11 — Dixon-Coles Model Version
+**Current focus:** Phase 12 complete — next: Phase 13 (CLV)
 
 ## Current Position
 
@@ -34,7 +34,7 @@ Phase: 12 — Calibration Layer and Versioned Rollback
 Current Plan: 7
 Total Plans in Phase: 7
 Status: Phase complete — ready for verification
-Last activity: 2026-11-24 — Phase 11 complete, transitioned to Phase 12
+Last activity: 2026-11-24 — Phase 12 complete (verification passed, UAT 3/3)
 
 Progress: [█████░░░░░] 50%
 

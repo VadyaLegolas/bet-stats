@@ -142,7 +142,15 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   3. A promoted calibrator rolls back automatically under materiality and hysteresis gates when holdout Brier regresses; frozen snapshots are never modified — calibration is a post-hoc layer, not a new model version.
 
 **Notes / research flags**: Policy decisions to record in `configVersion`, not hardcode — min cohort sizes, rollback materiality thresholds, fit cadence. 1X2 3-class renormalization strategy needs design. PAVA isotonic + Platt Newton steps are pure TypeScript in `packages/domain` — no ML libraries.
-**Plans**: TBD
+**Plans**: 7 plans
+**Plan list**:
+- [ ] 12-01-PLAN.md — Domain calibration core: `calibration-config-v1` (hashed policy), Platt by Newton steps, 1X2 one-vs-rest with renormalization, isotonic PAVA gated at 1500 outcomes, 300-outcome minimum, chronological holdout split, pinned-identity guard (`CALIBRATOR_MODEL_MISMATCH`)
+- [ ] 12-02-PLAN.md — Pure lifecycle and read-state logic: promotion gate, evaluation verdict, rollback hysteresis (3 eligible worse windows, one bad window never rolls back), rollback target, supersession, CALIBRATED / INSUFFICIENT_DATA / UNAVAILABLE resolver and strict response contract
+- [ ] 12-03-PLAN.md — Append-only `Calibrator` / `CalibratorEvent` tables (forward-only migrations): composite-FK identity pin, active calibrator derived from the event log, transition guard trigger, repository, populated-database upgrade proof, frozen tables untouched
+- [ ] 12-04-PLAN.md — Leakage-safe fit-data read (PRODUCTION only, history at `asOf`, exact identity, one sample per fixture and market) and eligibility census, with guard-mutation evidence and parity against the settlement pipeline
+- [ ] 12-05-PLAN.md — Idempotent daily BullMQ calibration job in `workers/data-sync`: fit, evaluate on disjoint later windows, promote / supersede / roll back with hysteresis, deterministic job id, daily tick and worker runtime, no provider calls
+- [ ] 12-06-PLAN.md — API payload: per-market `rawProbabilities` + `calibration` state attached at read time by the forecast's own pinned identity; soft failure, read-only guarantee, value stays on raw probabilities
+- [ ] 12-07-PLAN.md — UI and methodology: side-by-side raw/calibrated panel with "Калибровка v{n}" label, insufficient-data state, calibration methodology section (model card v1.2.0), full job-to-API rollback cycle on real services and browser journey on the owned release stack
 **UI hint**: yes
 
 ### Phase 13: CLV Price Diary

@@ -40,6 +40,10 @@ test("versioned model card presents plain-language and exact technical evidence"
   await expect(page.locator("#calibration-technical")).toContainText(`Platt ${MODEL_CARD.calibration.minimumSamples.platt}`);
   await expect(page.locator("#calibration-technical")).toContainText(`${MODEL_CARD.calibration.rollback.consecutiveWorse} подряд оценок`);
 
+  await expect(page.locator("#clv")).toContainText("оценочный вид, а не прогноз и не обещание прибыли");
+  await expect(page.locator("#clv")).toContainText("Поздние записи отклоняются");
+  await expect(page.locator("#clv")).toContainText("Один источник");
+
   await page.locator("#evaluation").getByText("Технические подробности", { exact: true }).click();
   await expect(page.getByRole("region", { name: "Формулы корректных очков" })).toContainText("Brier");
   await expect(page.locator("#evaluation-technical")).toContainText("proper-score-v1");
@@ -50,7 +54,7 @@ test("versioned model card presents plain-language and exact technical evidence"
 
   const changes = page.locator("#change-history article");
   await expect(changes).toHaveCount(MODEL_CARD.changeHistory.length);
-  await expect(changes).toHaveCount(4);
+  await expect(changes).toHaveCount(5);
   const effectiveDates = await changes.locator("time").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("datetime")));
   expect(effectiveDates).toEqual([...effectiveDates].sort().reverse());
 

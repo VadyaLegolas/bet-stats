@@ -114,13 +114,28 @@ export default function MethodologyPage() {
         </TechnicalDetails>
       </section>
 
+      <section id="clv" className="panel">
+        <h2>Сравнение с закрытием линии (CLV)</h2>
+        <p>{card.clv.definition}</p>
+        <p>CLV — это оценочный вид, а не прогноз и не обещание прибыли. Он показывается рядом с рассчитанными кандидатами value и никак не влияет на то, какие кандидаты отбираются и в каком порядке они идут.</p>
+        <ul>{card.clv.method.map((item) => <li key={item}>{item}</li>)}</ul>
+        <ul>{card.clv.evaluationOnly.map((item) => <li key={item}>{item}</li>)}</ul>
+        <ul>{card.clv.recording.map((item) => <li key={item}>{item}</li>)}</ul>
+        <p><strong>Ограничения:</strong></p>
+        <ul>{card.clv.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul>
+        <TechnicalDetails id="clv-technical">
+          <p>Политика: <code>{card.clv.policyVersion}</code>. Формула: <code>{card.clv.formula}</code>. Замороженная прежняя политика: <code>{card.clv.frozenPolicyVersion}</code>.</p>
+          <p><Link href="/scorecards">Реестр кандидатов на странице результатов</Link> показывает значение, версию политики, время и источник закрытия либо причину недоступности.</p>
+        </TechnicalDetails>
+      </section>
+
     </div>
 
     <section id="responsible-use" className="panel panel--stack panel--band">
       <h2>Ответственное использование</h2>
       <p>Используйте эти оценки только как прозрачные аналитические доказательства. Не рассматривайте их как инструкции, не ставьте больше, чем можете позволить себе потерять, и не делайте ставки там, где это незаконно или не соответствует вашему возрасту.</p>
       <TechnicalDetails id="responsible-use-technical">
-        <p>Продукт никогда не отправляет ставки и не поддерживает персонализированное распределение банка. Финансовые доказательства используют <code>{card.policies.financial}</code> и определяют ROI/Yield как <code>{card.evaluation.financialRate}</code>. Сравнение с закрывающей линией использует <code>{card.policies.clv}</code>.</p>
+        <p>Продукт никогда не отправляет ставки и не поддерживает персонализированное распределение банка. Финансовые доказательства используют <code>{card.policies.financial}</code> и определяют ROI/Yield как <code>{card.evaluation.financialRate}</code>. Сравнение с закрывающей линией использует <code>{card.policies.noVigClv}</code> (замороженное значение прежней версии — <code>{card.policies.clv}</code>).</p>
       </TechnicalDetails>
     </section>
 

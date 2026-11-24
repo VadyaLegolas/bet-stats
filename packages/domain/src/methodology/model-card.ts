@@ -2,6 +2,7 @@ import { CALIBRATION_CONFIG, CALIBRATION_CONFIG_HASH } from "../calibration/conf
 import { COHORT_HEALTH_POLICY } from "../evaluation/cohort-health.js";
 import { BACKTEST_POLICY_VERSION } from "../evaluation/backtest.js";
 import { ODDS_RATIO_CLV_POLICY_VERSION } from "../evaluation/clv.js";
+import { NO_VIG_CLV_POLICY_VERSION } from "../evaluation/no-vig-clv.js";
 import { FINANCIAL_RATE_DEFINITION, FLAT_ONE_UNIT_POLICY_VERSION } from "../evaluation/financial.js";
 import { RELIABILITY_POLICY } from "../evaluation/reliability.js";
 import { SCORE_FORMULA_HASH, SCORE_FORMULA_VERSION, SCORE_LOG_EPSILON } from "../evaluation/scoring.js";
@@ -14,6 +15,7 @@ import {
 } from "../forecast/config.js";
 import { DIXON_COLES_CONVENTION } from "../forecast/dixon-coles.js";
 import { DEFAULT_FORECAST_MODEL_VERSION } from "../forecast/model-version.js";
+import { MARKET_SELECTIONS } from "../odds/contract.js";
 import { VALUE_POLICY } from "../value/decision.js";
 
 export const MODEL_CARD_SECTION_IDS = [
@@ -24,11 +26,12 @@ export const MODEL_CARD_SECTION_IDS = [
   "limitations",
   "evaluation",
   "calibration",
+  "clv",
   "responsible-use",
 ] as const;
 
 export const MODEL_CARD = Object.freeze({
-  version: "model-card-v1.2.0",
+  version: "model-card-v1.3.0",
   effectiveDate: "2026-11-24",
   currentModel: Object.freeze({
     modelVersion: DEFAULT_FORECAST_MODEL_VERSION,
@@ -52,6 +55,7 @@ export const MODEL_CARD = Object.freeze({
     cohortHealth: COHORT_HEALTH_POLICY.identity,
     financial: FLAT_ONE_UNIT_POLICY_VERSION,
     clv: ODDS_RATIO_CLV_POLICY_VERSION,
+    noVigClv: NO_VIG_CLV_POLICY_VERSION,
     backtest: BACKTEST_POLICY_VERSION,
   }),
   forecast: Object.freeze({
@@ -139,7 +143,45 @@ export const MODEL_CARD = Object.freeze({
       "Калибровка не многоклассовая: рынок 1X2 калибруется по схеме «один против всех» с пересчётом до суммы 1.",
     ]),
   }),
+  /**
+   * Closing line value (Phase 13, D-04, D-05, D-07). Policy versions and market set sizes come from the domain constants;
+   * the card publishes the method, it never restates a number it does not own.
+   */
+  clv: Object.freeze({
+    policyVersion: NO_VIG_CLV_POLICY_VERSION,
+    frozenPolicyVersion: ODDS_RATIO_CLV_POLICY_VERSION,
+    definition: "CLV (closing line value) сравнивает справедливую вероятность выбора по коэффициенту, который был у кандидата value, со справедливой вероятностью по последним коэффициентам закрытия того же рынка. Положительное значение означает, что к закрытию рынок сместился в сторону выбора.",
+    formula: "clv = pClose_fair / pCandidate_fair − 1",
+    method: Object.freeze([
+      "Справедливые вероятности получаются делением обратных коэффициентов на их сумму (пропорциональное удаление маржи) по полному набору выборов одного рынка и одного источника: сторона кандидата берётся из его снимка ручных коэффициентов, сторона закрытия — из набора одного момента наблюдения.",
+      `Прежнее значение ${ODDS_RATIO_CLV_POLICY_VERSION} (коэффициент кандидата, делённый на коэффициент закрытия, минус 1, на сырых коэффициентах с маржой) остаётся в замороженных квитанциях без изменений и показывается отдельно со своей подписью.`,
+      "Если закрытия нет, набор неполный, источники различаются или нарушен порядок времени, значение недоступно с типизированной причиной; цену не достраивают и не интерполируют.",
+    ]),
+    evaluationOnly: Object.freeze([
+      "CLV вычисляется при чтении, нигде не сохраняется и используется только для оценки качества: он не входит в отбор кандидатов value, их порядок, сканер и журнал решений. Границу проверяют автоматический тест на графе импортов и тест неизменности списка кандидатов при появлении закрытий.",
+      "CLV не является прогнозом и не обещает прибыли: положительное значение говорит о движении рынка, а не о результате ставки.",
+    ]),
+    recording: Object.freeze([
+      `Закрытие записывает оператор: полный набор выборов одного рынка одного матча за один момент наблюдения (${(Object.keys(MARKET_SELECTIONS) as (keyof typeof MARKET_SELECTIONS)[]).map((market) => `${market} — ${MARKET_SELECTIONS[market].length}`).join(", ")}) одной транзакцией.`,
+      "Записи append-only: исправление — новое наблюдение с более поздним моментом, побеждает последнее до начала матча.",
+      "Поздние записи отклоняются, а не сохраняются с пометкой: закрытие нельзя записать после начала матча или после расчёта матча, а момент наблюдения должен быть до начала матча и не в будущем. Так закрытие не может быть подогнано под результат.",
+    ]),
+    limitations: Object.freeze([
+      "Один источник: сторона кандидата и сторона закрытия сравниваются только внутри одного источника; закрытие другого источника не подменяет отсутствующее.",
+      "Закрытие вводится вручную оператором из одного источника и не является консенсусом рынка; ошибка ввода или неверный момент наблюдения меняют значение.",
+      "Малые выборки: значение по отдельному кандидату шумное, а сводные доказательства по закрытию линии остаются описательными при малом числе сопоставимых кандидатов.",
+      "Пропорциональное удаление маржи — упрощение: оно не учитывает, что маржа может распределяться между исходами неравномерно.",
+      "CLV не заменяет вероятностные меры качества (Brier, Log Loss, надёжность): он не показывает, что вероятности модели верны.",
+    ]),
+  }),
   changeHistory: Object.freeze([
+    Object.freeze({
+      version: "model-card-v1.3.0",
+      effectiveDate: "2026-11-24",
+      summary: "Добавлен CLV без маржи: сравнение справедливых вероятностей кандидата и закрытия линии как оценочный вид, отдельный от прогноза и отбора.",
+      affected: `${NO_VIG_CLV_POLICY_VERSION}, ${ODDS_RATIO_CLV_POLICY_VERSION}`,
+      interpretation: "Выданные квитанции и снимки не переписаны: CLV без маржи вычисляется при чтении и показывается рядом с замороженным значением; на отбор и порядок кандидатов value он не влияет.",
+    }),
     Object.freeze({
       version: "model-card-v1.2.0",
       effectiveDate: "2026-11-24",

@@ -77,7 +77,7 @@ describe("scorecards design markup", () => {
 
 describe("methodology design markup", () => {
   const markup = renderToStaticMarkup(createElement(MethodologyPage));
-  const ids = ["inputs", "dixon-coles", "what-is-excluded", "confidence", "limitations", "evaluation", "calibration", "responsible-use", "change-history"];
+  const ids = ["inputs", "dixon-coles", "what-is-excluded", "confidence", "limitations", "evaluation", "calibration", "clv", "responsible-use", "change-history"];
 
   it("is a full-width page column with deck paragraphs", () => {
     expect(markup.startsWith('<article class="page-column"><h1>Как работают прогнозы</h1>')).toBe(true);
@@ -86,17 +86,29 @@ describe("methodology design markup", () => {
 
   it("keeps the h2 order and makes each h2 the first child of its section", () => {
     const h2 = [...markup.matchAll(/<h2>(.*?)<\/h2>/g)].map((match) => match[1]);
-    expect(h2).toEqual(["Входы", "Поправка на низкие счета", "Что исключается", "Уверенность", "Ограничения", "Оценка", "Калибровка вероятностей", "Ответственное использование", "История изменений"]);
+    expect(h2).toEqual(["Входы", "Поправка на низкие счета", "Что исключается", "Уверенность", "Ограничения", "Оценка", "Калибровка вероятностей", "Сравнение с закрытием линии (CLV)", "Ответственное использование", "История изменений"]);
     for (const id of ids) expect(markup, id).toMatch(new RegExp(`<section id="${id}"[^>]*><h2>`));
   });
 
-  it("wraps only the first seven sections into one large card grid, in order", () => {
+  it("publishes the CLV section with definition, method, evaluation-only role, late-entry refusal and honest limits", () => {
+    const section = normalise(stripTags(innerOf(markup, '<section id="clv" class="panel">', "section")));
+    expect(section).toContain(MODEL_CARD.clv.definition);
+    for (const text of [...MODEL_CARD.clv.method, ...MODEL_CARD.clv.evaluationOnly, ...MODEL_CARD.clv.recording, ...MODEL_CARD.clv.limitations]) expect(section).toContain(text);
+    expect(section).toContain("оценочный вид, а не прогноз и не обещание прибыли");
+    expect(section).toContain("Поздние записи отклоняются");
+    expect(section).toContain("Один источник");
+    expect(section).toContain("Малые выборки");
+    expect(section).toContain("no-vig-clv-v1");
+    expect(markup).toContain("model-card-v1.3.0");
+  });
+
+  it("wraps only the first eight sections into one large card grid, in order", () => {
     expect(markup.match(/<div class="card-grid card-grid--lg">/g)?.length).toBe(1);
     const grid = innerOf(markup, '<div class="card-grid card-grid--lg">', "div");
-    expect([...grid.matchAll(/<section id="([^"]+)"/g)].map((match) => match[1])).toEqual(ids.slice(0, 7));
+    expect([...grid.matchAll(/<section id="([^"]+)"/g)].map((match) => match[1])).toEqual(ids.slice(0, 8));
     expect(grid).not.toContain('id="responsible-use"');
     expect(grid).not.toContain('id="change-history"');
-    expect(markup.indexOf('id="responsible-use"')).toBeGreaterThan(markup.indexOf('id="calibration-technical"'));
+    expect(markup.indexOf('id="responsible-use"')).toBeGreaterThan(markup.indexOf('id="clv-technical"'));
     expect(markup).toMatch(/<section id="responsible-use" class="panel panel--stack panel--band">/);
     expect(markup).toMatch(/<section id="change-history" class="panel panel--stack">/);
     expect(markup).toMatch(/<section id="inputs" class="panel">/);

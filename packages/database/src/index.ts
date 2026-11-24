@@ -37,6 +37,6 @@ export type {
   StoredCalibratorEvaluation,
 } from "./calibration-repository.js";
 export { createPrismaClosingOddsRepository } from "./closing-odds-repository.js";
-export type { ClosingOddsRepository, ClosingOddsRepositoryErrorCode, RecordClosingOddsBookResult, StoredClosingObservation } from "./closing-odds-repository.js";
+export type { ClosingOddsRepository, ClosingOddsRepositoryError, ClosingOddsRepositoryErrorCode, RecordClosingOddsBookResult, StoredClosingObservation } from "./closing-odds-repository.js";
 export { readCalibrationFitData, readCalibrationState } from "./calibration-fit-data.js";
 export type { CalibrationFitData, CalibrationFitDataInput, CalibrationState, MarketCalibrationCensus } from "./calibration-fit-data.js";

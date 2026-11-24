@@ -4,17 +4,17 @@ milestone: v1.1
 current_phase: 12
 current_phase_name: Calibration Layer and Versioned Rollback
 current_plan: 7
-status: executing
-stopped_at: Completed 12-06-PLAN.md
-last_updated: "2026-11-24T11:07:06.697Z"
+status: verifying
+stopped_at: Completed 12-07-PLAN.md
+last_updated: "2026-11-24T11:29:59.562Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 11 complete, transitioned to Phase 12
-state_head: d26757759d99ddde8cf6a2693f2d5dec5c3b86ee
+state_head: 84e988902e2a15a66e6cf535d6da1be42d73caf6
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 36
-  completed_plans: 35
+  completed_plans: 36
   percent: 50
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 Phase: 12 — Calibration Layer and Versioned Rollback
 Current Plan: 7
 Total Plans in Phase: 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-24 — Phase 11 complete, transitioned to Phase 12
 
 Progress: [█████░░░░░] 50%
@@ -154,6 +154,7 @@ Progress: [█████░░░░░] 50%
 | Phase 12 P04 | 35min | 3 tasks | 5 files |
 | Phase 12 P05 | 75min | 3 tasks | 6 files |
 | Phase 12 P06 | 60min | 2 tasks | 6 files |
+| Phase 12 P07 | 100min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -327,6 +328,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 12]: 12-04: calibration fit data reads ForecastMarket probabilities per market from the newest readable pre-kickoff revision; reads of PRODUCTION/exact identity/history at asOf proved by six guard mutations
 - [Phase 12]: 12-05: daily calibration job executes only lifecycle-policy actions; hysteresis series asserted on ONE_X_TWO with fixed seeds (gamma 2.5 base, gamma 1 regression blocks of 90, supersession gain 0.0598); numbers in 12-05-SUMMARY for 12-07
 - [Phase 12]: 12-06: forecast API attaches marketCalibration at read time from the forecast's own identity (state read once per identity and request), soft UNAVAILABLE on read failure, value unchanged; reader exposed as ForecastsService.calibration test seam
+- [Phase 12]: 12-07: calibration panel and methodology (model card v1.2.0) shipped; panel treats absent or malformed marketCalibration as unavailable; version number is the market's promotion number; browser proof on the owned stack (28 tests); phase verification pending
 
 ### Pending Todos
 
@@ -434,6 +436,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-24T11:07:03.565Z
-Stopped at: Completed 12-06-PLAN.md
+Last session: 2026-11-24T11:29:56.124Z
+Stopped at: Completed 12-07-PLAN.md
 Resume file: None

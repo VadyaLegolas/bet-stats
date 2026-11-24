@@ -1,3 +1,5 @@
+import { Queue, UnrecoverableError, Worker, type Job } from "bullmq";
+
 import {
   CALIBRATION_CONFIG,
   CALIBRATION_CONFIG_HASH,
@@ -8,6 +10,7 @@ import {
   forecastConfigHashFor,
   isForecastModelVersion,
   isPromotable,
+  MODEL_VERSIONS,
   type CalibratorEvaluation,
   type CalibratorIdentity,
   type LifecycleAction,
@@ -296,4 +299,147 @@ export async function runCalibrationJob(input: CalibrationJobInput): Promise<Cal
     markets: Object.fromEntries(CALIBRATION_CONFIG.markets.map((market) => [market, { eligible: markets[market].eligibleSampleSize, actions: markets[market].actions.map((action) => action.type), active: markets[market].active?.calibratorId ?? null }])),
   });
   return receipt;
+}
+
+// --- bet-stats-calibration queue, deterministic job id, daily tick -------------------------------------------------------
+
+export interface CalibrationJobData {
+  readonly modelVersion: string;
+  readonly configHash: string;
+  /** ISO-8601 instant; the UTC day of it is part of the job id. */
+  readonly asOf: string;
+}
+
+export const CALIBRATION_MAX_ATTEMPTS = 3;
+
+export function calibrationQueue(prefix = "bet-stats"): string {
+  if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) throw new Error("Queue prefix contains unsupported characters");
+  return `${prefix}-calibration`;
+}
+
+/** Same connection options as the neighbouring queues (kept local so this module imports nothing but the queue library). */
+function connection(redisUrl: string) {
+  return { url: redisUrl, maxRetriesPerRequest: null as null };
+}
+
+/**
+ * Deterministic job id: model version, the first 12 hex digits of the config hash and the UTC day of `asOf`. Colon-free, so it
+ * is a valid BullMQ custom id. BullMQ ignores `add` for an existing id, which is what makes the daily tick idempotent.
+ */
+export function calibrationJobId(data: CalibrationJobData): string {
+  const date = new Date(data.asOf);
+  if (!Number.isFinite(date.getTime())) throw coded("INVALID_CALIBRATION_JOB", "asOf is not a date");
+  const hash = data.configHash.replace(/^sha256:/, "").slice(0, 12);
+  return `calibration-${data.modelVersion}-${hash}-${date.toISOString().slice(0, 10)}`.replaceAll(":", "-");
+}
+
+/** Every identity the forecast stack issues: each model version with its own config hash. */
+export function calibrationIdentities(): CalibratorIdentity[] {
+  return MODEL_VERSIONS.map((modelVersion) => ({ modelVersion, configHash: forecastConfigHashFor(modelVersion) }));
+}
+
+export type CalibrationQueue = Readonly<{ enqueue(data: CalibrationJobData): Promise<{ id?: string | undefined; opts?: unknown }>; close(): Promise<void> }>;
+
+export function createCalibrationQueue(input: { redisUrl: string; prefix?: string; queueFactory?: typeof Queue }) {
+  const QueueFactory = input.queueFactory ?? Queue;
+  const queue = new QueueFactory<CalibrationJobData>(calibrationQueue(input.prefix), { connection: connection(input.redisUrl) });
+  return {
+    enqueue: async (data: CalibrationJobData) =>
+      queue.add("calibration", data, {
+        attempts: CALIBRATION_MAX_ATTEMPTS,
+        backoff: { type: "exponential", delay: 1_000, jitter: 0.25 },
+        removeOnComplete: { age: 86_400, count: 1_000 },
+        removeOnFail: { age: 604_800, count: 5_000 },
+        jobId: calibrationJobId(data),
+      }),
+    close: () => queue.close(),
+  };
+}
+
+/**
+ * Worker processor: a damaged payload or an identity the stack does not issue can never succeed, so both fail without retries
+ * (`UnrecoverableError`). A correct payload is executed once per attempt. Extracted so the validation is provable without Redis.
+ */
+export function createCalibrationProcessor<T>(execute: (data: CalibrationJobData) => Promise<T>): (job: Pick<Job<CalibrationJobData>, "data">) => Promise<T> {
+  return async (job) => {
+    const data = job.data as Partial<Record<keyof CalibrationJobData, unknown>> | null | undefined;
+    if (!data || typeof data.modelVersion !== "string" || typeof data.configHash !== "string" || typeof data.asOf !== "string" || !Number.isFinite(Date.parse(data.asOf))) {
+      throw new UnrecoverableError("INVALID_CALIBRATION_JOB");
+    }
+    try {
+      assertCalibrationIdentity(data.modelVersion, data.configHash);
+    } catch {
+      throw new UnrecoverableError("CALIBRATION_IDENTITY_INVALID");
+    }
+    return execute({ modelVersion: data.modelVersion, configHash: data.configHash, asOf: data.asOf });
+  };
+}
+
+/** Concurrency 1: each run reads the whole fit sample and writes calibrators; one pair at a time is enough for a daily job. */
+export function createCalibrationWorker(input: { redisUrl: string; prefix?: string; execute: (data: CalibrationJobData) => Promise<unknown>; workerFactory?: typeof Worker }) {
+  const WorkerFactory = input.workerFactory ?? Worker;
+  return new WorkerFactory<CalibrationJobData>(calibrationQueue(input.prefix), createCalibrationProcessor(input.execute), {
+    connection: connection(input.redisUrl), concurrency: 1, maxStalledCount: 2, lockDuration: 60_000,
+  });
+}
+
+const MAX_TIMER_DELAY = 2 ** 31 - 1;
+const DEFAULT_START_DELAY_MS = 5_000;
+const DEFAULT_RETRY_MS = 60_000;
+
+export type CalibrationTickScheduler = Readonly<{ close(): void }>;
+
+/**
+ * Daily tick: after a short start delay and then every `cadence.intervalHours`, queue one job per known identity. Job ids are
+ * deterministic per UTC day, so a restart or a repeated tick inside a day is a queue no-op. A queueing failure goes to `onError`
+ * and the whole tick is retried after `retryMs` (the identities that did queue are no-ops the second time). Timer delays are
+ * clamped to the 32-bit limit; a clamped wait that elapses before the tick is due re-arms instead of firing early.
+ */
+export function scheduleCalibrationTick(input: {
+  enqueue: (data: CalibrationJobData) => Promise<unknown>;
+  now?: () => Date;
+  setTimeout?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout>;
+  clearTimeout?: (timer: ReturnType<typeof setTimeout>) => void;
+  onError?: (error: unknown) => void;
+  startDelayMs?: number;
+  intervalMs?: number;
+  retryMs?: number;
+}): CalibrationTickScheduler {
+  const now = input.now ?? (() => new Date());
+  const setTimer = input.setTimeout ?? setTimeout;
+  const clearTimer = input.clearTimeout ?? clearTimeout;
+  const intervalMs = input.intervalMs ?? CALIBRATION_CONFIG.cadence.intervalHours * 3_600_000;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let closed = false;
+
+  const armAt = (dueMs: number): void => {
+    if (closed) return;
+    const remaining = Math.max(0, dueMs - now().getTime());
+    timer = setTimer(() => {
+      if (closed) return;
+      if (now().getTime() < dueMs) armAt(dueMs);
+      else void tick();
+    }, Math.min(MAX_TIMER_DELAY, remaining));
+  };
+
+  const tick = async (): Promise<void> => {
+    if (closed) return;
+    const asOf = now().toISOString();
+    const outcomes = await Promise.allSettled(calibrationIdentities().map((identity) => input.enqueue({ ...identity, asOf })));
+    const failure = outcomes.find((outcome): outcome is PromiseRejectedResult => outcome.status === "rejected");
+    if (failure) {
+      input.onError?.(failure.reason);
+      armAt(now().getTime() + (input.retryMs ?? DEFAULT_RETRY_MS));
+      return;
+    }
+    armAt(now().getTime() + intervalMs);
+  };
+
+  armAt(now().getTime() + (input.startDelayMs ?? DEFAULT_START_DELAY_MS));
+  return {
+    close: () => {
+      closed = true;
+      if (timer !== undefined) clearTimer(timer);
+    },
+  };
 }

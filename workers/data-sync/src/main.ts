@@ -21,6 +21,7 @@ import { Redis } from "ioredis";
 import { createDurableProviderCircuitRegistry } from "./resilience/circuits.js";
 import { DEFAULT_ALERTS_TICK_MS, scheduleAlertingTick, type BucketReader, type DeadLetterInspector } from "./jobs/alerts.js";
 import { scheduleDeliveryProbe } from "./jobs/delivery-probe.js";
+import { calibrationIdentities, calibrationQueue, createCalibrationQueue, createCalibrationWorker, runCalibrationJob, scheduleCalibrationTick, type CalibrationJobData, type CalibrationQueue } from "./jobs/calibration.js";
 
 export { createSyncWorkers } from "./queues/index.js";
 
@@ -215,6 +216,54 @@ export function startAlertingRuntime(input: {
   };
 }
 
+/**
+ * Calibration runtime composition root (Phase 12, D-10). Arms the daily tick that queues one calibration job per known forecast
+ * identity and the concurrency-1 worker that runs it. The job reads only the database and writes only calibrators and their
+ * events; it never calls a data provider. Connection strings are never logged.
+ */
+export function startCalibrationRuntime(input: {
+  databaseUrl: string;
+  redisUrl: string;
+  prefix?: string;
+  log?: (event: Readonly<Record<string, unknown>>) => void;
+  /** Test-only seam: injected dependencies are caller-owned, so close() never tears them down. Omitted (production) the
+   *  database client, queue and worker are created and closed here. */
+  dependencies?: { database: PrismaClient; queue: CalibrationQueue };
+  now?: () => Date;
+  setTimeout?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout>;
+  clearTimeout?: (timer: ReturnType<typeof setTimeout>) => void;
+}) {
+  const log = input.log ?? ((event: Readonly<Record<string, unknown>>) => console.info(JSON.stringify(event)));
+  const deps = input.dependencies;
+  const database = deps?.database ?? createPrismaClient(input.databaseUrl);
+  const queue: CalibrationQueue = deps?.queue ?? createCalibrationQueue({ redisUrl: input.redisUrl, ...(input.prefix ? { prefix: input.prefix } : {}) });
+  const worker = deps
+    ? undefined
+    : createCalibrationWorker({
+        redisUrl: input.redisUrl,
+        ...(input.prefix ? { prefix: input.prefix } : {}),
+        execute: (data: CalibrationJobData) => runCalibrationJob({ database, modelVersion: data.modelVersion, configHash: data.configHash, asOf: data.asOf, log }),
+      });
+  const scheduler = scheduleCalibrationTick({
+    enqueue: (data) => queue.enqueue(data),
+    onError: (error) => log({ event: "calibration.tick_failed", error: error instanceof Error ? error.message : "UNKNOWN" }),
+    ...(input.now ? { now: input.now } : {}),
+    ...(input.setTimeout ? { setTimeout: input.setTimeout } : {}),
+    ...(input.clearTimeout ? { clearTimeout: input.clearTimeout } : {}),
+  });
+  log({ event: "calibration.armed", queue: calibrationQueue(input.prefix), identities: calibrationIdentities().length });
+  return {
+    async close() {
+      scheduler.close();
+      // Caller-injected dependencies stay open; only what this function created is closed here.
+      if (deps) return;
+      await worker?.close();
+      await queue.close();
+      await database.$disconnect();
+    },
+  };
+}
+
 function start(): void {
   const config = readServerConfig(process.env);
   const readiness = createWorkerReadiness({
@@ -226,7 +275,8 @@ function start(): void {
     const runtime = startReplayWorker({ databaseUrl: config.DATABASE_URL, redisUrl: config.REDIS_URL, footballDataApiToken: config.FOOTBALL_DATA_API_TOKEN, apiFootballApiKey: config.API_FOOTBALL_API_KEY, forecastSweep: { intervalMs: 60_000 } });
     const backupRuntime = startBackupRuntime({ databaseUrl: config.DATABASE_URL, redisUrl: config.REDIS_URL, backupConfig: readBackupConfig(process.env) });
     const alertsRuntime = startAlertingRuntime({ databaseUrl: config.DATABASE_URL, redisUrl: config.REDIS_URL, ...(process.env.QUEUE_PREFIX?.trim() ? { prefix: process.env.QUEUE_PREFIX.trim() } : {}), alertsConfig: readAlertsConfig(process.env) });
-    const close = () => { void runtime.close(); void backupRuntime?.close(); void alertsRuntime?.close(); };
+    const calibrationRuntime = startCalibrationRuntime({ databaseUrl: config.DATABASE_URL, redisUrl: config.REDIS_URL, ...(process.env.QUEUE_PREFIX?.trim() ? { prefix: process.env.QUEUE_PREFIX.trim() } : {}) });
+    const close = () => { void runtime.close(); void backupRuntime?.close(); void alertsRuntime?.close(); void calibrationRuntime?.close(); };
     process.once("SIGTERM", close); process.once("SIGINT", close);
   }
 }

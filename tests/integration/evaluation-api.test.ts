@@ -99,8 +99,8 @@ describe("evaluation scorecard API boundary", () => {
 
   it("uses an opaque cohort-bound cursor and reconciles stable candidate pages", async () => {
     const rows = [
-      { id: "candidate-b", valueReceiptId: "value-b", settlementReceiptId: "settlement-b", resultVersionId: "result-b", selection: "AWAY", decimalOdds: "3.1", outcome: "LOSS", stakeUnits: "1", profitUnits: "-1", clv: { status: "UNAVAILABLE", reason: "NO_COMPARABLE_CLOSE", value: null }, settledAt: "2026-01-10T12:00:00.000Z" },
-      { id: "candidate-a", valueReceiptId: "value-a", settlementReceiptId: "settlement-a", resultVersionId: "result-a", selection: "HOME", decimalOdds: "2.5", outcome: "WIN", stakeUnits: "1", profitUnits: "1.5", clv: { status: "AVAILABLE", reason: null, value: "0.04" }, settledAt: "2026-01-10T12:00:00.000Z" },
+      { id: "candidate-b", valueReceiptId: "value-b", settlementReceiptId: "settlement-b", resultVersionId: "result-b", selection: "AWAY", decimalOdds: "3.1", outcome: "LOSS", stakeUnits: "1", profitUnits: "-1", clv: { status: "UNAVAILABLE", reason: "NO_COMPARABLE_CLOSE", value: null, policyVersion: "odds-ratio-clv-v1" }, clvNoVig: { status: "UNAVAILABLE", policyVersion: "no-vig-clv-v1", reason: "CLOSING_SET_MISSING" }, settledAt: "2026-01-10T12:00:00.000Z" },
+      { id: "candidate-a", valueReceiptId: "value-a", settlementReceiptId: "settlement-a", resultVersionId: "result-a", selection: "HOME", decimalOdds: "2.5", outcome: "WIN", stakeUnits: "1", profitUnits: "1.5", clv: { status: "AVAILABLE", reason: null, value: "0.04", policyVersion: "odds-ratio-clv-v1" }, clvNoVig: { status: "UNAVAILABLE", policyVersion: "no-vig-clv-v1", reason: "CLOSING_SET_MISSING" }, settledAt: "2026-01-10T12:00:00.000Z" },
     ] as const;
     const repository: EvaluationRepository = {
       loadCohort: vi.fn(async () => cohort()),

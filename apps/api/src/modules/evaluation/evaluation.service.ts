@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException, Optional, ServiceUnavailableException } from "@nestjs/common";
-import { compareBacktestPlans, createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { compareBacktestPlans, createPrismaClient, readNoVigClvForCandidates, type NoVigClvReading, type PrismaClient } from "@bet-stats/database";
 import {
   COHORT_HEALTH_POLICY,
   RELIABILITY_POLICY,
@@ -50,7 +50,10 @@ export type ValueCandidateRow = Readonly<{
   outcome: string;
   stakeUnits: string;
   profitUnits: string;
-  clv: { status: string; reason: string | null; value: string | null };
+  /** Frozen at settlement time from the receipt; its meaning is unchanged. `policyVersion` labels the formula (odds-ratio-clv-v1). */
+  clv: { status: string; reason: string | null; value: string | null; policyVersion: string };
+  /** Read-time no-vig CLV (CLV-02): computed on every read, never stored; evaluation-only (D-05). */
+  clvNoVig: NoVigClvReading;
   settledAt: string;
 }>;
 
@@ -215,11 +218,24 @@ export function createPrismaEvaluationRepository(client: PrismaClient): Evaluati
             { settlementReceipt: { settledAt: new Date(cursor.settledAt) }, id: { lt: cursor.id } },
           ] } : {}),
         },
-        include: { settlementReceipt: { select: { resultVersionId: true, settledAt: true } }, oddsSelection: { select: { decimalOdds: true } } },
+        include: {
+          settlementReceipt: { select: { resultVersionId: true, settledAt: true } },
+          oddsSelection: { select: { decimalOdds: true } },
+          valueReceipt: { select: { oddsSnapshotId: true } },
+          fixture: { select: { kickoffUtc: true } },
+        },
         orderBy: [{ settlementReceipt: { settledAt: "desc" } }, { id: "desc" }],
         take: limit + 1,
       });
       const selected = rows.slice(0, limit);
+      const noVig = await readNoVigClvForCandidates(client, selected.map((row) => ({
+        key: row.id,
+        fixtureId: row.fixtureId,
+        market: row.market,
+        selection: row.selection,
+        oddsSnapshotId: row.valueReceipt.oddsSnapshotId,
+        kickoffUtc: row.fixture.kickoffUtc,
+      })));
       const items: ValueCandidateRow[] = selected.map((row) => ({
         id: row.id,
         valueReceiptId: row.valueReceiptId,
@@ -230,7 +246,8 @@ export function createPrismaEvaluationRepository(client: PrismaClient): Evaluati
         outcome: row.result,
         stakeUnits: row.stakeUnits,
         profitUnits: row.profitUnits,
-        clv: { status: row.clvStatus, reason: row.clvReason, value: row.clv },
+        clv: { status: row.clvStatus, reason: row.clvReason, value: row.clv, policyVersion: row.clvPolicyVersion },
+        clvNoVig: noVig.get(row.id)!,
         settledAt: row.settlementReceipt.settledAt.toISOString(),
       }));
       const totals = aggregateFlatOneUnit(items.map((row) => ({ status: "SETTLED", policyVersion: "flat-one-unit-v1", stakeUnits: row.stakeUnits, returnUnits: "0", profitUnits: row.profitUnits })));

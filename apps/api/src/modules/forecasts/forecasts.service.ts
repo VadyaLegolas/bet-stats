@@ -1,11 +1,14 @@
 import { BadRequestException, ConflictException, Injectable, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
-import { createPrismaClient, createPrismaForecastRepository, type ForecastPublicationRepository, type PrismaClient } from "@bet-stats/database";
+import { createPrismaClient, createPrismaForecastRepository, readCalibrationState, type ForecastPublicationRepository, type PrismaClient } from "@bet-stats/database";
 import {
   ForecastOrchestrator,
   parseForecastRequest,
+  type CalibratedForecastResponseDto,
   type ForecastResponseDto,
 } from "@bet-stats/domain";
 import { resolveForecastModelSelection } from "@bet-stats/config";
+
+import { attachMarketCalibration, type CalibrationEnrichmentDeps } from "./forecast-calibration.js";
 
 
 /** Server-side configuration/identity failures: the caller did nothing wrong, so they are not a 400 (review IN-03). */
@@ -48,11 +51,21 @@ export class ForecastsService implements OnModuleDestroy {
   private readonly client: PrismaClient | null;
   private readonly repository: ForecastPublicationRepository | null;
   private readonly selection: ReturnType<typeof resolveForecastModelSelection>;
+  /** Read-time calibration (Phase 12). Replaceable only as a test seam; production uses the database reader. */
+  calibration: CalibrationEnrichmentDeps;
 
   constructor() {
     this.client = process.env.DATABASE_URL ? createPrismaClient(process.env.DATABASE_URL) : null;
     this.repository = this.client ? createPrismaForecastRepository(this.client) : null;
     this.selection = resolveForecastModelSelection(process.env);
+    const client = this.client;
+    this.calibration = {
+      readState: (identity, asOf) => {
+        if (!client) throw new Error("DATABASE_UNAVAILABLE");
+        return readCalibrationState(client, { ...identity, asOf });
+      },
+      now: () => new Date(),
+    };
   }
 
   private db(): ForecastPublicationRepository {
@@ -60,15 +73,19 @@ export class ForecastsService implements OnModuleDestroy {
     return this.repository;
   }
 
-  generate(input: unknown): Promise<ForecastResponseDto> { return generateForecast(input, this.db(), this.selection); }
-  async list(fixtureId: string): Promise<readonly ForecastResponseDto[]> {
-    return this.db().listIssued?.(fixtureId) ?? [];
+  async generate(input: unknown): Promise<CalibratedForecastResponseDto> {
+    const [forecast] = await attachMarketCalibration([await generateForecast(input, this.db(), this.selection)], this.calibration);
+    return forecast!;
   }
-  async get(fixtureId: string, kind: unknown, cutoff: unknown): Promise<ForecastResponseDto> {
+  async list(fixtureId: string): Promise<readonly CalibratedForecastResponseDto[]> {
+    return attachMarketCalibration((await this.db().listIssued?.(fixtureId)) ?? [], this.calibration);
+  }
+  async get(fixtureId: string, kind: unknown, cutoff: unknown): Promise<CalibratedForecastResponseDto> {
     const request = parseForecastRequest({ fixtureId, kind, cutoff });
     const existing = await this.db().findIssued?.(request.fixtureId, request.kind, request.cutoff);
     if (!existing) throw failure("FORECAST_NOT_FOUND");
-    return existing;
+    const [forecast] = await attachMarketCalibration([existing], this.calibration);
+    return forecast!;
   }
   async onModuleDestroy(): Promise<void> { await this.client?.$disconnect(); }
 }

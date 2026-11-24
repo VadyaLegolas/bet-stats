@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, Get, Header, Param, Post, Query, UseGuards } from "@nestjs/common";
-import type { ForecastRequestDto, ForecastResponseDto } from "@bet-stats/domain";
+import type { CalibratedForecastResponseDto, ForecastRequestDto } from "@bet-stats/domain";
 
 import { EligibilityGuard } from "../eligibility/eligibility.guard.js";
 import { ForecastsService } from "./forecasts.service.js";
@@ -23,13 +23,13 @@ export class ForecastsController {
 
   @Post()
   @Header("Cache-Control", "private, no-store, max-age=0")
-  generate(@Param("fixtureId") fixtureId: string, @Body() body: Omit<ForecastRequestDto, "fixtureId">): Promise<ForecastResponseDto> {
+  generate(@Param("fixtureId") fixtureId: string, @Body() body: Omit<ForecastRequestDto, "fixtureId">): Promise<CalibratedForecastResponseDto> {
     return this.forecasts.generate({ ...body, fixtureId });
   }
 
   @Get()
   @Header("Cache-Control", "private, no-store, max-age=0")
-  get(@Param("fixtureId") fixtureId: string, @Query() query: Record<string, string | undefined>): Promise<ForecastResponseDto | readonly ForecastResponseDto[]> {
+  get(@Param("fixtureId") fixtureId: string, @Query() query: Record<string, string | undefined>): Promise<CalibratedForecastResponseDto | readonly CalibratedForecastResponseDto[]> {
     const keys = Object.keys(query);
     if (keys.length === 0) return this.forecasts.list(fixtureId);
     if (keys.length !== 2 || !keys.includes("kind") || !keys.includes("cutoff")) {

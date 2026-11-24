@@ -5,7 +5,8 @@ export type CalibrationErrorCode =
   | "CALIBRATOR_MODEL_MISMATCH"
   | "CALIBRATOR_MARKET_MISMATCH"
   | "CALIBRATOR_INVALID"
-  | "INVALID_CALIBRATION_EVALUATION";
+  | "INVALID_CALIBRATION_EVALUATION"
+  | "INVALID_MARKET_CALIBRATION";
 
 export type CalibrationError = Error & { readonly code: CalibrationErrorCode };
 

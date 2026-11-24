@@ -60,7 +60,42 @@ export function withCalibrationStateCache(
   };
 }
 
+/** A calibration read or resolve that failed softly (WR-07). Carries a code and the error class, never the message. */
+export interface CalibrationReadFailure {
+  readonly identity: CalibratorIdentity;
+  readonly stage: "READ" | "RESOLVE";
+  readonly code: string;
+}
+
+function safeToken(value: unknown): string | null {
+  return typeof value === "string" && /^[A-Za-z0-9_.-]{1,80}$/.test(value) ? value : null;
+}
+
+/**
+ * Failure description for the operator: the error's own `code` (Prisma P-codes, repository and domain codes) or else its class
+ * name. The message is dropped on purpose: driver messages can carry the query, its parameters or connection details.
+ */
+export function describeCalibrationError(error: unknown): string {
+  if (typeof error === "object" && error !== null) {
+    return safeToken((error as { code?: unknown }).code) ?? safeToken((error as { name?: unknown }).name) ?? "UNKNOWN";
+  }
+  return "UNKNOWN";
+}
+
+/** Structured, secret-free log record of a soft failure. */
+export function calibrationFailureLogRecord(failure: CalibrationReadFailure): Readonly<Record<string, string>> {
+  return {
+    event: "calibration.read_failed",
+    stage: failure.stage,
+    modelVersion: failure.identity.modelVersion,
+    configHash: failure.identity.configHash,
+    code: failure.code,
+  };
+}
+
 export interface CalibrationEnrichmentDeps {
+  /** Called once per failed identity and request with a failure that is safe to log. Its own errors are swallowed. */
+  onError?(failure: CalibrationReadFailure): void;
   /** State of the exact forecast identity at `asOf` (ISO-8601 UTC): active calibrator and eligible outcomes per market. */
   readState(identity: CalibratorIdentity, asOf: string): Promise<CalibrationState>;
   now(): Date;
@@ -87,6 +122,13 @@ export async function attachMarketCalibration<T extends ForecastResponseDto>(
   if (forecasts.length === 0) return [];
   const asOf = deps.now().toISOString();
   const reads = new Map<string, Promise<CalibrationState | null>>();
+  const report = (failure: CalibrationReadFailure): void => {
+    try {
+      deps.onError?.(failure);
+    } catch {
+      // Observability must never turn a soft failure into a request failure.
+    }
+  };
   const stateOf = (forecast: T): Promise<CalibrationState | null> => {
     const key = identityKey(forecast);
     let read = reads.get(key);
@@ -94,7 +136,10 @@ export async function attachMarketCalibration<T extends ForecastResponseDto>(
       // A failed read becomes null for every forecast of this identity; the cause is not exposed to the client.
       read = Promise.resolve()
         .then(() => deps.readState({ modelVersion: forecast.modelVersion, configHash: forecast.configHash }, asOf))
-        .catch(() => null);
+        .catch((error: unknown) => {
+          report({ identity: { modelVersion: forecast.modelVersion, configHash: forecast.configHash }, stage: "READ", code: describeCalibrationError(error) });
+          return null;
+        });
       reads.set(key, read);
     }
     return read;
@@ -119,7 +164,8 @@ export async function attachMarketCalibration<T extends ForecastResponseDto>(
           eligibleSampleSize: { ONE_X_TWO: state.ONE_X_TWO.eligibleSampleSize ?? 0, OVER_UNDER_2_5: state.OVER_UNDER_2_5.eligibleSampleSize ?? 0, BTTS: state.BTTS.eligibleSampleSize ?? 0 },
           config: CALIBRATION_CONFIG,
         });
-      } catch {
+      } catch (error) {
+        report({ identity: { modelVersion: forecast.modelVersion, configHash: forecast.configHash }, stage: "RESOLVE", code: describeCalibrationError(error) });
         marketCalibration = unavailableAll(forecast);
       }
     }

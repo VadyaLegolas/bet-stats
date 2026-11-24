@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, Logger, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, createPrismaForecastRepository, readCalibrationState, type ForecastPublicationRepository, type PrismaClient } from "@bet-stats/database";
 import {
   ForecastOrchestrator,
@@ -8,7 +8,7 @@ import {
 } from "@bet-stats/domain";
 import { resolveForecastModelSelection } from "@bet-stats/config";
 
-import { attachMarketCalibration, resolveCalibrationStateCacheTtlMs, withCalibrationStateCache, type CalibrationEnrichmentDeps } from "./forecast-calibration.js";
+import { attachMarketCalibration, calibrationFailureLogRecord, resolveCalibrationStateCacheTtlMs, withCalibrationStateCache, type CalibrationEnrichmentDeps } from "./forecast-calibration.js";
 
 
 /** Server-side configuration/identity failures: the caller did nothing wrong, so they are not a 400 (review IN-03). */
@@ -66,6 +66,8 @@ export class ForecastsService implements OnModuleDestroy {
         return readCalibrationState(client, { ...identity, asOf });
       }, { ttlMs: resolveCalibrationStateCacheTtlMs(process.env) }),
       now: () => new Date(),
+      // The client sees UNAVAILABLE; the operator sees why (code and identity only, WR-07).
+      onError: (failure) => new Logger(ForecastsService.name).warn(JSON.stringify(calibrationFailureLogRecord(failure))),
     };
   }
 

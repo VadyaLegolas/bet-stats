@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import { Logger } from "../../apps/api/node_modules/@nestjs/common/index.js";
 
 import type { ActiveCalibratorState, CalibrationState } from "@bet-stats/database";
 import { forecastConfigHashFor, parseMarketCalibrationMap, type CalibratedForecastResponseDto, type CalibratorIdentity, type ForecastResponseDto, type ScoreMarket } from "@bet-stats/domain";
 
-import { attachMarketCalibration, resolveCalibrationStateCacheTtlMs, withCalibrationStateCache, type CalibrationEnrichmentDeps } from "../../apps/api/src/modules/forecasts/forecast-calibration.js";
+import { attachMarketCalibration, calibrationFailureLogRecord, describeCalibrationError, resolveCalibrationStateCacheTtlMs, withCalibrationStateCache, type CalibrationEnrichmentDeps } from "../../apps/api/src/modules/forecasts/forecast-calibration.js";
+import { ForecastsService } from "../../apps/api/src/modules/forecasts/forecasts.service.js";
 import { makeFitted } from "../helpers/calibration-db.js";
 import { makeForecastDto } from "../helpers/forecast-dto.js";
 
@@ -259,5 +261,58 @@ describe("WR-06: parallel identity reads and a bounded TTL cache for the calibra
     const state: CalibrationState = { ...emptyState(400), BTTS: { active: active("BTTS", DC), eligibleSampleSize: null } };
     const [result] = await attachMarketCalibration([forecast(DC)], deps(async () => state));
     expect(result!.marketCalibration.BTTS.calibration.state).toBe("CALIBRATED");
+  });
+});
+
+describe("WR-07: a soft calibration failure is reported to the operator, without secrets", () => {
+  it("reports one failure per failed identity with its code and identity, and the client still gets UNAVAILABLE", async () => {
+    const onError = vi.fn();
+    const readState = async (identity: CalibratorIdentity): Promise<CalibrationState> => {
+      if (identity.modelVersion === V1.modelVersion) throw Object.assign(new Error("password authentication failed for user postgres at postgresql://postgres:hunter2@db:5432"), { code: "P1000" });
+      return emptyState(20);
+    };
+    const [dc, v1a, v1b] = await attachMarketCalibration([forecast(DC), forecast(V1, { id: "x" }), forecast(V1, { id: "y", kind: "LINEUP_CONFIRMED", officialLineupObservationId: "o" } as Partial<ForecastResponseDto>)], { ...deps(readState), onError });
+    expect(dc!.marketCalibration.ONE_X_TWO.calibration.state).toBe("INSUFFICIENT_DATA");
+    expect(v1a!.marketCalibration.ONE_X_TWO.calibration.reasonCode).toBe("CALIBRATION_READ_FAILED");
+    expect(v1b!.marketCalibration.BTTS.calibration.reasonCode).toBe("CALIBRATION_READ_FAILED");
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith({ identity: V1, stage: "READ", code: "P1000" });
+    const record = JSON.stringify(calibrationFailureLogRecord(onError.mock.calls[0]![0]));
+    expect(record).toContain("calibration.read_failed");
+    expect(record).not.toMatch(/hunter2|postgresql:\/\/|password/i);
+  });
+
+  it("falls back to the error class name, then to UNKNOWN, and never to the message", () => {
+    expect(describeCalibrationError(new TypeError("relation \"current_calibrators\" does not exist"))).toBe("TypeError");
+    expect(describeCalibrationError(Object.assign(new Error("x"), { code: "42P01" }))).toBe("42P01");
+    expect(describeCalibrationError(Object.assign(new Error("x"), { code: "has spaces and secrets" }))).toBe("Error");
+    expect(describeCalibrationError("boom")).toBe("UNKNOWN");
+    expect(describeCalibrationError(null)).toBe("UNKNOWN");
+  });
+
+  it("a logger that throws does not break the response", async () => {
+    const onError = vi.fn(() => { throw new Error("log sink down"); });
+    const [result] = await attachMarketCalibration([forecast(DC)], { ...deps(async () => { throw new Error("db down"); }), onError });
+    expect(result!.marketCalibration.ONE_X_TWO.calibration.reasonCode).toBe("CALIBRATION_READ_FAILED");
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("WR-07: the forecasts service logs a failed calibration read at warn level", () => {
+  it("wires onError to the Nest logger with the structured record", async () => {
+    const saved = process.env.DATABASE_URL;
+    delete process.env.DATABASE_URL;
+    const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    try {
+      const service = new ForecastsService();
+      const [result] = await attachMarketCalibration([forecast(DC)], service.calibration);
+      expect(result!.marketCalibration.ONE_X_TWO.calibration.reasonCode).toBe("CALIBRATION_READ_FAILED");
+      expect(warn).toHaveBeenCalledTimes(1);
+      const message = String(warn.mock.calls[0]![0]);
+      expect(JSON.parse(message)).toEqual({ event: "calibration.read_failed", stage: "READ", modelVersion: DC.modelVersion, configHash: DC.configHash, code: "Error" });
+    } finally {
+      warn.mockRestore();
+      if (saved !== undefined) process.env.DATABASE_URL = saved;
+    }
   });
 });

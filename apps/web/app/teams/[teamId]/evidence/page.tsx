@@ -108,14 +108,42 @@ function TraceUnknown() {
   return <span className="evidence-trace-unknown">{TRACE_FALLBACK}</span>;
 }
 
+const TRACE_OUTCOMES = {
+  WIN: { label: "победа", tone: "tone-positive" },
+  DRAW: { label: "ничья", tone: "tone-neutral" },
+  LOSS: { label: "поражение", tone: "tone-danger" },
+} as const;
+
+/** Количество подходящих матчей и исходов по уже показанным строкам. Pure. */
+export function traceOutcomeCounts(rows: readonly Trace[]): { total: number; win: number; draw: number; loss: number } {
+  const count = (outcome: "WIN" | "DRAW" | "LOSS") => rows.filter((row) => row.outcome === outcome).length;
+  return { total: rows.length, win: count("WIN"), draw: count("DRAW"), loss: count("LOSS") };
+}
+
+function TraceOutcome({ outcome }: { outcome: Trace["outcome"] }) {
+  if (!outcome) return <TraceUnknown/>;
+  const known = TRACE_OUTCOMES[outcome];
+  return <span className={`state-chip state-chip--md ${known.tone}`}><span className="state-dot" aria-hidden="true"></span>{known.label}</span>;
+}
+
 type TraceProps = { rows: readonly Trace[]; fixtureLabels?: Record<string, string> | null | undefined; components?: EvidenceProjectionDto["components"] | undefined; timeZone: string };
 
 export function EvidenceTraceTable({ rows, fixtureLabels, components, timeZone }: TraceProps) {
-  return <div role="region" aria-label="Подходящие матчи" className="scroll-x evidence-trace-scroll" tabIndex={0}><table className="evidence-trace-table"><caption>Матчи, включённые в сборку исторических доказательств</caption><thead><tr><th className="evidence-trace-match">Матч</th><th className="evidence-trace-nowrap">Место</th><th className="evidence-trace-nowrap">Исход</th><th className="evidence-trace-score">Счёт</th><th className="evidence-trace-time">Время действия</th><th className="evidence-trace-time">Время наблюдения</th><th className="evidence-trace-source">Источник</th><th className="evidence-trace-parts">Компоненты</th></tr></thead><tbody>{rows.map((row) => <tr key={`${row.fixtureId}-${row.observedAt ?? ""}`}><td className="evidence-trace-match">{fixtureLabels?.[row.fixtureId] ?? row.fixtureId}</td><td className="evidence-trace-nowrap">{row.venue === "HOME" ? "дома" : row.venue === "AWAY" ? "в гостях" : <TraceUnknown/>}</td><td className="evidence-trace-nowrap">{row.outcome === "WIN" ? "победа" : row.outcome === "DRAW" ? "ничья" : row.outcome === "LOSS" ? "поражение" : <TraceUnknown/>}</td><td className="evidence-trace-score">{row.score ? `${row.score.home}:${row.score.away}` : <TraceUnknown/>}</td><td className="evidence-trace-time">{row.effectiveAt ? <time dateTime={row.effectiveAt} title={row.effectiveAt}>{formatInstant(row.effectiveAt, timeZone)}</time> : <TraceUnknown/>}</td><td className="evidence-trace-time">{row.observedAt ? <time dateTime={row.observedAt} title={row.observedAt}>{formatInstant(row.observedAt, timeZone)}</time> : <TraceUnknown/>}</td><td className="evidence-trace-source">{row.source ?? <TraceUnknown/>}</td><td className="evidence-trace-parts">{traceComponentLabels({ components }, row.fixtureId) ?? <TraceUnknown/>}</td></tr>)}</tbody></table></div>;
+  return <div role="region" aria-label="Подходящие матчи" className="scroll-x evidence-trace-scroll" tabIndex={0}><table className="evidence-trace-table"><caption>Матчи, включённые в сборку исторических доказательств</caption><thead><tr><th className="evidence-trace-match">Матч</th><th className="evidence-trace-nowrap">Место</th><th className="evidence-trace-nowrap">Исход</th><th className="evidence-trace-score">Счёт</th><th className="evidence-trace-time">Время действия</th><th className="evidence-trace-time">Время наблюдения</th><th className="evidence-trace-source">Источник</th><th className="evidence-trace-parts">Компоненты</th></tr></thead><tbody>{rows.map((row) => <tr key={`${row.fixtureId}-${row.observedAt ?? ""}`}><td className="evidence-trace-match">{fixtureLabels?.[row.fixtureId] ?? row.fixtureId}</td><td className="evidence-trace-nowrap">{row.venue === "HOME" ? "дома" : row.venue === "AWAY" ? "в гостях" : <TraceUnknown/>}</td><td className="evidence-trace-nowrap"><TraceOutcome outcome={row.outcome}/></td><td className="evidence-trace-score">{row.score ? `${row.score.home}:${row.score.away}` : <TraceUnknown/>}</td><td className="evidence-trace-time">{row.effectiveAt ? <time dateTime={row.effectiveAt} title={row.effectiveAt}>{formatInstant(row.effectiveAt, timeZone)}</time> : <TraceUnknown/>}</td><td className="evidence-trace-time">{row.observedAt ? <time dateTime={row.observedAt} title={row.observedAt}>{formatInstant(row.observedAt, timeZone)}</time> : <TraceUnknown/>}</td><td className="evidence-trace-source">{row.source ?? <TraceUnknown/>}</td><td className="evidence-trace-parts">{traceComponentLabels({ components }, row.fixtureId) ?? <TraceUnknown/>}</td></tr>)}</tbody></table></div>;
+}
+
+function TraceStats({ rows }: { rows: readonly Trace[] }) {
+  const counts = traceOutcomeCounts(rows);
+  const tiles = [
+    { label: "Победы", count: counts.win, tone: TRACE_OUTCOMES.WIN.tone },
+    { label: "Ничьи", count: counts.draw, tone: TRACE_OUTCOMES.DRAW.tone },
+    { label: "Поражения", count: counts.loss, tone: TRACE_OUTCOMES.LOSS.tone },
+  ].filter((tile) => tile.count > 0);
+  return <dl className="evidence-trace-stats"><div className="evidence-trace-stat"><dt>Подходящих матчей</dt><dd>{counts.total}</dd></div>{tiles.map((tile) => <div key={tile.label} className={`evidence-trace-stat ${tile.tone}`}><dt><span className="state-dot" aria-hidden="true"></span>{tile.label}</dt><dd>{tile.count}</dd></div>)}</dl>;
 }
 
 export function EvidenceTraceSection({ rows, fixtureLabels, components, timeZone }: TraceProps) {
-  return <section aria-labelledby="trace-heading" className="panel evidence-trace"><h2 id="trace-heading">Трассировка подходящих матчей</h2>{rows.length === 0 ? <p className="evidence-trace-empty">Нет матчей, подходящих под отсчёт по времени действия и времени захвата.</p> : <EvidenceTraceTable rows={rows} fixtureLabels={fixtureLabels} components={components} timeZone={timeZone}/>}</section>;
+  return <section aria-labelledby="trace-heading" className="panel evidence-trace"><h2 id="trace-heading">Трассировка подходящих матчей</h2>{rows.length === 0 ? <p className="evidence-trace-empty">Нет матчей, подходящих под отсчёт по времени действия и времени захвата.</p> : <><TraceStats rows={rows}/><EvidenceTraceTable rows={rows} fixtureLabels={fixtureLabels} components={components} timeZone={timeZone}/></>}</section>;
 }
 
 export default function TeamEvidencePage() {

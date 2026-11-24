@@ -4,16 +4,16 @@ milestone: v1.1
 current_phase: 11
 current_phase_name: Dixon-Coles Model Version
 status: in_progress
-stopped_at: Completed 11-06-PLAN.md
-last_updated: "2026-11-23T22:39:12.594Z"
+stopped_at: Completed 11-07-PLAN.md
+last_updated: "2026-11-24T03:44:12.970Z"
 last_activity: 2026-11-23
 last_activity_desc: "Phase 11 verified (human_needed): review findings fixed, DC-default-before-comparison accepted as override; real V1-vs-DC comparison and rho-method SQL check pending"
-state_head: 643c52f388cc986f9696a454dd95e1dfb5833204
+state_head: a78d5a317e556b13d743976a192f037c27580d5b
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 29
-  completed_plans: 28
+  completed_plans: 29
   percent: 40
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -144,6 +144,7 @@ Progress: [████░░░░░░] 40%
 | Phase 10 P10-03 | 12min | 2 tasks | 6 files |
 | Phase 11 P05 | 2 sessions (blocked by Docker/disk once) | 3 tasks | 7 files |
 | Phase 11 P06 | 15 min | 2 tasks | 6 files |
+| Phase 11 P07 | 25 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -305,6 +306,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 10]: buildReceipt read the nonexistent lhr.environment.lighthouseVersion path — optional chain yielded undefined, JSON.stringify dropped the key, and --assert-only rejected the harness's own committed receipts (INVALID_RECEIPT); fixed to top-level lhr.lighthouseVersion (Lighthouse 13 types line 31) and both committed receipts repaired with the true 13.6.0 — always round-trip a written receipt through the validator when touching the receipt code (10-03)
 - [Phase 11]: 11-05: SettlementReceipt revision chain per (fixtureId, forecastSnapshotId) via forward-only migration; settlement intake lock held by outer transaction on its own connection before the Serializable snapshot (retry policy unchanged)
 - [Phase 11]: 11-06: cohort keeps one fixture (smallest id) per shared cutoff instant instead of shifting the cutoff by 1 ms; allowSmallCohort stays out of pairId; default lead comes from PRE_MATCH_CUTOFF_LEAD_HOURS
+- [Phase 11]: 11-07: run keeps submitting both plans at once; sequential submission rejected because revision chains belong to the forecast (11-05), the backtest worker has concurrency 1 and settlement concurrency is covered in the database
+- [Phase 11]: 11-07: end-to-end test fixes the evidence lead as an independent 6h literal so a CLI default drifting from production is caught
 
 ### Pending Todos
 
@@ -412,6 +415,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-23T22:39:09.968Z
-Stopped at: Completed 11-06-PLAN.md
+Last session: 2026-11-24T03:44:10.297Z
+Stopped at: Completed 11-07-PLAN.md
 Resume file: None

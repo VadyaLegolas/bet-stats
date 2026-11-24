@@ -6,6 +6,8 @@ import { PRE_MATCH_CUTOFF_LEAD_HOURS, PRE_MATCH_CUTOFF_LEAD_MS } from "../../wor
 import {
   buildComparisonPlanPair,
   buildComparisonWindows,
+  comparisonConfigHashes,
+  comparisonPairId,
   describeCohort,
   describeComparison,
   isCohortRunnable,
@@ -190,6 +192,30 @@ describe("operator model comparison: windows and plans", () => {
     const flagged = buildComparisonPlanPair({ ...range, allowSmallCohort: true }, enough);
     const plain = buildComparisonPlanPair(range, enough);
     expect([flagged.pairId, flagged.left.id, flagged.left.planHash, flagged.right.planHash]).toEqual([plain.pairId, plain.left.id, plain.left.planHash, plain.right.planHash]);
+  });
+
+  it("WR-12: the pair identity ignores the market, and follows the model configuration", async () => {
+    const rows = distinctFixtures(5);
+    const oneXTwo = buildComparisonPlanPair({ ...small, market: "ONE_X_TWO" }, rows);
+    const btts = buildComparisonPlanPair({ ...small, market: "BTTS" }, rows);
+    expect(btts.params.market).toBe("BTTS");
+    expect([btts.pairId, btts.left.id, btts.right.id, btts.left.planHash, btts.right.planHash]).toEqual([oneXTwo.pairId, oneXTwo.left.id, oneXTwo.right.id, oneXTwo.left.planHash, oneXTwo.right.planHash]);
+    // A second market therefore reuses the persisted plans instead of creating (and computing) a new pair.
+    const stores = fakeStores();
+    await submitComparisonPair(oneXTwo, { receipts: stores.receipts as never, queue: stores.queue });
+    await submitComparisonPair(btts, { receipts: stores.receipts as never, queue: stores.queue });
+    expect(stores.plans.size).toBe(2);
+
+    const resolved = resolveComparisonParams(small);
+    const windows = buildComparisonWindows(rows, resolved, "w");
+    const current = comparisonConfigHashes();
+    expect(current).toEqual({ left: forecastConfigHashFor("poisson-ensemble-v1"), right: forecastConfigHashFor("dixon-coles-ensemble-v1") });
+    expect(comparisonPairId(resolved, windows)).toBe(oneXTwo.pairId);
+    // A changed configuration of either model is a different pair, not a BACKTEST_PLAN_ID_CONFLICT on the old ids.
+    expect(comparisonPairId(resolved, windows, { ...current, right: "changed-dixon-coles-config" })).not.toBe(oneXTwo.pairId);
+    expect(comparisonPairId(resolved, windows, { ...current, left: "changed-v1-config" })).not.toBe(oneXTwo.pairId);
+    // Concurrency stays in the identity on purpose: it is part of planHash, so the same id with another value would conflict.
+    expect(buildComparisonPlanPair({ ...small, concurrency: 2 }, rows).pairId).not.toBe(oneXTwo.pairId);
   });
 
   it("describes the cohort with every number from the report", () => {

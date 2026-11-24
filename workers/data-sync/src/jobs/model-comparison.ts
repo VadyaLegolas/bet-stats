@@ -242,6 +242,23 @@ export function buildComparisonWindows(fixtures: readonly ComparisonFixture[], p
   return windowsFor(planComparisonCohort(fixtures, params).eligible, params, idPrefix);
 }
 
+export type ComparisonConfigHashes = Readonly<Record<"left" | "right", string>>;
+export function comparisonConfigHashes(): ComparisonConfigHashes {
+  return { left: forecastConfigHashFor(COMPARISON_MODELS.left), right: forecastConfigHashFor(COMPARISON_MODELS.right) };
+}
+
+/**
+ * Identity of a pair of plans (WR-12). It is what the plans CONTAIN: the window set, the cutoff/lag parameters that shaped it,
+ * the range, the concurrency (part of `planHash`, so a different value must be a different plan id) and the model config hashes.
+ * It deliberately omits `market` (both models score all three markets; the market only picks what `compare` reads, so a second
+ * market reuses the same plans instead of recomputing them) and `allowSmallCohort` (an admission flag, not plan content).
+ * A changed model config gives a new id instead of a BACKTEST_PLAN_ID_CONFLICT on the old one.
+ */
+export function comparisonPairId(resolved: ResolvedComparisonParams, windows: readonly RollingOriginWindow[], configHashes: ComparisonConfigHashes = comparisonConfigHashes()): string {
+  const { market: _market, allowSmallCohort: _allowSmallCohort, ...identity } = resolved;
+  return createHash("sha256").update(JSON.stringify({ resolved: identity, configHashes, windows })).digest("hex").slice(0, 12);
+}
+
 /** Deterministic pair identity: same parameters and the same fixture set always give the same plan ids and hashes. */
 export function buildComparisonPlanPair(params: ComparisonParams, fixtures: readonly ComparisonFixture[]): ComparisonPlanPair {
   const resolved = resolveComparisonParams(params);
@@ -250,9 +267,7 @@ export function buildComparisonPlanPair(params: ComparisonParams, fixtures: read
   if (blocked) throw coded(blocked);
   const windowsForIdentity = windowsFor(eligible, resolved, "w");
   if (windowsForIdentity.length > BACKTEST_LIMITS.maxWindows) throw coded("BACKTEST_LIMIT_EXCEEDED");
-  // The admission flag decides whether to submit, not what the plans contain, so it stays out of the identity.
-  const identity = { ...resolved, allowSmallCohort: undefined }; // JSON.stringify drops undefined: the hash ignores the flag
-  const pairId = createHash("sha256").update(JSON.stringify({ resolved: identity, windows: windowsForIdentity })).digest("hex").slice(0, 12);
+  const pairId = comparisonPairId(resolved, windowsForIdentity);
   const build = (side: "left" | "right", suffix: string): BacktestPlanReceipt => {
     const modelVersion = COMPARISON_MODELS[side];
     const id = `cmp-${pairId}-${suffix}`;

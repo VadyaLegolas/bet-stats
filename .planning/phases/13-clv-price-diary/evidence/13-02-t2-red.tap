@@ -1,0 +1,38 @@
+TAP version 13
+1..28
+ok 1 - tests/integration/closing-odds-api.test.ts > closing odds route: operator boundary > is POST internal/closing-odds behind OperatorGuard and fails closed with 404 # SKIP
+ok 2 - tests/integration/closing-odds-api.test.ts > closing odds route: operator boundary > canActivate answers 404 without the credential header and passes with it # SKIP
+not ok 3 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 201 with the stored rows and a private no-store header # time=12.11ms
+    ---
+    error:
+        name: "AssertionError"
+        message: "expected 200 to be 201 // Object.is equality"
+    at: "D:/Documents/Atom/bet-stats/tests/integration/closing-odds-api.test.ts:86:26"
+    actual: "200"
+    expected: "201"
+    ...
+ok 4 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 200 for an identical replay # SKIP
+ok 5 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 409 CLOSING_OBSERVATION_CONFLICT for a changed price # SKIP
+ok 6 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 422 with the reason code INCOMPLETE_MARKET_SET # SKIP
+ok 7 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 422 with the reason code DUPLICATE_SELECTION # SKIP
+ok 8 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 422 with the reason code UNSUPPORTED_MARKET # SKIP
+ok 9 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 422 with the reason code INVALID_OBSERVED_AT # SKIP
+ok 10 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 422 with the reason code OBSERVED_AT_NOT_PRE_KICKOFF # SKIP
+ok 11 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 422 with the reason code OBSERVED_AT_IN_FUTURE # SKIP
+ok 12 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 422 with the reason code RECORDED_AFTER_KICKOFF # SKIP
+ok 13 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 422 with the reason code FIXTURE_ALREADY_SETTLED # SKIP
+ok 14 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 422 with the reason code INVALID_ODDS # SKIP
+ok 15 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 422 with the reason code INVALID_SOURCE_CONVENTION # SKIP
+ok 16 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 422 with the reason code FIXTURE_NOT_FOUND # SKIP
+ok 17 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 422 with the reason code UNKNOWN_SOURCE_CONVENTION # SKIP
+ok 18 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > does not translate unexpected repository failures into a client error # SKIP
+ok 19 - tests/integration/closing-odds-api.test.ts > closing odds route: response codes > answers 503 when no database is configured # SKIP
+ok 20 - tests/integration/closing-odds-api.test.ts > closing odds route: strict body > rejects an observationKind with 400 and never calls the repository # SKIP
+ok 21 - tests/integration/closing-odds-api.test.ts > closing odds route: strict body > rejects an oddsFormat with 400 and never calls the repository # SKIP
+ok 22 - tests/integration/closing-odds-api.test.ts > closing odds route: strict body > rejects an unknown key with 400 and never calls the repository # SKIP
+ok 23 - tests/integration/closing-odds-api.test.ts > closing odds route: strict body > rejects an observationKind inside a selection with 400 and never calls the repository # SKIP
+ok 24 - tests/integration/closing-odds-api.test.ts > closing odds route: strict body > rejects a non-object selection with 400 and never calls the repository # SKIP
+ok 25 - tests/integration/closing-odds-api.test.ts > closing odds route: strict body > rejects an array body with 400 and never calls the repository # SKIP
+ok 26 - tests/integration/closing-odds-api.test.ts > closing odds route: strict body > rejects a null body with 400 and never calls the repository # SKIP
+ok 27 - tests/integration/closing-odds-api.test.ts > closing odds route: strict body > rejects a string body with 400 and never calls the repository # SKIP
+ok 28 - tests/integration/closing-odds-api.test.ts > closing odds route: strict body > passes only the five known fields to the repository # SKIP

@@ -3,17 +3,18 @@ gsd_state_version: "1.0"
 milestone: v1.1
 current_phase: 12
 current_phase_name: Calibration Layer and Versioned Rollback
-status: planning
-stopped_at: Phase 11 complete, ready to plan Phase 12
-last_updated: "2026-11-24T06:35:19.418Z"
+current_plan: 2
+status: executing
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-11-24T09:00:22.408Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 11 complete, transitioned to Phase 12
-state_head: b727200c14a0eb626c5199d871f19b419205dbb3
+state_head: cd0ccf238b15ccfdd5fd9d4c001966e2e9829cf6
 progress:
   total_phases: 10
   completed_phases: 5
-  total_plans: 29
-  completed_plans: 29
+  total_plans: 36
+  completed_plans: 30
   percent: 50
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -30,8 +31,9 @@ See: .planning/PROJECT.md (updated 2026-11-16)
 ## Current Position
 
 Phase: 12 — Calibration Layer and Versioned Rollback
-Plan: Not started
-Status: Ready to plan
+Current Plan: 2
+Total Plans in Phase: 7
+Status: Ready to execute
 Last activity: 2026-11-24 — Phase 11 complete, transitioned to Phase 12
 
 Progress: [█████░░░░░] 50%
@@ -146,6 +148,7 @@ Progress: [█████░░░░░] 50%
 | Phase 11 P05 | 2 sessions (blocked by Docker/disk once) | 3 tasks | 7 files |
 | Phase 11 P06 | 15 min | 2 tasks | 6 files |
 | Phase 11 P07 | 25 min | 3 tasks | 2 files |
+| Phase 12 P01 | 10 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -309,6 +312,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 11]: 11-06: cohort keeps one fixture (smallest id) per shared cutoff instant instead of shifting the cutoff by 1 ms; allowSmallCohort stays out of pairId; default lead comes from PRE_MATCH_CUTOFF_LEAD_HOURS
 - [Phase 11]: 11-07: run keeps submitting both plans at once; sequential submission rejected because revision chains belong to the forecast (11-05), the backtest worker has concurrency 1 and settlement concurrency is covered in the database
 - [Phase 11]: 11-07: end-to-end test fixes the evidence lead as an independent 6h literal so a CLI default drifting from production is caught
+- [Phase 12]: Calibration Newton fit uses an L2 prior to the identity map (slope 1, intercept 0); numerics live in the hashed calibration-config-v1
+- [Phase 12]: Fitted calibrator stores its own epsilon and trains on the fit window only; isotonic chosen only at S>=1500 with Brier margin >= 0.002 over Platt
 
 ### Pending Todos
 
@@ -416,6 +421,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-24T03:44:10.297Z
-Stopped at: Phase 11 complete, ready to plan Phase 12
+Last session: 2026-11-24T09:00:19.349Z
+Stopped at: Completed 12-01-PLAN.md
 Resume file: None

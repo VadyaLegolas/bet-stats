@@ -142,9 +142,9 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   3. A promoted calibrator rolls back automatically under materiality and hysteresis gates when holdout Brier regresses; frozen snapshots are never modified — calibration is a post-hoc layer, not a new model version.
 
 **Notes / research flags**: Policy decisions to record in `configVersion`, not hardcode — min cohort sizes, rollback materiality thresholds, fit cadence. 1X2 3-class renormalization strategy needs design. PAVA isotonic + Platt Newton steps are pure TypeScript in `packages/domain` — no ML libraries.
-**Plans**: 7 plans
+**Plans**: 1/7 plans executed
 **Plan list**:
-- [ ] 12-01-PLAN.md — Domain calibration core: `calibration-config-v1` (hashed policy), Platt by Newton steps, 1X2 one-vs-rest with renormalization, isotonic PAVA gated at 1500 outcomes, 300-outcome minimum, chronological holdout split, pinned-identity guard (`CALIBRATOR_MODEL_MISMATCH`)
+- [x] 12-01-PLAN.md — Domain calibration core: `calibration-config-v1` (hashed policy), Platt by Newton steps, 1X2 one-vs-rest with renormalization, isotonic PAVA gated at 1500 outcomes, 300-outcome minimum, chronological holdout split, pinned-identity guard (`CALIBRATOR_MODEL_MISMATCH`)
 - [ ] 12-02-PLAN.md — Pure lifecycle and read-state logic: promotion gate, evaluation verdict, rollback hysteresis (3 eligible worse windows, one bad window never rolls back), rollback target, supersession, CALIBRATED / INSUFFICIENT_DATA / UNAVAILABLE resolver and strict response contract
 - [ ] 12-03-PLAN.md — Append-only `Calibrator` / `CalibratorEvent` tables (forward-only migrations): composite-FK identity pin, active calibrator derived from the event log, transition guard trigger, repository, populated-database upgrade proof, frozen tables untouched
 - [ ] 12-04-PLAN.md — Leakage-safe fit-data read (PRODUCTION only, history at `asOf`, exact identity, one sample per fixture and market) and eligibility census, with guard-mutation evidence and parity against the settlement pipeline
@@ -230,7 +230,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 | 9. Degradation Alerting | 8/8 | Complete    | 2026-11-16 |
 | 10. Performance Audit and Budgets | 4/4 | Complete    | 2026-11-17 |
 | 11. Dixon-Coles Model Version | 7/7 | Complete    | 2026-11-24 |
-| 12. Calibration Layer and Versioned Rollback | 0/0 | Not started | - |
+| 12. Calibration Layer and Versioned Rollback | 1/7 | In Progress | - |
 | 13. CLV Price Diary | 0/0 | Not started | - |
 | 14. Asian Handicap and Exact Score Markets | 0/0 | Not started | - |
 | 15. 7-Day Value Scanner | 0/0 | Not started | - |

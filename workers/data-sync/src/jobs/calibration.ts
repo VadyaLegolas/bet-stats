@@ -56,6 +56,8 @@ export interface CalibrationJobInput {
   /** ISO-8601 instant of the run; the UTC day of it identifies the run. */
   readonly asOf: string;
   readonly log?: CalibrationJobLog;
+  /** Test seam: the repository and the fit-data reader default to the Prisma implementations over `database`. */
+  readonly dependencies?: Readonly<{ repository?: CalibrationRepository; readFitData?: typeof readCalibrationFitData }>;
 }
 
 export type ActionResult = "WRITTEN" | "ALREADY_RECORDED";
@@ -66,6 +68,15 @@ export interface ReceiptAction {
   readonly calibratorId: string | null;
   /** NO_CHANGE actions write nothing. */
   readonly result: ActionResult | "NONE";
+}
+
+/**
+ * A step of one market that failed without stopping the others. `code` is the error's own code or name, never its message:
+ * the receipt is logged and stored, and driver messages may carry connection details.
+ */
+export interface MarketFailure {
+  readonly stage: "MARKET" | "EVALUATION" | "CANDIDATE";
+  readonly code: string;
 }
 
 export interface MarketReceipt {
@@ -80,6 +91,8 @@ export interface MarketReceipt {
   /** A concurrent run won a transition; the state was re-read and nothing further was attempted for this market. */
   readonly concurrentTransition: boolean;
   readonly active: Readonly<{ calibratorId: string; version: number }> | null;
+  /** Steps that failed (WR-02). Empty on a clean run; a market with failures makes the job fail after every market was processed. */
+  readonly failures: readonly MarketFailure[];
 }
 
 export interface CalibrationJobReceipt {
@@ -108,6 +121,15 @@ function normalisedAsOf(asOf: unknown): string {
   const date = typeof asOf === "string" ? new Date(asOf) : new Date(Number.NaN);
   if (!Number.isFinite(date.getTime())) throw coded("INVALID_CALIBRATION_JOB", "asOf is not a date");
   return date.toISOString();
+}
+
+function failureCode(error: unknown): string {
+  if (typeof error === "object" && error !== null) {
+    const { code, name } = error as { code?: unknown; name?: unknown };
+    if (typeof code === "string" && /^[A-Za-z0-9_.-]{1,80}$/.test(code)) return code;
+    if (typeof name === "string" && /^[A-Za-z0-9_.-]{1,80}$/.test(name)) return name;
+  }
+  return "UNKNOWN";
 }
 
 function isTransitionRejection(error: unknown): boolean {
@@ -162,14 +184,24 @@ async function runMarket(input: {
   const config = CALIBRATION_CONFIG;
   const calibrationConfig = { version: config.version, hash: CALIBRATION_CONFIG_HASH } as const;
 
+  const failures: MarketFailure[] = [];
+
   let active = await repository.findActiveCalibrator(identity, market);
   let lifecycleActive: LifecycleActive | null = null;
   let evaluation: CalibratorEvaluation | null = null;
   if (active) {
+    // Reading the log is a market-level failure (nothing safe can be decided without it). Applying the stored calibrator is not:
+    // a structurally broken calibrator must neither block the candidate step nor the other markets (WR-02).
     const inputs = await evaluationInputs(repository, active);
     lifecycleActive = inputs.lifecycleActive;
     const window = samples.filter((sample) => Date.parse(sample.knownAt) > inputs.boundaryMs);
-    if (window.length > 0) evaluation = evaluateCalibrator({ calibrator: active.calibrator, market, samples: window, config });
+    if (window.length > 0) {
+      try {
+        evaluation = evaluateCalibrator({ calibrator: active.calibrator, market, samples: window, config });
+      } catch (error) {
+        failures.push({ stage: "EVALUATION", code: failureCode(error) });
+      }
+    }
   }
 
   const assessment = assessCalibrationData(samples, config);
@@ -177,28 +209,42 @@ async function runMarket(input: {
   let candidateId: string | null = null;
   let promotionDetails: Record<string, number | null> = {};
   if (assessment.state === "READY") {
-    const fitted = fitMarketCalibrator({ identity, market, samples, asOf, config });
-    if (fitted.state === "FITTED") {
-      const stored = await repository.persistCalibrator(fitted.calibrator);
-      candidateId = stored.calibratorId;
-      const holdoutBrierActive =
-        active && active.calibratorId !== candidateId
-          ? evaluateCalibrator({ calibrator: active.calibrator, market, samples: assessment.holdout, config }).brierCalibrated
-          : null;
-      candidate = {
-        calibratorId: stored.calibratorId,
-        promotion: isPromotable(fitted.calibrator, config),
-        everRolledBack: await repository.hasBeenRolledBack(stored.calibratorId),
-        rollbackLineage: await rollbackLineageOf({ repository, identity, market, active, fitted: fitted.calibrator, holdout: assessment.holdout }),
-        holdoutBrierCandidate: fitted.calibrator.holdoutBrierCalibrated,
-        holdoutBrierActive,
-      };
-      promotionDetails = {
-        holdoutSampleSize: fitted.calibrator.holdoutSampleSize,
-        holdoutBrierRaw: fitted.calibrator.holdoutBrierRaw,
-        holdoutBrierCalibrated: fitted.calibrator.holdoutBrierCalibrated,
-        holdoutBrierActive,
-      };
+    // The candidate is optional input of the decision; the evaluation and rollback of the ACTIVE calibrator must not depend on
+    // it (WR-02). A failure here leaves the candidate out, is recorded, and the decision below still runs.
+    try {
+      const fitted = fitMarketCalibrator({ identity, market, samples, asOf, config });
+      if (fitted.state === "FITTED") {
+        const stored = await repository.persistCalibrator(fitted.calibrator);
+        candidateId = stored.calibratorId;
+        let holdoutBrierActive: number | null = null;
+        if (active && active.calibratorId !== candidateId) {
+          try {
+            holdoutBrierActive = evaluateCalibrator({ calibrator: active.calibrator, market, samples: assessment.holdout, config }).brierCalibrated;
+          } catch {
+            // The active calibrator cannot be applied (already recorded as an EVALUATION failure when a window existed):
+            // superiority over it stays unproven and the lifecycle fails closed.
+            holdoutBrierActive = null;
+          }
+        }
+        candidate = {
+          calibratorId: stored.calibratorId,
+          promotion: isPromotable(fitted.calibrator, config),
+          everRolledBack: await repository.hasBeenRolledBack(stored.calibratorId),
+          rollbackLineage: await rollbackLineageOf({ repository, identity, market, active, fitted: fitted.calibrator, holdout: assessment.holdout }),
+          holdoutBrierCandidate: fitted.calibrator.holdoutBrierCalibrated,
+          holdoutBrierActive,
+        };
+        promotionDetails = {
+          holdoutSampleSize: fitted.calibrator.holdoutSampleSize,
+          holdoutBrierRaw: fitted.calibrator.holdoutBrierRaw,
+          holdoutBrierCalibrated: fitted.calibrator.holdoutBrierCalibrated,
+          holdoutBrierActive,
+        };
+      }
+    } catch (error) {
+      candidate = null;
+      promotionDetails = {};
+      failures.push({ stage: "CANDIDATE", code: failureCode(error) });
     }
   }
 
@@ -229,6 +275,7 @@ async function runMarket(input: {
     actions,
     concurrentTransition,
     active: active === null ? null : { calibratorId: active.calibratorId, version: active.version },
+    failures,
   };
 }
 
@@ -292,20 +339,53 @@ async function executeAction(input: {
   }
 }
 
+/** Receipt of a market whose run stopped on an error: nothing is claimed about what was written, only what is known from the data. */
+function failedMarketReceipt(samples: Parameters<typeof assessCalibrationData>[0], failure: MarketFailure): MarketReceipt {
+  let data: MarketReceipt["data"];
+  try {
+    const assessment = assessCalibrationData(samples, CALIBRATION_CONFIG);
+    data = assessment.state === "READY"
+      ? { state: "READY", sampleSize: assessment.sampleSize }
+      : { state: "INSUFFICIENT_DATA", required: assessment.required, current: assessment.current };
+  } catch {
+    data = { state: "INSUFFICIENT_DATA", required: CALIBRATION_CONFIG.minimumSamples.platt, current: samples.length };
+  }
+  return {
+    eligibleSampleSize: samples.length,
+    requiredSample: CALIBRATION_CONFIG.minimumSamples.platt,
+    data,
+    evaluation: null,
+    candidateId: null,
+    actions: [],
+    concurrentTransition: false,
+    active: null,
+    failures: [failure],
+  };
+}
+
 /**
  * One run for one identity at `asOf`. Throws `CALIBRATION_IDENTITY_INVALID` before touching the database when the pair is not
- * one the forecast stack issues. Markets run sequentially; the result is a closed JSON receipt without secrets.
+ * one the forecast stack issues. Markets run sequentially and are isolated (WR-02): an error in one market is recorded in that
+ * market's receipt and the remaining markets still run, so a persistent defect in one market cannot stop the rollback or the
+ * evaluation of the others. After every market was processed a market with failures fails the job (`CALIBRATION_MARKET_FAILED`,
+ * the full receipt is attached as `receipt`), so the queue retries it and the failure stays visible. The receipt is closed JSON
+ * without secrets: failures carry error codes, never messages.
  */
 export async function runCalibrationJob(input: CalibrationJobInput): Promise<CalibrationJobReceipt> {
   const identity = assertCalibrationIdentity(input.modelVersion, input.configHash);
   const asOf = normalisedAsOf(input.asOf);
   const log = input.log ?? ((event: Readonly<Record<string, unknown>>) => console.info(JSON.stringify(event)));
-  const repository = createPrismaCalibrationRepository(input.database);
+  const repository = input.dependencies?.repository ?? createPrismaCalibrationRepository(input.database);
+  const readFitData = input.dependencies?.readFitData ?? readCalibrationFitData;
 
-  const data = await readCalibrationFitData(input.database, { ...identity, asOf });
+  const data = await readFitData(input.database, { ...identity, asOf });
   const markets = {} as Record<ScoreMarket, MarketReceipt>;
   for (const market of CALIBRATION_CONFIG.markets) {
-    markets[market] = await runMarket({ repository, identity, market, asOf, samples: data.samples[market] });
+    try {
+      markets[market] = await runMarket({ repository, identity, market, asOf, samples: data.samples[market] });
+    } catch (error) {
+      markets[market] = failedMarketReceipt(data.samples[market], { stage: "MARKET", code: failureCode(error) });
+    }
   }
 
   const receipt: CalibrationJobReceipt = {
@@ -323,6 +403,13 @@ export async function runCalibrationJob(input: CalibrationJobInput): Promise<Cal
     asOf,
     markets: Object.fromEntries(CALIBRATION_CONFIG.markets.map((market) => [market, { eligible: markets[market].eligibleSampleSize, actions: markets[market].actions.map((action) => action.type), active: markets[market].active?.calibratorId ?? null }])),
   });
+
+  const failed = CALIBRATION_CONFIG.markets.filter((market) => markets[market].failures.length > 0);
+  if (failed.length > 0) {
+    const summary = Object.fromEntries(failed.map((market) => [market, markets[market].failures.map((failure) => `${failure.stage}:${failure.code}`)]));
+    log({ event: "calibration.job.market_failed", modelVersion: identity.modelVersion, asOf, failures: summary });
+    throw Object.assign(coded("CALIBRATION_MARKET_FAILED", JSON.stringify(summary)), { receipt });
+  }
   return receipt;
 }
 

@@ -12,7 +12,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 - [x] **Phase 10: Performance Audit and Budgets** - The fixture detail page meets declared Lighthouse budgets, and regressions fail CI instead of shipping. (completed 2026-11-17)
 - [x] **Phase 11: Dixon-Coles Model Version** - Forecasts can be issued under a corrected, versioned model whose rolling-origin backtests are compared against the frozen baseline before promotion. (completed 2026-11-24)
 - [x] **Phase 12: Calibration Layer and Versioned Rollback** - Users see calibrated probabilities with honest labels and insufficient-data states, backed by per-model-version calibrators that roll back on measured regression.
-- [ ] **Phase 13: CLV Price Diary** - Forecast-time and closing prices are compared per candidate, with honest unavailable states and strict evaluation-only semantics.
+- [x] **Phase 13: CLV Price Diary** - Forecast-time and closing prices are compared per candidate, with honest unavailable states and strict evaluation-only semantics. (completed 2026-11-24)
 - [ ] **Phase 14: Asian Handicap and Exact Score Markets** - Users see and settle Asian handicap and exact-score probabilities derived from the frozen score matrix, with push-aware value receipts.
 - [ ] **Phase 15: 7-Day Value Scanner** - Users see one consolidated, freshness-aware list of value candidates across the next seven days without N+1 queries or recompute drift.
 - [ ] **Phase 16: Paper-Trading Journal** - The operator records simulated trades against immutable receipts and sees bankroll, drawdown, ROI, and yield with append-only corrections.
@@ -165,7 +165,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   3. Closing observations are append-only, and no test or integration path lets CLV influence value ranking, scanner ordering, or journal decisions — it is evaluation-only.
 
 **Notes / research flags**: `ClosingOddsObservation` already exists (schema fits) but has **no write API today** — this phase is wiring + validation + UX, not schema. Validation rules are already coded in `clv.ts`. Retrospective observations must be tagged and excluded (no hindsight/survivorship).
-**Plans**: 4/4 plans executed
+**Plans**: 4/4 plans complete
 - [x] 13-01-PLAN.md
 - [x] 13-02-PLAN.md
 - [x] 13-03-PLAN.md
@@ -235,7 +235,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 | 10. Performance Audit and Budgets | 4/4 | Complete    | 2026-11-17 |
 | 11. Dixon-Coles Model Version | 7/7 | Complete    | 2026-11-24 |
 | 12. Calibration Layer and Versioned Rollback | 7/7 | In Progress | - |
-| 13. CLV Price Diary | 4/4 | In Progress | - |
+| 13. CLV Price Diary | 4/4 | Complete    | 2026-11-24 |
 | 14. Asian Handicap and Exact Score Markets | 0/0 | Not started | - |
 | 15. 7-Day Value Scanner | 0/0 | Not started | - |
 | 16. Paper-Trading Journal | 0/0 | Not started | - |

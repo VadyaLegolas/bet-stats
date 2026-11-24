@@ -185,7 +185,7 @@ _Depth: standard_
 | WR-01 | fixed | rho bounds `max(-1/λh, -1/λa) < ρ < min(1/(λh·λa), 1)`; test λ=(2,2) |
 | WR-02 | fixed | bisection bracketed at `min+ε` / `max-ε`; non-finite scores fall back |
 | WR-03 | fixed | out-of-band fitted rho degrades to explicit `rho = 0`, method `out-of-band-zero` (recorded in receipt); `assertDixonColesRho` throws a coded error |
-| WR-04 | fixed (partly) | fit uses only snapshots with `issuedAt <= asOf`, newest usable revision per fixture. Residual: snapshots issued by a backtest are indistinguishable from production ones for a fit at `asOf = now` (см. также WR-13 в этом ревью) |
+| WR-04 | fixed | fit uses only snapshots with `issuedAt <= asOf`, newest usable revision per fixture. Residual closed by the origin filter in the rho fit (`origin = PRODUCTION`, quick task `261124-88x`, commit `69a921c`): backtest snapshots no longer move the rho of live forecasts. Caveat: backtest rows written before the `20261124_phase11_forecast_snapshot_origin` migration are labelled PRODUCTION and stay in the fit at `asOf = now` (см. также WR-13 в этом ревью) |
 | WR-05 | fixed | scored-cohort windows, fixture-set identity, `[from, to)`, `minimumSampleSize = 30`, policy `model-comparison-v2` |
 | WR-06 | fixed | card bounds string, rho policy/fallbacks, page no longer claims a public comparison view |
 | IN-04 | fixed | «μ» replaced with λh / λa |
@@ -206,6 +206,7 @@ _Depth: standard_
 | WR-10 | fixed | `eb142e0` (тесты); тест holder timeout вошёл в `eee1f38` |
 | WR-11 | fixed | `1cd0fef`; подписи сторон берутся из квитанции |
 | WR-12 | fixed | `c00db87`, `38afdb6`; `pairId` без `market`, с хешами конфигурации моделей; `concurrency` оставлен в идентичности, потому что он часть `planHash`. Идентификаторы прежних пар изменились |
-| WR-13 | needs-decision | код не менялся; в БД нет происхождения снимка, нужны схема и решение пользователя, см. `11-REVIEW-FIX.md` |
+| WR-13 | fixed | quick task `261124-88x`: `ForecastSnapshot.origin` (`PRODUCTION`/`BACKTEST`, миграция `20261124_phase11_forecast_snapshot_origin`) `d596308`; публичные читатели и фит ρ только по `PRODUCTION` `69a921c`; регрессионные тесты на реальном PostgreSQL `5926661`; закрытие и backlog `docs(11): WR-13`. Отдельно: `valueByFixture` вынесен в `deferred-items.md` (решение по `valueReceiptId`), см. `11-REVIEW-FIX.md` |
+| WR-13 (backlog) | open | `valueByFixture` теряет значения при нескольких квитанциях одной фикстуры, см. `deferred-items.md` |
 | IN-05..IN-09 | open | вне области прохода |
 

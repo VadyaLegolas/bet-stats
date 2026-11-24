@@ -161,6 +161,10 @@ describe("model card calibration block", () => {
     expect(limitations).toContain("не обещает");
     expect(limitations).toContain("первичный прогноз");
     expect(limitations).toContain("многоклассовая");
+    // WR-04: the holdout used to choose the method also scores it; the card says so instead of hiding the optimism.
+    expect(limitations).toContain("одну и ту же отложенную выборку");
+    expect(limitations).toContain("лучший из двух методов");
+    expect(limitations).toContain(`от ${CALIBRATION_CONFIG.minimumSamples.isotonic} исходов`);
     // The calibrator is fitted on PRE_MATCH snapshots and also shown for LINEUP_CONFIRMED ones.
     expect(limitations).toContain("по подтверждённому составу");
     // The state is computed at read time with today's census and today's calibrator.

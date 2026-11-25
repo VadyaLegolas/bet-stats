@@ -29,6 +29,8 @@ export interface ExtendedSeedOptions {
   readonly persistedMatrix?: boolean;
   /** A custom grid (home outer, away inner, 64 entries); default is a Poisson grid with expected goals 1.6 : 1.1. */
   readonly cells?: readonly ScoreMatrixCell[];
+  /** false leaves the settlement to the pipeline under test (`settlementReceiptId` is then the empty string). Default true. */
+  readonly settlementReceipt?: boolean;
 }
 
 export interface ExtendedSeed {
@@ -109,6 +111,9 @@ export async function seedExtendedMarketsFixture(db: PrismaClient, options: Exte
   ];
   for (const [market, events] of markets) {
     await exec(db, `INSERT INTO "ForecastMarket" (id,"forecastSnapshotId",market,probabilities) VALUES ($1,$2,$3,$4::jsonb)`, `${prefix}-market-${market}`, ids.forecast, market, JSON.stringify(events.map(([selection, probability]) => ({ selection, probability }))));
+  }
+  if (options.settlementReceipt === false) {
+    return { prefix, fixtureId: ids.fixture, forecastSnapshotId: ids.forecast, resultVersionId: ids.result, settlementReceiptId: "", persisted, cells, matrix };
   }
   const receipt = { fixtureId: ids.fixture, resultVersionId: ids.result, forecastSnapshotId: ids.forecast, policyVersion: "settlement-policy-v1", policyHash: "value-policy", lifecycle: "FINISHED", scoreability: "SCOREABLE", financialEligibility: "ELIGIBLE", classOutcome: "SCORED", reason: "RESULT_FINISHED" };
   await db.$queryRawUnsafe(

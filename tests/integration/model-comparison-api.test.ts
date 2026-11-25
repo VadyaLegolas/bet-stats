@@ -29,7 +29,7 @@ function setup(raw: RawModelComparison | (() => Promise<RawModelComparison>) = c
     loadCohort: vi.fn(async () => { throw new Error("not used"); }),
     enumerateAvailableCohorts: vi.fn(async () => []),
     comparePlans: vi.fn(typeof raw === "function" ? raw : async () => raw),
-    listValueCandidates: vi.fn(async () => ({ items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" } })),
+    listValueCandidates: vi.fn(async () => ({ items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" }, pageTotalsByPolicy: [] })),
   };
   const service = new EvaluationService(repository);
   return { repository, controller: new EvaluationController(service), service };

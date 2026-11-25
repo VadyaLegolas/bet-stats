@@ -3,18 +3,31 @@ import { compareBacktestPlans, createPrismaClient, readNoVigClvForCandidates, ty
 import {
   COHORT_HEALTH_POLICY,
   RELIABILITY_POLICY,
+  FLAT_ONE_UNIT_POLICY_VERSION,
+  FLAT_ONE_UNIT_V2_POLICY_VERSION,
   SCORE_FORMULA_HASH,
   aggregateFlatOneUnit,
   aggregateReliability,
   evaluateCohortHealth,
   expandCategoricalScore,
+  pageTotalsByPolicy,
   toModelComparisonResult,
   type CohortDenominators,
   type FlatOneUnitReceipt,
   type ModelComparisonResult,
+  type PolicyPageTotals,
   type RawModelComparison,
   type ReliabilityBucket,
+  type SettlementPolicyVersion,
 } from "@bet-stats/domain";
+
+/** The cohort scorecard measures the three core markets under the frozen v1 money policy only (D-16, Pitfall 6). */
+const COHORT_POLICY_VERSION = FLAT_ONE_UNIT_POLICY_VERSION;
+
+function settlementPolicyOf(value: string): SettlementPolicyVersion {
+  if (value === FLAT_ONE_UNIT_POLICY_VERSION || value === FLAT_ONE_UNIT_V2_POLICY_VERSION) return value;
+  throw new Error("UNKNOWN_SETTLEMENT_POLICY");
+}
 
 const MARKETS = new Set(["all", "ONE_X_TWO", "OVER_UNDER_2_5", "BTTS"]);
 /** Comparison is per market: "all" would mix incomparable deltas. */
@@ -45,6 +58,10 @@ export type ValueCandidateRow = Readonly<{
   valueReceiptId: string;
   settlementReceiptId: string;
   resultVersionId: string;
+  /** Canonical market id (three core markets, EXACT_SCORE or ASIAN_HANDICAP:<line>). */
+  market: string;
+  /** The money policy of the settlement row; rows of different policies are never summed (D-16). */
+  policyVersion: SettlementPolicyVersion;
   selection: string;
   decimalOdds: string;
   outcome: string;
@@ -64,7 +81,10 @@ export interface EvaluationRepository {
   listValueCandidates(identity: CohortIdentity, cursor: { settledAt: string; id: string } | null, limit: number): Promise<{
     items: readonly ValueCandidateRow[];
     nextCursor: { settledAt: string; id: string } | null;
+    /** Legacy field kept for existing consumers: it totals ONLY the flat-one-unit-v1 rows of the page. */
     pageTotals: { count: number; stakeUnits: string; profitUnits: string };
+    /** One entry per policy present on the page (v1 first, then v2); there is no combined sum anywhere. */
+    pageTotalsByPolicy: readonly PolicyPageTotals[];
   }>;
 }
 
@@ -158,7 +178,7 @@ export function createPrismaEvaluationRepository(client: PrismaClient): Evaluati
     if (scores.length === 0) return emptyCohort(identity);
     const settlementIds = [...new Set(scores.map((row) => row.settlementReceiptId))];
     const values = await client.valueSettlement.findMany({
-      where: { supersededBy: null, settlementReceiptId: { in: settlementIds }, ...(identity.market === "all" ? {} : { market: identity.market }) },
+      where: { supersededBy: null, policyVersion: COHORT_POLICY_VERSION, settlementReceiptId: { in: settlementIds }, ...(identity.market === "all" ? {} : { market: identity.market }) },
       include: { settlementReceipt: { select: { resultVersionId: true, settledAt: true } }, oddsSelection: { select: { decimalOdds: true } } },
     });
     const valueByFixture = new Map(values.map((row) => [row.fixtureId, row.valueReceiptId]));
@@ -182,7 +202,7 @@ export function createPrismaEvaluationRepository(client: PrismaClient): Evaluati
       valueCount: new Set(values.map((row) => row.valueReceiptId)).size,
     };
     const health = evaluateCohortHealth({ denominators, buckets: reliability.buckets });
-    const financialReceipts: FlatOneUnitReceipt[] = values.map((row) => ({ status: "SETTLED", policyVersion: "flat-one-unit-v1", stakeUnits: row.stakeUnits, returnUnits: row.returnUnits, profitUnits: row.profitUnits }));
+    const financialReceipts: FlatOneUnitReceipt[] = values.map((row) => ({ status: "SETTLED", policyVersion: COHORT_POLICY_VERSION, stakeUnits: row.stakeUnits, returnUnits: row.returnUnits, profitUnits: row.profitUnits }));
     const financial = aggregateFlatOneUnit(financialReceipts);
     const comparableCount = values.filter((row) => row.clvStatus === "AVAILABLE").length;
     return {
@@ -241,6 +261,8 @@ export function createPrismaEvaluationRepository(client: PrismaClient): Evaluati
         valueReceiptId: row.valueReceiptId,
         settlementReceiptId: row.settlementReceiptId,
         resultVersionId: row.settlementReceipt.resultVersionId,
+        market: row.market,
+        policyVersion: settlementPolicyOf(row.policyVersion),
         selection: row.selection,
         decimalOdds: row.oddsSelection.decimalOdds,
         outcome: row.result,
@@ -250,12 +272,15 @@ export function createPrismaEvaluationRepository(client: PrismaClient): Evaluati
         clvNoVig: noVig.get(row.id)!,
         settledAt: row.settlementReceipt.settledAt.toISOString(),
       }));
-      const totals = aggregateFlatOneUnit(items.map((row) => ({ status: "SETTLED", policyVersion: "flat-one-unit-v1", stakeUnits: row.stakeUnits, returnUnits: "0", profitUnits: row.profitUnits })));
+      // The legacy field counts v1 rows only; the per-policy list comes from the domain function and never adds policies together.
+      const legacy = items.filter((row) => row.policyVersion === FLAT_ONE_UNIT_POLICY_VERSION);
+      const totals = aggregateFlatOneUnit(legacy.map((row) => ({ status: "SETTLED", policyVersion: FLAT_ONE_UNIT_POLICY_VERSION, stakeUnits: row.stakeUnits, returnUnits: "0", profitUnits: row.profitUnits })));
       const last = items.at(-1);
       return {
         items,
         nextCursor: rows.length > limit && last ? { settledAt: last.settledAt, id: last.id } : null,
-        pageTotals: { count: items.length, stakeUnits: totals.totalStakedUnits, profitUnits: totals.totalProfitUnits },
+        pageTotals: { count: legacy.length, stakeUnits: totals.totalStakedUnits, profitUnits: totals.totalProfitUnits },
+        pageTotalsByPolicy: pageTotalsByPolicy(items),
       };
     },
   };
@@ -287,7 +312,7 @@ export class EvaluationService {
     return { redirect: canonicalCohortUrl(identity) };
   }
 
-  async valueCandidates(query: Record<string, unknown>): Promise<{ items: readonly ValueCandidateRow[]; nextCursor: string | null; pageTotals: { count: number; stakeUnits: string; profitUnits: string }; cohortIdentity: CohortIdentity }> {
+  async valueCandidates(query: Record<string, unknown>): Promise<{ items: readonly ValueCandidateRow[]; nextCursor: string | null; pageTotals: { count: number; stakeUnits: string; profitUnits: string }; pageTotalsByPolicy: readonly PolicyPageTotals[]; cohortIdentity: CohortIdentity }> {
     const { cursor: rawCursor, limit: rawLimit, ...cohortQuery } = query;
     const identity = parseCohortQuery(cohortQuery, true) as CohortIdentity;
     const limit = rawLimit === undefined ? 25 : Number(rawLimit);

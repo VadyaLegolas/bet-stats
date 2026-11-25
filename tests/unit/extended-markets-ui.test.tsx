@@ -138,6 +138,15 @@ describe("populated: exact score section", () => {
     expect(exact).toContain("Справедливый коэффициент: ");
   });
 
+  it("keeps the markup the grid layout rules select: scroll-region classes, caption first, corner and colgroup headers, tfoot row label", () => {
+    expect(exact).toMatch(/<div class="evidence-table-scroll market-grid-scroll" role="region"/);
+    const table = between(exact, '<table class="market-table market-grid">', "</table>");
+    expect(table).toMatch(/^<table class="market-table market-grid"><caption>[^<]+<\/caption><thead>/);
+    const head = between(table, "<thead>", "</thead>");
+    expect(head).toMatch(/^<thead><tr><th rowspan="2" scope="col">Голы хозяев<\/th><th colspan="4" scope="colgroup">Голы гостей<\/th><\/tr>/i);
+    expect(between(table, "<tfoot>", "</tfoot>")).toMatch(/^<tfoot><tr><th scope="row">Любой другой счёт<\/th><td colspan="4">/i);
+  });
+
   it("uses the corrected tail wording and shows the elevated-tail chip only when the warning is set", () => {
     expect(visibleText(exact)).toContain("Хвост матрицы вне 0–7 голов: 0.0% — уже учтён нормировкой на сохранённую массу и распределён по всем счетам.");
     expect(exact).not.toContain("Хвост повышен");

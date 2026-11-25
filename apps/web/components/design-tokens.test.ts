@@ -158,6 +158,38 @@ describe("design tokens: extended markets block", () => {
     expect(block).toMatch(/\.market-table td\s*\{\s*position:\s*relative;\s*\}/);
   });
 
+  describe("exact-score grid layout contract", () => {
+    // Плотный охранный набор: каждое правило закрывает отдельную причину дефекта UAT 14 (тест 7).
+    const rule = (selectorPattern: string) => new RegExp(`(?:^|\\})\\s*${selectorPattern}\\s*\\{([^}]*)\\}`, "m").exec(block)?.[1] ?? "";
+
+    it("resets the inherited overflow-wrap on grid headers so axis labels do not stack one letter per line", () => {
+      expect(rule("\\.market-grid th")).toMatch(/overflow-wrap:\s*normal\s*;/);
+    });
+
+    it("starts the column-axis header at the left edge of its column group", () => {
+      expect(rule('\\.market-grid thead th\\[scope="colgroup"\\]')).toMatch(/text-align:\s*start\s*;/);
+    });
+
+    it("makes the scroll region a size container and sizes the caption to its visible width, aligned to the start", () => {
+      expect(rule("\\.market-grid-scroll")).toMatch(/container-type:\s*inline-size\s*;/);
+      const caption = rule("\\.market-grid caption");
+      expect(caption).toMatch(/width:\s*100cqw\s*;/);
+      expect(caption).toMatch(/text-align:\s*start\s*;/);
+    });
+
+    it("pins the corner cell and the tfoot label above the cell text", () => {
+      const sticky = rule("\\.market-grid thead tr:first-child > th:first-child,\\s*\\.market-grid tfoot th");
+      expect(sticky).toMatch(/position:\s*sticky\s*;/);
+      expect(sticky).toMatch(/inset-inline-start:\s*0\s*;/);
+      expect(sticky).toMatch(/z-index:\s*1\s*;/);
+      expect(rule("\\.market-grid tbody th")).toMatch(/z-index:\s*1\s*;/);
+    });
+
+    it("does not touch the shared scroll-region rule", () => {
+      expect(block).not.toMatch(/\.evidence-table-scroll\s*\{/);
+    });
+  });
+
   it("declares no new custom properties and adds no animation", () => {
     expect(block.match(/(^|[;{\s])--[\w-]+\s*:/g) ?? []).toEqual([]);
     expect(block).not.toMatch(/(?:^|[^-\w])(?:transition|animation|@keyframes)\b/);

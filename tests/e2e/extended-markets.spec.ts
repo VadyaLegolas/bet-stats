@@ -150,6 +150,80 @@ async function expectNoPageOverflow(page: Page, label: string): Promise<void> {
   expect(overflow.excess, `${label}: ${JSON.stringify(overflow.offenders)}`).toBeLessThanOrEqual(1);
 }
 
+/**
+ * Boxes of the exact-score grid caption and axis headers against the visible width of their scroll region.
+ * Page scrollWidth alone cannot see this defect: the region clips the table, so a caption wider than the region, a
+ * row-axis header stacked one letter per line and a column-axis header pushed past the edge all leave the page intact.
+ * Returns one message per violation, with numbers, so a failure names the element and the value.
+ */
+async function measureExactGrid(page: Page): Promise<string[]> {
+  return await page.locator("#exact-score .evidence-table-scroll").evaluate((region) => {
+    const problems: string[] = [];
+    region.scrollLeft = 0;
+    const regionBox = region.getBoundingClientRect();
+    const left = regionBox.left;
+    const right = regionBox.left + region.clientWidth;
+    const textBox = (element: Element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      return range.getBoundingClientRect();
+    };
+    const lineCount = (element: Element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      return new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size;
+    };
+    const caption = region.querySelector("caption");
+    const corner = region.querySelector("thead tr:first-child > th:first-child");
+    const otherLabel = region.querySelector("tfoot th");
+    const columnAxis = region.querySelector('thead th[scope="colgroup"]');
+    if (!caption || !corner || !otherLabel || !columnAxis) return ["grid parts are missing: caption, corner, tfoot th or colgroup header"];
+
+    const captionBox = caption.getBoundingClientRect();
+    if (captionBox.left < left - 1 || captionBox.right > right + 1) problems.push(`caption box ${Math.round(captionBox.left)}..${Math.round(captionBox.right)} is outside the visible ${Math.round(left)}..${Math.round(right)}`);
+    const textAlign = getComputedStyle(caption).textAlign;
+    if (textAlign !== "start" && textAlign !== "left") problems.push(`caption text-align is ${textAlign}, expected start or left`);
+    const cornerLines = lineCount(corner);
+    if (cornerLines > 2) problems.push(`row-axis header "${corner.textContent}" takes ${cornerLines} lines, expected at most 2`);
+    const otherLines = lineCount(otherLabel);
+    if (otherLines > 3) problems.push(`tfoot header "${otherLabel.textContent}" takes ${otherLines} lines, expected at most 3`);
+    const axisText = textBox(columnAxis);
+    if (axisText.left < left - 1 || axisText.right > right + 1) problems.push(`column-axis text "${columnAxis.textContent}" ${Math.round(axisText.left)}..${Math.round(axisText.right)} is outside the visible ${Math.round(left)}..${Math.round(right)}`);
+    const axisLines = lineCount(columnAxis);
+    if (axisLines !== 1) problems.push(`column-axis header "${columnAxis.textContent}" takes ${axisLines} lines, expected 1`);
+    return problems;
+  });
+}
+
+/**
+ * With the region scrolled to its end, the pinned labels (corner cell, first row header, tfoot header) must still sit at
+ * the region's left edge and must be the topmost element at their centre, not covered by the text of a body cell.
+ */
+async function measureStuckHeaders(page: Page): Promise<string[]> {
+  return await page.locator("#exact-score .evidence-table-scroll").evaluate((region) => {
+    const problems: string[] = [];
+    region.scrollLeft = region.scrollWidth;
+    const left = region.getBoundingClientRect().left;
+    const cells: Array<[string, Element | null]> = [
+      ["corner cell", region.querySelector("thead tr:first-child > th:first-child")],
+      ["first row header", region.querySelector("tbody th")],
+      ["tfoot header", region.querySelector("tfoot th")],
+    ];
+    for (const [name, cell] of cells) {
+      if (!cell) { problems.push(`${name} is missing`); continue; }
+      const box = cell.getBoundingClientRect();
+      if (Math.abs(box.left - left) > 1) problems.push(`${name} left edge ${Math.round(box.left)} is ${Math.round(box.left - left)} px from the region edge ${Math.round(left)}`);
+      const x = box.left + box.width / 2;
+      const y = box.top + box.height / 2;
+      if (x < 0 || y < 0 || x > document.documentElement.clientWidth || y > document.documentElement.clientHeight) { problems.push(`${name} centre ${Math.round(x)},${Math.round(y)} is outside the viewport`); continue; }
+      const top = document.elementFromPoint(x, y);
+      if (!top || (top !== cell && !cell.contains(top))) problems.push(`${name} is covered by <${top?.tagName.toLowerCase()} class="${top ? String(top.className) : ""}">`);
+    }
+    region.scrollLeft = 0;
+    return problems;
+  });
+}
+
 test.beforeAll(async ({ request }) => {
   await seedEvidence();
   await publishForecasts(request);
@@ -426,6 +500,35 @@ test.describe("visual backstops", () => {
       } else {
         await expect(page.locator("#asian-handicap [data-evidence-mobile]")).toBeVisible();
         await expect(page.locator("#asian-handicap article.evidence-card")).toHaveCount(5);
+      }
+    }
+  });
+
+  test("exact-score grid caption and axis headers stay readable inside the scroll region at 320, 375 and 768 px in light, dark and forced colors", async ({ page }) => {
+    const modes = [
+      ["light", { colorScheme: "light", forcedColors: "none" }],
+      ["dark", { colorScheme: "dark", forcedColors: "none" }],
+      ["forced colors", { colorScheme: "light", forcedColors: "active" }],
+    ] as const;
+    for (const width of [320, 375, 768]) {
+      for (const [mode, media] of modes) {
+        const label = `${width} px, ${mode}`;
+        await page.setViewportSize({ width, height: 900 });
+        /* The theme is read at load, so the media is emulated before the page opens (like the axe scenario). */
+        await page.emulateMedia(media);
+        await openForecast(page, issuedForecast.id);
+        await expect(page.locator("#exact-score tbody td")).toHaveCount(16);
+        await page.evaluate(() => document.fonts.ready);
+        expect(await measureExactGrid(page), `grid layout at ${label}`).toEqual([]);
+        await expectNoPageOverflow(page, `page overflow at ${label}`);
+
+        const scroller = page.locator("#exact-score .evidence-table-scroll");
+        const overflows = await scroller.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+        if (width < 768) expect(overflows, `the grid is expected to scroll inside its region at ${label}`).toBe(true);
+        if (overflows) {
+          await scroller.scrollIntoViewIfNeeded();
+          expect(await measureStuckHeaders(page), `pinned labels while scrolled at ${label}`).toEqual([]);
+        }
       }
     }
   });

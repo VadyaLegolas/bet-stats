@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+import { createPrismaClient, createSettlementPipelineService, type PrismaClient } from "@bet-stats/database";
 
 import { EligibilityGuard } from "../../apps/api/src/modules/eligibility/eligibility.guard.js";
 import {
@@ -7,10 +9,13 @@ import {
 } from "../../apps/api/src/modules/evaluation/evaluation.controller.js";
 import {
   EvaluationService,
+  createPrismaEvaluationRepository,
   encodeCandidateCursor,
   type EvaluationRepository,
   type ScorecardCohort,
 } from "../../apps/api/src/modules/evaluation/evaluation.service.js";
+import { buildCoreValueReceipt, buildExtendedValueReceipt, exactScoreSelections, insertValueReceipt, seedExtendedMarketsFixture, seedOddsBook, type ExtendedSeed } from "../helpers/extended-markets-seed.js";
+import { migrateDeploy, startPostgres, type TestPostgres } from "../helpers/calibration-db.js";
 
 const bounded = {
   modelVersion: "model-v1",
@@ -44,7 +49,7 @@ function setup(rows: ScorecardCohort[] = [cohort()]) {
     })),
     enumerateAvailableCohorts: vi.fn(async () => rows),
     comparePlans: vi.fn(async () => ({ available: false as const, reason: "PLAN_NOT_COMPLETE" })),
-    listValueCandidates: vi.fn(async () => ({ items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" } })),
+    listValueCandidates: vi.fn(async () => ({ items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" }, pageTotalsByPolicy: [] })),
   };
   const service = new EvaluationService(repository);
   return { repository, service, controller: new EvaluationController(service) };
@@ -99,8 +104,8 @@ describe("evaluation scorecard API boundary", () => {
 
   it("uses an opaque cohort-bound cursor and reconciles stable candidate pages", async () => {
     const rows = [
-      { id: "candidate-b", valueReceiptId: "value-b", settlementReceiptId: "settlement-b", resultVersionId: "result-b", selection: "AWAY", decimalOdds: "3.1", outcome: "LOSS", stakeUnits: "1", profitUnits: "-1", clv: { status: "UNAVAILABLE", reason: "NO_COMPARABLE_CLOSE", value: null, policyVersion: "odds-ratio-clv-v1" }, clvNoVig: { status: "UNAVAILABLE", policyVersion: "no-vig-clv-v1", reason: "CLOSING_SET_MISSING" }, settledAt: "2026-01-10T12:00:00.000Z" },
-      { id: "candidate-a", valueReceiptId: "value-a", settlementReceiptId: "settlement-a", resultVersionId: "result-a", selection: "HOME", decimalOdds: "2.5", outcome: "WIN", stakeUnits: "1", profitUnits: "1.5", clv: { status: "AVAILABLE", reason: null, value: "0.04", policyVersion: "odds-ratio-clv-v1" }, clvNoVig: { status: "UNAVAILABLE", policyVersion: "no-vig-clv-v1", reason: "CLOSING_SET_MISSING" }, settledAt: "2026-01-10T12:00:00.000Z" },
+      { id: "candidate-b", valueReceiptId: "value-b", settlementReceiptId: "settlement-b", resultVersionId: "result-b", market: "ONE_X_TWO", policyVersion: "flat-one-unit-v1", selection: "AWAY", decimalOdds: "3.1", outcome: "LOSS", stakeUnits: "1", profitUnits: "-1", clv: { status: "UNAVAILABLE", reason: "NO_COMPARABLE_CLOSE", value: null, policyVersion: "odds-ratio-clv-v1" }, clvNoVig: { status: "UNAVAILABLE", policyVersion: "no-vig-clv-v1", reason: "CLOSING_SET_MISSING" }, settledAt: "2026-01-10T12:00:00.000Z" },
+      { id: "candidate-a", valueReceiptId: "value-a", settlementReceiptId: "settlement-a", resultVersionId: "result-a", market: "ONE_X_TWO", policyVersion: "flat-one-unit-v1", selection: "HOME", decimalOdds: "2.5", outcome: "WIN", stakeUnits: "1", profitUnits: "1.5", clv: { status: "AVAILABLE", reason: null, value: "0.04", policyVersion: "odds-ratio-clv-v1" }, clvNoVig: { status: "UNAVAILABLE", policyVersion: "no-vig-clv-v1", reason: "CLOSING_SET_MISSING" }, settledAt: "2026-01-10T12:00:00.000Z" },
     ] as const;
     const repository: EvaluationRepository = {
       loadCohort: vi.fn(async () => cohort()),
@@ -108,7 +113,7 @@ describe("evaluation scorecard API boundary", () => {
       listValueCandidates: vi.fn(async (_identity, cursor, limit) => {
         const start = cursor ? rows.findIndex((row) => row.id === cursor.id) + 1 : 0;
         const items = rows.slice(start, start + limit);
-        return { items, nextCursor: start + limit < rows.length ? { settledAt: items.at(-1)!.settledAt, id: items.at(-1)!.id } : null, pageTotals: { count: items.length, stakeUnits: String(items.length), profitUnits: String(items.reduce((sum, item) => sum + Number(item.profitUnits), 0)) } };
+        return { items, nextCursor: start + limit < rows.length ? { settledAt: items.at(-1)!.settledAt, id: items.at(-1)!.id } : null, pageTotals: { count: items.length, stakeUnits: String(items.length), profitUnits: String(items.reduce((sum, item) => sum + Number(item.profitUnits), 0)) }, pageTotalsByPolicy: [] };
       }),
     };
     const service = new EvaluationService(repository);
@@ -121,5 +126,103 @@ describe("evaluation scorecard API boundary", () => {
     await expect(service.valueCandidates({ ...bounded, modelVersion: "other", cursor: first.nextCursor! })).rejects.toThrow("CURSOR_COHORT_MISMATCH");
     await expect(service.valueCandidates({ ...bounded, cursor: "not-a-cursor" })).rejects.toThrow("INVALID_CURSOR");
     expect(encodeCandidateCursor(bounded, { settledAt: rows[0].settledAt, id: rows[0].id })).not.toContain(rows[0].id);
+  });
+});
+
+/**
+ * Phase 14 (D-16, D-17, Pitfall 6) on real PostgreSQL: settlements of both money policies exist for one fixture, and
+ * neither the cohort aggregate nor the candidate page ever adds the policies together.
+ */
+describe("evaluation aggregates keep settlement policies v1 and v2 apart (real PostgreSQL)", () => {
+  const identity = { modelVersion: "poisson-v1", competitionId: "ev-league", market: "all", from: "2026-09-01T00:00:00.000Z", to: "2026-10-01T00:00:00.000Z" } as const;
+  let postgres: TestPostgres;
+  let prisma: PrismaClient;
+  let seed: ExtendedSeed;
+
+  async function addValue(key: string, market: string, selection: string, book: ReadonlyArray<readonly [string, string]>, core = false): Promise<void> {
+    const odds = await seedOddsBook(prisma, seed, { market, selections: book, tag: key });
+    const row = core ? buildCoreValueReceipt(seed, odds, market, selection, { outcome: "VALUE_CANDIDATE" }) : buildExtendedValueReceipt(seed, odds, market, selection, { outcome: "VALUE_CANDIDATE" });
+    await insertValueReceipt(prisma, seed, row);
+  }
+
+  beforeAll(async () => {
+    postgres = startPostgres(`bet-stats-p14-eval-${process.pid}`);
+    migrateDeploy(postgres.url());
+    prisma = createPrismaClient(postgres.url());
+    seed = await seedExtendedMarketsFixture(prisma, { prefix: "ev", homeGoals: 1, awayGoals: 0, settlementReceipt: false });
+    // Final score 1-0: HOME wins (v1), BTTS YES loses (v1), handicap -0.75 half-wins, handicap -1 pushes, exact 2-1 loses (v2).
+    await addValue("core-1x2", "ONE_X_TWO", "HOME", [["HOME", "2.4"], ["DRAW", "3.3"], ["AWAY", "3.1"]], true);
+    await addValue("core-btts", "BTTS", "YES", [["YES", "1.8"], ["NO", "2.1"]], true);
+    await addValue("half-win", "ASIAN_HANDICAP:-0.75", "HOME", [["HOME", "2.2"], ["AWAY", "1.7"]]);
+    await addValue("push", "ASIAN_HANDICAP:-1", "HOME", [["HOME", "2.5"], ["AWAY", "1.6"]]);
+    await addValue("exact-loss", "EXACT_SCORE", "2-1", exactScoreSelections("14"));
+    const result = await createSettlementPipelineService({ database: prisma }).process({ fixtureId: seed.fixtureId, resultVersionId: seed.resultVersionId, forecastSnapshotId: seed.forecastSnapshotId, policyVersion: "settlement-policy-v1", correlationId: "ev-settle" });
+    expect(result.valueSettlementIds).toHaveLength(5);
+  }, 180_000);
+
+  afterAll(async () => {
+    await prisma?.$disconnect();
+    postgres?.remove();
+  });
+
+  it("1. the cohort aggregate counts only flat-one-unit-v1 rows, for market all and for a core market", async () => {
+    const repository = createPrismaEvaluationRepository(prisma);
+    const all = await repository.loadCohort(identity);
+    expect(all.denominators.valueCount).toBe(2);
+    expect(all.financial).toMatchObject({ count: 2, totalStakedUnits: "2", totalProfitUnits: "0.4", policyId: "flat-one-unit-v1" });
+    const btts = await repository.loadCohort({ ...identity, market: "BTTS" });
+    expect(btts.financial).toMatchObject({ count: 1, totalStakedUnits: "1", totalProfitUnits: "-1", policyId: "flat-one-unit-v1" });
+    const oneXTwo = await repository.loadCohort({ ...identity, market: "ONE_X_TWO" });
+    expect(oneXTwo.financial).toMatchObject({ count: 1, totalStakedUnits: "1", totalProfitUnits: "1.4" });
+  });
+
+  it("2. the candidate page labels every row with its market and policy and totals each policy on its own", async () => {
+    const page = await createPrismaEvaluationRepository(prisma).listValueCandidates(identity, null, 25);
+    expect(page.items).toHaveLength(5);
+    const byMarket = new Map(page.items.map((row) => [`${row.market}:${row.selection}`, row]));
+    expect(byMarket.get("ONE_X_TWO:HOME")).toMatchObject({ policyVersion: "flat-one-unit-v1", outcome: "WIN", stakeUnits: "1", profitUnits: "1.4" });
+    expect(byMarket.get("BTTS:YES")).toMatchObject({ policyVersion: "flat-one-unit-v1", outcome: "LOSS", profitUnits: "-1" });
+    // The legacy field is v1 only; the per-policy list has v1 first and v2 second and no combined entry.
+    expect(page.pageTotals).toEqual({ count: 2, stakeUnits: "2", profitUnits: "0.4" });
+    expect(page.pageTotalsByPolicy).toEqual([
+      { policyVersion: "flat-one-unit-v1", count: 2, stakeUnits: "2", profitUnits: "0.4" },
+      { policyVersion: "flat-one-unit-v2", count: 3, stakeUnits: "3", profitUnits: "-0.4" },
+    ]);
+  });
+
+  it("3. a single policy gives one entry, an empty page gives none", async () => {
+    const repository = createPrismaEvaluationRepository(prisma);
+    const core = await repository.listValueCandidates({ ...identity, market: "ONE_X_TWO" }, null, 25);
+    expect(core.pageTotalsByPolicy).toEqual([{ policyVersion: "flat-one-unit-v1", count: 1, stakeUnits: "1", profitUnits: "1.4" }]);
+    expect(core.items.every((row) => row.policyVersion === "flat-one-unit-v1")).toBe(true);
+    const empty = await repository.listValueCandidates({ ...identity, competitionId: "no-such-league" }, null, 25);
+    expect(empty.items).toEqual([]);
+    expect(empty.pageTotalsByPolicy).toEqual([]);
+    expect(empty.pageTotals).toEqual({ count: 0, stakeUnits: "0", profitUnits: "0" });
+  });
+
+  it("4. v2 outcomes and money pass through unchanged (HALF_WIN, PUSH, LOSS)", async () => {
+    const page = await createPrismaEvaluationRepository(prisma).listValueCandidates(identity, null, 25);
+    const v2 = page.items.filter((row) => row.policyVersion === "flat-one-unit-v2");
+    const byMarket = new Map(v2.map((row) => [row.market, row]));
+    expect(byMarket.get("ASIAN_HANDICAP:-0.75")).toMatchObject({ outcome: "HALF_WIN", stakeUnits: "1", profitUnits: "0.6", decimalOdds: "2.2" });
+    expect(byMarket.get("ASIAN_HANDICAP:-1")).toMatchObject({ outcome: "PUSH", stakeUnits: "1", profitUnits: "0", decimalOdds: "2.5" });
+    expect(byMarket.get("EXACT_SCORE")).toMatchObject({ outcome: "LOSS", stakeUnits: "1", profitUnits: "-1", selection: "2-1" });
+  });
+
+  it("5. the service response carries the per-policy totals and a late closing price changes no ordering or total", async () => {
+    const service = new EvaluationService(createPrismaEvaluationRepository(prisma));
+    const before = await service.valueCandidates(identity);
+    expect(before.pageTotalsByPolicy.map((row) => row.policyVersion)).toEqual(["flat-one-unit-v1", "flat-one-unit-v2"]);
+    const half = before.items.find((row) => row.market === "ASIAN_HANDICAP:-0.75")!;
+    expect(half.clvNoVig).toMatchObject({ status: "UNAVAILABLE", reason: "CLOSING_SET_MISSING" });
+    // A complete closing set for the handicap line appears after settlement (raw insert, like the Phase 13 read tests).
+    for (const [selection, odds] of [["HOME", "2.0"], ["AWAY", "1.85"]] as const) {
+      await prisma.$executeRawUnsafe(`INSERT INTO "ClosingOddsObservation" (id,"fixtureId",market,selection,"decimalOdds","oddsFormat","sourceConvention","observationKind","observedAt") VALUES ($1,$2,'ASIAN_HANDICAP:-0.75',$3,$4,'DECIMAL','BOOKMAKER_BACK','MARKET_CLOSE','2026-09-10T17:30:00Z')`, `ev-late-close-${selection}`, seed.fixtureId, selection, odds);
+    }
+    const after = await service.valueCandidates(identity);
+    expect(after.items.map((row) => row.id)).toEqual(before.items.map((row) => row.id));
+    expect(after.pageTotalsByPolicy).toEqual(before.pageTotalsByPolicy);
+    expect(after.items.find((row) => row.market === "ASIAN_HANDICAP:-0.75")!.clvNoVig.status).toBe("AVAILABLE");
   });
 });

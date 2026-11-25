@@ -207,6 +207,41 @@ describe("closing odds CLI: argument parsing", () => {
   });
 });
 
+const EXACT_SCORE_ODDS = "0-0=9.5,0-1=12,0-2=26,0-3=70,1-0=7,1-1=6.5,1-2=13,1-3=40,2-0=9,2-1=9.5,2-2=19,2-3=60,3-0=18,3-1=20,3-2=40,3-3=100,OTHER=30";
+const withMarket = (market: string, odds: string) => validArguments.map((value, index) => (index === 4 ? market : value.startsWith("HOME=") ? odds : value));
+
+describe("closing odds CLI: Asian handicap and exact score (Phase 14)", () => {
+  it("parses a handicap line and the 17 exact-score selections without judging them", () => {
+    expect(parseRecordArguments(withMarket("ASIAN_HANDICAP:-0.75", "HOME=1.90,AWAY=1.95"))).toEqual({
+      ok: true,
+      input: { ...body, market: "ASIAN_HANDICAP:-0.75", selections: [{ selection: "HOME", decimalOdds: "1.90" }, { selection: "AWAY", decimalOdds: "1.95" }] },
+    });
+    const exact = parseRecordArguments(withMarket("EXACT_SCORE", EXACT_SCORE_ODDS));
+    expect(exact).toMatchObject({ ok: true, input: { market: "EXACT_SCORE" } });
+    expect((exact as { input: { selections: unknown[] } }).input.selections).toHaveLength(17);
+    // Syntax only: an unknown line and a foreign selection are passed through for the domain validator to refuse.
+    expect(parseRecordArguments(withMarket("ASIAN_HANDICAP:-0.80", "HOME=1.90,DRAW=3.0"))).toMatchObject({ ok: true, input: { market: "ASIAN_HANDICAP:-0.80" } });
+  });
+
+  it("pins the help text and the UNSUPPORTED_MARKET explanation to the five market families", async () => {
+    const lines: string[] = [];
+    expect(await runClosingOddsCommand(["--help"], { repository: null, out: (line) => { lines.push(line); } })).toBe(0);
+    const help = lines.join("\n");
+    expect(help).toContain("ONE_X_TWO | OVER_UNDER_2_5 | BTTS | EXACT_SCORE | ASIAN_HANDICAP:<линия>");
+    expect(help).toContain("--market ASIAN_HANDICAP:-0.75 --odds HOME=1.90,AWAY=1.95");
+    expect(help).toContain("--market EXACT_SCORE --odds 0-0=9.5");
+    expect(help).toContain("OTHER=30");
+    expect(help).toContain("отдельно для каждой линии");
+    expect(help).toContain("Набор записывается целиком одной транзакцией и только до начала матча и до расчёта.");
+    const copy = CLOSING_ODDS_REJECTION_COPY.UNSUPPORTED_MARKET;
+    for (const family of ["ONE_X_TWO", "OVER_UNDER_2_5", "BTTS", "EXACT_SCORE", "ASIAN_HANDICAP:<линия>"]) expect(copy).toContain(family);
+    expect(copy).toContain("от -2.5 до +2.5 шагом 0.25");
+    // The texts of the other codes are unchanged.
+    expect(CLOSING_ODDS_REJECTION_COPY.INCOMPLETE_MARKET_SET).toBe("набор неполный: нужны все выборы рынка, ровно по одному разу");
+    expect(CLOSING_ODDS_REJECTION_COPY.RECORDED_AFTER_KICKOFF).toBe("матч уже начался: запись закрывающих коэффициентов закрыта");
+  });
+});
+
 const root = resolve(import.meta.dirname, "../..");
 const databaseRoot = resolve(root, "packages/database");
 const prismaCli = resolve(databaseRoot, "node_modules/prisma/build/index.js");
@@ -280,6 +315,54 @@ describe("closing odds CLI against a throwaway PostgreSQL", () => {
     lines.length = 0;
     expect(await runClosingOddsCommand(cliArguments(observedHourAgo, "HOME=2.10,DRAW=3.40,AWAY=3.60", "cli-missing"), { repository, out })).toBe(1);
     expect(lines[0]).toContain("FIXTURE_NOT_FOUND");
+  });
+
+  it("records full Asian handicap and exact-score sets through the CLI, replays safely and refuses an unknown line", async () => {
+    const repository = createPrismaClosingOddsRepository({ database: prisma });
+    const lines: string[] = [];
+    const out = (line: string) => { lines.push(line); };
+    const argumentsFor = (market: string, odds: string) => ["record", "--fixture", "cli-fixture", "--market", market, "--source", "CLI_SOURCE", "--observed-at", observedHourAgo, "--odds", odds];
+    const count = async (market: string) => Number((await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(`SELECT count(*) AS count FROM "ClosingOddsObservation" WHERE "fixtureId"='cli-fixture' AND market=$1`, market))[0]!.count);
+
+    expect(await runClosingOddsCommand(argumentsFor("ASIAN_HANDICAP:-0.75", "HOME=1.90,AWAY=1.95"), { repository, out })).toBe(0);
+    expect(lines[0]).toMatch(/^Записано: 2 наблюдений/);
+    expect(await count("ASIAN_HANDICAP:-0.75")).toBe(2);
+    lines.length = 0;
+    expect(await runClosingOddsCommand(argumentsFor("ASIAN_HANDICAP:-0.75", "HOME=1.90,AWAY=1.95"), { repository, out })).toBe(0);
+    expect(lines[0]).toMatch(/^Уже записано/);
+    expect(await count("ASIAN_HANDICAP:-0.75")).toBe(2);
+
+    lines.length = 0;
+    expect(await runClosingOddsCommand(argumentsFor("EXACT_SCORE", EXACT_SCORE_ODDS), { repository, out })).toBe(0);
+    expect(lines[0]).toMatch(/^Записано: 17 наблюдений/);
+    expect(await count("EXACT_SCORE")).toBe(17);
+    lines.length = 0;
+    expect(await runClosingOddsCommand(argumentsFor("EXACT_SCORE", EXACT_SCORE_ODDS), { repository, out })).toBe(0);
+    expect(lines[0]).toMatch(/^Уже записано/);
+
+    // An unknown line and an incomplete set are domain refusals with nothing written.
+    lines.length = 0;
+    expect(await runClosingOddsCommand(argumentsFor("ASIAN_HANDICAP:-0.80", "HOME=1.90,AWAY=1.95"), { repository, out })).toBe(1);
+    expect(lines[0]).toContain("UNSUPPORTED_MARKET");
+    for (const family of ["EXACT_SCORE", "ASIAN_HANDICAP:<линия>", "от -2.5 до +2.5 шагом 0.25"]) expect(lines[0]).toContain(family);
+    expect(await count("ASIAN_HANDICAP:-0.80")).toBe(0);
+    lines.length = 0;
+    expect(await runClosingOddsCommand(argumentsFor("EXACT_SCORE", EXACT_SCORE_ODDS.split(",").slice(0, 16).join(",")), { repository, out })).toBe(1);
+    expect(lines[0]).toContain("INCOMPLETE_MARKET_SET");
+    expect(await count("EXACT_SCORE")).toBe(17);
+  });
+
+  it("the internal route writes the same sets and answers 201, 200 on replay and 422 UNSUPPORTED_MARKET", async () => {
+    const controller = new ClosingOddsController(new ClosingOddsService(createPrismaClosingOddsRepository({ database: prisma })));
+    const handicap = { fixtureId: "cli-fixture", market: "ASIAN_HANDICAP:+0.25", sourceConvention: "CLI_SOURCE", observedAt: observedHourAgo, selections: [{ selection: "HOME", decimalOdds: "2.00" }, { selection: "AWAY", decimalOdds: "1.85" }] };
+    const first = await post(controller, handicap);
+    expect(first.status).toBe(201);
+    expect((first.body as RecordClosingOddsBookResult).observations).toHaveLength(2);
+    expect((await post(controller, handicap)).status).toBe(200);
+    expect(await failure(post(controller, { ...handicap, market: "ASIAN_HANDICAP:+1.00" }))).toEqual({ status: 422, response: { code: "UNSUPPORTED_MARKET" } });
+    expect(await failure(post(controller, { ...handicap, market: "CORRECT_SCORE" }))).toEqual({ status: 422, response: { code: "UNSUPPORTED_MARKET" } });
+    // The phase 13 pre-kickoff rule still holds for the new markets.
+    expect(await failure(post(controller, { ...handicap, observedAt: new Date(Date.parse(kickoffUtc) + 1_000).toISOString() }))).toMatchObject({ status: 422 });
   });
 
   it("runs end to end as a spawned process: records, then reports 'already recorded'", () => {

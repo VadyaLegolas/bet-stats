@@ -5,6 +5,7 @@ import { NO_VIG_CLV_POLICY_VERSION } from "@bet-stats/domain";
 import { createPrismaEvaluationRepository } from "../../apps/api/src/modules/evaluation/evaluation.service.js";
 import { insertClosingBook, persistValueSettlement, seedCandidate, seedClvLeague, type SeededCandidate } from "../helpers/clv-read-seed.js";
 import { migrateDeploy, startPostgres, type TestPostgres } from "../helpers/calibration-db.js";
+import { exactScoreSelections, seedExtendedMarketsFixture, seedOddsBook, type SeededOdds } from "../helpers/extended-markets-seed.js";
 
 const KICKOFF = "2026-12-10T18:00:00.000Z";
 const SETTLED = "2026-12-10T20:00:00.000Z";
@@ -166,5 +167,81 @@ describe("read-time no-vig CLV reader on real PostgreSQL", () => {
     // one candidate query plus the reader's two: no per-candidate queries.
     expect(counter.calls.filter((call) => call.startsWith("ManualOddsSnapshot.") || call.startsWith("ClosingOddsObservation."))).toEqual(["ManualOddsSnapshot.findMany", "ClosingOddsObservation.findMany"]);
     expect(counter.calls.filter((call) => call.startsWith("ValueSettlement."))).toEqual(["ValueSettlement.findMany"]);
+  });
+});
+
+/**
+ * Phase 14 (D-14): the same read-time layer serves Asian handicap and exact score. A complete candidate set and a complete
+ * closing set of one market and source give a value; anything less is a typed reason, never a borrowed neighbour line.
+ */
+describe("read-time no-vig CLV for Asian handicap and exact score (real PostgreSQL)", () => {
+  const SOURCE = "BOOKMAKER_BACK";
+  const KICK = "2026-09-10T18:00:00.000Z";
+  let extPostgres: TestPostgres;
+  let extPrisma: PrismaClient;
+  const candidates = new Map<string, { input: NoVigClvCandidate; odds: SeededOdds }>();
+
+  async function candidate(key: string, market: string, selection: string, selections: ReadonlyArray<readonly [string, string]>): Promise<{ fixtureId: string }> {
+    const seedRow = await seedExtendedMarketsFixture(extPrisma, { prefix: key, settlementReceipt: false });
+    const odds = await seedOddsBook(extPrisma, seedRow, { market, selections, tag: "cand" });
+    candidates.set(key, { odds, input: { key, fixtureId: seedRow.fixtureId, market, selection, oddsSnapshotId: odds.oddsSnapshotId, kickoffUtc: new Date(KICK) } });
+    return { fixtureId: seedRow.fixtureId };
+  }
+  const close = (fixtureId: string, market: string, odds: Readonly<Record<string, string>>) => insertClosingBook(extPrisma, { fixtureId, market: market as never, source: SOURCE, observedAt: "2026-09-10T17:00:00.000Z", odds });
+  const read = async (key: string) => (await readNoVigClvForCandidates(extPrisma, [candidates.get(key)!.input])).get(key)!;
+
+  beforeAll(async () => {
+    extPostgres = startPostgres(`bet-stats-p14-clv-${process.pid}`);
+    migrateDeploy(extPostgres.url());
+    extPrisma = createPrismaClient(extPostgres.url());
+    const handicap = [["HOME", "1.90"], ["AWAY", "1.95"]] as const;
+
+    const ahOk = await candidate("ahok", "ASIAN_HANDICAP:-0.75", "HOME", handicap);
+    await close(ahOk.fixtureId, "ASIAN_HANDICAP:-0.75", { HOME: "1.80", AWAY: "2.05" });
+
+    const ahInc = await candidate("ahinc", "ASIAN_HANDICAP:-0.75", "HOME", handicap);
+    await close(ahInc.fixtureId, "ASIAN_HANDICAP:-0.75", { HOME: "1.80" });
+
+    // The neighbouring line closed, the candidate's own line did not.
+    const ahOther = await candidate("ahother", "ASIAN_HANDICAP:-0.75", "HOME", handicap);
+    await close(ahOther.fixtureId, "ASIAN_HANDICAP:-1", { HOME: "2.10", AWAY: "1.75" });
+
+    const exOk = await candidate("exok", "EXACT_SCORE", "1-0", exactScoreSelections("18", { "1-0": "6" }));
+    await close(exOk.fixtureId, "EXACT_SCORE", Object.fromEntries(exactScoreSelections("17", { "1-0": "5.5" })));
+
+    const exInc = await candidate("exinc", "EXACT_SCORE", "1-0", exactScoreSelections("18", { "1-0": "6" }));
+    await close(exInc.fixtureId, "EXACT_SCORE", Object.fromEntries(exactScoreSelections("17").slice(0, 16)));
+  }, 180_000);
+
+  afterAll(async () => {
+    await extPrisma?.$disconnect();
+    extPostgres?.remove();
+  });
+
+  it("reads a handicap line from the complete candidate and closing sets of that line", async () => {
+    const reading = await read("ahok");
+    expect(reading).toMatchObject({ status: "AVAILABLE", policyVersion: NO_VIG_CLV_POLICY_VERSION, source: SOURCE, closingObservedAt: "2026-09-10T17:00:00.000Z" });
+    if (reading.status !== "AVAILABLE") throw new Error("unreachable");
+    const fair = (own: number, other: number) => (1 / own) / (1 / own + 1 / other);
+    expect(Number(reading.pCandidateFair)).toBeCloseTo(fair(1.9, 1.95), 12);
+    expect(Number(reading.pCloseFair)).toBeCloseTo(fair(1.8, 2.05), 12);
+    expect(Number(reading.value)).toBeCloseTo(fair(1.8, 2.05) / fair(1.9, 1.95) - 1, 12);
+  });
+
+  it("is UNAVAILABLE with a typed reason for an incomplete handicap closing set and never borrows another line", async () => {
+    expect(await read("ahinc")).toMatchObject({ status: "UNAVAILABLE", reason: "CLOSING_SET_INCOMPLETE" });
+    const other = await read("ahother");
+    expect(other).toMatchObject({ status: "UNAVAILABLE", reason: "CLOSING_SET_MISSING" });
+    expect(other).not.toHaveProperty("value");
+  });
+
+  it("reads exact score only from a closing set covering all 17 selections", async () => {
+    const reading = await read("exok");
+    expect(reading).toMatchObject({ status: "AVAILABLE", policyVersion: NO_VIG_CLV_POLICY_VERSION });
+    if (reading.status !== "AVAILABLE") throw new Error("unreachable");
+    const fair = (prices: ReadonlyArray<readonly [string, string]>) => (1 / Number(prices.find(([selection]) => selection === "1-0")![1])) / prices.reduce((sum, [, odds]) => sum + 1 / Number(odds), 0);
+    expect(Number(reading.pCandidateFair)).toBeCloseTo(fair(exactScoreSelections("18", { "1-0": "6" })), 12);
+    expect(Number(reading.pCloseFair)).toBeCloseTo(fair(exactScoreSelections("17", { "1-0": "5.5" })), 12);
+    expect(await read("exinc")).toMatchObject({ status: "UNAVAILABLE", reason: "CLOSING_SET_INCOMPLETE" });
   });
 });

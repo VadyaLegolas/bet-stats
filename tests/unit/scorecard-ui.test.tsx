@@ -120,6 +120,65 @@ describe("scorecard dashboard", () => {
     });
   });
 
+  describe("market and settlement policy in the candidate registry (MKT-04, D-16)", () => {
+    const row = (overrides: Record<string, unknown>) => ({ id: "v-1", selection: "HOME", decimalOdds: "1.95", outcome: "WIN", stakeUnits: "1", profitUnits: "0.95", clv: { status: "UNAVAILABLE", reason: null, value: null }, ...overrides });
+    const render = (page: Record<string, unknown>) => renderToStaticMarkup(createElement(ScorecardDashboard, { scorecard: model, candidates: { nextCursor: null, ...page } as never }));
+    const headers = (markup: string) => [...markup.slice(markup.indexOf("<thead><tr><th>")).matchAll(/<th>([^<]*)<\/th>/g)].map((match) => match[1]).slice(0, 8);
+
+    it("puts the market column first and labels the selection market-aware", () => {
+      const markup = render({ items: [row({ market: "ASIAN_HANDICAP:-0.75", selection: "HOME" }), row({ id: "v-2", market: "EXACT_SCORE", selection: "2-1" }), row({ id: "v-3", market: "ONE_X_TWO", selection: "DRAW" })], pageTotals: { count: 3, stakeUnits: "3", profitUnits: "0" } });
+      expect(headers(markup).slice(0, 3)).toEqual(["Рынок", "Выбор", "Коэффициент"]);
+      expect(markup).toContain("<td>Азиатский гандикап −0.75</td><td>Хозяева −0.75</td>");
+      expect(markup).toContain("<td>Точный счёт</td><td>Счёт 2:1</td>");
+      expect(markup).toContain("<td>1X2</td><td>Ничья</td>");
+    });
+
+    it("shows the extended outcome label with the policy id under it", () => {
+      const labels: Array<[string, string]> = [["WIN", "выигрыш"], ["HALF_WIN", "выигрыш половины ставки"], ["PUSH", "возврат ставки"], ["HALF_LOSS", "проигрыш половины ставки"], ["LOSS", "проигрыш"]];
+      for (const [outcome, text] of labels) {
+        const markup = render({ items: [row({ market: "ASIAN_HANDICAP:-0.75", outcome, policyVersion: "flat-one-unit-v2" })], pageTotalsByPolicy: [{ policyVersion: "flat-one-unit-v2", count: 1, stakeUnits: "1", profitUnits: "0" }] });
+        expect(markup).toContain(`<td>${text}<br/><small>flat-one-unit-v2</small></td>`);
+        expect(markup).not.toContain(`>${outcome}<`);
+      }
+      expect(render({ items: [row({ policyVersion: "flat-one-unit-v1" })], pageTotals: { count: 1, stakeUnits: "1", profitUnits: "0.95" } })).toContain("<td>выигрыш<br/><small>flat-one-unit-v1</small></td>");
+    });
+
+    it("renders one totals line per policy when both are on the page and never adds them together", () => {
+      const markup = render({
+        items: [row({ market: "ONE_X_TWO", policyVersion: "flat-one-unit-v1" }), row({ id: "v-2", market: "ASIAN_HANDICAP:0", policyVersion: "flat-one-unit-v2", outcome: "PUSH", profitUnits: "0" })],
+        pageTotals: { count: 1, stakeUnits: "1", profitUnits: "0.95" },
+        pageTotalsByPolicy: [{ policyVersion: "flat-one-unit-v1", count: 1, stakeUnits: "1", profitUnits: "0.95" }, { policyVersion: "flat-one-unit-v2", count: 2, stakeUnits: "2", profitUnits: "-0.5" }],
+      });
+      expect(markup).toContain("flat-one-unit-v1: 1 кандидатов, 1 единиц поставлено, 0.95 единиц прибыли");
+      expect(markup).toContain("flat-one-unit-v2: 2 кандидатов, 2 единиц поставлено, -0.5 единиц прибыли");
+      expect(markup.match(/Итоги страницы/g)).toHaveLength(2);
+      expect(markup).not.toContain("3 кандидатов");
+    });
+
+    it("keeps the single legacy line for one v1 policy and labels a v2-only page", () => {
+      const v1 = render({ items: [row({ policyVersion: "flat-one-unit-v1" })], pageTotals: { count: 1, stakeUnits: "1", profitUnits: "0.95" }, pageTotalsByPolicy: [{ policyVersion: "flat-one-unit-v1", count: 1, stakeUnits: "1", profitUnits: "0.95" }] });
+      expect(v1).toContain("<p>Итоги страницы: 1 кандидатов, 1 единиц поставлено, 0.95 единиц прибыли.</p>");
+      const v2 = render({ items: [row({ policyVersion: "flat-one-unit-v2" })], pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" }, pageTotalsByPolicy: [{ policyVersion: "flat-one-unit-v2", count: 1, stakeUnits: "1", profitUnits: "0.95" }] });
+      expect(v2).toContain("flat-one-unit-v2: 1 кандидатов, 1 единиц поставлено, 0.95 единиц прибыли");
+      expect(v2).not.toContain("<p>Итоги страницы: ");
+    });
+
+    it("renders an old API response without market, policy and per-policy totals as before", () => {
+      const markup = render({ items: [row({})], pageTotals: { count: 1, stakeUnits: "1", profitUnits: "0.95" } });
+      expect(markup).toContain("<td>—</td><td>Хозяева</td><td>1.95</td><td>выигрыш</td>");
+      expect(markup).not.toContain("<small>flat-one-unit");
+      expect(markup).toContain("<p>Итоги страницы: 1 кандидатов, 1 единиц поставлено, 0.95 единиц прибыли.</p>");
+      expect(render({ items: [], pageTotals: undefined })).toContain("Итоги страницы: 0 кандидатов");
+    });
+
+    it("prints unknown market, outcome and policy codes raw and never as a win", () => {
+      const markup = render({ items: [row({ market: "FUTURE_MARKET", selection: "X", outcome: "QUARTER_WIN", policyVersion: "flat-one-unit-v9" })], pageTotals: { count: 1, stakeUnits: "1", profitUnits: "0" } });
+      expect(markup).toContain("<td>FUTURE_MARKET</td><td>X</td>");
+      expect(markup).toContain("<td>QUARTER_WIN<br/><small>flat-one-unit-v9</small></td>");
+      expect(markup).not.toContain("<td>выигрыш");
+    });
+  });
+
   it("speaks Russian with a calendar period instead of raw API keys and ISO instants", () => {
     const markup = renderToStaticMarkup(createElement(ScorecardDashboard, { scorecard: model, candidates: { items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" } } }));
     for (const label of ["Период с", "Период по", "Версия модели", "Соревнование", "Рынок"]) expect(markup).toContain(label);

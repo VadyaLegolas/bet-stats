@@ -1,12 +1,12 @@
 import Link from "next/link";
 
-import type { NoVigClvUnavailableReason, ForecastSelection } from "@bet-stats/domain";
+import type { NoVigClvUnavailableReason, ForecastSelection, PolicyPageTotals, SettlementPolicyVersion } from "@bet-stats/domain";
 
 import { ResponsiveEvidence, type EvidenceColumn } from "../../components/responsive-evidence";
 import { ResultsSyncButton } from "../../components/results-sync-button";
 import { LocalDataBlock } from "../../components/local-data-block";
 import { ContextualMethodologyWarning } from "../../components/contextual-methodology-warning";
-import { financialOutcomeLabel, oddsSelectionLabel } from "../../components/enum-labels";
+import { financialOutcomeLabel, oddsMarketLabel, oddsSelectionLabel, selectionLabelFor } from "../../components/enum-labels";
 import { formatOdds } from "../../components/odds-format";
 import { formatInstant } from "../../components/time-format";
 import { CohortFilter } from "../../components/cohort-filter";
@@ -29,13 +29,37 @@ export type NoVigClvView =
 
 type CandidateRow = Readonly<{
   id: string; selection: string; decimalOdds: string; outcome: string; stakeUnits: string; profitUnits: string;
+  /** Канонический идентификатор рынка и политика расчёта; необязательны, чтобы старый ответ API не ломал страницу (план 14-07 их добавляет). */
+  market?: string;
+  policyVersion?: SettlementPolicyVersion;
   /** Frozen at settlement (`odds-ratio-clv-v1`, raw odds, margin included); meaning unchanged. */
   clv: { status: string; reason: string | null; value: string | null; policyVersion?: string };
   /** Optional so an older API response degrades to «нет данных» instead of breaking the page. */
   clvNoVig?: NoVigClvView;
 }>;
 
-type CandidatePage = Readonly<{ items: readonly CandidateRow[]; nextCursor: string | null; pageTotals: { count: number; stakeUnits: string; profitUnits: string } }>;
+type CandidatePage = Readonly<{
+  items: readonly CandidateRow[]; nextCursor: string | null;
+  /** Устаревшее поле: считает только строки политики v1; остаётся ради совместимости со старым ответом. */
+  pageTotals?: { count: number; stakeUnits: string; profitUnits: string };
+  /** Итоги страницы по политикам расчёта: политики никогда не складываются. */
+  pageTotalsByPolicy?: readonly PolicyPageTotals[];
+}>;
+
+const V1_POLICY = "flat-one-unit-v1";
+const totalsLine = (totals: { count: number; stakeUnits: string; profitUnits: string }, policy?: string) => `${policy ? `${policy}: ` : ""}${totals.count} кандидатов, ${totals.stakeUnits} единиц поставлено, ${totals.profitUnits} единиц прибыли`;
+
+/**
+ * Строки «Итоги страницы». Без итогов по политикам (старый ответ) или с единственной политикой v1 — прежняя одна строка;
+ * иначе по строке на политику с её идентификатором, чтобы итоги v2 не выдавались за v1 и не смешивались с ним.
+ */
+export function pageTotalsLines(candidates: Pick<CandidatePage, "pageTotals" | "pageTotalsByPolicy">): readonly string[] {
+  const byPolicy = candidates.pageTotalsByPolicy ?? [];
+  if (byPolicy.length === 0) return [`Итоги страницы: ${totalsLine(candidates.pageTotals ?? { count: 0, stakeUnits: "0", profitUnits: "0" })}.`];
+  const [only] = byPolicy;
+  if (byPolicy.length === 1 && only!.policyVersion === V1_POLICY) return [`Итоги страницы: ${totalsLine(only!)}.`];
+  return byPolicy.map((totals) => `Итоги страницы · ${totalsLine(totals, totals.policyVersion)}.`);
+}
 
 export function canonicalScorecardQuery(identity: ScorecardViewModel["cohortIdentity"]): string {
   const query = new URLSearchParams();
@@ -128,7 +152,7 @@ export function ScorecardDashboard({ scorecard, candidates, cursor }: { scorecar
     <section className="panel panel--stack" role="region" aria-label="Доказательства надёжности"><h2>Надёжность</h2><LocalDataBlock name="Доказательства надёжности" state={scorecard.health.state === "AVAILABLE" ? "available" : scorecard.health.state === "LIMITED" ? "limited" : "unavailable"} reason={scorecard.health.reasons.map(describeHealthReason).join("; ") || "Нет пригодных для оценки доказательств для этой точной когорты."} retryAllowed={false} retainContent><p><strong>Заключение:</strong> {scorecard.reliability.buckets.some((bucket) => bucket.count > 0) ? "Наблюдаемые исходы сопоставляются с зафиксированными корзинами вероятностей." : "Недостаточно доказательств для заполненных корзин надёжности."}</p><p>{scorecard.denominators.eventCount} вероятностных событий в этой точной когорте. Пустые корзины остаются недостаточными доказательствами и никогда не отображаются как нулевые исходы.</p><ResponsiveEvidence projectionId="scorecard-reliability" label="Таблица доказательств надёжности" tableLabel="Полные данные надёжности" caption="Полные данные калибровки для каждой корзины вероятностей" rows={scorecard.reliability.buckets} columns={reliabilityColumns} rowKey={(bucket) => String(bucket.index)} conclusion={(bucket) => `Диапазон вероятностей ${bucket.lowerBound.toFixed(1)}–${bucket.upperBound.toFixed(1)}`} denominator={(bucket) => `${bucket.count} вероятностных событий`} warning={(bucket) => bucket.evidenceState === "INSUFFICIENT" ? "Недостаточно доказательств" : ""}/></LocalDataBlock></section>
     <section className="panel panel--stack"><h2>Доказательства фиксированной ставки в одну единицу</h2><p>{scorecard.financial.count} рассчитанных кандидатов · {scorecard.financial.totalStakedUnits} единиц оценено · {scorecard.financial.totalProfitUnits} единиц результата</p><p>ROI / Доходность: {scorecard.financial.roi ?? "недоступно"}</p>{scorecard.financial.count === 0 && <p>Единицы оценки появляются только из рассчитанных кандидатов — цепочка появления в реестре ниже.</p>}</section>
     <section className="panel panel--stack"><h2>Доказательства по закрытию линии</h2>{scorecard.clv.status === "AVAILABLE" ? <p>{scorecard.clv.comparableCount} сопоставимых коэффициентов.</p> : <p>Доказательства по закрытию линии недоступны: {scorecard.clv.reason ? describeClvReason(scorecard.clv.reason) : "причина не указана"}.</p>}<p>CLV без маржи показывает, как изменилась справедливая вероятность выбора между фиксацией коэффициента кандидата и закрытием линии. Это не прогноз, не обещание прибыли и не рекомендация; значение используется только для оценки качества и не влияет на отбор кандидатов. Закрытие вводит оператор вручную из одного источника, выборки малы. <Link href="/methodology#clv">Подробнее в методологии</Link>.</p></section>
-    <section className="panel panel--stack"><h2>Реестр кандидатов</h2>{candidates.items.length === 0 ? <><p>В этой точной когорте нет рассчитанных кандидатов value.</p><p>{CANDIDATE_CHAIN_HINT}</p></> : <div className="scroll-x"><table><thead><tr><th>Выбор</th><th>Коэффициент</th><th>Исход</th><th>Единиц поставлено</th><th>Единиц прибыли</th><th>CLV без маржи (no-vig-clv-v1)</th><th>CLV по коэффициентам (odds-ratio-clv-v1, с маржой)</th></tr></thead><tbody>{candidates.items.map((item) => <tr key={item.id}><td>{oddsSelectionLabel(item.selection as ForecastSelection)}</td><td>{formatOdds(item.decimalOdds)}</td><td>{financialOutcomeLabel(item.outcome)}</td><td>{item.stakeUnits}</td><td>{Number(item.profitUnits) > 0 ? `+${item.profitUnits}` : item.profitUnits}</td><td><NoVigClvCell reading={item.clvNoVig} timeZone={timeZone} /></td><td>{describeCandidateClv(item.clv)}{item.clv.policyVersion && <><br /><small>{item.clv.policyVersion}</small></>}</td></tr>)}</tbody></table></div>}<p>Итоги страницы: {candidates.pageTotals.count} кандидатов, {candidates.pageTotals.stakeUnits} единиц поставлено, {candidates.pageTotals.profitUnits} единиц прибыли.</p><nav aria-label="Страницы кандидатов" className="cluster">{cursor && <Link className="link-touch" href={`/scorecards?${identityQuery}`}>Назад (первая страница)</Link>} {candidates.nextCursor && <Link className="link-touch" href={`/scorecards?${identityQuery}&cursor=${encodeURIComponent(candidates.nextCursor)}`}>Далее</Link>}</nav></section>
+    <section className="panel panel--stack"><h2>Реестр кандидатов</h2>{candidates.items.length === 0 ? <><p>В этой точной когорте нет рассчитанных кандидатов value.</p><p>{CANDIDATE_CHAIN_HINT}</p></> : <div className="scroll-x"><table><thead><tr><th>Рынок</th><th>Выбор</th><th>Коэффициент</th><th>Исход</th><th>Единиц поставлено</th><th>Единиц прибыли</th><th>CLV без маржи (no-vig-clv-v1)</th><th>CLV по коэффициентам (odds-ratio-clv-v1, с маржой)</th></tr></thead><tbody>{candidates.items.map((item) => <tr key={item.id}><td>{item.market ? oddsMarketLabel(item.market) : "—"}</td><td>{item.market ? selectionLabelFor(item.market, item.selection) : oddsSelectionLabel(item.selection as ForecastSelection)}</td><td>{formatOdds(item.decimalOdds)}</td><td>{financialOutcomeLabel(item.outcome)}{item.policyVersion && <><br /><small>{item.policyVersion}</small></>}</td><td>{item.stakeUnits}</td><td>{Number(item.profitUnits) > 0 ? `+${item.profitUnits}` : item.profitUnits}</td><td><NoVigClvCell reading={item.clvNoVig} timeZone={timeZone} /></td><td>{describeCandidateClv(item.clv)}{item.clv.policyVersion && <><br /><small>{item.clv.policyVersion}</small></>}</td></tr>)}</tbody></table></div>}{pageTotalsLines(candidates).map((line) => <p key={line}>{line}</p>)}<nav aria-label="Страницы кандидатов" className="cluster">{cursor && <Link className="link-touch" href={`/scorecards?${identityQuery}`}>Назад (первая страница)</Link>} {candidates.nextCursor && <Link className="link-touch" href={`/scorecards?${identityQuery}&cursor=${encodeURIComponent(candidates.nextCursor)}`}>Далее</Link>}</nav></section>
     <details id="formula-policy-receipts" className="panel panel--stack"><summary>Квитанции формул и политик</summary><dl><dt>Формула</dt><dd>{scorecard.receipts.formulaId}</dd><dt>Политика когорты</dt><dd>{scorecard.receipts.cohortPolicyId}</dd><dt>Политика надёжности</dt><dd>{scorecard.reliability.policyId}</dd><dt>Финансовая политика</dt><dd>{scorecard.financial.policyId}</dd></dl></details>
   </section>;
 }

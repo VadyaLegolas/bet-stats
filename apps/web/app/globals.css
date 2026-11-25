@@ -1696,4 +1696,5 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
   gap: var(--space-3);
 }
 .market-score-fields > :last-child { grid-column: 1 / -1; }
+.market-score-fields-set { border: 0; margin: 0; padding: 0; min-width: 0; }
 .evidence-card[data-current="true"] { border-color: var(--color-accent); background: var(--color-accent-soft); }

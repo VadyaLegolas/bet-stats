@@ -24,7 +24,7 @@ function userFacingSources(): readonly string[] {
   return ["apps/web/app", "apps/web/components"].flatMap((directory) =>
     readdirSync(resolve(directory), { recursive: true })
       .map(String)
-      .filter((file) => file.endsWith(".tsx"))
+      .filter((file) => file.endsWith(".tsx") || (file.endsWith(".ts") && !file.endsWith(".test.ts") && !file.endsWith(".d.ts")))
       .map((file) => `${directory}/${file.replaceAll("\\", "/")}`),
   );
 }
@@ -52,6 +52,13 @@ describe("responsible user-facing copy", () => {
     const disclosure = readFileSync(resolve("apps/web/components/risk-disclosure.tsx"), "utf8");
     expect(shell).toContain("<RiskDisclosure />");
     expect(disclosure).toContain(DISCLOSURE);
+  });
+
+  it("scans the .ts modules that carry user-facing copy as well as the .tsx components", () => {
+    const sources = userFacingSources();
+    expect(sources).toContain("apps/web/components/enum-labels.ts");
+    expect(sources.some((file) => file.endsWith(".tsx"))).toBe(true);
+    expect(sources.some((file) => file.endsWith(".test.ts"))).toBe(false);
   });
 
   it("keeps fixture discovery neutral and passes the repository copy gate", () => {

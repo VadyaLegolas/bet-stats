@@ -1,14 +1,23 @@
+import { AH_LINES_V1, AH_RESULTS, MARKET_FAMILIES, type AhLineToken } from "@bet-stats/domain";
 import { describe, expect, it } from "vitest";
 
 import {
+  AH_RESULT_LABELS,
+  AH_RESULT_ORDER,
   backupStateLabel,
   confidenceComponentLabel,
   evidenceLimitationLabel,
   financialOutcomeLabel,
   forecastKindLabel,
+  EXTENDED_MARKETS_UNAVAILABLE_FALLBACK,
+  EXTENDED_MARKETS_UNAVAILABLE_LABELS,
+  extendedUnavailableLabel,
+  FAIR_ODDS_UNAVAILABLE_LABELS,
   forecastLimitationLabel,
+  formatAhLine,
   impactLabel,
   incidentStatusLabel,
+  MARKET_FAMILY_LABELS,
   MARKET_LABELS,
   oddsMarketLabel,
   oddsSelectionLabel,
@@ -18,6 +27,8 @@ import {
   reconciliationMethodLabel,
   routeOutcomeLabel,
   routeTriggerLabel,
+  SCORE_MATRIX_SOURCE_LABELS,
+  selectionLabelFor,
   SELECTION_LABELS,
   serviceStateLabel,
   valueReasonLabel,
@@ -238,5 +249,90 @@ describe("backup state labels", () => {
   it("passes unknown states through unchanged", () => {
     expect(backupStateLabel("MYSTERY_BACKUP_STATE")).toBe("MYSTERY_BACKUP_STATE");
     expect(offsiteStateLabel("MYSTERY_OFFSITE_STATE")).toBe("MYSTERY_OFFSITE_STATE");
+  });
+});
+
+const AH_LINE_PINS: Readonly<Record<AhLineToken, string>> = {
+  "-2.5": "−2.5", "-2.25": "−2.25", "-2": "−2", "-1.75": "−1.75", "-1.5": "−1.5", "-1.25": "−1.25", "-1": "−1", "-0.75": "−0.75", "-0.5": "−0.5", "-0.25": "−0.25",
+  "0": "0",
+  "+0.25": "+0.25", "+0.5": "+0.5", "+0.75": "+0.75", "+1": "+1", "+1.25": "+1.25", "+1.5": "+1.5", "+1.75": "+1.75", "+2": "+2", "+2.25": "+2.25", "+2.5": "+2.5",
+};
+
+describe("extended market dictionaries are exhaustive over the domain unions", () => {
+  it("covers every market family, Asian handicap result and unavailable reason", () => {
+    expect(Object.keys(MARKET_FAMILY_LABELS).sort()).toEqual([...MARKET_FAMILIES].sort());
+    expect(MARKET_FAMILY_LABELS).toEqual({ ONE_X_TWO: "1X2", OVER_UNDER_2_5: "Тотал 2.5", BTTS: "Обе забьют", ASIAN_HANDICAP: "Азиатский гандикап", EXACT_SCORE: "Точный счёт" });
+    expect(Object.keys(AH_RESULT_LABELS).sort()).toEqual([...AH_RESULTS].sort());
+    expect([...AH_RESULT_ORDER]).toEqual(["WIN", "HALF_WIN", "PUSH", "HALF_LOSS", "LOSS"]);
+    expect(AH_RESULT_ORDER.map((result) => AH_RESULT_LABELS[result])).toEqual(["Выигрыш", "Выигрыш половины ставки", "Возврат ставки", "Проигрыш половины ставки", "Проигрыш"]);
+    expect(Object.keys(EXTENDED_MARKETS_UNAVAILABLE_LABELS)).toEqual(["SCORE_MATRIX_UNAVAILABLE"]);
+    expect(EXTENDED_MARKETS_UNAVAILABLE_LABELS.SCORE_MATRIX_UNAVAILABLE).toBe("Для этого прогноза расширенные рынки недоступны: матрица счёта не была сохранена.");
+    expect(EXTENDED_MARKETS_UNAVAILABLE_FALLBACK).toBe("Расширенные рынки для этого прогноза недоступны.");
+    expect(extendedUnavailableLabel("SCORE_MATRIX_UNAVAILABLE")).toBe(EXTENDED_MARKETS_UNAVAILABLE_LABELS.SCORE_MATRIX_UNAVAILABLE);
+    expect(extendedUnavailableLabel("MYSTERY")).toBe(EXTENDED_MARKETS_UNAVAILABLE_FALLBACK);
+    expect(FAIR_ODDS_UNAVAILABLE_LABELS).toEqual({ NO_WIN_PROBABILITY: "вероятность выигрыша равна нулю", ZERO_PROBABILITY: "вероятность счёта равна нулю" });
+    expect(SCORE_MATRIX_SOURCE_LABELS).toEqual({ PERSISTED: "сохранена при выпуске прогноза", REDERIVED: "воспроизведена по сохранённым параметрам и сверена с рынками прогноза" });
+  });
+  it("never labels a code with itself", () => {
+    for (const labels of [MARKET_FAMILY_LABELS, AH_RESULT_LABELS, EXTENDED_MARKETS_UNAVAILABLE_LABELS, FAIR_ODDS_UNAVAILABLE_LABELS, SCORE_MATRIX_SOURCE_LABELS] as Array<Record<string, string>>) {
+      for (const [code, label] of Object.entries(labels)) expect(label, code).not.toBe(code);
+    }
+  });
+  it("extends the financial outcome and value reason dictionaries without changing existing values", () => {
+    expect(financialOutcomeLabel("HALF_WIN")).toBe("выигрыш половины ставки");
+    expect(financialOutcomeLabel("HALF_LOSS")).toBe("проигрыш половины ставки");
+    expect(financialOutcomeLabel("PUSH")).toBe("возврат ставки");
+    expect(financialOutcomeLabel("WIN")).toBe("выигрыш");
+    expect(valueReasonLabel("UNSUPPORTED_ODDS_MARKET")).toBe("рынок или линия гандикапа не поддерживаются");
+    expect(valueReasonLabel("SCORE_MATRIX_UNAVAILABLE")).toBe("для этого прогноза расширенные рынки недоступны: матрица счёта не была сохранена");
+  });
+});
+
+describe("formatAhLine", () => {
+  it("pins all 21 line labels with U+2212 for negatives", () => {
+    expect(AH_LINES_V1.lines).toHaveLength(21);
+    for (const token of AH_LINES_V1.lines) expect(formatAhLine(token), token).toBe(AH_LINE_PINS[token]);
+    expect(formatAhLine("-0.75")).toBe("−0.75");
+    expect(formatAhLine("+0.25")).toBe("+0.25");
+    expect(formatAhLine("0")).toBe("0");
+    expect(formatAhLine("+1")).toBe("+1");
+  });
+  it("returns an unknown token as is and never throws", () => {
+    for (const token of ["+1.00", "0.0", "-0", "abc", "", "-3"]) expect(formatAhLine(token)).toBe(token);
+  });
+});
+
+describe("selectionLabelFor and oddsMarketLabel", () => {
+  it("labels Asian handicap sides from each side's own line", () => {
+    expect(selectionLabelFor("ASIAN_HANDICAP:-0.75", "HOME")).toBe("Хозяева −0.75");
+    expect(selectionLabelFor("ASIAN_HANDICAP:-0.75", "AWAY")).toBe("Гости +0.75");
+    expect(selectionLabelFor("ASIAN_HANDICAP:+1.5", "AWAY")).toBe("Гости −1.5");
+    expect(selectionLabelFor("ASIAN_HANDICAP:0", "HOME")).toBe("Хозяева 0");
+    expect(selectionLabelFor("ASIAN_HANDICAP:0", "AWAY")).toBe("Гости 0");
+  });
+  it("pins the 17 exact score selection labels", () => {
+    const expected: string[] = [];
+    for (let home = 0; home <= 3; home += 1) for (let away = 0; away <= 3; away += 1) expected.push(`Счёт ${home}:${away}`);
+    expected.push("Любой другой счёт");
+    const selections = [...Array.from({ length: 16 }, (_, index) => `${Math.floor(index / 4)}-${index % 4}`), "OTHER"];
+    expect(selections.map((selection) => selectionLabelFor("EXACT_SCORE", selection))).toEqual(expected);
+    expect(new Set(expected).size).toBe(17);
+  });
+  it("keeps the existing labels for the three core markets and falls back to the raw code", () => {
+    expect(selectionLabelFor("ONE_X_TWO", "DRAW")).toBe("Ничья");
+    expect(selectionLabelFor("BTTS", "YES")).toBe("Да");
+    expect(selectionLabelFor("OVER_UNDER_2_5", "OVER_2_5")).toBe("Тотал больше 2.5");
+    expect(selectionLabelFor("MYSTERY", "MYSTERY_SELECTION")).toBe("MYSTERY_SELECTION");
+    expect(selectionLabelFor("EXACT_SCORE", "9-9")).toBe("9-9");
+    expect(selectionLabelFor("ASIAN_HANDICAP:-0.75", "DRAW")).toBe("DRAW");
+  });
+  it("labels canonical market ids and falls back for unknown markets", () => {
+    expect(oddsMarketLabel("ASIAN_HANDICAP:-0.75")).toBe("Азиатский гандикап −0.75");
+    expect(oddsMarketLabel("ASIAN_HANDICAP:+0.25")).toBe("Азиатский гандикап +0.25");
+    expect(oddsMarketLabel("ASIAN_HANDICAP:0")).toBe("Азиатский гандикап 0");
+    expect(oddsMarketLabel("EXACT_SCORE")).toBe("Точный счёт");
+    expect(oddsMarketLabel("ONE_X_TWO")).toBe("1X2");
+    expect(oddsMarketLabel("ASIAN_HANDICAP:+1.00")).toBe("ASIAN_HANDICAP:+1.00");
+    expect(oddsMarketLabel("MYSTERY_MARKET")).toBe("MYSTERY_MARKET");
   });
 });

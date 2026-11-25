@@ -1626,6 +1626,8 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
   .fixture-list, .evidence-card, .sample-card, .sample-fixtures, .home-card, .panel, .notice, .state-notice, .state-chip { border: 1px solid CanvasText; }
   .match-hero, .facts-grid > div { border: 1px solid CanvasText; }
   .workbench-card, .ev-rows > div, .note-strip { border: 1px solid CanvasText; }
+  .market-summary > div, .market-table, .market-grid { border: 1px solid CanvasText; }
+  .market-table [data-current="true"] > :first-child { box-shadow: none; border-inline-start: 4px solid Highlight; }
   .kpi-tile, .steps-list > li, .panel--band { border: 1px solid CanvasText; }
   .evidence-trace-scroll, .evidence-trace-empty, .evidence-trace-stat { border: 1px solid CanvasText; }
   summary::after { border-color: CanvasText; }
@@ -1635,3 +1637,61 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
      restate the text colour explicitly. */
   .release-footer p { color: CanvasText; }
 }
+
+/* --- Расширенные рынки: азиатский гандикап и точный счёт (Phase 14) ---------
+   Аддитивный блок только на существующих токенах: без новых цветов, без новых
+   custom properties, без анимаций. Класс .market-table стоит на таблице или на
+   её обёртке, поэтому правила записаны через потомков. */
+
+.market-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.market-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+.market-summary > div {
+  padding: var(--space-4);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  min-width: 0;
+}
+.market-summary dt { font-size: 14px; font-weight: 400; color: var(--color-muted); }
+.market-summary dd {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.market-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-3); }
+.market-table { font-variant-numeric: tabular-nums; }
+.market-table th {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-2);
+}
+.market-table td, .market-table tbody th { padding: var(--space-3); font-size: 16px; font-weight: 400; }
+.market-table tbody th { background: var(--color-surface); position: sticky; inset-inline-start: 0; }
+.market-table [data-current="true"] > * { background: var(--color-accent-soft); }
+.market-table [data-current="true"] > :first-child { box-shadow: inset 4px 0 0 var(--color-accent); }
+.market-grid td { text-align: center; min-width: 6.5rem; }
+.market-grid thead th { text-align: center; }
+.market-grid tfoot th, .market-grid tfoot td { padding: var(--space-3); border-top: 1px solid var(--color-border-strong); }
+.market-grid tfoot th { background: var(--color-surface); text-align: start; }
+.market-cell-p { display: block; font-size: 16px; font-weight: 600; }
+.market-cell-o { display: block; font-size: 14px; font-weight: 400; color: var(--color-text-secondary); }
+.market-sub { display: block; margin-block-start: var(--space-1); font-size: 14px; font-weight: 400; line-height: 1.4; color: var(--color-muted); }
+.market-legend { margin-block: var(--space-2) 0; font-size: 14px; font-weight: 400; line-height: 1.4; color: var(--color-text-secondary); }
+.market-score-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: var(--space-3);
+}
+.market-score-fields > :last-child { grid-column: 1 / -1; }
+.evidence-card[data-current="true"] { border-color: var(--color-accent); background: var(--color-accent-soft); }

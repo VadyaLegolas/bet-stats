@@ -129,11 +129,34 @@ describe("design tokens: contrast (>= 4.5:1)", () => {
 
       pairs.push(["--color-on-danger", "--color-danger"]);
 
+      // Строка главной линии азиатского гандикапа (Phase 14) кладёт основной, вторичный и приглушённый текст на accent-soft.
+      for (const fg of ["--color-text", "--color-text-secondary", "--color-muted"]) pairs.push([fg, "--color-accent-soft"]);
+
       it.each(pairs)("%s on %s", (fg, bg) => {
         expect(contrast(colour(theme, fg), colour(theme, bg))).toBeGreaterThanOrEqual(4.5);
       });
     });
   }
+});
+
+describe("design tokens: extended markets block", () => {
+  const start = css.indexOf(".market-head");
+  const block = css.slice(start);
+
+  it("is appended at the end of globals.css", () => {
+    expect(start).toBeGreaterThan(0);
+    expect(block).toContain(".market-score-fields");
+    expect(block).toContain('.evidence-card[data-current="true"]');
+  });
+
+  it("introduces no hex colour values", () => {
+    expect(block.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).toEqual([]);
+  });
+
+  it("declares no new custom properties and adds no animation", () => {
+    expect(block.match(/(^|[;{\s])--[\w-]+\s*:/g) ?? []).toEqual([]);
+    expect(block).not.toMatch(/(?:^|[^-\w])(?:transition|animation|@keyframes)\b/);
+  });
 });
 
 describe("design tokens: shape", () => {

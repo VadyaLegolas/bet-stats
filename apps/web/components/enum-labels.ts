@@ -1,4 +1,5 @@
-import type { ForecastKind, ForecastMarket, ForecastSelection } from "@bet-stats/domain";
+import { AH_LINES_V1, parseAhLineToken, parseExactScoreSelection, parseMarketId } from "@bet-stats/domain";
+import type { AhFairOdds, AhResult, ExactScoreFairOdds, ExtendedMarketsSource, ExtendedMarketsUnavailableReason, ForecastKind, ForecastMarket, ForecastSelection, MarketFamily } from "@bet-stats/domain";
 
 /**
  * Central Russian labels for raw enum codes that reach rendered UI copy.
@@ -18,12 +19,12 @@ const ROUTE_OUTCOME_LABELS: Record<string, string> = { ADMITTED: "Допущен
 const ROUTE_TRIGGER_LABELS: Record<string, string> = { PRIMARY: "Первичный источник", UNSUPPORTED_COVERAGE: "Регион не поддерживается", ALLOWANCE_EXHAUSTED: "Бюджет запросов исчерпан", CIRCUIT_OPEN: "Сработал предохранитель", TRANSPORT_FAILURE: "Сбой транспорта", RATE_LIMITED: "Превышен лимит частоты", PROVIDER_UNAVAILABLE: "Провайдер недоступен", ROUTE_PENDING: "Маршрут ожидается", NO_PRODUCTION_FALLBACK: "Продакшен-резерв недоступен", UNSUPPORTED_CAPABILITY: "Возможность не поддерживается", STALE_CAPABILITY: "Устаревшая возможность", EXPIRED_CAPABILITY: "Возможность истекла", CRITICAL_HEADROOM: "Критический запас бюджета", UNKNOWN_CAPABILITY: "Неизвестная возможность", CAPABILITY_MISMATCH: "Несовпадение возможности" };
 const REASON_LABELS: Record<string, string> = { PROVIDER_OBSERVATION_RECORDED: "получено наблюдение провайдера", PROVENANCE_NOT_AVAILABLE: "провенанс источника недоступен", FRESHNESS_THRESHOLD_EXCEEDED: "превышен порог свежести", SOURCE_UPDATE_TIME_MISSING: "нет времени обновления источника", INVALID_SOURCE_UPDATE_TIME: "недопустимое время обновления источника", UNKNOWN_DATA_STATE: "состояние данных неизвестно" };
 const EVIDENCE_LIMITATION_LABELS: Record<string, string> = { NO_ELIGIBLE_HISTORY: "нет пригодной истории", LIMITED_HISTORY: "история ограничена", MISSING_TIMESTAMP: "нет отметки времени", EMPTY: "нет данных" };
-const VALUE_REASON_LABELS: Record<string, string> = { POLICY_CONFIG_MISMATCH: "версия конфигурации или схемы не соответствует политике value", UNRESOLVED_CANONICAL_IDENTITY: "каноническая идентичность команд не подтверждена", FIXTURE_MISMATCH: "снимки относятся к разным матчам", MARKET_SELECTION_MISMATCH: "рынок или выбор не совпадают", CONFIDENCE_BELOW_THRESHOLD: "уверенность ниже порога", EDGE_BELOW_THRESHOLD: "преимущество ниже порога", EV_BELOW_THRESHOLD: "ожидаемое value ниже порога" };
+const VALUE_REASON_LABELS: Record<string, string> = { POLICY_CONFIG_MISMATCH: "версия конфигурации или схемы не соответствует политике value", UNRESOLVED_CANONICAL_IDENTITY: "каноническая идентичность команд не подтверждена", FIXTURE_MISMATCH: "снимки относятся к разным матчам", MARKET_SELECTION_MISMATCH: "рынок или выбор не совпадают", CONFIDENCE_BELOW_THRESHOLD: "уверенность ниже порога", EDGE_BELOW_THRESHOLD: "преимущество ниже порога", EV_BELOW_THRESHOLD: "ожидаемое value ниже порога", UNSUPPORTED_ODDS_MARKET: "рынок или линия гандикапа не поддерживаются", SCORE_MATRIX_UNAVAILABLE: "для этого прогноза расширенные рынки недоступны: матрица счёта не была сохранена" };
 const VALUE_SIDE_LABELS: Record<string, string> = { HOME: "хозяев", AWAY: "гостей" };
 const CONFIDENCE_COMPONENT_LABELS: Record<string, string> = { completeness: "Полнота данных", lineupAvailability: "Доступность составов", freshness: "Свежесть данных", sourceReliability: "Надёжность источника", modelStability: "Стабильность модели" };
 const FORECAST_LIMITATION_FIXED: Record<string, string> = { UNRESOLVED_CANONICAL_IDENTITY: "каноническая идентичность команд не подтверждена" };
 const FORECAST_LIMITATION_KINDS: Record<string, string> = { GOAL_RATES: "голевые показатели", ELO: "рейтинг Эло", FORM_5: "форма за 5 матчей", HOME_STRENGTH: "сила дома", AWAY_STRENGTH: "сила в гостях", REST_DAYS: "дни отдыха", BUILD_ID: "идентификатор сборки доказательств" };
-const FINANCIAL_OUTCOME_LABELS: Record<string, string> = { WIN: "выигрыш", LOSS: "проигрыш", VOID: "возврат ставки", PENDING: "ожидает итога" };
+const FINANCIAL_OUTCOME_LABELS: Record<string, string> = { WIN: "выигрыш", LOSS: "проигрыш", VOID: "возврат ставки", PENDING: "ожидает итога", HALF_WIN: "выигрыш половины ставки", HALF_LOSS: "проигрыш половины ставки", PUSH: "возврат ставки" };
 const RECONCILIATION_METHOD_LABELS: Record<string, string> = { EXACT_EXTERNAL_REF: "точное совпадение внешней ссылки", UNIQUE_CONSERVATIVE_MATCH: "уникальное консервативное совпадение", MANUAL_REVIEW: "ручная проверка", OPERATOR_CONFIRMED: "подтверждено оператором" };
 const SERVICE_STATE_LABELS: Record<string, string> = { UP: "доступно", DOWN: "недоступно", DEGRADED: "деградация" };
 const IMPACT_LABELS: Record<string, string> = { BLOCKING: "блокирует", DEGRADED: "деградация" };
@@ -34,10 +35,60 @@ export const ALERT_SEVERITY_LABELS: Record<string, string> = { CRITICAL: "Кри
 export const ALERT_STATUS_LABELS: Record<string, string> = { OPEN: "Активен", RESOLVED: "Решён" };
 export const ALERT_SIGNAL_LABELS: Record<string, string> = { PROVIDER_QUOTA: "Исчерпание квоты провайдера", PROVIDER_CIRCUIT: "Предохранитель провайдера", SYNC_RUN: "Сбой синхронизации", WORKER_JOBS: "Групповые сбои задач и мёртвые письма", HTTP_5XX: "Всплеск ошибок 5xx", BACKUP_STALENESS: "Устаревание резервных копий", DELIVERY_HEALTH: "Сбой доставки алертов" };
 
+/**
+ * Расширенные рынки (D-19): словари типизированы Record по доменным union, поэтому новый
+ * код в домене ломает сборку, пока для него нет русской подписи.
+ */
+export const MARKET_FAMILY_LABELS: Record<MarketFamily, string> = { ONE_X_TWO: "1X2", OVER_UNDER_2_5: "Тотал 2.5", BTTS: "Обе забьют", ASIAN_HANDICAP: "Азиатский гандикап", EXACT_SCORE: "Точный счёт" };
+export const AH_RESULT_LABELS: Record<AhResult, string> = { WIN: "Выигрыш", HALF_WIN: "Выигрыш половины ставки", PUSH: "Возврат ставки", HALF_LOSS: "Проигрыш половины ставки", LOSS: "Проигрыш" };
+/** Порядок столбцов и строк пяти исходов везде. */
+export const AH_RESULT_ORDER: readonly AhResult[] = Object.freeze(["WIN", "HALF_WIN", "PUSH", "HALF_LOSS", "LOSS"] as const);
+export const EXTENDED_MARKETS_UNAVAILABLE_LABELS: Record<ExtendedMarketsUnavailableReason, string> = { SCORE_MATRIX_UNAVAILABLE: "Для этого прогноза расширенные рынки недоступны: матрица счёта не была сохранена." };
+/** Закрытый запасной текст: неизвестная причина или нераспознанный вид. */
+export const EXTENDED_MARKETS_UNAVAILABLE_FALLBACK = "Расширенные рынки для этого прогноза недоступны.";
+export const FAIR_ODDS_UNAVAILABLE_LABELS: Record<Extract<AhFairOdds | ExactScoreFairOdds, { status: "UNAVAILABLE" }>["reason"], string> = { NO_WIN_PROBABILITY: "вероятность выигрыша равна нулю", ZERO_PROBABILITY: "вероятность счёта равна нулю" };
+export const SCORE_MATRIX_SOURCE_LABELS: Record<ExtendedMarketsSource, string> = { PERSISTED: "сохранена при выпуске прогноза", REDERIVED: "воспроизведена по сохранённым параметрам и сверена с рынками прогноза" };
+
+/** Неизвестная причина → общий запасной текст, никогда сырой код. */
+export function extendedUnavailableLabel(reason: string): string { return Object.hasOwn(EXTENDED_MARKETS_UNAVAILABLE_LABELS, reason) ? EXTENDED_MARKETS_UNAVAILABLE_LABELS[reason as ExtendedMarketsUnavailableReason] : EXTENDED_MARKETS_UNAVAILABLE_FALLBACK; }
+
+/** «-0.75» → «−0.75» (U+2212), «+0.25» → «+0.25», «0» → «0»; токен не из белого списка возвращается как есть и не бросает. */
+export function formatAhLine(token: string): string {
+  if (parseAhLineToken(token) === null) return token;
+  return token.startsWith("-") ? `−${token.slice(1)}` : token;
+}
+
+/** Линия гостей — зеркало домашней линии по списку `ah-lines-v1`. */
+function awayLineOf(homeLine: string): string | null {
+  const index = AH_LINES_V1.lines.findIndex((line) => line === homeLine);
+  return index === -1 ? null : AH_LINES_V1.lines[AH_LINES_V1.lines.length - 1 - index]!;
+}
+
+/** Подпись выбора с учётом рынка: АГ «Хозяева −0.75» / «Гости +0.75», точный счёт «Счёт 2:1» / «Любой другой счёт», прочие — прежние. Неизвестное → сырой код. */
+export function selectionLabelFor(market: string, selection: string): string {
+  const parsed = parseMarketId(market);
+  if (parsed?.family === "ASIAN_HANDICAP" && parsed.line !== undefined) {
+    if (selection === "HOME") return `${SELECTION_LABELS.HOME} ${formatAhLine(parsed.line)}`;
+    if (selection === "AWAY") return `${SELECTION_LABELS.AWAY} ${formatAhLine(awayLineOf(parsed.line) ?? parsed.line)}`;
+    return selection;
+  }
+  if (parsed?.family === "EXACT_SCORE") {
+    const score = parseExactScoreSelection(selection);
+    if (score === "OTHER") return "Любой другой счёт";
+    return score === null ? selection : `Счёт ${score.homeGoals}:${score.awayGoals}`;
+  }
+  return Object.hasOwn(SELECTION_LABELS, selection) ? SELECTION_LABELS[selection as ForecastSelection] : selection;
+}
+
 /** Unknown kind → the raw code. */
 export function forecastKindLabel(kind: ForecastKind): string { return FORECAST_KIND_LABELS[kind] ?? kind; }
-/** Unknown market → the raw code. */
-export function oddsMarketLabel(market: ForecastMarket): string { return MARKET_LABELS[market] ?? market; }
+/** Канонический идентификатор рынка → подпись: «Азиатский гандикап −0.75» (домашняя перспектива), «Точный счёт»; неизвестное → сырой идентификатор. */
+export function oddsMarketLabel(market: string): string {
+  const parsed = parseMarketId(market);
+  if (parsed === null) return market;
+  if (parsed.family === "ASIAN_HANDICAP") return `${MARKET_FAMILY_LABELS.ASIAN_HANDICAP} ${formatAhLine(parsed.line!)}`;
+  return MARKET_FAMILY_LABELS[parsed.family];
+}
 /** Unknown selection → the raw code. */
 export function oddsSelectionLabel(selection: ForecastSelection): string { return SELECTION_LABELS[selection] ?? selection; }
 /** Unknown outcome → the raw code. */

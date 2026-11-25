@@ -1,7 +1,10 @@
 import { Decimal } from "decimal.js";
 
 import { FORECAST_CONFIG } from "../forecast/config.js";
+import { AH_LINES_V1, AH_LINES_VERSION, AH_QUARTERS_BY_TOKEN, parseAhLineToken, type AhLineToken } from "./ah-lines.js";
 import type { ScoreMatrixCell } from "./score-matrix.js";
+
+export { AH_LINES_V1, AH_LINES_VERSION, parseAhLineToken, type AhLineToken };
 
 /**
  * Asian handicap core (D-05, D-06, D-07): the versioned line list, one settlement function shared by
@@ -11,37 +14,11 @@ import type { ScoreMatrixCell } from "./score-matrix.js";
 
 const AhDecimal = Decimal.clone({ precision: FORECAST_CONFIG.decimalPrecision, rounding: Decimal.ROUND_HALF_EVEN });
 
-export const AH_LINES_VERSION = "ah-lines-v1" as const;
 export const AH_SETTLEMENT_VERSION = "ah-settlement-v1" as const;
 
 export type AhSide = "HOME" | "AWAY";
 export type AhResult = "WIN" | "HALF_WIN" | "PUSH" | "HALF_LOSS" | "LOSS";
 export const AH_RESULTS: readonly AhResult[] = ["WIN", "HALF_WIN", "PUSH", "HALF_LOSS", "LOSS"];
-
-/** Home-perspective lines in quarter steps; quarter units keep every value exactly representable. */
-const QUARTER_UNITS = Array.from({ length: 21 }, (_, index) => index - 10);
-
-function tokenOf(quarters: number): string {
-  if (quarters === 0) return "0";
-  const value = String(quarters / 4);
-  return quarters > 0 ? `+${value}` : value;
-}
-
-/** The versioned config `ah-lines-v1`: 21 home lines from -2.5 to +2.5, canonical tokens, mirrored for the away side. */
-export const AH_LINES_V1 = Object.freeze({
-  version: AH_LINES_VERSION,
-  step: 0.25,
-  lines: Object.freeze(QUARTER_UNITS.map(tokenOf)) as readonly string[],
-});
-
-export type AhLineToken = string;
-
-const QUARTERS_BY_TOKEN: ReadonlyMap<string, number> = new Map(QUARTER_UNITS.map((quarters) => [tokenOf(quarters), quarters]));
-
-/** Whitelist membership, never a numeric parse: `+1.00`, `0.0`, `-0`, `1e0` are all rejected. */
-export function parseAhLineToken(token: unknown): AhLineToken | null {
-  return typeof token === "string" && QUARTERS_BY_TOKEN.has(token) ? token : null;
-}
 
 /** Share of the odds and flat refund share per unit stake: payout = oddsShare * odds + refundShare. */
 export const AH_RETURN_SHARES: Readonly<Record<AhResult, Readonly<{ oddsShare: number; refundShare: number }>>> = Object.freeze({
@@ -70,7 +47,7 @@ export function settleAsianHandicap(
   homeGoals: number,
   awayGoals: number,
 ): Readonly<{ result: AhResult; shares: Readonly<{ oddsShare: number; refundShare: number }> }> {
-  const quarters = QUARTERS_BY_TOKEN.get(lineToken);
+  const quarters = AH_QUARTERS_BY_TOKEN.get(lineToken);
   if (quarters === undefined) throw Object.assign(new Error("INVALID_AH_LINE"), { code: "INVALID_AH_LINE" });
   const margin = side === "HOME" ? homeGoals - awayGoals : awayGoals - homeGoals;
   const sideQuarters = side === "HOME" ? quarters : -quarters;
@@ -132,6 +109,7 @@ function sideView(cells: readonly ScoreMatrixCell[], lineToken: string, side: Ah
 
 /** Both sides of one home-perspective line. */
 export function ahLineView(cells: readonly ScoreMatrixCell[], lineToken: string): AhLineView {
-  if (parseAhLineToken(lineToken) === null) throw Object.assign(new Error("INVALID_AH_LINE"), { code: "INVALID_AH_LINE" });
-  return { line: lineToken, home: sideView(cells, lineToken, "HOME"), away: sideView(cells, lineToken, "AWAY") };
+  const line = parseAhLineToken(lineToken);
+  if (line === null) throw Object.assign(new Error("INVALID_AH_LINE"), { code: "INVALID_AH_LINE" });
+  return { line, home: sideView(cells, lineToken, "HOME"), away: sideView(cells, lineToken, "AWAY") };
 }

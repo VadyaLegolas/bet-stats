@@ -50,3 +50,21 @@ describe("local partial odds drafts", () => {
     expect(storage.removeItem).toHaveBeenCalledWith("draft:key");
   });
 });
+
+describe("local drafts of the extended markets", () => {
+  const base = { schemaVersion: "manual-odds-draft-v1" as const, analyzable: false as const, fixtureId: "fixture-1", sourceLabel: "local book" };
+
+  it("accepts the selections of an Asian handicap line and of exact score", () => {
+    const ah = { ...base, market: "ASIAN_HANDICAP:-0.75", fields: [{ selection: "HOME", decimalOdds: "1.9" }, { selection: "AWAY", decimalOdds: "" }] };
+    expect(parseOddsDraft(JSON.stringify(ah))).toEqual(ah);
+    const exact = { ...base, market: "EXACT_SCORE", fields: [{ selection: "2-1", decimalOdds: "9" }, { selection: "OTHER", decimalOdds: "" }] };
+    expect(parseOddsDraft(JSON.stringify(exact))).toEqual(exact);
+  });
+
+  it("rejects foreign selections and unknown lines", () => {
+    expect(() => parseOddsDraft(JSON.stringify({ ...base, market: "ASIAN_HANDICAP:-0.75", fields: [{ selection: "DRAW", decimalOdds: "3" }] }))).toThrow("INVALID_ODDS_DRAFT_FIELD");
+    expect(() => parseOddsDraft(JSON.stringify({ ...base, market: "EXACT_SCORE", fields: [{ selection: "4-0", decimalOdds: "3" }] }))).toThrow("INVALID_ODDS_DRAFT_FIELD");
+    expect(() => parseOddsDraft(JSON.stringify({ ...base, market: "ASIAN_HANDICAP:-0.80", fields: [] }))).toThrow("UNSUPPORTED_ODDS_DRAFT_MARKET");
+    expect(() => parseOddsDraft(JSON.stringify({ ...base, market: "ASIAN_HANDICAP:+1.00", fields: [] }))).toThrow("UNSUPPORTED_ODDS_DRAFT_MARKET");
+  });
+});

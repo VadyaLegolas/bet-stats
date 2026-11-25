@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { RiskDisclosure } from "../../components/risk-disclosure";
 import { formatInstant } from "../../components/time-format";
+import { SCANNER_METHODOLOGY_LIMITATION } from "../scanner/scanner-labels";
 
 
 function TechnicalDetails({ id, children }: { id: string; children: ReactNode }) {
@@ -78,6 +79,7 @@ export default function MethodologyPage() {
       <section id="limitations" className="panel">
         <h2>Ограничения</h2>
         <p>Исходы футбола неопределённы. Малые выборки, устаревшие доказательства, травмы или составы, не отражённые до отсечки, сбои поставщиков, неверная спецификация модели и меняющееся поведение команд могут делать оценки менее надёжными. Положительное ожидаемое value остаётся оценкой, а не обещанием прибыли. <Link href="/methodology#extended-markets">Азиатский гандикап и точный счёт — см. отдельный раздел.</Link></p>
+        <p>{SCANNER_METHODOLOGY_LIMITATION}</p>
         <TechnicalDetails id="limitations-technical">
           <p>Известные режимы отказов выходят в отказоустойчивое состояние: недостаточно доказательств, недоступные данные поставщика, несовпадение отсечки, неопределённая каноническая идентичность или ограниченные доказательства когорты. Отсутствующие значения никогда не считаются нулём.</p>
           <p>{card.forecast.valueFormulas.join("; ")}.</p>

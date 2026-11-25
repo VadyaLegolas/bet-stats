@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { ProbBar, PROB_OUTCOME_LABELS } from "../components/prob-bar";
+import { SCANNER_HOME_CONTENT } from "./scanner/scanner-labels";
 
 const CONTENTS = [
   { label: "Матчи", href: "/fixtures", detail: "Предстоящие матчи, сгруппированные по местной дате, с честной отметкой состояния данных." },
   { label: "Анализ", href: "/fixtures#match-analysis", detail: "Замороженные прогнозы с доказательствами, допущениями и результатами проверок." },
+  SCANNER_HOME_CONTENT,
   { label: "Результаты", href: "/scorecards", detail: "Ведомости, измеряющие калибровку после каждого завершённого матча." },
   { label: "Методология", href: "/methodology", detail: "Входы, исключения, уверенность, ограничения и политика оценки." },
   { label: "FAQ", href: "/faq", detail: "Пошаговая инструкция: как запустить сайт, прочитать прогноз, ввести коэффициенты и проверить результаты." },

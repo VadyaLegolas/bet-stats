@@ -72,8 +72,11 @@ New component files (all server components, no `"use client"`, no import of `@be
 
 | File | Responsibility |
 |------|----------------|
-| `apps/web/app/scanner/page.tsx` | Fetch (`internal-api`/API pattern of `scorecards/page.tsx`, eligibility headers, `cache: "no-store"`, `redirect: "manual"` + `permanentRedirect` on 308), state selection, layout |
+| `apps/web/app/scanner/page.tsx` | Server-side fetch of the API directly (`API_ORIGIN`, the same eligibility headers and `cache: "no-store"` as `scorecards/page.tsx`, `redirect: "manual"`); no `internal-api` proxy route is created; every non-2xx response, a redirect included, is UNAVAILABLE (the redirect-permanent branch is removed), state selection, layout |
 | `apps/web/app/scanner/scanner-view.tsx` | Pure presentational: header, notices, match groups, rows, stale block, states |
+| `apps/web/app/scanner/scanner-rows.tsx` | Match groups, rows, stale block |
+| `apps/web/app/scanner/scanner-data.ts` | Fetch and fail-closed parse entry |
+| `apps/web/app/scanner/scanner-types.ts` | Local types and parser |
 | `apps/web/app/scanner/scanner-labels.ts` (or additions to `enum-labels.ts`) | `FRESHNESS_LABELS`, `VALUE_OUTCOME_LABELS`, copy constants |
 
 ---
@@ -199,7 +202,7 @@ Bullet list:
 
 «Кандидатов: {N}, матчей: {M}. Данные на {generatedAt, формат 25.11.2026, 14:05}.»
 
-If the payload has `truncated: true`, directly under it a `<p class="note-strip">` containing a `state-chip state-chip--md tone-warning` chip «Показана часть списка» followed by the text: «Показаны первые 200 кандидатов по времени начала матча. Более поздние матчи в список не вошли.» (the number 200 is interpolated from the payload `limit`).
+If the payload has `truncated: true`, directly under it a `<p class="note-strip">` containing a `state-chip state-chip--md tone-warning` chip «Показана часть списка» followed by the text: «Показаны кандидаты первых по времени матчей: {N} из {totalCandidates} (лимит списка — {limit}). Более поздние матчи в список не вошли.» ({N} is the number of items; {totalCandidates} and {limit} are interpolated from the payload).
 
 If the main list has zero rows (U-08): `<p>` «Кандидатов со свежими или стареющими коэффициентами нет. Все кандидаты — в блоке «Устаревшие коэффициенты» ниже.»
 
@@ -209,7 +212,7 @@ Outer `<ol class="scanner-groups">` (ordered: chronological). Each item is `<li 
 
 1. **Match head** `<div class="scanner-match-head">`:
    - `<h3>` containing `<a href="/fixtures/{fixtureId}">{homeTeam} — {awayTeam}</a>` (20px/600; the link text is the whole match name; wraps at word boundaries, `overflow-wrap: break-word`);
-   - `<p class="scanner-match-meta">` (14px muted): `{competition}` · `<time dateTime="{kickoffAt ISO}">{kickoff}</time>` — e.g. «Премьер-лига · сб, 28 ноября, 18:00». Separator is a visible « · » inside the text, not a pseudo-element.
+   - `<p class="scanner-match-meta">` (14px muted): `{competition}` (the stored `League.name`; the data model has no separate competition table) · `<time dateTime="{kickoffAt ISO}">{kickoff}</time>` — e.g. «Премьер-лига · сб, 28 ноября, 18:00». Separator is a visible « · » inside the text, not a pseudo-element.
 2. **Rows** `<ul class="scanner-rows">`, each `<li class="scanner-row" id="receipt-{receiptId}" data-freshness="FRESH|AGING">` (the stale block uses `data-freshness="STALE"`).
 
 Match groups preserve the API order exactly (kickoff ascending, then rows in market order 1X2 → тотал 2.5 → обе забьют → АГ → точный счёт, then selection). **The view never sorts or re-groups by anything.** There is no sort control, no `aria-sort`, no «по возрастанию/убыванию» wording.
@@ -235,6 +238,8 @@ DOM order (= reading order = tab order):
 | «Коэффициент букмекера» | stored decimal odds string, 16px/400 | «Источник: {source}» then «Введены {captured}, {age}» (see below) |
 | «Вероятность модели» (AH: «Эффективная вероятность выигрыша») | stored `modelProbability` string, 16px/400 | «доля, как в квитанции» |
 
+The payload also carries `oddsCapturedAt` as informational data; the UI does not render it and freshness never uses it.
+
 - Source/time sub-lines: `<span class="market-sub">Источник: {source}</span>` and `<span class="market-sub">Введены <time dateTime="{submittedAt ISO}">{25.11.2026, 14:05}</time>, {7 ч назад}</span>`. `source` is user-entered manual text: render as plain text only (React escapes), `overflow-wrap: anywhere`, no truncation, no markup interpretation. A missing/empty `source` renders «Источник не указан» (never blank).
 - If a stored value is `null` (nullable columns): render «Не записано» in `dd` (never `0`, `NaN`, blank, or a derived value). `edge`/`expectedValue` are non-null for `VALUE_CANDIDATE`, so this is a fail-safe, not an expected path.
 - Age format (`formatAge(seconds)`): <60 min → «{N} мин назад»; 60 min to <48 h → «{N} ч назад» (floor); ≥48 h → «{N} сут назад» (floor). Examples: «12 мин назад», «7 ч назад», «3 сут назад». Presentation of an integer from the API, not a re-derivation of freshness.
@@ -248,7 +253,7 @@ DOM order (= reading order = tab order):
 | STALE (> 24 h) | `tone-warning` | «Коэффициенты устарели» | stale block only |
 | forecast updated (flag) | `tone-info` | «Прогноз обновлён» | any placement, with the freshness chip |
 
-**Details (`details.scanner-detail`, summary «Подробности квитанции»):** a `dl.scanner-facts` with, in order: «Вероятность без вига» (stored string), «Справедливый коэффициент» (stored string, or «Недоступно» when null), «Квитанция» (`<code>{receiptId}</code>`), «Снимок прогноза» (`<code>{forecastSnapshotId}</code>`), «Правила квитанции» (`<code>{policyVersion}</code>`; for AH/exact score also `push-aware-ev-v1` as stored). For `ASIAN_HANDICAP` rows append one `<p class="scanner-note">`: «Преимущество — условная вероятность выигрыша (без учёта возврата ставки) минус вероятность без вига.» (shown only when the receipt's `extended.edgeDefinition` equals `conditional-win-probability-minus-no-vig`; any other value renders the raw definition id in `<code>` next to «Определение преимущества» — fail-open to the stored fact, never an invented sentence).
+**Details (`details.scanner-detail`, summary «Подробности квитанции»):** a `dl.scanner-facts` with, in order: «Вероятность без вига» (stored string), «Справедливый коэффициент» (stored string, or «Недоступно» when null), «Квитанция» (`<code>{receiptId}</code>`), «Снимок прогноза» (`<code>{forecastSnapshotId}</code>`), «Правила квитанции» (`<code>{valuePolicyVersion}</code>` from `receipt.valuePolicyVersion`; a second `<code>` with the stored `extended.evPolicyVersion`, for example `push-aware-ev-v1`, appears only when that field is present, which is Asian handicap receipts only; exact-score receipts carry no such field and show only the first code element). For `ASIAN_HANDICAP` rows append one `<p class="scanner-note">`: «Преимущество — условная вероятность выигрыша (без учёта возврата ставки) минус вероятность без вига.» (shown only when the receipt's `extended.edgeDefinition` equals `conditional-win-probability-minus-no-vig`; any other value renders the raw definition id in `<code>` next to «Определение преимущества» — fail-open to the stored fact, never an invented sentence).
 
 **Links (`p.scanner-links`, flex wrap, gap `--space-2 --space-4`, each `a` `min-height: 44px; display: inline-flex; align-items: center`):**
 
@@ -312,7 +317,7 @@ Replaces the list region; header and `RiskDisclosure` stay; ordering notice and 
 - `<p>` «Обновите страницу или вернитесь позже.»
 - `<a class="btn-secondary btn-compact" href="/scanner">Обновить страницу</a>` — a plain link to the same URL (works without JS; Phase 14 precedent for server-side fetch). No `onClick`, no `window.location.reload`.
 
-No invented causes (no «сервер перегружен», «проблемы с интернетом»). `role="alert"` is correct here: a true failure. Triggers: non-2xx (other than the 308 redirect handled as in `scorecards/page.tsx`), network error/timeout, body that is not valid JSON, or a payload whose `state`/shape is not recognised (**fail closed**: an unrecognised shape renders UNAVAILABLE, never AVAILABLE or EMPTY).
+No invented causes (no «сервер перегружен», «проблемы с интернетом»). `role="alert"` is correct here: a true failure. Triggers: any non-2xx response (the scanner endpoint never redirects), network error/timeout, body that is not valid JSON, or a payload whose `state`/shape is not recognised (**fail closed**: an unrecognised shape renders UNAVAILABLE, never AVAILABLE or EMPTY).
 
 Distinguishing EMPTY from UNAVAILABLE (acceptance-critical): different `h2`, different chip text and tone («Пусто» neutral vs «Недоступно» amber), different ARIA (no alert vs `role="alert"`), and only EMPTY shows counts and «Это не сбой данных».
 
@@ -414,7 +419,7 @@ All copy is Russian and exact. Forbidden on the page and in every new module: ce
 | Freshness chips | «Свежие коэффициенты», «Коэффициенты стареют», «Коэффициенты устарели» |
 | Forecast updated | chip «Прогноз обновлён»; note «После этой квитанции вышел более новый снимок прогноза. Значения в строке относятся к прежнему снимку.» |
 | Stale block | `h2` «Устаревшие коэффициенты ({N})»; lead «Коэффициенты в этих строках введены более {agingMaxHours} часов назад, рынок мог измениться с тех пор. Значения не менялись и показаны как в квитанции.»; `summary` «Показать устаревшие строки: {N}» |
-| Truncation | chip «Показана часть списка»; «Показаны первые 200 кандидатов по времени начала матча. Более поздние матчи в список не вошли.» |
+| Truncation | chip «Показана часть списка»; «Показаны кандидаты первых по времени матчей: {N} из {totalCandidates} (лимит списка — {limit}). Более поздние матчи в список не вошли.» |
 | All-stale line | «Кандидатов со свежими или стареющими коэффициентами нет. Все кандидаты — в блоке «Устаревшие коэффициенты» ниже.» |
 | Empty state heading | «Кандидатов value на ближайшие 7 суток нет» (chip «Пусто») |
 | Empty state body | «Запрос выполнен успешно, но среди сохранённых квитанций для матчей ближайших 7 суток нет ни одного кандидата value. Это не сбой данных.» + counts «Проверено квитанций в окне: {N}» and outcome tiles; zero receipts: «Для матчей этого окна сохранённых квитанций value пока нет. Квитанции создаются после ручного ввода коэффициентов на странице матча.» + link «Открыть матчи» |
@@ -486,3 +491,18 @@ Applicable state considerations resolved: 16 covered, 4 backstop, 1 unresolved.
 - Static guards: no `"use client"` in `apps/web/app/scanner/**`; no import of the `@bet-stats/domain` barrel from the scanner view; `release-navigation` contains the «Сканер value» entry with `current` for `/scanner`; the home `CONTENTS` contains it.
 - CSS guard (`design-tokens.test.ts`): the `.scanner-*` block has no hex values, no `transition`/`animation`, only 14/16/20/24px font sizes.
 - Playwright (visual backstops): 320/375/768/1440 × light/dark/forced-colors on an AVAILABLE fixture with long strings: no horizontal page scroll, values and links inside the viewport, `dt` not broken mid-word, axe clean, nav does not overflow at 768; EMPTY, EMPTY + plaque, UNAVAILABLE and all-stale fixtures render their distinct headings.
+
+---
+
+## Amendments (Phase 15 planning, pending user confirmation)
+
+Reconciliation of this approved contract with the contract shipped by Plan 15-01 (see `15-01-SUMMARY.md`). The frontmatter stays `status: approved`; this section carries the pending flag. Line numbers refer to this file before the amendment edit. Exactly the six changes below were made; no other line, colour, spacing, typography or copy rule changed.
+
+| # | Original line(s) | Old text | New text | Status |
+|---|------------------|----------|----------|--------|
+| 1 | 75, plus new rows after 77 | Row `apps/web/app/scanner/page.tsx`: «Fetch (`internal-api`/API pattern of `scorecards/page.tsx`, eligibility headers, `cache: "no-store"`, `redirect: "manual"` + `permanentRedirect` on 308), state selection, layout». No rows for the three helper files. | «Server-side fetch of the API directly (`API_ORIGIN`, the same eligibility headers and `cache: "no-store"` as `scorecards/page.tsx`, `redirect: "manual"`); no `internal-api` proxy route is created; every non-2xx response, a redirect included, is UNAVAILABLE (the redirect-permanent branch is removed), state selection, layout». Three rows added to the new-files table: `scanner-rows.tsx` (match groups, rows, stale block), `scanner-data.ts` (fetch and fail-closed parse entry), `scanner-types.ts` (local types and parser). | ожидает подтверждения пользователя |
+| 2 | 212 | «`{competition}` · `<time ...`» | «`{competition}` (the stored `League.name`; the data model has no separate competition table) · `<time ...`» | ожидает подтверждения пользователя |
+| 3 | 202 and 417 | «Показаны первые 200 кандидатов по времени начала матча. Более поздние матчи в список не вошли.» (line 202 adds «the number 200 is interpolated from the payload `limit`») | «Показаны кандидаты первых по времени матчей: {N} из {totalCandidates} (лимит списка — {limit}). Более поздние матчи в список не вошли.» Truncation is at a match boundary, so the shown count can be below the limit; {N} is the number of items. Line 202 now reads «{N} is the number of items; {totalCandidates} and {limit} are interpolated from the payload». | ожидает подтверждения пользователя |
+| 4 | 251 | «Правила квитанции» (`<code>{policyVersion}</code>`; for AH/exact score also `push-aware-ev-v1` as stored) | «Правила квитанции» (`<code>{valuePolicyVersion}</code>` from `receipt.valuePolicyVersion`; a second `<code>` with the stored `extended.evPolicyVersion`, for example `push-aware-ev-v1`, appears only when that field is present, which is Asian handicap receipts only; exact-score receipts carry no such field and show only the first code element) | ожидает подтверждения пользователя |
+| 5 | 315 | Triggers: «non-2xx (other than the 308 redirect handled as in `scorecards/page.tsx`)» | Triggers: «any non-2xx response (the scanner endpoint never redirects)» | ожидает подтверждения пользователя |
+| 6 | after 236 (Facts table) | No note about `oddsCapturedAt`. | Added under the Facts table: «The payload also carries `oddsCapturedAt` as informational data; the UI does not render it and freshness never uses it.» | ожидает подтверждения пользователя |

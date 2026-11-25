@@ -1,4 +1,5 @@
-import { MARKET_SELECTIONS, type OddsMarket, type OddsSelection } from "./contract.js";
+import { selectionsFor } from "../markets/registry.js";
+import type { OddsMarket, OddsSelection } from "./contract.js";
 
 export interface OddsDraft {
   readonly schemaVersion: "manual-odds-draft-v1";
@@ -22,9 +23,9 @@ export function parseOddsDraft(serialized: string): OddsDraft {
   const candidate = value as Record<string, unknown>;
   if (candidate.schemaVersion !== "manual-odds-draft-v1" || candidate.analyzable !== false) throw new Error("INVALID_ODDS_DRAFT_VERSION");
   if (typeof candidate.fixtureId !== "string" || !candidate.fixtureId || typeof candidate.sourceLabel !== "string") throw new Error("INVALID_ODDS_DRAFT_IDENTITY");
-  if (typeof candidate.market !== "string" || !Object.hasOwn(MARKET_SELECTIONS, candidate.market)) throw new Error("UNSUPPORTED_ODDS_DRAFT_MARKET");
+  if (typeof candidate.market !== "string" || selectionsFor(candidate.market) === null) throw new Error("UNSUPPORTED_ODDS_DRAFT_MARKET");
   if (!Array.isArray(candidate.fields)) throw new Error("INVALID_ODDS_DRAFT_FIELDS");
-  const allowed = MARKET_SELECTIONS[candidate.market as OddsMarket];
+  const allowed = selectionsFor(candidate.market)!;
   for (const field of candidate.fields) {
     if (!field || typeof field !== "object" || Array.isArray(field) || !hasExactKeys(field, ["selection", "decimalOdds"])) throw new Error("INVALID_ODDS_DRAFT_FIELD_KEYS");
     const entry = field as Record<string, unknown>;

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
-import { canonicalizeDecimalOdds, CANONICAL_UTC_INSTANT_PATTERN, MARKET_SELECTIONS, type OddsMarket, type OddsSelection } from "../odds/contract.js";
+import { selectionsFor } from "../markets/registry.js";
+import { canonicalizeDecimalOdds, CANONICAL_UTC_INSTANT_PATTERN, type OddsMarket, type OddsSelection } from "../odds/contract.js";
 
 export interface ClosingOddsBookInput {
   readonly fixtureId: string;
@@ -77,7 +78,8 @@ export function closingObservationId(key: ClosingObservationKey): string {
  */
 export function validateClosingOddsBook(input: ClosingOddsBookInput, context: ClosingOddsContext): ClosingOddsValidation {
   if (!canonicalInstant(context.kickoffUtc) || !canonicalInstant(context.nowUtc)) throw new Error("INVALID_CLOSING_ODDS_CONTEXT");
-  if (typeof input.market !== "string" || !Object.hasOwn(MARKET_SELECTIONS, input.market)) return reject("UNSUPPORTED_MARKET");
+  const expected = selectionsFor(input.market);
+  if (expected === null) return reject("UNSUPPORTED_MARKET");
   if (typeof input.sourceConvention !== "string" || !input.sourceConvention.trim()) return reject("INVALID_SOURCE_CONVENTION");
   if (!canonicalInstant(input.observedAt)) return reject("INVALID_OBSERVED_AT");
 
@@ -92,7 +94,6 @@ export function validateClosingOddsBook(input: ClosingOddsBookInput, context: Cl
   if (!Array.isArray(input.selections)) return reject("INCOMPLETE_MARKET_SET");
   const names = input.selections.map((item) => (item && typeof item === "object" ? item.selection : undefined));
   if (new Set(names).size !== names.length) return reject("DUPLICATE_SELECTION");
-  const expected = MARKET_SELECTIONS[input.market];
   if (names.length !== expected.length || expected.some((selection) => !names.includes(selection))) return reject("INCOMPLETE_MARKET_SET");
 
   const rows: ClosingObservationRow[] = [];

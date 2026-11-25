@@ -168,3 +168,30 @@ describe("closingObservationId", () => {
     expect(closingObservationId({ ...key, fixtureId: "a", market: "bc" })).not.toBe(closingObservationId({ ...key, fixtureId: "ab", market: "c" }));
   });
 });
+
+describe("validateClosingOddsBook over the market registry (D-14)", () => {
+  const exact = ["0-0", "0-1", "0-2", "0-3", "1-0", "1-1", "1-2", "1-3", "2-0", "2-1", "2-2", "2-3", "3-0", "3-1", "3-2", "3-3", "OTHER"];
+
+  it("accepts a complete Asian handicap set in registry order", () => {
+    const result = validateClosingOddsBook(withBook({ market: "ASIAN_HANDICAP:-0.75", selections: [{ selection: "AWAY", decimalOdds: "1.95" }, { selection: "HOME", decimalOdds: "1.9" }] }), context);
+    expect(result.ok && result.rows.map((row) => row.selection)).toEqual(["HOME", "AWAY"]);
+    expect(result.ok && result.rows.every((row) => row.market === "ASIAN_HANDICAP:-0.75")).toBe(true);
+  });
+
+  it("accepts a complete exact score set", () => {
+    const result = validateClosingOddsBook(withBook({ market: "EXACT_SCORE", selections: [...exact].reverse().map((selection) => ({ selection: selection as never, decimalOdds: "12" })) }), context);
+    expect(result.ok && result.rows.map((row) => row.selection)).toEqual(exact);
+  });
+
+  it("rejects unknown lines and incomplete sets with the pinned codes", () => {
+    const sides = [{ selection: "HOME" as const, decimalOdds: "1.9" }, { selection: "AWAY" as const, decimalOdds: "1.95" }];
+    expect(validateClosingOddsBook(withBook({ market: "ASIAN_HANDICAP:-0.80" as never, selections: sides }), context)).toEqual({ ok: false, code: "UNSUPPORTED_MARKET" });
+    expect(validateClosingOddsBook(withBook({ market: "ASIAN_HANDICAP:-0.75", selections: [sides[0]!] }), context)).toEqual({ ok: false, code: "INCOMPLETE_MARKET_SET" });
+    expect(validateClosingOddsBook(withBook({ market: "ASIAN_HANDICAP:-0.75", selections: [sides[0]!, sides[0]!] }), context)).toEqual({ ok: false, code: "DUPLICATE_SELECTION" });
+    expect(validateClosingOddsBook(withBook({ market: "EXACT_SCORE", selections: exact.slice(0, 16).map((selection) => ({ selection: selection as never, decimalOdds: "12" })) }), context)).toEqual({ ok: false, code: "INCOMPLETE_MARKET_SET" });
+  });
+
+  it("keeps the unsupported-market check ahead of every later check", () => {
+    expect(validateClosingOddsBook(withBook({ market: "ASIAN_HANDICAP:+1.00" as never, sourceConvention: " " }), context)).toEqual({ ok: false, code: "UNSUPPORTED_MARKET" });
+  });
+});

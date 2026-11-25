@@ -7,10 +7,15 @@ import {
   ahBreakdown,
   ahFairOdds,
   ahLineView,
+  buildAhView,
+  lineClassOf,
+  mainAhLine,
   parseAhLineToken,
   settleAsianHandicap,
+  splitLinesOf,
+  type AhMarketLine,
 } from "../../packages/domain/src/markets/asian-handicap.js";
-import { buildScoreMatrixV1 } from "../../packages/domain/src/markets/score-matrix.js";
+import { buildScoreMatrix, buildScoreMatrixV1, type ScoreMatrixCell } from "../../packages/domain/src/markets/score-matrix.js";
 import type { EvidenceProjectionDto } from "../../packages/domain/src/evidence/contract.js";
 
 const cutoff = "2026-09-13T12:00:00.000Z";
@@ -142,5 +147,155 @@ describe("ahBreakdown and fair odds on a createForecast matrix", () => {
     expect(view.home.fairOdds.status).toBe("AVAILABLE");
     expect(view.home.breakdown.HALF_WIN).toBe(0);
     expect(() => ahLineView(cells, "0.0")).toThrow("INVALID_AH_LINE");
+  });
+});
+
+const GRID: ReadonlyArray<readonly [number, number, number | undefined]> = [
+  [0.2, 0.2, undefined], [0.2, 4, undefined], [4, 0.2, undefined], [1.4, 1.2, undefined], [2.7, 0.6, -0.08], [1.1, 1.1, 0.05], [4, 4, undefined], [0.9, 2.3, -0.08],
+];
+
+function gridCells(home: number, away: number, rho?: number): readonly ScoreMatrixCell[] {
+  return buildScoreMatrix({ expectedGoals: { home, away }, rho }).scoreMatrix.map((cell) => [cell.homeGoals, cell.awayGoals, cell.probability] as const);
+}
+
+const OUTCOMES = ["WIN", "HALF_WIN", "PUSH", "HALF_LOSS", "LOSS"] as const;
+
+describe("buildAhView: the full 21-line view (D-05, D-07, D-08)", () => {
+  it("returns 21 lines ascending with mirrored away tokens", () => {
+    const view = buildAhView(cells);
+    expect(view).toHaveLength(21);
+    expect(view.map((line) => line.homeLine)).toEqual(AH_LINES_V1.lines);
+    expect(view.map((line) => line.awayLine)).toEqual([...AH_LINES_V1.lines].reverse());
+    expect(view[10]!.awayLine).toBe("0");
+  });
+
+  it.each(GRID)("sums five outcomes to one on all lines for both sides, lambda %s / %s (rho %s)", (home, away, rho) => {
+    for (const line of buildAhView(gridCells(home, away, rho))) {
+      for (const side of ["HOME", "AWAY"] as const) {
+        const breakdown = line.sides[side].breakdown;
+        expect(Math.abs(OUTCOMES.reduce((sum, key) => sum + breakdown[key], 0) - 1)).toBeLessThanOrEqual(1e-12);
+        expect(line.sides[side].effectiveWinProbability).toBe(breakdown.WIN + breakdown.HALF_WIN / 2);
+      }
+    }
+  });
+
+  it.each(GRID)("makes AWAY the bitwise mirror of HOME, lambda %s / %s", (home, away, rho) => {
+    for (const line of buildAhView(gridCells(home, away, rho))) {
+      const h = line.sides.HOME.breakdown;
+      const a = line.sides.AWAY.breakdown;
+      expect(a.WIN).toBe(h.LOSS);
+      expect(a.LOSS).toBe(h.WIN);
+      expect(a.HALF_WIN).toBe(h.HALF_LOSS);
+      expect(a.HALF_LOSS).toBe(h.HALF_WIN);
+      expect(a.PUSH).toBe(h.PUSH);
+    }
+  });
+
+  it("gives PUSH exactly on the draw for line 0 and on the margin for whole lines", () => {
+    const matrix = gridCells(1.4, 1.2);
+    const view = buildAhView(matrix);
+    const draw = matrix.filter(([h, a]) => h === a).reduce((sum, [, , p]) => sum + p, 0);
+    expect(view.find((line) => line.homeLine === "0")!.sides.HOME.breakdown.PUSH).toBeCloseTo(draw, 14);
+    for (const token of ["-2", "-1", "+1", "+2"] as const) {
+      const margin = -Number(token);
+      const expected = matrix.filter(([h, a]) => h - a === margin).reduce((sum, [, , p]) => sum + p, 0);
+      expect(view.find((line) => line.homeLine === token)!.sides.HOME.breakdown.PUSH).toBeCloseTo(expected, 14);
+    }
+  });
+
+  it("has no half results on whole and half lines and no push on half and quarter lines", () => {
+    for (const line of buildAhView(cells)) {
+      for (const side of ["HOME", "AWAY"] as const) {
+        const breakdown = line.sides[side].breakdown;
+        if (line.lineClass !== "QUARTER") {
+          expect(breakdown.HALF_WIN).toBe(0);
+          expect(breakdown.HALF_LOSS).toBe(0);
+        }
+        if (line.lineClass !== "WHOLE") expect(breakdown.PUSH).toBe(0);
+      }
+    }
+  });
+
+  it("returns a quarter line as the average of its two adjacent lines (fractions of odds and of the flat refund)", () => {
+    const matrix = gridCells(1.7, 1.1, -0.05);
+    const view = buildAhView(matrix);
+    const byLine = new Map(view.map((line) => [line.homeLine, line] as const));
+    // payout per unit stake at odds D is oddsShare * D + refundShare; the quarter line pays the mean of the two legs.
+    const shares = (line: AhMarketLine, side: "HOME" | "AWAY") => {
+      const b = line.sides[side].breakdown;
+      return { odds: b.WIN * 1 + b.HALF_WIN * 0.5, refund: b.HALF_WIN * 0.5 + b.PUSH + b.HALF_LOSS * 0.5 };
+    };
+    for (const quarter of AH_LINES_V1.lines.filter((token) => lineClassOf(token) === "QUARTER")) {
+      for (const side of ["HOME", "AWAY"] as const) {
+        const negate = (leg: string) => (leg === "0" ? "0" : leg.startsWith("-") ? `+${leg.slice(1)}` : `-${leg.slice(1)}`);
+        const homeLegs = splitLinesOf(quarter, side).map((leg) => (side === "HOME" ? leg : negate(leg)));
+        const a = shares(byLine.get(homeLegs[0] as never)!, side);
+        const b = shares(byLine.get(homeLegs[1] as never)!, side);
+        const q = shares(byLine.get(quarter)!, side);
+        expect(q.odds).toBeCloseTo((a.odds + b.odds) / 2, 12);
+        expect(q.refund).toBeCloseTo((a.refund + b.refund) / 2, 12);
+      }
+    }
+  });
+
+  it("classifies lines and lists the split lines in the side's sign convention", () => {
+    expect(["-2", "0", "+1"].map((token) => lineClassOf(token as never))).toEqual(["WHOLE", "WHOLE", "WHOLE"]);
+    expect(["-1.5", "+0.5"].map((token) => lineClassOf(token as never))).toEqual(["HALF", "HALF"]);
+    expect(["-0.75", "+0.25", "-2.25"].map((token) => lineClassOf(token as never))).toEqual(["QUARTER", "QUARTER", "QUARTER"]);
+    expect(splitLinesOf("-0.75", "HOME")).toEqual(["-0.5", "-1"]);
+    expect(splitLinesOf("-0.75", "AWAY")).toEqual(["+0.5", "+1"]);
+    expect(splitLinesOf("+0.25", "HOME")).toEqual(["0", "+0.5"]);
+    expect(splitLinesOf("+0.25", "AWAY")).toEqual(["0", "-0.5"]);
+    expect(splitLinesOf("-2.25", "HOME")).toEqual(["-2", "-2.5"]);
+    expect(splitLinesOf("0", "HOME")).toEqual([]);
+    expect(splitLinesOf("-1.5", "AWAY")).toEqual([]);
+    expect(splitLinesOf("+1", "HOME")).toEqual([]);
+    const view = buildAhView(cells);
+    expect(view.find((line) => line.homeLine === "-0.75")!.sides.HOME.splitLines).toEqual(["-0.5", "-1"]);
+    expect(view.find((line) => line.homeLine === "-0.75")!.sides.AWAY.splitLines).toEqual(["+0.5", "+1"]);
+    expect(view.find((line) => line.homeLine === "-0.75")!.lineClass).toBe("QUARTER");
+    expect(view.find((line) => line.homeLine === "-1")!.sides.HOME.splitLines).toEqual([]);
+  });
+
+  it("derives the main line as the minimizer of |(WIN + HALF_WIN/2) - (LOSS + HALF_LOSS/2)| for HOME", () => {
+    for (const [home, away, rho] of GRID) {
+      const view = buildAhView(gridCells(home, away, rho));
+      const gap = (line: AhMarketLine) => Math.abs(line.sides.HOME.breakdown.WIN + line.sides.HOME.breakdown.HALF_WIN / 2 - (line.sides.HOME.breakdown.LOSS + line.sides.HOME.breakdown.HALF_LOSS / 2));
+      const best = Math.min(...view.map(gap));
+      const main = view.find((line) => line.homeLine === mainAhLine(view))!;
+      expect(gap(main)).toBe(best);
+    }
+  });
+
+  it("breaks main line ties by smaller absolute line, then the smaller home line", () => {
+    const row = (homeLine: AhMarketLine["homeLine"], win: number, loss: number): AhMarketLine => ({
+      homeLine,
+      awayLine: "0",
+      lineClass: "WHOLE",
+      sides: {
+        HOME: { breakdown: { WIN: win, HALF_WIN: 0, PUSH: 1 - win - loss, HALF_LOSS: 0, LOSS: loss }, effectiveWinProbability: win, fairOdds: { status: "UNAVAILABLE", reason: "NO_WIN_PROBABILITY" }, splitLines: [] },
+        AWAY: { breakdown: { WIN: loss, HALF_WIN: 0, PUSH: 1 - win - loss, HALF_LOSS: 0, LOSS: win }, effectiveWinProbability: loss, fairOdds: { status: "UNAVAILABLE", reason: "NO_WIN_PROBABILITY" }, splitLines: [] },
+      },
+    });
+    // Equal gap on -1 and +1: the smaller home line (-1) wins.
+    expect(mainAhLine([row("-1", 0.5, 0.25), row("+1", 0.5, 0.25)])).toBe("-1");
+    // Equal gap on -2 and 0: the smaller absolute line (0) wins even though -2 comes first.
+    expect(mainAhLine([row("-2", 0.5, 0.25), row("0", 0.25, 0.5)])).toBe("0");
+    // A strictly smaller gap wins regardless of order.
+    expect(mainAhLine([row("-1", 0.5, 0.25), row("+1", 0.45, 0.45)])).toBe("+1");
+  });
+
+  it("never yields Infinity or NaN fair odds: unavailable exactly when the side cannot win", () => {
+    for (const [home, away, rho] of GRID) for (const line of buildAhView(gridCells(home, away, rho))) for (const s of ["HOME", "AWAY"] as const) {
+      const side = line.sides[s];
+      if (side.fairOdds.status === "AVAILABLE") {
+        expect(Number.isFinite(Number(side.fairOdds.odds))).toBe(true);
+        expect(Number(side.fairOdds.odds)).toBeGreaterThanOrEqual(1);
+        expect(side.effectiveWinProbability).toBeGreaterThan(0);
+      } else {
+        expect(side.fairOdds.reason).toBe("NO_WIN_PROBABILITY");
+        expect(side.effectiveWinProbability).toBe(0);
+      }
+    }
   });
 });

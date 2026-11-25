@@ -79,6 +79,8 @@ describe("forecast transport contract", () => {
     expect(parseForecastResponse(validResponse)).toEqual(validResponse);
     expect(() => parseForecastResponse({ ...validResponse, mutable: true })).toThrowError("UNKNOWN_FORECAST_RESPONSE_KEY");
     expect(() => parseForecastResponse({ ...validResponse, probabilities: { ...validResponse.probabilities, BTTS: [{ selection: "YES", probability: 1.2, fairOdds: "1" }] } })).toThrowError("INVALID_FORECAST_PROBABILITY");
+    expect(() => parseForecastResponse({ ...validResponse, probabilities: { ...validResponse.probabilities, EXACT_SCORE: [] } })).toThrowError("INVALID_FORECAST_PROBABILITY");
+    expect(() => parseForecastResponse({ ...validResponse, probabilities: { ONE_X_TWO: validResponse.probabilities.ONE_X_TWO, OVER_UNDER_2_5: validResponse.probabilities.OVER_UNDER_2_5 } })).toThrowError("INVALID_FORECAST_PROBABILITY");
     expect(() => parseForecastResponse({ ...validResponse, confidence: { ...validResponse.confidence, score: Number.NaN } })).toThrowError("INVALID_FORECAST_CONFIDENCE");
   });
 });

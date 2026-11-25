@@ -1,7 +1,8 @@
 import { FORECAST_CONFIG_VERSION_BY_MODEL } from "./config.js";
 import { DIXON_COLES_CONVENTION, type DixonColesProvenance } from "./dixon-coles.js";
+import { CORE_MARKET_SELECTIONS } from "../markets/registry.js";
 import { isForecastModelVersion } from "./model-version.js";
-import type { ForecastDraft, ForecastEvent, ForecastMarket } from "./model.js";
+import type { ForecastDraft, ForecastEvent } from "./model.js";
 
 export const FORECAST_KINDS = ["INITIAL", "PRE_MATCH", "LINEUP_CONFIRMED"] as const;
 export type ForecastKind = (typeof FORECAST_KINDS)[number];
@@ -96,16 +97,10 @@ export function parseForecastRequest(value: unknown): ForecastRequestDto {
   return dto as unknown as ForecastRequestDto;
 }
 
-const MARKET_SELECTIONS: Readonly<Record<ForecastMarket, readonly string[]>> = {
-  ONE_X_TWO: ["HOME", "DRAW", "AWAY"],
-  OVER_UNDER_2_5: ["OVER_2_5", "UNDER_2_5"],
-  BTTS: ["YES", "NO"],
-};
-
 function probabilities(value: unknown): asserts value is ForecastDraft["markets"] {
   const markets = record(value, "INVALID_FORECAST_PROBABILITY");
-  exactKeys(markets, Object.keys(MARKET_SELECTIONS), "INVALID_FORECAST_PROBABILITY");
-  for (const [market, selections] of Object.entries(MARKET_SELECTIONS)) {
+  exactKeys(markets, Object.keys(CORE_MARKET_SELECTIONS), "INVALID_FORECAST_PROBABILITY");
+  for (const [market, selections] of Object.entries(CORE_MARKET_SELECTIONS)) {
     const events = markets[market];
     if (!Array.isArray(events) || events.length !== selections.length) throw new Error("INVALID_FORECAST_PROBABILITY");
     for (const [index, raw] of events.entries()) {

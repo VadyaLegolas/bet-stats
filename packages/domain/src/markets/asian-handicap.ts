@@ -1,47 +1,24 @@
 import { Decimal } from "decimal.js";
 
 import { FORECAST_CONFIG } from "../forecast/config.js";
+import { AH_LINES_V1, AH_LINES_VERSION, AH_QUARTERS_BY_TOKEN, parseAhLineToken, tokenOf, type AhLineToken } from "./ah-lines.js";
 import type { ScoreMatrixCell } from "./score-matrix.js";
+
+export { AH_LINES_V1, AH_LINES_VERSION, parseAhLineToken, type AhLineToken };
 
 /**
  * Asian handicap core (D-05, D-06, D-07): the versioned line list, one settlement function shared by
  * display and settlement, the five-way breakdown over the score grid and push-aware fair odds.
- * Pure functions only. The full 21-line view and the main line are added by plan 14-02.
+ * Pure functions only. `buildAhView` assembles the full 21-line view (D-05, D-07, D-08) and `mainAhLine` picks the main line.
  */
 
 const AhDecimal = Decimal.clone({ precision: FORECAST_CONFIG.decimalPrecision, rounding: Decimal.ROUND_HALF_EVEN });
 
-export const AH_LINES_VERSION = "ah-lines-v1" as const;
 export const AH_SETTLEMENT_VERSION = "ah-settlement-v1" as const;
 
 export type AhSide = "HOME" | "AWAY";
 export type AhResult = "WIN" | "HALF_WIN" | "PUSH" | "HALF_LOSS" | "LOSS";
 export const AH_RESULTS: readonly AhResult[] = ["WIN", "HALF_WIN", "PUSH", "HALF_LOSS", "LOSS"];
-
-/** Home-perspective lines in quarter steps; quarter units keep every value exactly representable. */
-const QUARTER_UNITS = Array.from({ length: 21 }, (_, index) => index - 10);
-
-function tokenOf(quarters: number): string {
-  if (quarters === 0) return "0";
-  const value = String(quarters / 4);
-  return quarters > 0 ? `+${value}` : value;
-}
-
-/** The versioned config `ah-lines-v1`: 21 home lines from -2.5 to +2.5, canonical tokens, mirrored for the away side. */
-export const AH_LINES_V1 = Object.freeze({
-  version: AH_LINES_VERSION,
-  step: 0.25,
-  lines: Object.freeze(QUARTER_UNITS.map(tokenOf)) as readonly string[],
-});
-
-export type AhLineToken = string;
-
-const QUARTERS_BY_TOKEN: ReadonlyMap<string, number> = new Map(QUARTER_UNITS.map((quarters) => [tokenOf(quarters), quarters]));
-
-/** Whitelist membership, never a numeric parse: `+1.00`, `0.0`, `-0`, `1e0` are all rejected. */
-export function parseAhLineToken(token: unknown): AhLineToken | null {
-  return typeof token === "string" && QUARTERS_BY_TOKEN.has(token) ? token : null;
-}
 
 /** Share of the odds and flat refund share per unit stake: payout = oddsShare * odds + refundShare. */
 export const AH_RETURN_SHARES: Readonly<Record<AhResult, Readonly<{ oddsShare: number; refundShare: number }>>> = Object.freeze({
@@ -70,7 +47,7 @@ export function settleAsianHandicap(
   homeGoals: number,
   awayGoals: number,
 ): Readonly<{ result: AhResult; shares: Readonly<{ oddsShare: number; refundShare: number }> }> {
-  const quarters = QUARTERS_BY_TOKEN.get(lineToken);
+  const quarters = AH_QUARTERS_BY_TOKEN.get(lineToken);
   if (quarters === undefined) throw Object.assign(new Error("INVALID_AH_LINE"), { code: "INVALID_AH_LINE" });
   const margin = side === "HOME" ? homeGoals - awayGoals : awayGoals - homeGoals;
   const sideQuarters = side === "HOME" ? quarters : -quarters;
@@ -132,6 +109,83 @@ function sideView(cells: readonly ScoreMatrixCell[], lineToken: string, side: Ah
 
 /** Both sides of one home-perspective line. */
 export function ahLineView(cells: readonly ScoreMatrixCell[], lineToken: string): AhLineView {
-  if (parseAhLineToken(lineToken) === null) throw Object.assign(new Error("INVALID_AH_LINE"), { code: "INVALID_AH_LINE" });
-  return { line: lineToken, home: sideView(cells, lineToken, "HOME"), away: sideView(cells, lineToken, "AWAY") };
+  const line = parseAhLineToken(lineToken);
+  if (line === null) throw Object.assign(new Error("INVALID_AH_LINE"), { code: "INVALID_AH_LINE" });
+  return { line, home: sideView(cells, lineToken, "HOME"), away: sideView(cells, lineToken, "AWAY") };
+}
+
+export type AhLineClass = "WHOLE" | "HALF" | "QUARTER";
+
+function quartersOf(token: AhLineToken): number {
+  return AH_QUARTERS_BY_TOKEN.get(token)!;
+}
+
+/** WHOLE for x, HALF for x.5, QUARTER for x.25 and x.75 (a quarter line splits the stake over two adjacent lines). */
+export function lineClassOf(token: AhLineToken): AhLineClass {
+  const quarters = Math.abs(quartersOf(token));
+  return quarters % 4 === 0 ? "WHOLE" : quarters % 2 === 0 ? "HALF" : "QUARTER";
+}
+
+/**
+ * The two adjacent lines a quarter line splits its stake over, in the side's own sign convention and by ascending
+ * absolute value (home -0.75 gives -0.5, -1; the away side of the same line gives +0.5, +1). Empty for whole and half lines.
+ */
+export function splitLinesOf(token: AhLineToken, side: AhSide): readonly AhLineToken[] {
+  if (lineClassOf(token) !== "QUARTER") return [];
+  const own = side === "HOME" ? quartersOf(token) : -quartersOf(token);
+  return [own - 1, own + 1].sort((a, b) => Math.abs(a) - Math.abs(b)).map(tokenOf);
+}
+
+export interface AhSideRow extends AhSideView {
+  readonly splitLines: readonly AhLineToken[];
+}
+
+/** One home-perspective line with both sides, as displayed (D-05): the line, its mirror, its class and every figure. */
+export interface AhMarketLine {
+  readonly homeLine: AhLineToken;
+  readonly awayLine: AhLineToken;
+  readonly lineClass: AhLineClass;
+  readonly sides: Readonly<{ HOME: AhSideRow; AWAY: AhSideRow }>;
+}
+
+function sideRow(cells: readonly ScoreMatrixCell[], token: AhLineToken, side: AhSide): AhSideRow {
+  return { ...sideView(cells, token, side), splitLines: splitLinesOf(token, side) };
+}
+
+/**
+ * All 21 lines of `ah-lines-v1` by ascending home line. Every side is summed over the grid in the same cell order and
+ * through the single settlement function, so the away side is the bitwise mirror of the home side.
+ */
+export function buildAhView(cells: readonly ScoreMatrixCell[]): readonly AhMarketLine[] {
+  return AH_LINES_V1.lines.map((token) => ({
+    homeLine: token,
+    awayLine: tokenOf(-quartersOf(token)),
+    lineClass: lineClassOf(token),
+    sides: { HOME: sideRow(cells, token, "HOME"), AWAY: sideRow(cells, token, "AWAY") },
+  }));
+}
+
+function homeGap(line: AhMarketLine): number {
+  const { WIN, HALF_WIN, HALF_LOSS, LOSS } = line.sides.HOME.breakdown;
+  return Math.abs(WIN + HALF_WIN / 2 - (LOSS + HALF_LOSS / 2));
+}
+
+/**
+ * D-08 main line: the home-side line minimising |(WIN + HALF_WIN/2) - (LOSS + HALF_LOSS/2)|. Ties go to the smaller
+ * absolute line, then to the smaller (more negative) home line; the last rule is this plan's decision, D-08 leaves it
+ * open. The comparison is exact, with no tolerance, so the choice is a pure function of the grid.
+ */
+export function mainAhLine(lines: readonly AhMarketLine[]): AhLineToken {
+  let best: { readonly line: AhLineToken; readonly gap: number } | undefined;
+  for (const candidate of lines) {
+    const gap = homeGap(candidate);
+    const quarters = quartersOf(candidate.homeLine);
+    const bestQuarters = best === undefined ? 0 : quartersOf(best.line);
+    const better = best === undefined
+      || gap < best.gap
+      || (gap === best.gap && (Math.abs(quarters) < Math.abs(bestQuarters) || (Math.abs(quarters) === Math.abs(bestQuarters) && quarters < bestQuarters)));
+    if (better) best = { line: candidate.homeLine, gap };
+  }
+  if (best === undefined) throw Object.assign(new Error("INVALID_AH_VIEW"), { code: "INVALID_AH_VIEW" });
+  return best.line;
 }

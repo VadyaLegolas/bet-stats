@@ -7,6 +7,7 @@ import { createPrismaClient, createPrismaForecastRepository, type PrismaClient, 
 import {
   ForecastOrchestrator,
   forecastConfigHashFor,
+  parseExtendedMarketsView,
   parseForecastResponse,
   parseScoreMatrixV1,
   type EvidenceProjectionDto,
@@ -156,21 +157,26 @@ describe("score-matrix-v1 persistence and the extended-markets tracer on real Po
     expect(await database.forecastMarket.count({ where: { forecastSnapshotId: issued.new.id } })).toBe(3);
   }, 60_000);
 
-  it("2. GET extended-markets returns line 0 for the home side from the stored matrix, with five outcomes that sum to one", async () => {
+  it("2. GET extended-markets returns the full 21-line Asian handicap and exact score view from the stored matrix", async () => {
     const { status, body, cacheControl } = await extendedMarkets("sm-fx-new", issued.new!.id);
     expect(status).toBe(200);
     expect(cacheControl).toBe(NO_STORE);
     expect(body.state).toBe("AVAILABLE");
     expect(body.source).toBe("PERSISTED");
-    expect(body.asianHandicap.lines).toHaveLength(1);
-    const [line] = body.asianHandicap.lines;
-    expect(line.line).toBe("0");
-    const home = line.home.breakdown as Record<string, number>;
+    expect(parseExtendedMarketsView(body)).toEqual(body);
+    expect(body.version).toBe("extended-markets-view-v1");
+    expect(body.calibration).toBe("NONE");
+    expect(body.asianHandicap.lines).toHaveLength(21);
+    expect(body.exactScore.cells).toHaveLength(16);
+    expect(body.exactScore.other.selection).toBe("OTHER");
+    const line = body.asianHandicap.lines.find((candidate: { homeLine: string }) => candidate.homeLine === "0");
+    expect(line.awayLine).toBe("0");
+    const home = line.sides.HOME.breakdown as Record<string, number>;
     expect(Object.keys(home).sort()).toEqual(["HALF_LOSS", "HALF_WIN", "LOSS", "PUSH", "WIN"]);
     expect(Math.abs(Object.values(home).reduce((sum, value) => sum + value, 0) - 1)).toBeLessThanOrEqual(1e-12);
     expect(home.HALF_WIN).toBe(0);
     expect(home.HALF_LOSS).toBe(0);
-    expect(line.home.fairOdds.status).toBe("AVAILABLE");
+    expect(line.sides.HOME.fairOdds.status).toBe("AVAILABLE");
 
     // The same numbers come straight from the stored cells: HOME win equals the stored ONE_X_TWO home probability.
     const stored = (await real.findStoredForecast!(issued.new!.id))!;
@@ -184,6 +190,7 @@ describe("score-matrix-v1 persistence and the extended-markets tracer on real Po
     const { status, body } = await extendedMarkets("sm-fx-dc", issued.dc.id);
     expect(status).toBe(200);
     expect(body).toMatchObject({ state: "AVAILABLE", source: "PERSISTED" });
+    expect(parseExtendedMarketsView(body)).toEqual(body);
   }, 60_000);
 
   it("4. the route hides BACKTEST snapshots, other fixtures and unknown ids (404), and rejects malformed ids (400)", async () => {
@@ -228,7 +235,8 @@ describe("score-matrix-v1 persistence and the extended-markets tracer on real Po
     try {
       const { status, body } = await extendedMarkets("sm-fx-tamper", issued.tamper.id);
       expect(status).toBe(200);
-      expect(body).toEqual({ state: "UNAVAILABLE", reason: "SCORE_MATRIX_UNAVAILABLE" });
+      expect(body).toEqual({ version: "extended-markets-view-v1", state: "UNAVAILABLE", reason: "SCORE_MATRIX_UNAVAILABLE" });
+      expect(parseExtendedMarketsView(body)).toEqual(body);
     } finally {
       (service as unknown as { repository: unknown }).repository = restore;
     }
@@ -277,7 +285,8 @@ describe("score-matrix-v1 persistence and the extended-markets tracer on real Po
       const { status, body } = await extendedMarkets(fixtureId, row.id);
       expect(status).toBe(200);
       expect(body).toMatchObject({ state: "AVAILABLE", source: "REDERIVED" });
-      const home = body.asianHandicap.lines[0].home.breakdown as Record<string, number>;
+      expect(parseExtendedMarketsView(body)).toEqual(body);
+      const home = body.asianHandicap.lines[10].sides.HOME.breakdown as Record<string, number>;
       expect(Math.abs(Object.values(home).reduce((sum, value) => sum + value, 0) - 1)).toBeLessThanOrEqual(1e-12);
     }
     // The re-derived grid agrees with the sealed one for the same model and inputs.
@@ -304,7 +313,8 @@ describe("score-matrix-v1 persistence and the extended-markets tracer on real Po
         (service as unknown as { repository: unknown }).repository = mutate(patch);
         const { status, body } = await extendedMarkets("sm-fx-legacy", issued.legacy!.id);
         expect(status).toBe(200);
-        expect(body).toEqual({ state: "UNAVAILABLE", reason: "SCORE_MATRIX_UNAVAILABLE" });
+        expect(body).toEqual({ version: "extended-markets-view-v1", state: "UNAVAILABLE", reason: "SCORE_MATRIX_UNAVAILABLE" });
+      expect(parseExtendedMarketsView(body)).toEqual(body);
       }
     } finally {
       (service as unknown as { repository: unknown }).repository = restore;

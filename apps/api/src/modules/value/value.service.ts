@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
-import { decideValue, parseForecastResponse, parseValueCommand, splitStoredForecast, type ForecastResponseDto, type ValueCommand } from "@bet-stats/domain";
+import { decideValue, isCoreMarket, parseForecastResponse, parseValueCommand, splitStoredForecast, type ForecastResponseDto, type ValueCommand } from "@bet-stats/domain";
 
 import type { ManualOddsSnapshotDto } from "../odds/odds.service.js";
 
@@ -42,6 +42,8 @@ export async function compareValue(raw: unknown, repository: ValueRepository): P
   let command: ValueCommand;
   try { command = parseValueCommand(raw); }
   catch (error) { throw failure(error instanceof Error ? error.message : "INVALID_VALUE_COMMAND"); }
+  // Until plan 14-07 the value flow reads only stored forecast probabilities, which exist for the three core markets.
+  if (!isCoreMarket(command.market)) throw failure("UNSUPPORTED_VALUE_MARKET");
   const [forecast, odds] = await Promise.all([repository.findForecast(command.forecastSnapshotId), repository.findOdds(command.oddsSnapshotId)]);
   if (!forecast || !odds) throw failure("SNAPSHOT_NOT_FOUND");
   if (forecast.fixtureId !== command.fixtureId || odds.fixtureId !== command.fixtureId || odds.market !== command.market || !forecast.probabilities[command.market]) throw failure("SNAPSHOT_PAIR_MISMATCH");

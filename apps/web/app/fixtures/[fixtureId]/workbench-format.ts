@@ -1,4 +1,4 @@
-import type { OddsMarket, OddsSelection } from "@bet-stats/domain";
+import type { ForecastMarket, ForecastSelection } from "@bet-stats/domain";
 
 /**
  * Чистые помощники прогнозного верстака — без React и без директив «use client».
@@ -9,7 +9,7 @@ import type { OddsMarket, OddsSelection } from "@bet-stats/domain";
  */
 
 /** Результат value-сравнения — один и тот же тип для жадного состояния и ленивой секции. */
-export type ValueResult = { id: string; fixtureId: string; forecastSnapshotId: string; oddsSnapshotId: string; market: OddsMarket; selection: OddsSelection; outcome: "VALUE_CANDIDATE" | "NO_VALUE" | "INSUFFICIENT_EVIDENCE"; reasons: readonly string[]; modelProbability: string; noVigProbability: string; fairOdds: string | null; edge: string; expectedValue: string; receipt: Record<string, unknown>; createdAt: string };
+export type ValueResult = { id: string; fixtureId: string; forecastSnapshotId: string; oddsSnapshotId: string; market: ForecastMarket; selection: ForecastSelection; outcome: "VALUE_CANDIDATE" | "NO_VALUE" | "INSUFFICIENT_EVIDENCE"; reasons: readonly string[]; modelProbability: string; noVigProbability: string; fairOdds: string | null; edge: string; expectedValue: string; receipt: Record<string, unknown>; createdAt: string };
 
 /** Доля 0..1 → «38.1%». */
 export function percent(value: number | string): string { return `${(Number(value) * 100).toFixed(1)}%`; }

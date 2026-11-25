@@ -1,5 +1,6 @@
 import { Decimal } from "decimal.js";
-import { MARKET_SELECTIONS, parseOddsBook, type OddsBookInput, type OddsSelection } from "./contract.js";
+import { selectionsFor } from "../markets/registry.js";
+import { parseOddsBook, type OddsBookInput, type OddsSelection } from "./contract.js";
 
 export interface NormalizedOddsBook extends OddsBookInput {
   readonly schemaVersion: "manual-odds-v1";
@@ -10,7 +11,8 @@ export interface NormalizedOddsBook extends OddsBookInput {
 
 export function normalizeOddsBook(input: OddsBookInput): NormalizedOddsBook {
   const parsed = parseOddsBook(input);
-  const expected = MARKET_SELECTIONS[parsed.market];
+  const expected = selectionsFor(parsed.market);
+  if (expected === null) throw new Error("UNSUPPORTED_ODDS_MARKET");
   const ordered = [...parsed.selections].sort((a, b) => expected.indexOf(a.selection) - expected.indexOf(b.selection));
   const implied = ordered.map(({ decimalOdds }) => {
     let odds: Decimal;

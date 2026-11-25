@@ -1,4 +1,4 @@
-import { MARKET_SELECTIONS, type MarketCalibrationView, type OddsMarket } from "@bet-stats/domain";
+import { MARKET_SELECTIONS, type MarketCalibrationView, type ForecastMarket } from "@bet-stats/domain";
 import Link from "next/link";
 
 import { MARKET_LABELS, SELECTION_LABELS } from "../../../components/enum-labels";
@@ -34,7 +34,7 @@ function isProbabilityList(value: unknown, length: number): value is readonly nu
  * Панель калибровки одного рынка (D-11, D-12). Читает только закрытые поля ответа API; ответ без записи, неполный
  * блок CALIBRATED и неизвестный код причины показываются как недоступная калибровка, а не как «откалибровано».
  */
-export function CalibrationPanel({ market, view }: { market: OddsMarket; view: MarketCalibrationView | undefined }) {
+export function CalibrationPanel({ market, view }: { market: ForecastMarket; view: MarketCalibrationView | undefined }) {
   const calibration = view?.calibration;
   const selections = MARKET_SELECTIONS[market];
   const link = <p><Link href={CALIBRATION_METHODOLOGY_HREF}>{CALIBRATION_METHODOLOGY_LINK}</Link></p>;

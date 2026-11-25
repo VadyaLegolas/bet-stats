@@ -1,6 +1,7 @@
 import { Decimal } from "decimal.js";
 
-import { canonicalizeDecimalOdds, CANONICAL_UTC_INSTANT_PATTERN, MARKET_SELECTIONS, type OddsBookInput, type OddsMarket, type OddsSelection } from "../odds/contract.js";
+import { selectionsFor } from "../markets/registry.js";
+import { canonicalizeDecimalOdds, CANONICAL_UTC_INSTANT_PATTERN, type OddsBookInput, type OddsMarket, type OddsSelection } from "../odds/contract.js";
 import { normalizeOddsBook } from "../odds/normalize.js";
 
 export const NO_VIG_CLV_POLICY_VERSION = "no-vig-clv-v1";
@@ -90,7 +91,7 @@ function fairProbability(set: NoVigClvPriceSet, market: OddsMarket, selection: O
 export function calculateNoVigClv(input: NoVigClvInput): NoVigClvReceipt {
   const { candidate, closing } = input;
   if (isEmpty(closing)) return unavailable("CLOSING_SET_MISSING");
-  const expected = typeof input.market === "string" && Object.hasOwn(MARKET_SELECTIONS, input.market) ? MARKET_SELECTIONS[input.market] : undefined;
+  const expected = selectionsFor(input.market);
   if (!expected || !expected.includes(input.selection) || isEmpty(candidate) || !isCompleteSet(candidate!, expected)) return unavailable("CANDIDATE_SET_INCOMPLETE");
   if (!isCompleteSet(closing!, expected)) return unavailable("CLOSING_SET_INCOMPLETE");
   if (typeof candidate!.sourceConvention !== "string" || !candidate!.sourceConvention.trim() || candidate!.sourceConvention !== closing!.sourceConvention) return unavailable("SOURCE_CONVENTION_MISMATCH");

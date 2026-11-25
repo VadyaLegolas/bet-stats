@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createForecast, type ForecastDraft } from "../../packages/domain/src/forecast/model.js";
 import { normalizeOddsBook } from "../../packages/domain/src/odds/normalize.js";
+import { parseValueCommand } from "../../packages/domain/src/value/contract.js";
 import { decideValue, VALUE_POLICY } from "../../packages/domain/src/value/decision.js";
 import type { EvidenceProjectionDto } from "../../packages/domain/src/evidence/contract.js";
 
@@ -61,5 +62,24 @@ describe("value decision truth table", () => {
     const result = decideValue({ forecast: baseForecast(), odds: equalBtts(), selection: "HOME" });
     expect(result.reasons[0]).toBe("MARKET_SELECTION_MISMATCH");
     expect(result.outcome).toBe("INSUFFICIENT_EVIDENCE");
+  });
+});
+
+describe("parseValueCommand over the market registry (D-11)", () => {
+  const command = { fixtureId: "fixture-1", forecastSnapshotId: "forecast-1", oddsSnapshotId: "odds-1" };
+
+  it("accepts Asian handicap lines and exact score selections", () => {
+    expect(parseValueCommand({ ...command, market: "ASIAN_HANDICAP:-0.75", selection: "HOME" }).market).toBe("ASIAN_HANDICAP:-0.75");
+    expect(parseValueCommand({ ...command, market: "EXACT_SCORE", selection: "2-1" }).selection).toBe("2-1");
+    expect(parseValueCommand({ ...command, market: "EXACT_SCORE", selection: "OTHER" }).selection).toBe("OTHER");
+  });
+
+  it("keeps the old codes and their order", () => {
+    expect(() => parseValueCommand({ ...command, market: "ASIAN_HANDICAP:-0.80", selection: "HOME" })).toThrow("UNSUPPORTED_VALUE_MARKET");
+    expect(() => parseValueCommand({ ...command, market: "ASIAN_HANDICAP:0.0", selection: "HOME" })).toThrow("UNSUPPORTED_VALUE_MARKET");
+    expect(() => parseValueCommand({ ...command, market: "ASIAN_HANDICAP:-0.75", selection: "DRAW" })).toThrow("MARKET_SELECTION_MISMATCH");
+    expect(() => parseValueCommand({ ...command, market: "EXACT_SCORE", selection: "4-0" })).toThrow("MARKET_SELECTION_MISMATCH");
+    expect(() => parseValueCommand({ ...command, market: "BTTS", selection: "HOME" })).toThrow("MARKET_SELECTION_MISMATCH");
+    expect(() => parseValueCommand({ ...command, market: 7, selection: "HOME" })).toThrow("UNSUPPORTED_VALUE_MARKET");
   });
 });

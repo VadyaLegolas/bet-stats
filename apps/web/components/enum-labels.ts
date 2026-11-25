@@ -1,4 +1,4 @@
-import type { ForecastKind, OddsMarket, OddsSelection } from "@bet-stats/domain";
+import type { ForecastKind, ForecastMarket, ForecastSelection } from "@bet-stats/domain";
 
 /**
  * Central Russian labels for raw enum codes that reach rendered UI copy.
@@ -10,8 +10,8 @@ import type { ForecastKind, OddsMarket, OddsSelection } from "@bet-stats/domain"
  *   reasons can be full English sentences that must not be mangled.
  */
 
-export const MARKET_LABELS: Record<OddsMarket, string> = { ONE_X_TWO: "1X2", OVER_UNDER_2_5: "Тотал 2.5", BTTS: "Обе забьют" };
-export const SELECTION_LABELS: Record<OddsSelection, string> = { HOME: "Хозяева", DRAW: "Ничья", AWAY: "Гости", OVER_2_5: "Тотал больше 2.5", UNDER_2_5: "Тотал меньше 2.5", YES: "Да", NO: "Нет" };
+export const MARKET_LABELS: Record<ForecastMarket, string> = { ONE_X_TWO: "1X2", OVER_UNDER_2_5: "Тотал 2.5", BTTS: "Обе забьют" };
+export const SELECTION_LABELS: Record<ForecastSelection, string> = { HOME: "Хозяева", DRAW: "Ничья", AWAY: "Гости", OVER_2_5: "Тотал больше 2.5", UNDER_2_5: "Тотал меньше 2.5", YES: "Да", NO: "Нет" };
 
 const FORECAST_KIND_LABELS: Record<ForecastKind, string> = { INITIAL: "первичный", PRE_MATCH: "предматчевый", LINEUP_CONFIRMED: "по подтверждённому составу" };
 const ROUTE_OUTCOME_LABELS: Record<string, string> = { ADMITTED: "Допущено", DENIED: "Отклонено", NO_FALLBACK: "Резервный источник недоступен", SUCCEEDED: "Успешно", FAILED: "Сбой", QUARANTINED: "Карантин" };
@@ -37,9 +37,9 @@ export const ALERT_SIGNAL_LABELS: Record<string, string> = { PROVIDER_QUOTA: "И
 /** Unknown kind → the raw code. */
 export function forecastKindLabel(kind: ForecastKind): string { return FORECAST_KIND_LABELS[kind] ?? kind; }
 /** Unknown market → the raw code. */
-export function oddsMarketLabel(market: OddsMarket): string { return MARKET_LABELS[market] ?? market; }
+export function oddsMarketLabel(market: ForecastMarket): string { return MARKET_LABELS[market] ?? market; }
 /** Unknown selection → the raw code. */
-export function oddsSelectionLabel(selection: OddsSelection): string { return SELECTION_LABELS[selection] ?? selection; }
+export function oddsSelectionLabel(selection: ForecastSelection): string { return SELECTION_LABELS[selection] ?? selection; }
 /** Unknown outcome → the raw code. */
 export function routeOutcomeLabel(outcome: string): string { return ROUTE_OUTCOME_LABELS[outcome] ?? outcome; }
 /** Unknown trigger → the raw code. */

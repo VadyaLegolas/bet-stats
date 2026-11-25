@@ -1,6 +1,7 @@
 import { Decimal } from "decimal.js";
 
 import type { ForecastDraft } from "../forecast/model.js";
+import { isCoreMarket } from "../markets/registry.js";
 import type { NormalizedOddsBook } from "../odds/normalize.js";
 import type { ValueCommand } from "./contract.js";
 
@@ -28,7 +29,7 @@ export function decideValue(input: ValueInput) {
   if (input.forecast.fixtureId !== input.odds.fixtureId) qualityReasons.push("FIXTURE_MISMATCH");
   const event = Object.values(input.forecast.markets).flat().find(({ selection }) => selection === input.selection);
   const odd = input.odds.selections.find(({ selection }) => selection === input.selection);
-  if (!event || !odd || !input.forecast.markets[input.odds.market].some(({ selection }) => selection === input.selection)) qualityReasons.push("MARKET_SELECTION_MISMATCH");
+  if (!event || !odd || !isCoreMarket(input.odds.market) || !input.forecast.markets[input.odds.market].some(({ selection }) => selection === input.selection)) qualityReasons.push("MARKET_SELECTION_MISMATCH");
   const reasons: string[] = [...policyReasons, ...canonicalReasons, ...cutoffReasons, ...qualityReasons];
   const probability = new Decimal(event?.probability ?? 0);
   const noVig = new Decimal(odd?.noVigProbability ?? 0);

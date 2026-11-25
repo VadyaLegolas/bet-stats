@@ -205,3 +205,30 @@ describe("calculateNoVigClv", () => {
     });
   });
 });
+
+describe("calculateNoVigClv over the market registry (D-14)", () => {
+  const side = (home: string, away: string, observedAt: string): NoVigClvPriceSet => ({ sourceConvention: SOURCE, observedAt, selections: [{ selection: "HOME", decimalOdds: home }, { selection: "AWAY", decimalOdds: away }] });
+  const exact = ["0-0", "0-1", "0-2", "0-3", "1-0", "1-1", "1-2", "1-3", "2-0", "2-1", "2-2", "2-3", "3-0", "3-1", "3-2", "3-3", "OTHER"] as const;
+  const wide = (odds: string, observedAt: string): NoVigClvPriceSet => ({ sourceConvention: SOURCE, observedAt, selections: exact.map((selection) => ({ selection, decimalOdds: odds })) });
+
+  it("computes CLV on an Asian handicap line with the proportional de-vig", () => {
+    const result = calculateNoVigClv({ market: "ASIAN_HANDICAP:-0.75", selection: "HOME", candidate: side("2", "2", CANDIDATE_AT), closing: side("1.8", "2.25", CLOSING_AT), kickoffUtc: KICKOFF });
+    expect(result.status).toBe("AVAILABLE");
+    if (result.status !== "AVAILABLE") return;
+    expect(result.pCandidateFair).toBe("0.5");
+    expect(Number(result.pCloseFair)).toBeCloseTo((1 / 1.8) / (1 / 1.8 + 1 / 2.25), 12);
+  });
+
+  it("computes CLV on exact score over all 17 selections", () => {
+    const result = calculateNoVigClv({ market: "EXACT_SCORE", selection: "2-1", candidate: wide("17", CANDIDATE_AT), closing: wide("17", CLOSING_AT), kickoffUtc: KICKOFF });
+    expect(result.status).toBe("AVAILABLE");
+    if (result.status === "AVAILABLE") expect(Number(result.clv)).toBeCloseTo(0, 12);
+  });
+
+  it("reports an unknown selection or incomplete set with the pinned reasons", () => {
+    expect(unavailable({ market: "ASIAN_HANDICAP:-0.75", selection: "DRAW", candidate: side("2", "2", CANDIDATE_AT), closing: side("1.8", "2.25", CLOSING_AT) })).toBe("CANDIDATE_SET_INCOMPLETE");
+    expect(unavailable({ market: "ASIAN_HANDICAP:-0.80" as never, selection: "HOME", candidate: side("2", "2", CANDIDATE_AT), closing: side("1.8", "2.25", CLOSING_AT) })).toBe("CANDIDATE_SET_INCOMPLETE");
+    expect(unavailable({ market: "EXACT_SCORE", selection: "2-1", candidate: { ...wide("17", CANDIDATE_AT), selections: wide("17", CANDIDATE_AT).selections.slice(0, 16) }, closing: wide("17", CLOSING_AT) })).toBe("CANDIDATE_SET_INCOMPLETE");
+    expect(unavailable({ market: "EXACT_SCORE", selection: "2-1", candidate: wide("17", CANDIDATE_AT), closing: { ...wide("17", CLOSING_AT), selections: wide("17", CLOSING_AT).selections.slice(0, 16) } })).toBe("CLOSING_SET_INCOMPLETE");
+  });
+});

@@ -1,0 +1,137 @@
+import { Decimal } from "decimal.js";
+
+import { FORECAST_CONFIG } from "../forecast/config.js";
+import type { ScoreMatrixCell } from "./score-matrix.js";
+
+/**
+ * Asian handicap core (D-05, D-06, D-07): the versioned line list, one settlement function shared by
+ * display and settlement, the five-way breakdown over the score grid and push-aware fair odds.
+ * Pure functions only. The full 21-line view and the main line are added by plan 14-02.
+ */
+
+const AhDecimal = Decimal.clone({ precision: FORECAST_CONFIG.decimalPrecision, rounding: Decimal.ROUND_HALF_EVEN });
+
+export const AH_LINES_VERSION = "ah-lines-v1" as const;
+export const AH_SETTLEMENT_VERSION = "ah-settlement-v1" as const;
+
+export type AhSide = "HOME" | "AWAY";
+export type AhResult = "WIN" | "HALF_WIN" | "PUSH" | "HALF_LOSS" | "LOSS";
+export const AH_RESULTS: readonly AhResult[] = ["WIN", "HALF_WIN", "PUSH", "HALF_LOSS", "LOSS"];
+
+/** Home-perspective lines in quarter steps; quarter units keep every value exactly representable. */
+const QUARTER_UNITS = Array.from({ length: 21 }, (_, index) => index - 10);
+
+function tokenOf(quarters: number): string {
+  if (quarters === 0) return "0";
+  const value = String(quarters / 4);
+  return quarters > 0 ? `+${value}` : value;
+}
+
+/** The versioned config `ah-lines-v1`: 21 home lines from -2.5 to +2.5, canonical tokens, mirrored for the away side. */
+export const AH_LINES_V1 = Object.freeze({
+  version: AH_LINES_VERSION,
+  step: 0.25,
+  lines: Object.freeze(QUARTER_UNITS.map(tokenOf)) as readonly string[],
+});
+
+export type AhLineToken = string;
+
+const QUARTERS_BY_TOKEN: ReadonlyMap<string, number> = new Map(QUARTER_UNITS.map((quarters) => [tokenOf(quarters), quarters]));
+
+/** Whitelist membership, never a numeric parse: `+1.00`, `0.0`, `-0`, `1e0` are all rejected. */
+export function parseAhLineToken(token: unknown): AhLineToken | null {
+  return typeof token === "string" && QUARTERS_BY_TOKEN.has(token) ? token : null;
+}
+
+/** Share of the odds and flat refund share per unit stake: payout = oddsShare * odds + refundShare. */
+export const AH_RETURN_SHARES: Readonly<Record<AhResult, Readonly<{ oddsShare: number; refundShare: number }>>> = Object.freeze({
+  WIN: Object.freeze({ oddsShare: 1, refundShare: 0 }),
+  HALF_WIN: Object.freeze({ oddsShare: 0.5, refundShare: 0.5 }),
+  PUSH: Object.freeze({ oddsShare: 0, refundShare: 1 }),
+  HALF_LOSS: Object.freeze({ oddsShare: 0, refundShare: 0.5 }),
+  LOSS: Object.freeze({ oddsShare: 0, refundShare: 0 }),
+});
+
+function legOutcome(adjustedMargin: number): "WIN" | "PUSH" | "LOSS" {
+  return adjustedMargin > 0 ? "WIN" : adjustedMargin === 0 ? "PUSH" : "LOSS";
+}
+
+/**
+ * Rule `ah-settlement-v1`: the side's goal margin plus the side's line; a quarter line splits the stake
+ * equally over the two adjacent lines (0.25 either way). Whole and half lines produce only WIN, PUSH and LOSS.
+ *
+ * The rule is applied to the STORED final score. Extra time and penalty shoot-outs are not separated by
+ * ingestion; that limitation is documented in plan 14-08 and ingestion is deliberately not changed here
+ * (Open Question 2).
+ */
+export function settleAsianHandicap(
+  lineToken: string,
+  side: AhSide,
+  homeGoals: number,
+  awayGoals: number,
+): Readonly<{ result: AhResult; shares: Readonly<{ oddsShare: number; refundShare: number }> }> {
+  const quarters = QUARTERS_BY_TOKEN.get(lineToken);
+  if (quarters === undefined) throw Object.assign(new Error("INVALID_AH_LINE"), { code: "INVALID_AH_LINE" });
+  const margin = side === "HOME" ? homeGoals - awayGoals : awayGoals - homeGoals;
+  const sideQuarters = side === "HOME" ? quarters : -quarters;
+  const legs = Math.abs(quarters) % 2 === 1 ? [sideQuarters - 1, sideQuarters + 1] : [sideQuarters];
+  const outcomes = legs.map((leg) => legOutcome(margin + leg / 4));
+  const wins = outcomes.filter((outcome) => outcome === "WIN").length;
+  const losses = outcomes.filter((outcome) => outcome === "LOSS").length;
+  let result: AhResult;
+  if (wins > 0 && losses > 0) throw Object.assign(new Error("AH_WIN_LOSS_MIX"), { code: "AH_WIN_LOSS_MIX" });
+  if (outcomes.length === 1) result = outcomes[0]!;
+  else if (wins === 2) result = "WIN";
+  else if (losses === 2) result = "LOSS";
+  else result = wins === 1 ? "HALF_WIN" : "HALF_LOSS";
+  return { result, shares: AH_RETURN_SHARES[result] };
+}
+
+export type AhBreakdown = Readonly<Record<AhResult, number>>;
+
+/** Probability of each of the five outcomes, summed over the grid in grid order through the settlement function only. */
+export function ahBreakdown(cells: readonly ScoreMatrixCell[], lineToken: string, side: AhSide): AhBreakdown {
+  const totals: Record<AhResult, number> = { WIN: 0, HALF_WIN: 0, PUSH: 0, HALF_LOSS: 0, LOSS: 0 };
+  for (const [homeGoals, awayGoals, probability] of cells) totals[settleAsianHandicap(lineToken, side, homeGoals, awayGoals).result] += probability;
+  return totals;
+}
+
+/** WIN + HALF_WIN / 2: the probability the stake is effectively won. */
+export function ahEffectiveWinProbability(breakdown: AhBreakdown): number {
+  return breakdown.WIN + breakdown.HALF_WIN / 2;
+}
+
+export type AhFairOdds =
+  | Readonly<{ status: "AVAILABLE"; odds: string }>
+  | Readonly<{ status: "UNAVAILABLE"; reason: "NO_WIN_PROBABILITY" }>;
+
+/** D-07: `1 + (LOSS + HALF_LOSS/2) / (WIN + HALF_WIN/2)`; no Infinity and no NaN when the stake can never win. */
+export function ahFairOdds(breakdown: AhBreakdown): AhFairOdds {
+  const denominator = new AhDecimal(breakdown.WIN).plus(new AhDecimal(breakdown.HALF_WIN).div(2));
+  if (!denominator.isFinite() || denominator.lte(0)) return { status: "UNAVAILABLE", reason: "NO_WIN_PROBABILITY" };
+  const numerator = new AhDecimal(breakdown.LOSS).plus(new AhDecimal(breakdown.HALF_LOSS).div(2));
+  return { status: "AVAILABLE", odds: new AhDecimal(1).plus(numerator.div(denominator)).toString() };
+}
+
+export interface AhSideView {
+  readonly breakdown: AhBreakdown;
+  readonly effectiveWinProbability: number;
+  readonly fairOdds: AhFairOdds;
+}
+
+export interface AhLineView {
+  readonly line: AhLineToken;
+  readonly home: AhSideView;
+  readonly away: AhSideView;
+}
+
+function sideView(cells: readonly ScoreMatrixCell[], lineToken: string, side: AhSide): AhSideView {
+  const breakdown = ahBreakdown(cells, lineToken, side);
+  return { breakdown, effectiveWinProbability: ahEffectiveWinProbability(breakdown), fairOdds: ahFairOdds(breakdown) };
+}
+
+/** Both sides of one home-perspective line. */
+export function ahLineView(cells: readonly ScoreMatrixCell[], lineToken: string): AhLineView {
+  if (parseAhLineToken(lineToken) === null) throw Object.assign(new Error("INVALID_AH_LINE"), { code: "INVALID_AH_LINE" });
+  return { line: lineToken, home: sideView(cells, lineToken, "HOME"), away: sideView(cells, lineToken, "AWAY") };
+}

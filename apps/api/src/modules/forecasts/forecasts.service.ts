@@ -1,8 +1,11 @@
-import { BadRequestException, ConflictException, Injectable, Logger, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, createPrismaForecastRepository, readCalibrationState, type ForecastPublicationRepository, type PrismaClient } from "@bet-stats/database";
 import {
   ForecastOrchestrator,
+  ahLineView,
   parseForecastRequest,
+  resolveScoreMatrix,
+  type AhLineView,
   type CalibratedForecastResponseDto,
   type ForecastResponseDto,
 } from "@bet-stats/domain";
@@ -45,6 +48,13 @@ export async function generateForecast(
     throw error;
   }
 }
+
+const FORECAST_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+
+/** Tracer shape: one Asian handicap line (0, both sides); plan 14-02 extends the same route to the full view. */
+export type ExtendedMarketsResponse =
+  | Readonly<{ state: "AVAILABLE"; source: "PERSISTED" | "REDERIVED"; asianHandicap: Readonly<{ lines: readonly AhLineView[] }> }>
+  | Readonly<{ state: "UNAVAILABLE"; reason: "SCORE_MATRIX_UNAVAILABLE" }>;
 
 @Injectable()
 export class ForecastsService implements OnModuleDestroy {
@@ -89,6 +99,21 @@ export class ForecastsService implements OnModuleDestroy {
     if (!existing) throw failure("FORECAST_NOT_FOUND");
     const [forecast] = await attachMarketCalibration([existing], this.calibration);
     return forecast!;
+  }
+  /**
+   * Read-time view of the extended markets (D-04): derived from the sealed score matrix, never written to
+   * ForecastMarket, never calibrated. The client sees only the typed state; the internal reason goes to the operator log.
+   */
+  async extendedMarkets(fixtureId: string, forecastId: string): Promise<ExtendedMarketsResponse> {
+    if (!FORECAST_ID_PATTERN.test(forecastId)) throw Object.assign(new BadRequestException({ code: "INVALID_FORECAST_ID" }), { code: "INVALID_FORECAST_ID" });
+    const stored = await this.db().findStoredForecast?.(forecastId);
+    if (!stored || stored.state !== "ISSUED" || stored.origin !== "PRODUCTION" || stored.dto.fixtureId !== fixtureId) throw new NotFoundException({ code: "FORECAST_NOT_FOUND" });
+    const resolved = resolveScoreMatrix({ scoreMatrix: stored.scoreMatrix, markets: stored.markets });
+    if (resolved.state === "UNAVAILABLE") {
+      new Logger(ForecastsService.name).warn(JSON.stringify({ code: "SCORE_MATRIX_UNAVAILABLE", reason: resolved.reason, forecastId, modelVersion: stored.modelVersion }));
+      return { state: "UNAVAILABLE", reason: "SCORE_MATRIX_UNAVAILABLE" };
+    }
+    return { state: "AVAILABLE", source: resolved.source, asianHandicap: { lines: [ahLineView(resolved.cells, "0")] } };
   }
   async onModuleDestroy(): Promise<void> { await this.client?.$disconnect(); }
 }

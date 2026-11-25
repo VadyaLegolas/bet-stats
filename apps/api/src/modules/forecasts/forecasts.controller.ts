@@ -21,6 +21,10 @@ export class ForecastsController {
   @Header("Cache-Control", "private, no-store, max-age=0")
   availability(@Param("fixtureId") fixtureId: string) { return this.comparisonService!.availability(fixtureId); }
 
+  @Get(":forecastId/extended-markets")
+  @Header("Cache-Control", "private, no-store, max-age=0")
+  extendedMarkets(@Param("fixtureId") fixtureId: string, @Param("forecastId") forecastId: string) { return this.forecasts.extendedMarkets(fixtureId, forecastId); }
+
   @Post()
   @Header("Cache-Control", "private, no-store, max-age=0")
   generate(@Param("fixtureId") fixtureId: string, @Body() body: Omit<ForecastRequestDto, "fixtureId">): Promise<CalibratedForecastResponseDto> {

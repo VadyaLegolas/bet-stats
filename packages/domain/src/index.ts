@@ -19,6 +19,7 @@ export * from "./forecast/dixon-coles.js";
 export * from "./forecast/model-version.js";
 export * from "./forecast/model.js";
 export * from "./markets/score-matrix.js";
+export * from "./markets/asian-handicap.js";
 export * from "./odds/contract.js";
 export * from "./odds/draft.js";
 export * from "./odds/normalize.js";

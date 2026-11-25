@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 14-asian-handicap-and-exact-score-markets
 source: 14-01-SUMMARY.md, 14-02-SUMMARY.md, 14-03-SUMMARY.md, 14-04-SUMMARY.md, 14-05-SUMMARY.md, 14-06-SUMMARY.md, 14-07-SUMMARY.md, 14-08-SUMMARY.md
 started: 2026-11-25T12:00:00Z
-updated: 2026-11-25T12:00:00Z
+updated: 2026-11-25T19:14:32.510Z
 ---
 
 ## Current Test
 
-number: 7
-name: Внешний вид и доступность
-expected: |
-  Новые разделы корректно выглядят в светлой и тёмной теме, на узком экране (320 px) без горизонтальной прокрутки страницы, текст читается.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -42,17 +38,27 @@ result: pass
 
 ### 7. Внешний вид и доступность
 expected: Новые разделы корректно выглядят в светлой и тёмной теме, на узком экране (320 px) без горизонтальной прокрутки страницы, текст читается.
-result: [pending]
+result: issue
+reported: "На 320 px (тёмная тема) в сетке точного счёта подпись таблицы обрезана справа, заголовок «Голы хозяев» выведен вертикально по одной букве, заголовок «Голы гостей» над столбцами обрезан. Страница по горизонтали не прокручивается."
+severity: minor
 
 ## Summary
 
 total: 7
 passed: 6
-issues: 0
-pending: 1
+issues: 1
+pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-[none yet]
+- truth: "Сетка точного счёта на узком экране (320 px) читаема: подпись таблицы и заголовки осей не обрезаны"
+  status: failed
+  reason: "User reported: подпись таблицы обрезана, заголовок «Голы хозяев» выведен вертикально по одной букве, «Голы гостей» обрезан (320 px, тёмная тема)"
+  severity: minor
+  test: 7
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""

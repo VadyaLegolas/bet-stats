@@ -77,7 +77,7 @@ export default function MethodologyPage() {
 
       <section id="limitations" className="panel">
         <h2>Ограничения</h2>
-        <p>Исходы футбола неопределённы. Малые выборки, устаревшие доказательства, травмы или составы, не отражённые до отсечки, сбои поставщиков, неверная спецификация модели и меняющееся поведение команд могут делать оценки менее надёжными. Положительное ожидаемое value остаётся оценкой, а не обещанием прибыли.</p>
+        <p>Исходы футбола неопределённы. Малые выборки, устаревшие доказательства, травмы или составы, не отражённые до отсечки, сбои поставщиков, неверная спецификация модели и меняющееся поведение команд могут делать оценки менее надёжными. Положительное ожидаемое value остаётся оценкой, а не обещанием прибыли. <Link href="/methodology#extended-markets">Азиатский гандикап и точный счёт — см. отдельный раздел.</Link></p>
         <TechnicalDetails id="limitations-technical">
           <p>Известные режимы отказов выходят в отказоустойчивое состояние: недостаточно доказательств, недоступные данные поставщика, несовпадение отсечки, неопределённая каноническая идентичность или ограниченные доказательства когорты. Отсутствующие значения никогда не считаются нулём.</p>
           <p>{card.forecast.valueFormulas.join("; ")}.</p>
@@ -111,6 +111,21 @@ export default function MethodologyPage() {
           <p>Рынки: {card.calibration.markets.join(", ")}. Виды прогнозов для подбора: {card.calibration.fit.kinds.join(", ")}; виды, для которых показывается калибровка: {card.calibration.fit.servedKinds.join(", ")}.</p>
           <p>Минимальные выборки: Platt {card.calibration.minimumSamples.platt}; изотоническая регрессия {card.calibration.minimumSamples.isotonic}; отложенная выборка {card.calibration.minimumSamples.holdout}. Доля отложенной выборки: {card.calibration.holdoutFraction}.</p>
           <p>Порог существенности (Brier): {card.calibration.materiality}. Откат: {card.calibration.rollback.consecutiveWorse} подряд оценок хуже сырого, каждая не меньше {card.calibration.rollback.minimumEvaluationSample} исходов. Отсечение вероятностей: {card.calibration.probabilityClipEpsilon}. Подбор: раз в {card.calibration.cadence.intervalHours} ч.</p>
+        </TechnicalDetails>
+      </section>
+
+      <section id="extended-markets" className="panel">
+        <h2>Азиатский гандикап и точный счёт</h2>
+        <p>{card.extendedMarkets.derivation}</p>
+        <ul>{card.extendedMarkets.method.map((item) => <li key={item}>{item}</li>)}</ul>
+        <p><strong>Ограничения:</strong></p>
+        <ul>{card.extendedMarkets.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul>
+        <TechnicalDetails id="extended-markets-technical">
+          <div role="region" aria-label="Формулы расширенных рынков" className="wrap-anywhere">
+            {card.extendedMarkets.formulas.map((formula) => <p key={formula}><code>{formula}</code></p>)}
+          </div>
+          <p>Версии: <code>{card.extendedMarkets.versions.scoreMatrix}</code>, <code>{card.extendedMarkets.versions.ahLines}</code>, <code>{card.extendedMarkets.versions.ahSettlement}</code>, <code>{card.extendedMarkets.versions.exactScoreBuckets}</code>, <code>{card.extendedMarkets.versions.exactScoreSettlement}</code>, <code>{card.extendedMarkets.versions.pushAwareEv}</code>, <code>{card.extendedMarkets.versions.flatOneUnitV2}</code> (дробные возвраты; <code>{card.policies.financial}</code> по-прежнему рассчитывает три прежних рынка).</p>
+          <p>Допуск воспроизведения матрицы для прежних прогнозов: <code>{card.extendedMarkets.legacyTolerance}</code>.</p>
         </TechnicalDetails>
       </section>
 

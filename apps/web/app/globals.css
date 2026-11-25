@@ -1715,3 +1715,81 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
 .market-score-fields > :last-child { grid-column: 1 / -1; }
 .market-score-fields-set { border: 0; margin: 0; padding: 0; min-width: 0; }
 .evidence-card[data-current="true"] { border-color: var(--color-accent); background: var(--color-accent-soft); }
+
+/* --- Сканер value (Phase 15) ------------------------------------------------
+   Аддитивный блок только на существующих токенах: без новых цветов, без новых
+   custom properties, без переходов и анимаций. Размеры шрифта: 14, 16, 20 и 24 px.
+   Разметка: ol.scanner-groups > li.panel.scanner-match > ul.scanner-rows > li.scanner-row;
+   каждая группа фактов: div > dt + dd (+ dd.scanner-sub > span.market-sub). */
+
+.scanner-groups { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-6); }
+.scanner-match { min-width: 0; }
+.scanner-match-head { display: grid; gap: var(--space-1); margin-block-end: var(--space-4); }
+.scanner-match-head > h3 { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.2; overflow-wrap: break-word; }
+.scanner-match-meta { margin: 0; font-size: 14px; font-weight: 400; line-height: 1.4; color: var(--color-muted); }
+.scanner-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }
+.scanner-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3) var(--space-4);
+  min-width: 0;
+}
+.scanner-row + .scanner-row { border-block-start: 1px solid var(--color-border); padding-block-start: var(--space-4); }
+.scanner-pick { display: grid; gap: var(--space-2); min-width: 0; align-content: start; }
+.scanner-pick > p {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+.scanner-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+.scanner-facts > div { min-width: 0; }
+.scanner-facts dt { font-size: 14px; font-weight: 400; line-height: 1.4; color: var(--color-muted); overflow-wrap: normal; }
+.scanner-facts dd { margin: 0; font-size: 16px; font-weight: 400; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.scanner-facts dd.scanner-key { font-family: var(--font-heading); font-size: 20px; font-weight: 600; line-height: 1.2; }
+.scanner-note { margin: 0; font-size: 14px; font-weight: 400; line-height: 1.4; color: var(--color-text-secondary); }
+.scanner-links { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: 0; }
+.scanner-links a { display: inline-flex; align-items: center; min-height: 44px; }
+.scanner-detail > dl { margin-block-start: var(--space-3); }
+.scanner-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+.scanner-counts > div {
+  padding: var(--space-4);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  min-width: 0;
+}
+.scanner-counts dt { font-size: 14px; font-weight: 400; color: var(--color-muted); }
+.scanner-counts dd {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.scanner-stale > summary { min-height: 44px; }
+details.scanner-stale[open] > summary { margin-block-end: var(--space-4); }
+
+@media (min-width: 768px) {
+  .scanner-row { grid-template-columns: minmax(11rem, 14rem) minmax(0, 1fr); }
+  .scanner-row > .scanner-note, .scanner-row > .scanner-detail, .scanner-row > .scanner-links { grid-column: 1 / -1; }
+}
+
+@media (forced-colors: active) {
+  .scanner-match, .scanner-counts > div { border: 1px solid CanvasText; }
+  .scanner-row + .scanner-row { border-block-start-color: CanvasText; }
+}

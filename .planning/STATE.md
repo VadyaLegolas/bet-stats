@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v1.1
 current_phase: 14
 current_phase_name: Asian Handicap and Exact Score Markets
-current_plan: Not started
-status: planning
-stopped_at: Phase 14 UI-SPEC approved
-last_updated: "2026-11-24T23:19:14.285Z"
-last_activity: 2026-11-24
-last_activity_desc: Phase 13 complete, transitioned to Phase 14
-state_head: 24a6a536dddc6fff1119887ba9dd567df24f65f6
+current_plan: 2
+status: executing
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-11-25T06:38:18.825Z"
+last_activity: 2026-11-25
+last_activity_desc: Phase 14 execution started
+state_head: 87c8932afa4fd8d31992f57b11ffdef2bf6e1abb
 progress:
   total_phases: 10
   completed_phases: 6
-  total_plans: 40
-  completed_plans: 40
+  total_plans: 48
+  completed_plans: 41
   percent: 60
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -26,15 +26,15 @@ milestone_name: Reliability, Model Quality and Value Experience
 See: .planning/PROJECT.md (updated 2026-11-16)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Phase 13 — CLV Price Diary
+**Current focus:** Phase 14 — Asian Handicap and Exact Score Markets
 
 ## Current Position
 
-Phase: 14 — Asian Handicap and Exact Score Markets
-Current Plan: Not started
-Total Plans in Phase: 4
-Status: Ready to plan
-Last activity: 2026-11-24 — Phase 13 complete, transitioned to Phase 14
+Phase: 14 (Asian Handicap and Exact Score Markets) — EXECUTING
+Current Plan: 2
+Total Plans in Phase: 8
+Status: Ready to execute
+Last activity: 2026-11-25 — Phase 14 execution started
 
 Progress: [██████░░░░] 60%
 
@@ -160,6 +160,7 @@ Progress: [██████░░░░] 60%
 | Phase 13 P02 | 21min | 3 tasks | 9 files |
 | Phase 13 P03 | 22min | 3 tasks | 8 files |
 | Phase 13 P04 | 23min | 3 tasks | 9 files |
+| Phase 14 P01 | 25min | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -342,6 +343,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 13]: 13-03: D-05 enforced by symbol-level import-graph test (roots: value domain/api, odds, scanner/journal masks) plus byte-identical candidate invariance test
 - [Phase 13]: 13-04: browser form for closing odds deferred; signed proxy does not forward a request body, entry stays API plus CLI (docs/closing-odds-operator.md)
 - [Phase 13]: 13-04: model-card-v1.3.0 adds the CLV block; reason copy is Record<NoVigClvUnavailableReason,string> so a new domain reason fails web compilation
+- [Phase 14]: 14-01: scoreMatrix is a top-level sibling key of the stored receipt envelope, stripped by splitStoredForecast on every reader; legacy rows re-derived within 1e-9 fail-closed, present-but-invalid key never falls back
 
 ### Pending Todos
 
@@ -454,6 +456,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-24T23:19:12.001Z
-Stopped at: Phase 14 UI-SPEC approved
-Resume file: .planning/phases/14-asian-handicap-and-exact-score-markets/14-UI-SPEC.md
+Last session: 2026-11-25T06:38:16.849Z
+Stopped at: Completed 14-01-PLAN.md
+Resume file: None

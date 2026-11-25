@@ -5,6 +5,8 @@ import { renderToStaticMarkup } from "../../apps/web/node_modules/react-dom/serv
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
+import { PrismaPg } from "../../packages/database/node_modules/@prisma/adapter-pg/dist/index.mjs";
+import { PrismaClient as CountingPrismaClient } from "../../packages/database/src/generated/prisma/client.js";
 import { EXTENDED_EDGE_DEFINITION, normalizeOddsBook } from "@bet-stats/domain";
 import { NestFactory } from "../../apps/api/node_modules/@nestjs/core/index.js";
 import ScannerPage from "../../apps/web/app/scanner/page.js";
@@ -381,6 +383,175 @@ describe("7-day value scanner on real PostgreSQL", () => {
     expect(item.oddsCapturedAt).toBe(capturedAt);
     expect(item.oddsCapturedAt).toBe(stored[0]!.captured);
     expect(item.oddsSubmittedAt).toBe(submittedAt);
+  }, 60_000);
+
+  /** One fixture, one 1X2 book and a receipt for each of the three selections. Returns the receipt ids in selection order. */
+  async function seedTriple(label: string, kickoff: Date, options: { outcomes?: readonly [string, string, string]; reasons?: readonly string[]; submittedAt?: Date } = {}): Promise<{ seed: ScannerSeed; odds: SeededOdds; ids: string[] }> {
+    const { seed, odds, prefix } = await seedSingle(label, kickoff, options.submittedAt ? { submittedAt: options.submittedAt } : {});
+    const ids: string[] = [];
+    for (const [index, selection] of (["HOME", "DRAW", "AWAY"] as const).entries()) {
+      const outcome = options.outcomes?.[index] ?? "VALUE_CANDIDATE";
+      ids.push(await insertScannerReceipt(database, seed, buildRow(seed, odds, "ONE_X_TWO", selection, { outcome }), { id: `${prefix}-${selection}`, outcome, ...(options.reasons ? { reasons: options.reasons } : {}) }));
+    }
+    return { seed, odds, ids };
+  }
+  const listed = (rows: ReadonlyArray<{ receiptId: string | null }>): string[] => rows.flatMap((row) => (row.receiptId === null ? [] : [row.receiptId]));
+
+  it("truncation: items never cut a match in half, the first match is always kept, and the true candidate total is reported", async () => {
+    const from = band();
+    const first = await seedTriple("tu", at(from, 10));
+    const second = await seedTriple("tv", at(from, 20));
+    await seedTriple("tw", at(from, 30));
+    const repository = createPrismaScannerRepository(database);
+
+    const five = await repository.loadWindow({ ...window(from), limit: 5 });
+    expect(listed(five)).toEqual(first.ids);
+    expect(five[0]!.outcomeCounts).toEqual({ VALUE_CANDIDATE: 9 });
+    expect(five[0]!.outcomeCounts.VALUE_CANDIDATE).toBeGreaterThan(listed(five).length);
+    expect(listed(await repository.loadWindow({ ...window(from), limit: 6 }))).toEqual([...first.ids, ...second.ids]);
+    expect(listed(await repository.loadWindow({ ...window(from), limit: 2 }))).toEqual(first.ids);
+    expect(listed(await repository.loadWindow({ ...window(from), limit: 200 }))).toHaveLength(9);
+  }, 60_000);
+
+  it("truncation: the endpoint cap of 200 cuts at a fixture boundary and flags truncated", async () => {
+    const from = band();
+    for (let index = 0; index < 70; index += 1) await seedTriple("tc", at(from, 1 + index));
+    const scanner = await scan(from);
+    expect(scanner.limit).toBe(200);
+    expect(scanner.totalCandidates).toBe(210);
+    expect(scanner.checkedCount).toBe(210);
+    expect(scanner.items).toHaveLength(198);
+    expect(scanner.truncated).toBe(true);
+    expect(scanner.state).toBe("AVAILABLE");
+    const fixtures = new Map<string, number>();
+    for (const item of scanner.items) fixtures.set(item.fixtureId, (fixtures.get(item.fixtureId) ?? 0) + 1);
+    expect([...fixtures.values()].every((count) => count === 3)).toBe(true);
+    expect(scanner.items.at(-1)!.kickoffAt).toBe(at(from, 66).toISOString());
+  }, 180_000);
+
+  it("summary: an empty window is EMPTY with zero counts, other outcomes are counted, and the policy flag needs every receipt to carry the reason", async () => {
+    const empty = await scan(band());
+    expect(empty).toMatchObject({ state: "EMPTY", checkedCount: 0, outcomeCounts: {}, totalCandidates: 0, allPolicyConfigMismatch: false, truncated: false });
+    expect(empty.items).toEqual([]);
+
+    const counted = band();
+    await seedTriple("su", at(counted, 20), { outcomes: ["INSUFFICIENT_EVIDENCE", "NO_VALUE", "NO_VALUE"] });
+    const countedScan = await scan(counted);
+    expect(countedScan).toMatchObject({ state: "EMPTY", checkedCount: 3, outcomeCounts: { INSUFFICIENT_EVIDENCE: 1, NO_VALUE: 2 }, totalCandidates: 0, allPolicyConfigMismatch: false });
+
+    const mismatch = band();
+    await seedTriple("sm", at(mismatch, 20), { outcomes: ["INSUFFICIENT_EVIDENCE", "INSUFFICIENT_EVIDENCE", "INSUFFICIENT_EVIDENCE"], reasons: ["POLICY_CONFIG_MISMATCH"] });
+    expect(await scan(mismatch)).toMatchObject({ state: "EMPTY", checkedCount: 3, outcomeCounts: { INSUFFICIENT_EVIDENCE: 3 }, allPolicyConfigMismatch: true });
+
+    const mixed = band();
+    await seedTriple("sx", at(mixed, 20), { outcomes: ["INSUFFICIENT_EVIDENCE", "INSUFFICIENT_EVIDENCE", "INSUFFICIENT_EVIDENCE"], reasons: ["POLICY_CONFIG_MISMATCH"] });
+    await seedTriple("sy", at(mixed, 21), { outcomes: ["NO_VALUE", "NO_VALUE", "NO_VALUE"] });
+    expect(await scan(mixed)).toMatchObject({ checkedCount: 6, outcomeCounts: { INSUFFICIENT_EVIDENCE: 3, NO_VALUE: 3 }, allPolicyConfigMismatch: false });
+  }, 120_000);
+
+  it("parity: stored columns equal their receipt JSON copies and the DTO carries the stored strings byte for byte", async () => {
+    const from = band();
+    const { seed, odds, prefix } = await seedSingle("pa", at(from, 30));
+    const row = buildRow(seed, odds, "ONE_X_TWO", "HOME");
+    const edge = padDecimal(row.edge, "0".repeat(30));
+    const expectedValue = padDecimal(row.expectedValue, `${"0".repeat(25)}1234567890123456789`);
+    const id = await insertScannerReceipt(database, seed, row, { id: `${prefix}-receipt`, edge, expectedValue });
+    const plain = await seedSingle("pb", at(from, 31));
+    const plainId = await insertScannerReceipt(database, plain.seed, buildRow(plain.seed, plain.odds, "ONE_X_TWO", "HOME"), { id: "pb-receipt" });
+
+    const stored = await database.$queryRawUnsafe<Array<{ id: string; edge: string; expectedValue: string; modelProbability: string; noVigProbability: string; fairOdds: string; jsonEdge: string; jsonValue: string; decimalOdds: string }>>(
+      `SELECT vr.id, vr.edge, vr."expectedValue", vr."modelProbability", vr."noVigProbability", vr."fairOdds", vr.receipt ->> 'edge' AS "jsonEdge", vr.receipt ->> 'expectedValue' AS "jsonValue", sel."decimalOdds"
+       FROM "ValueReceipt" vr JOIN "ManualOddsSelection" sel ON sel."oddsSnapshotId" = vr."oddsSnapshotId" AND sel.selection = vr.selection WHERE vr.id = ANY($1)`, [id, plainId],
+    );
+    expect(stored).toHaveLength(2);
+    for (const column of stored) { expect(column.jsonEdge).toBe(column.edge); expect(column.jsonValue).toBe(column.expectedValue); }
+
+    const scanner = await scan(from);
+    for (const column of stored) {
+      const item = scanner.items.find((entry) => entry.receiptId === column.id)!;
+      expect(item.edge).toBe(column.edge);
+      expect(item.expectedValue).toBe(column.expectedValue);
+      expect(item.modelProbability).toBe(column.modelProbability);
+      expect(item.noVigProbability).toBe(column.noVigProbability);
+      expect(item.fairOdds).toBe(column.fairOdds);
+      expect(item.decimalOdds).toBe(column.decimalOdds);
+    }
+    const padded = scanner.items.find((entry) => entry.receiptId === id)!;
+    expect(padded.edge).toBe(edge);
+    expect(padded.edge!.endsWith("0".repeat(30))).toBe(true);
+    expect(padded.expectedValue).toBe(expectedValue);
+    expect(padded.expectedValue!.endsWith("1234567890123456789")).toBe(true);
+  }, 60_000);
+
+  it("no N+1: one SQL statement is issued whatever the candidate count", async () => {
+    const statements: string[] = [];
+    const counting = new CountingPrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }), log: [{ emit: "event", level: "query" }] });
+    counting.$on("query", (event) => { statements.push(event.query); });
+    try {
+      const countFor = async (from: Date): Promise<number> => {
+        statements.length = 0;
+        await loadScanner({ now: from }, createPrismaScannerRepository(counting as unknown as PrismaClient));
+        return statements.length;
+      };
+      const one = band();
+      const single = await seedSingle("n1", at(one, 20));
+      await insertScannerReceipt(database, single.seed, buildRow(single.seed, single.odds, "ONE_X_TWO", "HOME"), { id: "n1-receipt" });
+      const many = band();
+      for (let index = 0; index < 20; index += 1) await seedTriple("nn", at(many, 1 + index));
+      expect((await scan(one)).items).toHaveLength(1);
+      expect((await scan(many)).items).toHaveLength(60);
+      const small = await countFor(one);
+      const large = await countFor(many);
+      expect(small).toBe(1);
+      expect(large).toBe(small);
+    } finally {
+      await counting.$disconnect();
+    }
+  }, 180_000);
+
+  it("timezone: a non-UTC database default timezone does not shift the window, the instants or the age", async () => {
+    const from = band();
+    const kickoff = at(from, 0);
+    const submittedAt = new Date(from.getTime() - 3.5 * HOUR);
+    const { seed, odds } = await seedSingle("tz", kickoff, { submittedAt });
+    const id = await insertScannerReceipt(database, seed, buildRow(seed, odds, "ONE_X_TWO", "HOME"), { id: "tz-receipt" });
+    await database.$executeRawUnsafe(`ALTER DATABASE bet_stats SET timezone = 'Pacific/Auckland'`);
+    const fresh = createPrismaClient(databaseUrl);
+    try {
+      const session = await fresh.$queryRawUnsafe<Array<{ TimeZone: string }>>(`SHOW timezone`);
+      expect(session[0]!.TimeZone).toBe("Pacific/Auckland");
+      const scanner = await loadScanner({ now: from }, createPrismaScannerRepository(fresh));
+      expect(receiptIds(scanner)).toEqual([id]);
+      expect(scanner.items[0]).toMatchObject({ kickoffAt: kickoff.toISOString(), oddsSubmittedAt: submittedAt.toISOString(), oddsAgeSeconds: 12_600, freshness: "FRESH" });
+    } finally {
+      await fresh.$disconnect();
+      await database.$executeRawUnsafe(`ALTER DATABASE bet_stats RESET timezone`);
+    }
+  }, 60_000);
+
+  it("access: eligibility headers are required, query parameters are refused and the body exposes only the documented keys", async () => {
+    await seedCandidate("ac", new Date(Date.now() + 30 * HOUR));
+    expect((await get("/value/scanner", {})).status).toBe(403);
+    expect((await get("/value/scanner", { "x-age-acknowledged": "true", "x-eligibility-checked-at": new Date().toISOString() })).status).toBe(403);
+    const refused = await get("/value/scanner?limit=5");
+    expect(refused.status).toBe(400);
+    expect(refused.body).toMatchObject({ code: "INVALID_SCANNER_QUERY" });
+    expect((await get("/value/scanner?anything=1")).status).toBe(400);
+
+    const response = await fetch(`${baseUrl}/value/scanner`, { headers: { ...ELIGIBILITY, "x-eligibility-checked-at": new Date().toISOString() } });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+    const text = await response.text();
+    const body = JSON.parse(text) as Record<string, any>;
+    expect(Object.keys(body).sort()).toEqual(["allPolicyConfigMismatch", "checkedCount", "freshnessPolicy", "generatedAt", "items", "limit", "outcomeCounts", "state", "totalCandidates", "truncated", "window"]);
+    expect(body.items.length).toBeGreaterThan(0);
+    const itemKeys = ["awayTeam", "competition", "decimalOdds", "edge", "edgeDefinition", "evPolicyVersion", "expectedValue", "fairOdds", "fixtureId", "forecastNewerAvailable", "forecastSnapshotId", "freshness", "homeTeam", "kickoffAt", "market", "modelProbability", "noVigProbability", "oddsAgeSeconds", "oddsCapturedAt", "oddsSnapshotId", "oddsSource", "oddsSubmittedAt", "receiptId", "selection", "valuePolicyVersion"];
+    for (const item of body.items) {
+      expect(Object.keys(item).sort()).toEqual(itemKeys);
+      for (const forbidden of ["receipt", "sources", "assumptions", "gates"]) expect(item).not.toHaveProperty(forbidden);
+    }
+    expect(text).not.toMatch(/"(?:sources|assumptions|gates|receipt)":/);
+    expect(JSON.stringify(await scan(band()))).toBeTypeOf("string");
   }, 60_000);
 });
 

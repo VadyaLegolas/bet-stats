@@ -23,6 +23,7 @@ export * from "./markets/asian-handicap.js";
 export * from "./markets/exact-score.js";
 export * from "./markets/extended-view.js";
 export * from "./markets/registry.js";
+export * from "./markets/settlement.js";
 export * from "./odds/contract.js";
 export * from "./odds/draft.js";
 export * from "./odds/normalize.js";

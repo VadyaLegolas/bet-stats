@@ -15,7 +15,9 @@ import {
 } from "@bet-stats/domain";
 import { NestFactory } from "../../apps/api/node_modules/@nestjs/core/index.js";
 import { ForecastsModule } from "../../apps/api/src/modules/forecasts/forecasts.module.js";
+import { createProductionRepository } from "../../apps/api/src/modules/forecasts/forecast-comparison.service.js";
 import { ForecastsService } from "../../apps/api/src/modules/forecasts/forecasts.service.js";
+import { createPrismaValueRepository } from "../../apps/api/src/modules/value/value.service.js";
 
 /**
  * Phase 14 tracer (D-01, D-02, D-03, D-04, D-06, D-07) on real PostgreSQL: the score matrix is persisted at issuance by the
@@ -232,5 +234,81 @@ describe("score-matrix-v1 persistence and the extended-markets tracer on real Po
     }
     expect(JSON.stringify(await storedEnvelope(issued.tamper.id))).toBe(before);
     expect(await database.forecastMarket.count({ where: { forecastSnapshotId: issued.tamper.id } })).toBe(3);
+  }, 60_000);
+
+  it("7. legacy rows are inserted without the key, and every reader gives the same DTO for a row with the key and one without", async () => {
+    issued.legacy = await issue("sm-fx-legacy", "poisson-ensemble-v1", { legacy: true });
+    issued.legacyDc = await issue("sm-fx-legacy-dc", "dixon-coles-ensemble-v1", { rho: -0.08, legacy: true });
+    for (const row of [issued.legacy, issued.legacyDc]) {
+      expect(Object.keys(await storedEnvelope(row.id))).not.toContain("scoreMatrix");
+      expect(parseForecastResponse(row)).toEqual(row);
+    }
+
+    const comparison = createProductionRepository(database);
+    const value = createPrismaValueRepository(database);
+    for (const [fixtureId, row] of [["sm-fx-new", issued.new!], ["sm-fx-dc", issued.dc!], ["sm-fx-legacy", issued.legacy], ["sm-fx-legacy-dc", issued.legacyDc]] as const) {
+      expect(await real.findIssued!(fixtureId, "PRE_MATCH", CUTOFF)).toEqual(row);
+      expect(await real.listIssued!(fixtureId)).toEqual([row]);
+      expect((await real.findStoredForecast!(row.id))?.dto).toEqual(row);
+      expect(await comparison.findExact(row.id)).toEqual({ ...row, state: "ISSUED" });
+      expect(await value.findForecast(row.id)).toEqual(row);
+      expect(Object.keys(row).sort()).toEqual(Object.keys(issued.new!).sort());
+    }
+  }, 60_000);
+
+  it("8. republishing an existing identity returns it unchanged: no key is appended, no row is added, no UPDATE", async () => {
+    for (const [fixtureId, model, rho, legacy] of [["sm-fx-legacy", "poisson-ensemble-v1", undefined, issued.legacy!], ["sm-fx-legacy-dc", "dixon-coles-ensemble-v1", -0.08, issued.legacyDc!]] as const) {
+      const before = await database.forecastSnapshot.findMany({ where: { fixtureId } });
+      const republished = await issue(fixtureId, model, rho === undefined ? {} : { rho });
+      expect(republished).toEqual(legacy);
+      const after = await database.forecastSnapshot.findMany({ where: { fixtureId } });
+      expect(after).toHaveLength(1);
+      expect(JSON.stringify(after)).toBe(JSON.stringify(before));
+      expect(Object.keys(after[0]!.receipt as object)).not.toContain("scoreMatrix");
+    }
+    // The reverse direction: a legacy publish colliding with a sealed row never strips the key either.
+    const sealedBefore = JSON.stringify(await storedEnvelope(issued.new!.id));
+    expect(await issue("sm-fx-new", "poisson-ensemble-v1", { legacy: true })).toEqual(issued.new);
+    expect(JSON.stringify(await storedEnvelope(issued.new!.id))).toBe(sealedBefore);
+  }, 60_000);
+
+  it("9. GET extended-markets re-derives a legacy snapshot (REDERIVED) for both models", async () => {
+    for (const [fixtureId, row] of [["sm-fx-legacy", issued.legacy!], ["sm-fx-legacy-dc", issued.legacyDc!]] as const) {
+      const { status, body } = await extendedMarkets(fixtureId, row.id);
+      expect(status).toBe(200);
+      expect(body).toMatchObject({ state: "AVAILABLE", source: "REDERIVED" });
+      const home = body.asianHandicap.lines[0].home.breakdown as Record<string, number>;
+      expect(Math.abs(Object.values(home).reduce((sum, value) => sum + value, 0) - 1)).toBeLessThanOrEqual(1e-12);
+    }
+    // The re-derived grid agrees with the sealed one for the same model and inputs.
+    const sealed = await extendedMarkets("sm-fx-dc", issued.dc!.id);
+    expect(sealed.body.source).toBe("PERSISTED");
+  }, 60_000);
+
+  it("10. a legacy snapshot whose stored markets do not reproduce is UNAVAILABLE, and nothing is written", async () => {
+    const before = JSON.stringify(await database.forecastSnapshot.findMany({ where: { fixtureId: "sm-fx-legacy" } }));
+    const original = real.findStoredForecast!;
+    const mutate = (patch: (row: StoredForecastView) => StoredForecastView) => ({ ...real, findStoredForecast: async (id: string): Promise<StoredForecastView | null> => { const row = await original(id); return row ? patch(row) : null; } });
+    const shifted = (row: StoredForecastView): StoredForecastView => ({
+      ...row,
+      markets: { ...row.markets, BTTS: (row.markets.BTTS as Array<{ probability: number }>).map((event) => ({ ...event, probability: event.probability + 1e-6 })) },
+    });
+    const cases: Array<[string, (row: StoredForecastView) => StoredForecastView]> = [
+      ["shifted market", shifted],
+      ["unknown model", (row) => ({ ...row, modelVersion: "poisson-ensemble-v9" })],
+      ["no expected goals", (row) => ({ ...row, dto: { ...row.dto, receipt: { ...row.dto.receipt, expectedGoals: undefined as never } } })],
+    ];
+    const restore = (service as unknown as { repository: unknown }).repository;
+    try {
+      for (const [, patch] of cases) {
+        (service as unknown as { repository: unknown }).repository = mutate(patch);
+        const { status, body } = await extendedMarkets("sm-fx-legacy", issued.legacy!.id);
+        expect(status).toBe(200);
+        expect(body).toEqual({ state: "UNAVAILABLE", reason: "SCORE_MATRIX_UNAVAILABLE" });
+      }
+    } finally {
+      (service as unknown as { repository: unknown }).repository = restore;
+    }
+    expect(JSON.stringify(await database.forecastSnapshot.findMany({ where: { fixtureId: "sm-fx-legacy" } }))).toBe(before);
   }, 60_000);
 });

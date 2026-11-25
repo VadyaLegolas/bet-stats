@@ -108,7 +108,7 @@ export class ForecastsService implements OnModuleDestroy {
     if (!FORECAST_ID_PATTERN.test(forecastId)) throw Object.assign(new BadRequestException({ code: "INVALID_FORECAST_ID" }), { code: "INVALID_FORECAST_ID" });
     const stored = await this.db().findStoredForecast?.(forecastId);
     if (!stored || stored.state !== "ISSUED" || stored.origin !== "PRODUCTION" || stored.dto.fixtureId !== fixtureId) throw new NotFoundException({ code: "FORECAST_NOT_FOUND" });
-    const resolved = resolveScoreMatrix({ scoreMatrix: stored.scoreMatrix, markets: stored.markets });
+    const resolved = resolveScoreMatrix({ scoreMatrix: stored.scoreMatrix, modelVersion: stored.modelVersion, receipt: stored.dto.receipt, markets: stored.markets });
     if (resolved.state === "UNAVAILABLE") {
       new Logger(ForecastsService.name).warn(JSON.stringify({ code: "SCORE_MATRIX_UNAVAILABLE", reason: resolved.reason, forecastId, modelVersion: stored.modelVersion }));
       return { state: "UNAVAILABLE", reason: "SCORE_MATRIX_UNAVAILABLE" };

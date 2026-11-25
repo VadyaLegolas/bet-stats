@@ -1,5 +1,6 @@
 import { canonicalSha256 } from "../forecast/canonical-json.js";
 import { applyDixonColesCorrection, type DixonColesCell } from "../forecast/dixon-coles.js";
+import { isForecastModelVersion } from "../forecast/model-version.js";
 import type { ForecastMarket, ForecastSelection } from "../forecast/model.js";
 
 /**
@@ -139,18 +140,24 @@ export function splitStoredForecast(raw: unknown): { readonly dto: unknown; read
 
 /** Internal reason codes: written to the operator log only, never shown to the client. */
 export type ScoreMatrixUnavailableReason =
-  | "SCORE_MATRIX_ABSENT"
   | "INVALID_SCORE_MATRIX"
+  | "UNKNOWN_MODEL"
+  | "MISSING_INPUT"
+  | "REDERIVE_FAILED"
   | "MARKETS_MISSING"
   | "MISMATCH";
 
 export type ResolvedScoreMatrix =
-  | Readonly<{ state: "AVAILABLE"; source: "PERSISTED"; cells: readonly ScoreMatrixCell[] }>
+  | Readonly<{ state: "AVAILABLE"; source: "PERSISTED" | "REDERIVED"; cells: readonly ScoreMatrixCell[] }>
   | Readonly<{ state: "UNAVAILABLE"; reason: ScoreMatrixUnavailableReason }>;
 
 export interface ResolveScoreMatrixInput {
   /** The envelope's `scoreMatrix` value from `splitStoredForecast`; `undefined` when the key is absent. */
   readonly scoreMatrix: unknown;
+  /** The snapshot's model version: never inferred, an unknown value makes the legacy path unavailable. */
+  readonly modelVersion: unknown;
+  /** The public DTO's receipt block (carries `expectedGoals` and, for dixon-coles, `dixonColes.rho`). */
+  readonly receipt: unknown;
   /** The stored `ForecastMarket` rows of this snapshot as `{ market: events }`. */
   readonly markets: unknown;
 }
@@ -181,12 +188,48 @@ function reproducesStored(cells: readonly ScoreMatrixCell[], markets: unknown, t
 /** A persisted matrix must reproduce the stored markets this tightly (bit-exact jsonb round trip). */
 const PERSISTED_TOLERANCE = 1e-12;
 
+/** A re-derived matrix is recomputed (Math.exp and ** are not guaranteed bit-identical across engines), hence the looser bound (D-03). */
+const REDERIVED_TOLERANCE = 1e-9;
+
+function finitePositive(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+/**
+ * Legacy snapshots (no persisted key): the same pure `buildScoreMatrix` over the receipt's expected goals (and the
+ * recorded rho for dixon-coles), accepted only when the three markets reproduce the stored ones (D-03).
+ */
+function rederive(input: ResolveScoreMatrixInput): ResolvedScoreMatrix {
+  if (!isForecastModelVersion(input.modelVersion)) return { state: "UNAVAILABLE", reason: "UNKNOWN_MODEL" };
+  const receipt = input.receipt;
+  const goals = receipt !== null && typeof receipt === "object" ? (receipt as Record<string, unknown>).expectedGoals : undefined;
+  if (goals === null || typeof goals !== "object") return { state: "UNAVAILABLE", reason: "MISSING_INPUT" };
+  const { home, away } = goals as Record<string, unknown>;
+  if (!finitePositive(home) || !finitePositive(away)) return { state: "UNAVAILABLE", reason: "MISSING_INPUT" };
+  let rho: number | undefined;
+  if (input.modelVersion === "dixon-coles-ensemble-v1") {
+    const block = (receipt as Record<string, unknown>).dixonColes;
+    const recorded = block !== null && typeof block === "object" ? (block as Record<string, unknown>).rho : undefined;
+    if (typeof recorded !== "number" || !Number.isFinite(recorded)) return { state: "UNAVAILABLE", reason: "MISSING_INPUT" };
+    rho = recorded;
+  }
+  let cells: ScoreMatrixCell[];
+  try {
+    cells = buildScoreMatrix({ expectedGoals: { home, away }, rho }).scoreMatrix.map((cell) => [cell.homeGoals, cell.awayGoals, cell.probability] as const);
+  } catch {
+    return { state: "UNAVAILABLE", reason: "REDERIVE_FAILED" };
+  }
+  const failure = reproducesStored(cells, input.markets, REDERIVED_TOLERANCE);
+  return failure ? { state: "UNAVAILABLE", reason: failure } : { state: "AVAILABLE", source: "REDERIVED", cells };
+}
+
 /**
  * Fail-closed resolution of the grid behind a stored forecast. A present-but-invalid key is never
- * masked by a fall-back (a tampered matrix must stay visible).
+ * masked by a fall-back to re-derivation (a tampered matrix must stay visible); re-derivation runs only
+ * when the key is absent (a legacy row). Nothing is ever written.
  */
 export function resolveScoreMatrix(input: ResolveScoreMatrixInput): ResolvedScoreMatrix {
-  if (input.scoreMatrix === undefined) return { state: "UNAVAILABLE", reason: "SCORE_MATRIX_ABSENT" };
+  if (input.scoreMatrix === undefined) return rederive(input);
   let parsed: ScoreMatrixV1;
   try {
     parsed = parseScoreMatrixV1(input.scoreMatrix);

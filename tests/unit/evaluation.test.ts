@@ -14,6 +14,10 @@ const source = {
 };
 
 describe("categorical scoring", () => {
+  it("pins the score formula hash as a literal: SCORE_CLASS_ORDER is hashed and must never be derived from a market registry (Pitfall 4)", () => {
+    expect(SCORE_FORMULA_HASH).toBe("sha256:c55c278db1513776c2776a4e1a79ff9f1b2e0194a1d6c2d67d7abdf63457f4af");
+  });
+
   it.each([
     ["perfect", [1, 0, 0], 0, 0],
     ["uniform", [1 / 3, 1 / 3, 1 / 3], 2 / 3, Math.log(3)],

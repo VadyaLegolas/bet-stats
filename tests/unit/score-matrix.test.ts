@@ -168,22 +168,90 @@ describe("splitStoredForecast", () => {
   });
 });
 
+/** The inputs the repository hands to `resolveScoreMatrix` for a stored snapshot of `forecast`. */
+function stored(forecast: ForecastDraft, scoreMatrix: unknown) {
+  return {
+    scoreMatrix,
+    modelVersion: forecast.modelVersion as unknown,
+    receipt: JSON.parse(JSON.stringify({ expectedGoals: forecast.expectedGoals, ...(forecast.dixonColes ? { dixonColes: forecast.dixonColes } : {}) })) as unknown,
+    markets: JSON.parse(JSON.stringify(forecast.markets)) as unknown,
+  };
+}
+
 describe("resolveScoreMatrix (persisted path)", () => {
   const forecast = forecastWith("poisson-ensemble-v1");
   const matrix: ScoreMatrixV1 = buildScoreMatrixV1(forecast.scoreMatrix, forecast.retainedMass);
   const json = (): unknown => JSON.parse(JSON.stringify(matrix));
 
   it("accepts a stored matrix that reproduces the stored markets", () => {
-    const resolved = resolveScoreMatrix({ scoreMatrix: json(), markets: forecast.markets });
-    expect(resolved).toMatchObject({ state: "AVAILABLE", source: "PERSISTED" });
+    expect(resolveScoreMatrix(stored(forecast, json()))).toMatchObject({ state: "AVAILABLE", source: "PERSISTED" });
   });
 
-  it("is UNAVAILABLE for a missing, invalid or tampered key and for markets that do not reproduce", () => {
-    expect(resolveScoreMatrix({ scoreMatrix: undefined, markets: forecast.markets })).toEqual({ state: "UNAVAILABLE", reason: "SCORE_MATRIX_ABSENT" });
-    expect(resolveScoreMatrix({ scoreMatrix: null, markets: forecast.markets })).toEqual({ state: "UNAVAILABLE", reason: "INVALID_SCORE_MATRIX" });
-    expect(resolveScoreMatrix({ scoreMatrix: { ...(json() as object), cellsHash: "sha256:00" }, markets: forecast.markets })).toEqual({ state: "UNAVAILABLE", reason: "INVALID_SCORE_MATRIX" });
-    const shifted = { ...forecast.markets, BTTS: forecast.markets.BTTS.map((event) => ({ ...event, probability: event.probability + 1e-6 })) };
-    expect(resolveScoreMatrix({ scoreMatrix: json(), markets: shifted })).toEqual({ state: "UNAVAILABLE", reason: "MISMATCH" });
-    expect(resolveScoreMatrix({ scoreMatrix: json(), markets: {} })).toEqual({ state: "UNAVAILABLE", reason: "MARKETS_MISSING" });
+  it("is UNAVAILABLE for an invalid or tampered key and for markets that do not reproduce", () => {
+    expect(resolveScoreMatrix(stored(forecast, null))).toEqual({ state: "UNAVAILABLE", reason: "INVALID_SCORE_MATRIX" });
+    expect(resolveScoreMatrix(stored(forecast, { ...(json() as object), cellsHash: "sha256:00" }))).toEqual({ state: "UNAVAILABLE", reason: "INVALID_SCORE_MATRIX" });
+    const shifted = { ...stored(forecast, json()), markets: { ...forecast.markets, BTTS: forecast.markets.BTTS.map((event) => ({ ...event, probability: event.probability + 1e-6 })) } };
+    expect(resolveScoreMatrix(shifted)).toEqual({ state: "UNAVAILABLE", reason: "MISMATCH" });
+    expect(resolveScoreMatrix({ ...stored(forecast, json()), markets: {} })).toEqual({ state: "UNAVAILABLE", reason: "MARKETS_MISSING" });
+  });
+
+  it("never falls back to re-derivation when a present key is invalid, even if the legacy path would succeed", () => {
+    expect(resolveScoreMatrix(stored(forecast, undefined))).toMatchObject({ state: "AVAILABLE", source: "REDERIVED" });
+    expect(resolveScoreMatrix(stored(forecast, { ...(json() as object), cellsHash: "sha256:00" }))).toEqual({ state: "UNAVAILABLE", reason: "INVALID_SCORE_MATRIX" });
+  });
+});
+
+describe("resolveScoreMatrix (legacy re-derivation, D-03)", () => {
+  it.each(CASES)("accepts a legacy snapshot whose markets reproduce (%s)", (_name, make) => {
+    const forecast = make();
+    const resolved = resolveScoreMatrix(stored(forecast, undefined));
+    expect(resolved).toMatchObject({ state: "AVAILABLE", source: "REDERIVED" });
+    if (resolved.state !== "AVAILABLE") return;
+    // The re-derived grid is the one the model used.
+    expect(resolved.cells).toHaveLength(64);
+    for (const [index, cell] of resolved.cells.entries()) expect(Object.is(cell[2], forecast.scoreMatrix[index]!.probability)).toBe(true);
+  });
+
+  it("applies the recorded rho = 0 of an out-of-band dixon-coles snapshot", () => {
+    const forecast = forecastWith("dixon-coles-ensemble-v1", 0.99);
+    expect(forecast.dixonColes?.rho).toBe(0);
+    expect(resolveScoreMatrix(stored(forecast, undefined))).toMatchObject({ state: "AVAILABLE", source: "REDERIVED" });
+  });
+
+  it.each(["HOME", "DRAW", "AWAY", "OVER_2_5", "UNDER_2_5", "YES", "NO"] as const)("rejects the snapshot when the stored %s differs by 1e-6", (selection) => {
+    const forecast = forecastWith("poisson-ensemble-v1");
+    const input = stored(forecast, undefined);
+    const shifted = Object.fromEntries(Object.entries(forecast.markets).map(([market, events]) => [market, events.map((event) => event.selection === selection ? { ...event, probability: event.probability + 1e-6 } : event)]));
+    expect(resolveScoreMatrix({ ...input, markets: shifted })).toEqual({ state: "UNAVAILABLE", reason: "MISMATCH" });
+  });
+
+  it("tolerates a difference far below 1e-9", () => {
+    const forecast = forecastWith("poisson-ensemble-v1");
+    const input = stored(forecast, undefined);
+    const nudged = { ...forecast.markets, ONE_X_TWO: forecast.markets.ONE_X_TWO.map((event) => event.selection === "HOME" ? { ...event, probability: event.probability + 1e-12 } : event) };
+    expect(resolveScoreMatrix({ ...input, markets: nudged })).toMatchObject({ state: "AVAILABLE", source: "REDERIVED" });
+  });
+
+  it("is UNAVAILABLE for an unknown model version, missing expected goals or a dixon-coles snapshot without rho", () => {
+    const poisson = forecastWith("poisson-ensemble-v1");
+    expect(resolveScoreMatrix({ ...stored(poisson, undefined), modelVersion: "poisson-ensemble-v9" })).toEqual({ state: "UNAVAILABLE", reason: "UNKNOWN_MODEL" });
+    expect(resolveScoreMatrix({ ...stored(poisson, undefined), modelVersion: undefined })).toEqual({ state: "UNAVAILABLE", reason: "UNKNOWN_MODEL" });
+    expect(resolveScoreMatrix({ ...stored(poisson, undefined), receipt: {} })).toEqual({ state: "UNAVAILABLE", reason: "MISSING_INPUT" });
+    expect(resolveScoreMatrix({ ...stored(poisson, undefined), receipt: { expectedGoals: { home: 0, away: 1 } } })).toEqual({ state: "UNAVAILABLE", reason: "MISSING_INPUT" });
+    expect(resolveScoreMatrix({ ...stored(poisson, undefined), receipt: { expectedGoals: { home: "1.4", away: 1.1 } } })).toEqual({ state: "UNAVAILABLE", reason: "MISSING_INPUT" });
+    expect(resolveScoreMatrix({ ...stored(poisson, undefined), receipt: null })).toEqual({ state: "UNAVAILABLE", reason: "MISSING_INPUT" });
+    const dixon = forecastWith("dixon-coles-ensemble-v1", -0.08);
+    expect(resolveScoreMatrix({ ...stored(dixon, undefined), receipt: { expectedGoals: dixon.expectedGoals } })).toEqual({ state: "UNAVAILABLE", reason: "MISSING_INPUT" });
+    expect(resolveScoreMatrix({ ...stored(dixon, undefined), receipt: { expectedGoals: dixon.expectedGoals, dixonColes: { rho: Number.NaN } } })).toEqual({ state: "UNAVAILABLE", reason: "MISSING_INPUT" });
+  });
+
+  it("is UNAVAILABLE when the recorded rho is outside the feasible band instead of throwing", () => {
+    const dixon = forecastWith("dixon-coles-ensemble-v1", -0.08);
+    expect(resolveScoreMatrix({ ...stored(dixon, undefined), receipt: { expectedGoals: dixon.expectedGoals, dixonColes: { rho: 0.99 } } })).toEqual({ state: "UNAVAILABLE", reason: "REDERIVE_FAILED" });
+  });
+
+  it("is UNAVAILABLE when the stored markets are incomplete", () => {
+    const forecast = forecastWith("poisson-ensemble-v1");
+    expect(resolveScoreMatrix({ ...stored(forecast, undefined), markets: { ONE_X_TWO: forecast.markets.ONE_X_TWO } })).toEqual({ state: "UNAVAILABLE", reason: "MARKETS_MISSING" });
   });
 });

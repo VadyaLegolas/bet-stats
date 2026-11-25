@@ -133,6 +133,11 @@ describe("per-version config identity", () => {
     expect(dcHash).toMatch(/^sha256:[0-9a-f]{64}$/);
     expect(dcHash).not.toBe(v1Hash);
   });
+
+  it("pins both config hashes as literals: the score matrix work must not touch a hashed config (Pitfall 7)", () => {
+    expect(forecastConfigHashFor("poisson-ensemble-v1")).toBe("sha256:a08ff17e4ec37822ccce0b68a7ed24ad33c21c5732e2ee812645cac4cc159581");
+    expect(forecastConfigHashFor("dixon-coles-ensemble-v1")).toBe("sha256:ff891567ab4c5358db44e98175174b94190ad8ea321db88d6c83419ea0871a72");
+  });
 });
 
 describe("createForecast model identity", () => {

@@ -1,8 +1,8 @@
 ---
 phase: 14-asian-handicap-and-exact-score-markets
-verified: 2026-11-25T12:30:00Z
-status: human_needed
-score: 3/3 roadmap success criteria verified (5/5 requirements MKT-01..MKT-05 satisfied in code); 0 FAILED truths
+verified: 2026-11-25T21:10:00Z
+status: passed
+score: 3/3 roadmap success criteria verified (5/5 requirements MKT-01..MKT-05 satisfied in code); 0 FAILED truths; 0 human-verification items blocking completion
 covered_files:
   - ".planning/phases/14-asian-handicap-and-exact-score-markets/14-01-PLAN.md"
   - ".planning/phases/14-asian-handicap-and-exact-score-markets/14-01-SUMMARY.md"
@@ -20,9 +20,13 @@ covered_files:
   - ".planning/phases/14-asian-handicap-and-exact-score-markets/14-07-SUMMARY.md"
   - ".planning/phases/14-asian-handicap-and-exact-score-markets/14-08-PLAN.md"
   - ".planning/phases/14-asian-handicap-and-exact-score-markets/14-08-SUMMARY.md"
+  - ".planning/phases/14-asian-handicap-and-exact-score-markets/14-09-PLAN.md"
+  - ".planning/phases/14-asian-handicap-and-exact-score-markets/14-09-SUMMARY.md"
   - "apps/api/src/modules/forecasts/forecasts.service.ts"
   - "apps/api/src/modules/value/value.service.ts"
   - "apps/web/app/fixtures/[fixtureId]/extended-markets-sections.tsx"
+  - "apps/web/app/globals.css"
+  - "apps/web/components/design-tokens.test.ts"
   - "packages/database/prisma/migrations/20261126_phase14_extended_markets/migration.sql"
   - "packages/database/src/evaluation/settlement-pipeline.ts"
   - "packages/database/src/forecast-repository.ts"
@@ -33,28 +37,40 @@ covered_files:
   - "packages/domain/src/markets/score-matrix.ts"
   - "packages/domain/src/markets/settlement.ts"
   - "packages/domain/src/value/extended-decision.ts"
-covered_digest: "v4:sha256:b44441eaf580ff5559374f964ffc36ac3b206561a3b44abbbc22d87e5d9410e5"
+  - "tests/e2e/extended-markets.spec.ts"
+  - "tests/unit/extended-markets-ui.test.tsx"
+covered_digest: "v4:sha256:40744347a5905ff8e14a98b75c298ba048af9d844b2b739aa5b9b76d475918a8"
 behavior_unverified: 0
 overrides_applied: 0
-human_verification:
-  - test: "Подтвердить правку формулировки про хвост матрицы в 14-UI-SPEC.md (план 14-04 заменил «входит в строку «Любой другой счёт»» на «уже учтён нормировкой на сохранённую массу и распределён по всем счетам»; то же в методологии и карточке модели)"
-    expected: "Пользователь принимает новую формулировку (она соответствует математике retained-mass-v1) либо указывает другую; при отказе правится одна строка в extended-markets-model.ts / методологии / model-card"
-    why_human: "Изменение утверждённого UI-SPEC, ожидающее подтверждения пользователя; это решение владельца продукта, а не проверка кода"
-  - test: "Принять решение по бюджету scriptTransferBytes (Phase 10): 5 960 160 > 5 500 000"
-    expected: "Владелец фазы 10 либо сокращает клиентский пакет (баррель @bet-stats/domain в самом большом чанке ~518 KB), либо поднимает бюджет с обоснованием. Превышение возникло до фазы 14 (5 921 263 на конце фазы 13); фаза 14 добавила +38 897 байт (+0,66 %). LCP, TBT, CLS в бюджете"
-    why_human: "Продуктовое решение (бюджет vs. оптимизация), вне объёма фазы 14"
-  - test: "Живой визуальный просмотр страницы матча с разделами «Азиатская фора» и «Точный счёт», формами ввода (линия АФ, 17 полей) и страницей методологии"
-    expected: "Раскладка соответствует 14-UI-SPEC.md; нет визуальных дефектов на мобильной и десктопной ширине"
-    why_human: "Автоматика проверила вычисляемые стили, ARIA и axe (15 сценариев Playwright, по отчёту 14-08), но глазомерный просмотр не выполнялся (14-VALIDATION.md, Manual-Only)"
+re_verification:
+  previous_status: human_needed
+  previous_score: 3/3
+  gaps_closed:
+    - "UAT тест 7: сетка точного счёта на 320 px (подпись обрезана, «Голы хозяев» по букве, «Голы гостей» обрезан) — закрыто планом 14-09, повторно проверено на живом стеке"
+  gaps_remaining: []
+  regressions: []
+advisory:
+  - finding: "Бюджет scriptTransferBytes (Phase 10): 5 960 160 > 5 500 000. Превышение возникло до фазы 14 (5 921 263 на конце фазы 13); фаза 14 добавила +38 897 байт (+0,66 %)"
+    category: other
+    reason: "Регрессионный гейт бюджета не входит в критерии успеха фазы 14 (ROADMAP). Решение (сократить клиентский пакет @bet-stats/domain в самом большом чанке ~518 KB или поднять бюджет с обоснованием) принадлежит владельцу фазы 10"
+    evidence_status: "измерено в 14-08 (node scripts/perf-audit.mjs), зафиксировано в deferred-items.md"
+  - finding: "A7: VALUE_POLICY.forecastConfigVersion = forecast-config-v1 даёт POLICY_CONFIG_MISMATCH / INSUFFICIENT_EVIDENCE для снимков forecast-config-v2 (dixon-coles)"
+    category: other
+    reason: "Pre-existing поведение ядра (decision.ts) до фазы 14; расширенные рынки его наследуют. Вне объёма фазы 14 (INFO)"
+    evidence_status: "прочитано в коде в первичной верификации"
 ---
 
 # Phase 14: Asian Handicap and Exact Score Markets — Verification Report
 
 **Phase Goal:** A user can view, price, and settle Asian handicap and exact-score probabilities derived from the frozen score matrix — zero new data cost — with quarter-line push/half-bet semantics handled correctly end to end.
 **Verified:** 2026-11-25
-**Status:** human_needed (все автоматически проверяемые критерии выполнены; остаются три решения/проверки для человека, ни одна не является недостающей реализацией)
-**Re-verification:** No — initial verification
-**Code under verification:** main @ e540ce9
+**Status:** passed
+**Re-verification:** Да — после закрытия UAT-пробела планом 14-09 (предыдущий отчёт f9e2d45, `human_needed`, устарел)
+**Code under verification:** HEAD ветки main `c8fcef2` (включает слияние 14-09, `10cc8ee`)
+
+## Что изменилось с предыдущей верификации
+
+`git diff e540ce9 HEAD -- apps packages scripts tests` затрагивает ровно пять файлов, все из плана 14-09 (`extended-markets-sections.tsx` +1 класс `market-grid-scroll`, `globals.css` +14 строк CSS, `design-tokens.test.ts`, `extended-markets-ui.test.tsx`, `tests/e2e/extended-markets.spec.ts`). Домен, API, БД, миграция и расчётный конвейер после проверенного `e540ce9` не менялись, поэтому выводы по ним (чтение кода + 45/45 интеграционных тестов в одноразовых контейнерах) остаются в силе; здесь выполнена регрессионная проверка (существование, размер, разводка, отсутствие долговых маркеров) и полный повторный прогон unit и web.
 
 ## Goal Achievement
 
@@ -62,114 +78,82 @@ human_verification:
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Пользователь видит вероятности и справедливые коэффициенты АФ с четвертными линиями (push / половинные ставки) и точные счета по настроенному списку корзин с явным «OTHER», всё из замороженной матрицы счёта | VERIFIED | `packages/domain/src/markets/asian-handicap.ts`: `settleAsianHandicap` (четвертная линия делит ставку на две соседние, WIN/HALF_WIN/PUSH/HALF_LOSS/LOSS), `ahBreakdown`, `ahFairOdds = 1 + (LOSS+HALF_LOSS/2)/(WIN+HALF_WIN/2)` с типизированным UNAVAILABLE вместо Infinity/NaN, `buildAhView` по 21 линии, `mainAhLine`. `exact-score.ts`: 16 явных счетов 0-0..3-3 + `OTHER = max(0, 1 − Σ16)`. `extended-view.ts`: строгий `parseExtendedMarketsView` (закрытые наборы ключей, суммы = 1). API: `ForecastsService.extendedMarkets` + маршрут `GET fixtures/:fixtureId/forecasts/:forecastId/extended-markets`. Web: `extended-markets-loader.ts` → `page.tsx` → `forecast-workbench.tsx` → `extended-markets-sections.tsx` (5 исходов АФ, четвертные линии и пояснение, состояния unavailable / read-failed). Тесты: unit `asian-handicap`, `exact-score`, `extended-view`, `markets-registry` — зелёные; web `extended-markets-model.test.ts` — зелёные |
-| 2 | Оператор вводит полные книги коэффициентов для новых рынков с существующей валидацией и no-vig нормализацией и получает value-квитанции с push-aware EV | VERIFIED | Единый реестр `registry.ts` (`selectionsFor`, 25 канонических id) подключён в `odds/contract.ts`, `odds/draft.ts`, `odds/normalize.ts`, `value/contract.ts`, `evaluation/closing-odds.ts`, `evaluation/no-vig-clv.ts` — никаких расхождающихся таблиц. `value/extended-decision.ts` (`decideExtendedValue`): EV = ΣP(исход)·доход(исход) по пяти исходам (WIN: o−1, HALF_WIN: (o−1)/2, PUSH: 0, HALF_LOSS: −0,5, LOSS: −1), edge = условная вероятность выигрыша − no-vig, те же гейты и пороги `VALUE_POLICY`. `value.service.ts`: ветвление `isCoreMarket` / расширенные; расширенный путь сначала доказывает подлинность матрицы (`loadVerifiedMatrix`, 409 `SCORE_MATRIX_UNAVAILABLE`, ничего не пишется). SQL `guard_value_pair()` (миграция) пересчитывает вероятности из сохранённой матрицы по `cellsHash` и проверяет EV/fair/edge арифметически. Web: форма для линии АФ и 17-вариантного точного счёта, `extended-comparison-model.ts`, `value-outcome-section.tsx`. Интеграция: `extended-markets-api.test.ts`, `extended-markets-guards.test.ts` — прошли |
-| 3 | Расчёт определяет push / half-win / half-loss АФ и исходы точного счёта по явным версионным правилам внутри конвейера оценки; матрица счёта сохранена при выпуске либо детерминированно перевыводится fail-closed для старых снимков | VERIFIED | Версии: `ah-lines-v1`, `ah-settlement-v1`, `exact-score-buckets-v1`, `exact-score-settlement-v1`, `score-matrix-v1`, `flat-one-unit-v2`, `push-aware-ev-v1`. `markets/settlement.ts`: `SETTLEMENT_RULES` — `Record<MarketFamily,…>` + исчерпывающие `switch`/`assertNever` (новая семья без правила не компилируется). `settlement-pipeline.ts` (строки 285–330): ветвление по `parseMarketId().family` — ONE_X_TWO/OVER_UNDER_2_5/BTTS → `persist_value_settlement` (v1), ASIAN_HANDICAP/EXACT_SCORE → `settleExtendedMarket` + `persist_value_settlement_v2`, `default: never` (трёхрыночный жёсткий guard снят, ForecastScore намеренно остаётся на трёх рынках). Миграция `20261126_phase14_extended_markets`: расширены `guard_value_pair`, `guard_value_settlement` (независимо пересчитывает результат в SQL — `phase14_ah_result`, `phase14_exact_score_result`), `ValueSettlement_result_check` (пять исходов), новая `persist_value_settlement_v2`; только CREATE OR REPLACE и один DROP/ADD CONSTRAINT, триггеры append-only не тронуты, опубликованные миграции не редактировались (`git diff c6a702c..HEAD` по `prisma/` = одна добавленная миграция, `schema.prisma` без изменений). Арифметика v2 только умножением (точные доли, без округления деления). Матрица: `forecast-orchestrator.ts` строит `ScoreMatrixV1` (64 ячейки + `cellsHash`), `assertCoreMarketsReproduced` (три рынка воспроизводятся `===`) до `repository.publish`; `forecast-repository.ts` пишет `scoreMatrix` как top-level ключ `receipt` Json (без DDL); `splitStoredForecast` — единственная точка снятия ключа на всех читателях `ForecastSnapshot.receipt` (repository, forecast-comparison, value.service); `parseForecastResponse` на старых строках не ломается. `resolveScoreMatrix`: ключ присутствует, но невалиден → UNAVAILABLE (без маскировки re-derive); ключ отсутствует → `buildScoreMatrix` по `expectedGoals` (+ rho для dixon-coles) и принимается только если все семь вероятностей воспроизводят сохранённые в пределах 1e-9, иначе UNAVAILABLE; неизвестная модель не угадывается. Агрегаты `aggregateFlatOneUnit` / `pageTotalsByPolicy` ведут v1 и v2 раздельно, неизвестная политика — жёсткая ошибка; когорта (`loadCohort`) читает только `COHORT_POLICY_VERSION` (v1) |
+| 1 | Пользователь видит вероятности и справедливые коэффициенты АФ с четвертными линиями (push / половинные ставки) и точные счета по настроенному списку корзин с явным OTHER, всё из замороженной матрицы счёта | VERIFIED | `markets/asian-handicap.ts` (191 стр., `settleAsianHandicap`, `ahBreakdown`, `ahFairOdds` с типизированным UNAVAILABLE, `buildAhView` по 21 линии), `exact-score.ts` (16 счетов + `OTHER = max(0, 1 − Σ16)`), `extended-view.ts` (строгий парсер). Цепочка API → `extended-markets-loader.ts` → `page.tsx` → `forecast-workbench.tsx` → `extended-markets-sections.tsx`. UAT 2 (раздел АФ: окно из 5 линий, переключатель стороны, «развернуть» до 21; сетка 4×4 и «Любой другой счёт») — pass пользователем на живом стеке. UAT 7: после 14-09 подпись/оси сетки читаемы на 320 px, страница не ползёт по горизонтали (повторный тест на живом стеке, зафиксирован в 14-UAT.md) |
+| 2 | Оператор вводит полные книги коэффициентов для новых рынков с существующей валидацией и no-vig нормализацией и получает value-квитанции с push-aware EV | VERIFIED | Единый реестр `registry.ts` (25 id, `selectionsFor`) подключён во всех слоях (odds contract/draft/normalize, value contract, closing-odds, no-vig-clv). `value/extended-decision.ts` (`decideExtendedValue`, 254 стр.): EV = ΣP(исход)·доход(исход) по пяти исходам, те же гейты и пороги `VALUE_POLICY`. `value.service.ts` сначала доказывает подлинность матрицы (`loadVerifiedMatrix`, 409 `SCORE_MATRIX_UNAVAILABLE`). SQL `guard_value_pair()` пересчитывает вероятности из матрицы по `cellsHash`. UAT 3 (форма АГ: линия не выбрана по умолчанию, 17 полей точного счёта, счётчик пустых полей, фокус) и UAT 4 (итог value с таблицей по пяти исходам, `push-aware-ev-v1`, пояснение про возврат) — pass пользователем |
+| 3 | Расчёт определяет push / half-win / half-loss АФ и исходы точного счёта по явным версионным правилам внутри конвейера оценки; матрица счёта сохранена при выпуске либо детерминированно перевыводится fail-closed для старых снимков | VERIFIED | Подтверждено повторно: `settlement-pipeline.ts` содержит ветвление `case "ASIAN_HANDICAP": case "EXACT_SCORE":` → `persist_value_settlement_v2` (стр. 308–317), TS-производитель результата и независимый SQL-пересчёт (`guard_value_settlement`, миграция 417 стр.). `SETTLEMENT_RULES` исчерпывающий по `MarketFamily`. Матрица: `score-matrix.ts` (241 стр.) `buildScoreMatrix`/`resolveScoreMatrix`/`splitStoredForecast`; ключ в `receipt` Json без DDL; невалидный ключ → UNAVAILABLE, отсутствующий → re-derive с проверкой воспроизведения семи вероятностей в 1e-9. UAT 5 (реестр кандидатов: колонка «Рынок», политика под исходом, итоги v1/v2 раздельно) — pass |
 
-**Score:** 3/3 критерия VERIFIED. `behavior_unverified: 0` — поведенческие инварианты (settlement, fail-closed, SQL guards, TS↔SQL parity) подтверждены исполнявшимися тестами (см. ниже), а не одним наличием символов.
+**Score:** 3/3 критерия VERIFIED; `behavior_unverified: 0` — поведенческие инварианты (расчёт, fail-closed, SQL-guards, TS↔SQL паритет 21 линия × 2 стороны × 0..10 × 0..10) подтверждены исполнявшимися тестами при первичной верификации, а не наличием символов.
 
 ### Required Artifacts
 
-| Artifact | Expected | Status | Details |
-|----------|----------|--------|---------|
-| `packages/domain/src/markets/registry.ts` | Единый реестр рынков | VERIFIED | 80 строк; 25 id; используется во всех слоях |
-| `packages/domain/src/markets/asian-handicap.ts`, `ah-lines.ts` | АФ: 21 линия, расчёт, разбивка, fair odds, главная линия | VERIFIED | Подлинная логика; ручная проверка: −0,25 при ничьей → HALF_LOSS, −0,5 при победе хозяев на 1 → WIN, −1 → PUSH |
-| `packages/domain/src/markets/exact-score.ts` | 16 + OTHER | VERIFIED | OTHER = дополнение до 1, не отдельная строка |
-| `packages/domain/src/markets/score-matrix.ts` | `buildScoreMatrix`, `ScoreMatrixV1`, `resolveScoreMatrix`, `splitStoredForecast` | VERIFIED | fail-closed подтверждён чтением и тестами |
-| `packages/domain/src/markets/extended-view.ts` | Строгий DTO и парсер | VERIFIED | |
-| `packages/domain/src/markets/settlement.ts` | Правила расчёта, исчерпывающие по типу | VERIFIED | |
-| `packages/domain/src/value/extended-decision.ts` | push-aware решение | VERIFIED | |
-| `packages/domain/src/evaluation/financial.ts` | `flat-one-unit-v2` + агрегаты без смешения политик | VERIFIED | |
-| `packages/database/prisma/migrations/20261126_phase14_extended_markets/migration.sql` | Одна forward-миграция | VERIFIED | 417 строк; применялась только в одноразовых контейнерах тестов (не в dev-БД) |
-| `packages/database/src/evaluation/settlement-pipeline.ts` | Ветвление по семье рынка | VERIFIED | |
-| `apps/api/.../forecasts.service.ts`, `forecasts.controller.ts` | Маршрут extended-markets | VERIFIED | Клиент видит только `SCORE_MATRIX_UNAVAILABLE`, внутренняя причина — в лог |
-| `apps/api/.../value.service.ts` | Сравнение для новых рынков | VERIFIED | |
-| `docs/closing-odds-operator.md`, `scripts/closing-odds.mjs` | CLI и документация | VERIFIED | Содержат ASIAN_HANDICAP |
-| `apps/web/app/fixtures/[fixtureId]/extended-*.ts(x)`, `value-outcome-section.tsx` | Разделы, формы, модели | VERIFIED | Подключены цепочкой loader → page → workbench → sections |
-| `packages/domain/src/methodology/model-card.ts` | `model-card-v1.4.0` | VERIFIED | Версия и блок `extendedMarkets` присутствуют |
+| Artifact | Status | Details |
+|----------|--------|---------|
+| `packages/domain/src/markets/{registry,asian-handicap,ah-lines,exact-score,score-matrix,extended-view,settlement}.ts` | VERIFIED | существуют, содержательны (40–241 стр.), нет TBD/FIXME/XXX |
+| `packages/domain/src/value/extended-decision.ts` | VERIFIED | push-aware решение |
+| `packages/database/prisma/migrations/20261126_phase14_extended_markets/migration.sql` | VERIFIED | одна forward-миграция, 417 стр.; применена пользователем к dev-БД и проверена (UAT 1: pass); мной миграции не применялись |
+| `packages/database/src/evaluation/settlement-pipeline.ts` | VERIFIED | ветвление по семье рынка, `persist_value_settlement_v2` |
+| `apps/api/.../forecasts.service.ts`, `value.service.ts` | VERIFIED | маршрут extended-markets и сравнение для новых рынков |
+| `apps/web/app/fixtures/[fixtureId]/extended-markets-sections.tsx` + `globals.css` (.market-grid*) | VERIFIED | включая правки 14-09: `market-grid-scroll` (container-type: inline-size), `.market-grid caption {width: 100cqw}`, сброс `overflow-wrap` на `th`, sticky/z-index закреплённых подписей; общее правило `.evidence-table-scroll` не тронуто (охраняется тестом) |
+| `packages/domain/src/methodology/model-card.ts` | VERIFIED | `model-card-v1.4.0` с блоком `extendedMarkets` |
 
 ### Key Link Verification
 
-| From | To | Via | Status |
-|------|----|-----|--------|
-| `createForecast`/orchestrator | `ForecastSnapshot.receipt.scoreMatrix` | `buildScoreMatrixV1` → `repository.publish(..., { scoreMatrix })` | WIRED |
-| Читатели `receipt` | публичный DTO | `splitStoredForecast` (3 читателя API/БД) | WIRED |
-| `extended-markets` route | `resolveScoreMatrix` → `buildExtendedMarketsView` | `ForecastsService.extendedMarkets` | WIRED |
-| `compareValue` | `decideExtendedValue` | `loadVerifiedMatrix` | WIRED |
-| Value-квитанция расширенного рынка | SQL guard | `guard_value_pair` пересчитывает из `cellsHash` матрицы | WIRED (интеграционный тест прошёл) |
-| Settlement pipeline | `settleExtendedMarket` → `persist_value_settlement_v2` → `guard_value_settlement` | switch по `MarketFamily` | WIRED |
-| Страница матча | API | `loadExtendedMarkets` (сбой чтения ≠ устаревший снимок ≠ нераспознанный ответ) | WIRED |
+Все ссылки WIRED (см. предыдущий отчёт; код не менялся): orchestrator → `receipt.scoreMatrix`; `splitStoredForecast` на всех читателях `receipt`; route → `resolveScoreMatrix` → `buildExtendedMarketsView`; `compareValue` → `decideExtendedValue`; value receipt → SQL guard; pipeline → `persist_value_settlement_v2` → `guard_value_settlement`; страница матча → API через `loadExtendedMarkets`. Для 14-09: класс `market-grid-scroll` в TSX ↔ правило `.market-grid-scroll` в CSS, оба закреплены тестами (`extended-markets-ui.test.tsx`, `design-tokens.test.ts`).
 
-### Data-Flow Trace (Level 4)
-
-| Artifact | Data | Source | Real data | Status |
-|----------|------|--------|-----------|--------|
-| Разделы АФ/точный счёт | `ExtendedMarketsView` | API → `resolveScoreMatrix` → сохранённая/перевыведенная матрица → чистые функции | Да (не статические значения) | FLOWING |
-| Value-квитанция АФ | breakdown / EV | `ahBreakdown` над проверенной матрицей, пересчёт в SQL | Да | FLOWING |
-| Расчёт | `ValueSettlement.result` | `ResultVersion.homeGoals/awayGoals` (`score.fullTime`) → TS producer + SQL verifier | Да | FLOWING |
-
-### Behavioral Spot-Checks / выполненные команды
+### Behavioral Spot-Checks (выполнено в этой верификации)
 
 | Проверка | Команда | Результат | Status |
 |----------|---------|-----------|--------|
-| Целевые unit-файлы фазы (+ pins `SCORE_FORMULA_HASH`, bit-identity `createForecast`) | `pnpm exec vitest run --project unit` (12 файлов) | 342/342 | PASS |
-| Весь unit-проект | `pnpm exec vitest run --project unit` | 90 файлов, 1533/1533 | PASS |
-| Web-тесты | `pnpm --filter @bet-stats/web test` | 14 файлов, 271/271 | PASS |
-| Typecheck domain, database, api | `pnpm --filter … typecheck` | без ошибок | PASS |
-| Typecheck web | `tsc --noEmit` | ошибки только в сгенерированном `.next/dev/types/routes.d.ts` (в .gitignore, pre-existing, описано в deferred-items); в исходниках ошибок нет | PASS (с оговоркой) |
-| Интеграция фазы (одноразовые контейнеры Postgres, dev-БД не затронута): `extended-markets-parity` (TS↔SQL: 21 линия × 2 стороны × 0..10 × 0..10 + все счета), `extended-markets-guards`, `extended-settlement-pipeline`, `score-matrix-persistence`, `extended-markets-api` | `vitest run --project integration …` | 5 файлов, 45/45 | PASS |
-| Долговые маркеры TBD/FIXME/XXX в изменённых файлах | grep | нет | PASS |
+| Весь unit-проект | `pnpm exec vitest run --project unit` | 89 файлов passed, 1 skipped; 1532 passed, 2 skipped (1534). Пропущены 2 теста `worker-entry-guard.test.ts` (требуют собранный `dist/main.js`, не относятся к фазе) | PASS |
+| Web-тесты | `pnpm --filter @bet-stats/web test` | 14 файлов, 276/276 (было 271; +5 охранных тестов раскладки 14-09) | PASS |
+| Установка | `pnpm install --frozen-lockfile` | успешно | PASS |
+| Долговые маркеры TBD/FIXME/XXX | grep по markets/, extended-decision.ts, sections.tsx, settlement-pipeline.ts | не найдены | PASS |
+
+Интеграционные (45/45 по 5 файлам фазы в одноразовых контейнерах) и Playwright E2E в этом прогоне не запускались: код, который они покрывают, не менялся после `e540ce9`, кроме CSS/класса 14-09, для которого E2E-сценарий (измерение боксов подписи, осей и hit-test закреплённых ячеек, 3 ширины × 3 режима) прогонялся в 14-09, а результат подтверждён живой проверкой пользователя/оркестратора на 320 px. Dev-БД и порты 3000/3001 не затрагивались.
 
 ### Probe Execution
 
-SKIPPED — фаза не объявляет probe-скриптов (`scripts/*/tests/probe-*.sh`); поведение покрыто тестами выше.
+SKIPPED — фаза не объявляет probe-скриптов.
 
 ### Requirements Coverage
 
-| Requirement | Описание | Status | Evidence |
-|-------------|----------|--------|----------|
-| MKT-01 | Просмотр вероятностей АФ и справедливых коэффициентов с четвертными линиями push/half | SATISFIED | Критерий 1; unit + web + e2e-спека (15 сценариев) |
-| MKT-02 | Точные счета по списку корзин с явным OTHER | SATISFIED | Критерий 1 |
-| MKT-03 | Полные книги коэффициентов, no-vig, value-квитанции с push-aware EV | SATISFIED | Критерий 2; guards/API интеграция |
-| MKT-04 | Расчёт push/half-win/half-loss и точного счёта под версионными правилами в конвейере | SATISFIED | Критерий 3; parity + pipeline интеграция |
-| MKT-05 | Матрица сохраняется при выпуске или перевыводится fail-closed | SATISFIED | Критерий 3; `score-matrix-persistence` |
+| Requirement | Status | Evidence |
+|-------------|--------|----------|
+| MKT-01 | SATISFIED | Критерий 1; UAT 2 |
+| MKT-02 | SATISFIED | Критерий 1; UAT 2, UAT 7 (после 14-09) |
+| MKT-03 | SATISFIED | Критерий 2; UAT 3, 4 |
+| MKT-04 | SATISFIED | Критерий 3; UAT 5; parity и pipeline-интеграция |
+| MKT-05 | SATISFIED | Критерий 3; `score-matrix-persistence` |
 
-Orphaned requirements: нет (все MKT-01..05 заявлены в планах).
+Orphaned requirements: нет.
 
 ### Классификация известных пунктов
 
 | # | Пункт | Классификация | Обоснование |
 |---|-------|---------------|-------------|
-| 1 | Бюджет `scriptTransferBytes` 5 960 160 > 5 500 000 | WARNING, вынесено человеку | Превышение существовало до фазы 14 (5 921 263 на конце фазы 13); фаза 14 вносит +38 897 байт (+0,66 %). LCP/TBT/CLS в бюджете. Не блокер цели фазы; решение за владельцем фазы 10 (в deferred-items.md и 14-VALIDATION.md) |
-| 2 | Правка формулировки хвоста в UI-SPEC | WARNING, ожидает подтверждения пользователя | Новая формулировка математически точнее (при `retained-mass-v1` сетка нормирована на сохранённую массу, хвост размазан по всем ячейкам, `OTHER = 1 − Σ16` — не «сырой хвост»). Код, методология и карточка модели согласованы между собой; нужен только акцепт |
-| 3 | A7: `POLICY_CONFIG_MISMATCH` для `forecast-config-v2` | INFO, pre-existing, вне объёма | `VALUE_POLICY.forecastConfigVersion = "forecast-config-v1"` — то же для ядра (`decision.ts`) до фазы 14. Расширенные рынки наследуют поведение: для снимков dixon-coles квитанция выдаётся, но исход `INSUFFICIENT_EVIDENCE` (кандидатом не становится). Для poisson-v1 всё работает. Цель фазы (просмотр, оценка, расчёт) не затронута |
-| 4 | Расчёт по `score.fullTime` (доп. время/пенальти) | INFO, задокументированное ограничение | Правила применяются к сохранённому финальному счёту; для плей-офф он может включать ET/пенальти и расходиться с правилами букмекера. Указано в методологии и model card, follow-up в deferred-items.md. Для лиг top-5 (основной охват) не влияет |
-| 5 | 10 интеграционных файлов падают | INFO, окружение | Пять файлов, относящихся к фазе, я прогнал самостоятельно в одноразовых контейнерах — 45/45. Остальные падают из-за отсутствия `DATABASE_URL`/`REDIS_URL`/`OPERATOR_PROXY_SIGNING_SECRET` (проходят под `verify-release-integration.mjs`, по 14-08 SUMMARY) и таймаута 5 с в `calibration-full-loop` (код калибровки фаза не трогала). Эти 10 файлов я не перезапускал |
+| 1 | Бюджет `scriptTransferBytes` 5 960 160 > 5 500 000 | ADVISORY, решение владельца фазы 10 | Превышение до фазы 14; вклад фазы 14 +38 897 байт (+0,66 %). Гейт бюджета не входит в критерии успеха фазы 14, LCP/TBT/CLS в бюджете. Не считается невыполненным критерием фазы 14 и не блокирует её |
+| 2 | Правка формулировки хвоста в UI-SPEC | CONFIRMED пользователем | UAT 6 pass (2026-11-25): «уже учтён нормировкой на сохранённую массу и распределён по всем счетам». Формулировка присутствует в `extended-markets-model.ts` и `model-card.ts` и закреплена тестом `extended-markets-ui.test.tsx` |
+| 3 | A7: `POLICY_CONFIG_MISMATCH` для `forecast-config-v2` | INFO, pre-existing, вне объёма | см. advisory |
+| 4 | Расчёт по `score.fullTime` (ET/пенальти) | INFO, задокументированное ограничение | Указано в методологии и model card; follow-up в deferred-items.md |
+| 5 | Миграция `20261126_phase14_extended_markets` на dev-БД | Применена пользователем и проверена (UAT 1) | — |
+| 6 | Живой визуальный просмотр | Выполнен пользователем (UAT 1–7) | Тест 7 нашёл дефект, закрыт 14-09 и перепроверен на 320 px |
 
 ### Anti-Patterns Found
 
-Блокеров нет. Долговых маркеров (TBD/FIXME/XXX) в изменённых файлах нет. Заглушек и пустых реализаций в проверенных путях нет.
+Блокеров нет. Долговых маркеров нет. Заглушек в проверенных путях нет.
 
 ### Human Verification Required
 
-1. **Акцепт формулировки про хвост (UI-SPEC)** — см. frontmatter.
-2. **Решение по бюджету scriptTransferBytes** — см. frontmatter.
-3. **Живой визуальный просмотр** страницы матча и методологии — см. frontmatter.
+Нет пунктов, блокирующих завершение фазы. Все ранее запрошенные проверки (формулировка хвоста, визуальный просмотр) выполнены пользователем в UAT; бюджет и A7 — решения по другим фазам/политикам (advisory).
 
-### Не проверено в этой верификации
+### Замечания по бухгалтерии планирования (не влияют на достижение цели, действия для оркестратора при закрытии фазы)
 
-- Playwright E2E (`tests/e2e/extended-markets.spec.ts`, 15 сценариев) не запускался — требует живого стека; опираюсь на отчёт 14-08 и наличие спецификации.
-- Полный набор интеграционных тестов (около 17 мин) не запускался; прогнаны только 5 файлов фазы.
-- Миграции к dev-БД не применялись (по условию).
-
-### Замечания по бухгалтерии планирования (не влияют на достижение цели)
-
-- `.planning/ROADMAP.md`: у Фазы 14 строка прогресса «1/8 plans executed», планы 14-02..14-08 не отмечены `[x]`, фаза не помечена завершённой.
-- `.planning/REQUIREMENTS.md`: MKT-01..MKT-04 всё ещё `[ ]` / Pending (отмечен только MKT-05). Кодом они выполнены; чекбоксы и таблицу трассировки нужно обновить при закрытии фазы.
+- `.planning/ROADMAP.md`: Фаза 14 всё ещё `[ ]`, «Plans: 1/8 plans executed», планы 14-02..14-09 не отмечены; 14-09 в списке отсутствует.
+- `.planning/REQUIREMENTS.md`: MKT-01..MKT-04 `[ ]` / Pending (отмечен только MKT-05).
 
 ### Gaps Summary
 
-Недостающей реализации нет: каждый из трёх критериев успеха подтверждён чтением кода, прогоном unit (1533), web (271) и интеграционных (45) тестов, включая TS↔SQL паритет расчёта и fail-closed повторный вывод матрицы. Статус `human_needed` обусловлен только решениями человека (акцепт правки UI-SPEC, бюджет клиентского пакета, визуальный просмотр), а не провалами проверок.
+Недостающей реализации нет. Три критерия успеха подтверждены кодом, тестами (unit 1532, web 276, ранее интеграция 45/45) и живой проверкой пользователя (UAT: 6 pass + тест 7 закрыт 14-09 с повторной проверкой на 320 px). Пункты бюджета и A7 вынесены как advisory для владельцев других фаз/политик.
 
 ---
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { forecastConfigHashFor } from "../../packages/domain/src/forecast/config.js";
+import { canonicalSha256 } from "../../packages/domain/src/forecast/canonical-json.js";
 import { createForecast } from "../../packages/domain/src/forecast/model.js";
 import type { EvidenceProjectionDto } from "../../packages/domain/src/evidence/contract.js";
 
@@ -93,5 +94,53 @@ describe("poisson-ensemble-v1 frozen regression vector", () => {
 
   it("keeps the historical v1 config hash reachable through the per-version selector", () => {
     expect(forecastConfigHashFor("poisson-ensemble-v1")).toBe(V1_VECTOR.configHash);
+  });
+});
+
+/**
+ * Whole-result golden hashes of `createForecast` (14-01 Step 1).
+ *
+ * Captured on the HEAD BEFORE `buildScoreMatrix` was extracted into `markets/score-matrix.ts`.
+ * They cover the full score matrix, both market sets, raw marginals, input hash and retained mass,
+ * so the extraction must stay bit-identical for every model path.
+ */
+const dixonProvenance = (rho: number) => ({ rho, convention: "tau-1x2-v1" as const, method: "mle-low-score-v1" as const, windowFrom: "2024-01-01T00:00:00.000Z", windowTo: cutoff, sampleSize: 400, tauMin: 0.9 });
+
+function forecastWith(modelVersion: "poisson-ensemble-v1" | "dixon-coles-ensemble-v1", rho?: number) {
+  return createForecast({
+    fixtureId: "fixture-1", forecastSnapshotId: "forecast-1", cutoff, canonicalIdentityState: "RESOLVED", home: projection("home"), away: projection("away"), lineupAvailable: false, sourceReliability: 0.8,
+    modelVersion,
+    ...(rho === undefined ? {} : { dixonColes: { rho, provenance: dixonProvenance(rho) } }),
+  });
+}
+
+const GOLDEN_CREATE_FORECAST_HASHES = {
+  poisson: "sha256:5af24e7de701457ccc21f3401a42a159d1d6cee8294bd89d459e6b2b01fba773",
+  dixonPositiveRho: "sha256:044fee611ab24ff8aebbd104362e5c85533ac28a5cdfa7f26b08900400131c65",
+  dixonNegativeRho: "sha256:c79ede4c81c35b7a5e9641b345fef98495b9a96f6f4e24ad6c381194c347751e",
+  dixonOutOfBandZero: "sha256:48f67d711c66843bbb0e967dda6b0658fee0b3294e4fbfd38952865980382803",
+} as const;
+
+describe("createForecast whole-result golden hashes (score matrix extraction guard)", () => {
+  it("pins poisson-ensemble-v1", () => {
+    expect(canonicalSha256(forecastWith("poisson-ensemble-v1"))).toBe(GOLDEN_CREATE_FORECAST_HASHES.poisson);
+  });
+
+  it("pins dixon-coles-ensemble-v1 with rho above zero", () => {
+    const result = forecastWith("dixon-coles-ensemble-v1", 0.05);
+    expect(result.dixonColes?.method).toBe("mle-low-score-v1");
+    expect(canonicalSha256(result)).toBe(GOLDEN_CREATE_FORECAST_HASHES.dixonPositiveRho);
+  });
+
+  it("pins dixon-coles-ensemble-v1 with rho below zero", () => {
+    const result = forecastWith("dixon-coles-ensemble-v1", -0.08);
+    expect(result.dixonColes?.method).toBe("mle-low-score-v1");
+    expect(canonicalSha256(result)).toBe(GOLDEN_CREATE_FORECAST_HASHES.dixonNegativeRho);
+  });
+
+  it("pins dixon-coles-ensemble-v1 with an out-of-band fitted rho (method out-of-band-zero)", () => {
+    const result = forecastWith("dixon-coles-ensemble-v1", 0.99);
+    expect(result.dixonColes?.method).toBe("out-of-band-zero");
+    expect(canonicalSha256(result)).toBe(GOLDEN_CREATE_FORECAST_HASHES.dixonOutOfBandZero);
   });
 });

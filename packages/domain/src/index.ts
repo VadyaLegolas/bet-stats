@@ -30,6 +30,7 @@ export * from "./odds/normalize.js";
 export * from "./value/contract.js";
 export * from "./value/decision.js";
 export * from "./value/extended-decision.js";
+export * from "./value/scanner.js";
 export * from "./evaluation/contract.js";
 export * from "./evaluation/settlement.js";
 export * from "./evaluation/scoring.js";

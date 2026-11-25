@@ -241,6 +241,11 @@ BEGIN
          OR ext->>'line' IS DISTINCT FROM substring(NEW.market from 16) OR ext->>'side' IS DISTINCT FROM NEW.selection THEN
         RAISE EXCEPTION 'extended value receipt kind does not match the market';
       END IF;
+      -- A half win returns odds * 0.5 + 0.5, one digit longer than the odds; a return that no longer fits the VARCHAR(128)
+      -- money columns would abort the whole Serializable settlement of the fixture, so such a receipt is refused here.
+      IF char_length(trim_scale(source_decimal_odds * 0.5 + 0.5)::TEXT) > 128 THEN
+        RAISE EXCEPTION 'decimal odds are too precise for flat-one-unit-v2 settlement';
+      END IF;
       b_win := phase14_numeric(ext->'breakdown'->>'WIN'); b_half_win := phase14_numeric(ext->'breakdown'->>'HALF_WIN');
       b_push := phase14_numeric(ext->'breakdown'->>'PUSH'); b_half_loss := phase14_numeric(ext->'breakdown'->>'HALF_LOSS');
       b_loss := phase14_numeric(ext->'breakdown'->>'LOSS');

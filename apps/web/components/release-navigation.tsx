@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 const DESTINATIONS = [
   { label: "Матчи", href: "/fixtures", current: (pathname: string) => pathname === "/fixtures" },
   { label: "Анализ", href: "/fixtures#match-analysis", current: (pathname: string) => pathname.startsWith("/fixtures/") },
+  { label: "Сканер value", href: "/scanner", current: (pathname: string) => pathname.startsWith("/scanner") },
   { label: "Результаты", href: "/scorecards", current: (pathname: string) => pathname.startsWith("/scorecards") },
   { label: "Методология", href: "/methodology", current: (pathname: string) => pathname.startsWith("/methodology") },
   { label: "FAQ", href: "/faq", current: (pathname: string) => pathname.startsWith("/faq") },

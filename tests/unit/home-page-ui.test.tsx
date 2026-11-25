@@ -40,6 +40,21 @@ describe("home page", () => {
     }
   });
 
+  it("lists the value scanner between the analysis and results cards", () => {
+    const detail = "Сводный список кандидатов value на ближайшие 7 суток: значения из сохранённых квитанций, без ранжирования по преимуществу.";
+    expect(markup).toContain('href="/scanner"');
+    expect(markup).toContain("Сканер value");
+    expect(markup).toContain(detail);
+    const contents = markup.slice(markup.indexOf('aria-labelledby="home-contents-heading"'), markup.indexOf('aria-labelledby="home-principles-heading"'));
+    const analysis = contents.indexOf(">Анализ</a>");
+    const scanner = contents.indexOf(">Сканер value</a>");
+    const results = contents.indexOf(">Результаты</a>");
+    expect(analysis).toBeGreaterThan(-1);
+    expect(scanner).toBeGreaterThan(analysis);
+    expect(results).toBeGreaterThan(scanner);
+    expect(contents.match(/<article class="home-card"/g)?.length).toBe(6);
+  });
+
   it("labels every illustration as an example with fictional data", () => {
     expect(markup).toContain("Пример");
     expect(markup).toContain("вымышлен");

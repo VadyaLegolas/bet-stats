@@ -20,6 +20,41 @@ function scanUserFacingCopy(source: string): readonly string[] {
     .map(([category]) => category);
 }
 
+// Русский словарь запрещённых слов для поверхности сканера value (Phase 15, D-12, SCAN-03).
+// Флаги "iu" обязательны: "i" ловит заглавную «Лучшие», "u" даёт юникодную границу слова,
+// поэтому «улучшение» не срабатывает на основу «лучш».
+const ruPattern = (body: string) => new RegExp(`(?<![\\p{L}])(?:${body})`, "iu");
+
+const PROHIBITED_RU = {
+  ranking: [ruPattern("лучш|топ|горяч|рейтинг|самы[ейх]\\s+выгодн|рекомендуем(?![\\p{L}])|выбор\\s+дня|фаворит")],
+  certainty: [ruPattern("гарант|уверенн|верняк|точно\\s+выиграет|безрисков|беспроигрыш|надёжн(?:ая|ый|ые)\\s+ставк")],
+  urgency: [ruPattern("срочно|успей|только\\s+сегодня|последний\\s+шанс|не\\s+упусти|пока\\s+не\\s+поздно")],
+  advice: [ruPattern("ставьте|ставь(?![\\p{L}])|сделайте\\s+ставку|сделать\\s+ставку|советуем|рекомендуем\\s+поставить")],
+  profit: [ruPattern("прибыл")],
+} as const;
+
+const APPROVED_RU = [
+  "Кандидаты value — это оценка модели, а не рекомендация и не обещание прибыли.",
+  DISCLOSURE,
+] as const;
+
+function scanRu(source: string): readonly string[] {
+  const scannable = APPROVED_RU.reduce((copy, approved) => copy.replaceAll(approved, ""), source);
+  return Object.entries(PROHIBITED_RU)
+    .filter(([, patterns]) => patterns.some((pattern) => pattern.test(scannable)))
+    .map(([category]) => category);
+}
+
+/** Поверхность сканера: все .ts/.tsx (не тесты) в apps/web/app/scanner и запись навигации. Не весь apps/web: законные основы встречаются в метках перечислений и методологии. */
+function scannerSurfaceSources(): readonly string[] {
+  const directory = "apps/web/app/scanner";
+  const files = readdirSync(resolve(directory), { recursive: true })
+    .map(String)
+    .filter((file) => file.endsWith(".tsx") || (file.endsWith(".ts") && !file.endsWith(".test.ts") && !file.endsWith(".d.ts")))
+    .map((file) => `${directory}/${file.replaceAll("\\", "/")}`);
+  return [...files, "apps/web/components/release-navigation.tsx"];
+}
+
 function userFacingSources(): readonly string[] {
   return ["apps/web/app", "apps/web/components"].flatMap((directory) =>
     readdirSync(resolve(directory), { recursive: true })
@@ -69,6 +104,46 @@ describe("responsible user-facing copy", () => {
 
     expect(findings).toEqual([]);
     expect(readFileSync(resolve("apps/web/app/fixtures/page.tsx"), "utf8")).not.toContain("RiskDisclosure");
+  });
+
+  describe("Russian prohibited vocabulary on the scanner surface", () => {
+    it.each([
+      ["Лучшие ставки дня", "ranking"],
+      ["Топ value", "ranking"],
+      ["Горячие кандидаты", "ranking"],
+      ["Гарантированный value", "certainty"],
+      ["Ставьте сейчас", "advice"],
+      ["Успей поставить", "urgency"],
+    ])("flags %s under the %s category", (copy, category) => {
+      expect(scanRu(copy)).toContain(category);
+    });
+
+    it.each(["кандидат", "оценка модели", "преимущество", "ожидаемое value", "источник коэффициентов", "улучшение"])(
+      "does not flag %s",
+      (copy) => {
+        expect(scanRu(copy)).toEqual([]);
+      },
+    );
+
+    it("allows the two approved sentences", () => {
+      for (const approved of APPROVED_RU) expect(scanRu(approved)).toEqual([]);
+    });
+
+    it("still flags forbidden words that sit next to an approved sentence", () => {
+      expect(scanRu(`${APPROVED_RU[0]} Срочно ставьте.`)).toEqual(expect.arrayContaining(["urgency", "advice"]));
+    });
+
+    it("scans the scanner directory and the navigation entry, and finds nothing", () => {
+      const sources = scannerSurfaceSources();
+      expect(sources).toContain("apps/web/app/scanner/scanner-labels.ts");
+      expect(sources).toContain("apps/web/app/scanner/page.tsx");
+      expect(sources).toContain("apps/web/components/release-navigation.tsx");
+      expect(sources.some((file) => file.endsWith(".test.ts") || file.endsWith(".test.tsx"))).toBe(false);
+      const findings = sources.flatMap((file) =>
+        scanRu(readFileSync(resolve(file), "utf8")).map((category) => ({ file, category })),
+      );
+      expect(findings).toEqual([]);
+    });
   });
 
   it("uses the exact API receipt for readable, copied, and downloaded output", () => {

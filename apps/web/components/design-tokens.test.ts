@@ -196,6 +196,64 @@ describe("design tokens: extended markets block", () => {
   });
 });
 
+describe("design tokens: scanner block", () => {
+  const start = css.indexOf(".scanner-groups");
+  const block = css.slice(start);
+  // Правило верхнего уровня: сразу после закрывающей скобки предыдущего правила или в начале блока.
+  const rule = (selectorPattern: string) => new RegExp(`(?:^|\\})\\s*${selectorPattern}\\s*\\{([^}]*)\\}`, "m").exec(block)?.[1] ?? "";
+
+  it("is appended after the extended markets block at the end of globals.css", () => {
+    expect(start).toBeGreaterThan(css.indexOf(".market-head"));
+    expect(start).toBeGreaterThan(css.indexOf(".market-score-fields"));
+    for (const selector of [".scanner-row", ".scanner-facts", ".scanner-counts", ".scanner-stale", ".scanner-links"]) {
+      expect(block, selector).toContain(selector);
+    }
+  });
+
+  it("introduces no hex colour values", () => {
+    expect(block.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).toEqual([]);
+  });
+
+  it("declares no new custom properties and adds no transition, animation or keyframes", () => {
+    expect(block.match(/(^|[;{\s])--[\w-]+\s*:/g) ?? []).toEqual([]);
+    expect(block).not.toMatch(/(?:^|[^-\w])(?:transition|animation|@keyframes)\b/);
+  });
+
+  it("uses only the 14, 16, 20 and 24 px font sizes", () => {
+    const sizes = [...block.matchAll(/font-size\s*:\s*([^;}]+)[;}]/g)].map((match) => match[1]!.trim());
+    expect(sizes.length).toBeGreaterThan(0);
+    for (const size of sizes) expect(["14px", "16px", "20px", "24px"], `font-size: ${size}`).toContain(size);
+  });
+
+  it("never breaks a fact label mid-word and lets stored values wrap anywhere", () => {
+    expect(rule("\\.scanner-facts dt")).toMatch(/overflow-wrap:\s*normal\s*;/);
+    expect(rule("\\.scanner-facts dd")).toMatch(/overflow-wrap:\s*anywhere\s*;/);
+    expect(rule("\\.scanner-facts dd")).toMatch(/font-variant-numeric:\s*tabular-nums\s*;/);
+    expect(rule("\\.scanner-facts > div")).toMatch(/min-width:\s*0\s*;/);
+    expect(rule("\\.scanner-counts dd")).toMatch(/overflow-wrap:\s*anywhere\s*;/);
+  });
+
+  it("lets the row shrink at 320 px and switches to the two-column grid from 768 px", () => {
+    expect(rule("\\.scanner-row")).toMatch(/min-width:\s*0\s*;/);
+    expect(rule("\\.scanner-row")).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s*;/);
+    const media = /@media \(min-width: 768px\)\s*\{([\s\S]*?)\n\}/.exec(block.slice(block.indexOf(".scanner-groups")))?.[1] ?? "";
+    expect(media).toContain("minmax(11rem, 14rem)");
+    expect(media).toContain("grid-column: 1 / -1");
+  });
+
+  it("keeps links and the stale summary at least 44 px high", () => {
+    expect(rule("\\.scanner-links a")).toMatch(/min-height:\s*44px\s*;/);
+    expect(rule("\\.scanner-stale > summary")).toMatch(/min-height:\s*44px\s*;/);
+  });
+
+  it("keeps panel and tile borders in forced-colors mode", () => {
+    const forced = /@media \(forced-colors: active\)\s*\{([\s\S]*?)\n\}/.exec(block)?.[1] ?? "";
+    expect(forced).toMatch(/\.scanner-match[^{]*\{[^}]*CanvasText/);
+    expect(forced).toMatch(/\.scanner-counts > div[^{]*\{[^}]*CanvasText/);
+    expect(forced).toMatch(/\.scanner-row \+ \.scanner-row\s*\{[^}]*CanvasText/);
+  });
+});
+
 describe("design tokens: shape", () => {
   it.each([
     ["--radius-control", "12px"],

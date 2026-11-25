@@ -184,7 +184,15 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   3. Settlement resolves AH push, half-win, and half-loss and exact-score outcomes under explicit versioned rules in the scorecard pipeline; the score matrix is persisted at issuance or deterministically re-derived fail-closed for legacy snapshots.
 
 **Notes / research flags**: Research explicitly flags this phase for its own research spike — score-matrix persistence key shape (the recommended no-DDL approach: optional key in snapshot `receipt` Json — must satisfy `parseForecastResponse`'s `exactKeys` validation on legacy rows), AH line set, exact-score bucket list + `OTHER`, push-aware EV display. `settlement-pipeline.ts` has a hardcoded 3-market guard — missing the widening fails settlement at runtime, not compile time. Largest spec surface of the milestone; keep standalone.
-**Plans**: TBD
+**Plans**: 8 plans
+- [ ] 14-01-PLAN.md — Tracer: score matrix persisted at issuance (`score-matrix-v1`, top-level receipt key), AH line 0 served by the new extended-markets route end to end; fail-closed re-derivation for legacy snapshots, single strip helper at the read sites, hash pins
+- [ ] 14-02-PLAN.md — Domain: single market registry (`selectionsFor`), full AH view over 21 lines with main line, exact score with `OTHER`, strict `ExtendedMarketsView`, extended books/closing/CLV accepted
+- [ ] 14-03-PLAN.md — Domain: AH and exact-score settlement rules, `flat-one-unit-v2` fractional returns, exhaustive rule registry, push-aware value decision and receipt
+- [ ] 14-04-PLAN.md — Web: labels, `.market-*` CSS, view model, AH and exact-score sections on the match page with unavailable and read-failed states; UI-SPEC tail wording correction (needs user confirmation)
+- [ ] 14-05-PLAN.md — Database: one forward migration widening value-pair guard, value-settlement guard, result CHECK and `persist_value_settlement_v2`; TS/SQL parity; settlement pipeline family switch
+- [ ] 14-06-PLAN.md — Web: odds form for AH line and 17-way exact score, comparison and push-aware value outcome, scorecard registry with separate policies
+- [ ] 14-07-PLAN.md — API: odds and value comparison for new markets, closing odds and CLV, aggregation without policy mixing, CLI and operator docs
+- [ ] 14-08-PLAN.md — Methodology section and `model-card-v1.4.0`, browser end-to-end and accessibility, phase gate with perf audit
 **UI hint**: yes
 
 ### Phase 15: 7-Day Value Scanner

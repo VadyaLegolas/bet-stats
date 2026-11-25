@@ -2,6 +2,7 @@ import type { CalibratedForecastResponseDto } from "@bet-stats/domain";
 import { DataStateNotice, type FixtureDataState } from "../../../components/data-state-notice";
 import { RiskDisclosure } from "../../../components/risk-disclosure";
 import { ProviderStateNotice, type ProviderState } from "../../../components/provider-state-notice";
+import { loadExtendedMarkets } from "./extended-markets-loader";
 import { ForecastWorkbench } from "./forecast-workbench";
 import { BackLink, MatchHero } from "./match-hero";
 
@@ -19,7 +20,8 @@ export default async function Detail({ params, searchParams }: { params: Promise
   try { fixture = await load(fixtureId); } catch { return <section><h1>Матч недоступен</h1><p role="alert">Не удалось загрузить данные матча.</p><BackLink href={back} /></section>; }
   if (!fixture) return <section><h1>Матч не найден</h1><p>Запрошенный канонический матч не существует.</p><BackLink href={back} /></section>;
   const forecasts = await loadForecasts(fixture.id);
+  const extendedMarkets = await loadExtendedMarkets({ apiOrigin: API_ORIGIN, fixtureId: fixture.id, forecastIds: forecasts.map(({ id }) => id), headers: eligibilityHeaders() });
   const timeZone = process.env.DISPLAY_TIME_ZONE ?? "UTC";
   const evidenceHref = (teamId: string) => `/teams/${encodeURIComponent(teamId)}/evidence?asOf=${encodeURIComponent(fixture!.kickoff)}&fixtureId=${encodeURIComponent(fixture!.id)}`;
-  return <article className="page-column page-column--wrap match-page"><BackLink href={back} /><MatchHero fixture={fixture} timeZone={timeZone} evidenceHref={evidenceHref} /><ProviderStateNotice state={fixture.providerState}/><DataStateNotice data={fixture.dataState}/><RiskDisclosure /><ForecastWorkbench fixtureId={fixture.id} forecasts={forecasts} timeZone={timeZone} /></article>;
+  return <article className="page-column page-column--wrap match-page"><BackLink href={back} /><MatchHero fixture={fixture} timeZone={timeZone} evidenceHref={evidenceHref} /><ProviderStateNotice state={fixture.providerState}/><DataStateNotice data={fixture.dataState}/><RiskDisclosure /><ForecastWorkbench fixtureId={fixture.id} forecasts={forecasts} timeZone={timeZone} extendedMarkets={extendedMarkets} /></article>;
 }

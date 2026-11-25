@@ -1689,6 +1689,15 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
 .market-grid thead th { text-align: center; }
 .market-grid tfoot th, .market-grid tfoot td { padding: var(--space-3); border-top: 1px solid var(--color-border-strong); }
 .market-grid tfoot th { background: var(--color-surface); text-align: start; }
+/* Раскладка сетки точного счёта на узком экране. .workbench-card задаёт overflow-wrap: anywhere, и свойство наследуется
+   ячейками таблицы: минимальная ширина заголовка падает до одной буквы, и первый столбец получает остаток (около 43 px),
+   поэтому «Голы хозяев» и «Любой другой счёт» выводились по букве в строке. Подпись таблицы по умолчанию шириной во всю
+   таблицу и по центру, поэтому справа обрезалась областью прокрутки. Область становится размерным контейнером, и подпись
+   занимает ровно её видимую ширину. Общее правило .evidence-table-scroll не меняем: им пользуются другие страницы. */
+.market-grid th { overflow-wrap: normal; }
+.market-grid thead th[scope="colgroup"] { text-align: start; }
+.market-grid-scroll { container-type: inline-size; }
+.market-grid caption { width: 100cqw; text-align: start; padding-block-end: var(--space-2); }
 .market-cell-p { display: block; font-size: 16px; font-weight: 600; }
 .market-cell-o { display: block; font-size: 14px; font-weight: 400; color: var(--color-text-secondary); }
 .market-sub { display: block; margin-block-start: var(--space-1); font-size: 14px; font-weight: 400; line-height: 1.4; color: var(--color-muted); }

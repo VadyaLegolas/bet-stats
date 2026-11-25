@@ -175,7 +175,8 @@ function ExactScoreSection({ view }: { view: AvailableView }) {
     <p>Вероятности 16 явных счетов от 0:0 до 3:3 и всех остальных исходов вместе. Семнадцать вероятностей в сумме дают 100%.</p>
     <p className="note-strip">Вероятности точного счёта — оценки модели без калибровки, а не гарантии.</p>
     <p className="market-sub">{tailLine(view.tail.tailMass)}{view.tail.warning && <>{" "}<span className="state-chip state-chip--md tone-warning"><span className="state-dot" />Хвост повышен</span></>}</p>
-    <div className="evidence-table-scroll" role="region" aria-label="Точный счёт — таблица вероятностей" tabIndex={0}>
+    {/* market-grid-scroll: размерный контейнер, чтобы подпись таблицы занимала видимую ширину области прокрутки. */}
+    <div className="evidence-table-scroll market-grid-scroll" role="region" aria-label="Точный счёт — таблица вероятностей" tabIndex={0}>
       <table className="market-table market-grid">
         <caption>{EXACT_CAPTION}</caption>
         <thead>

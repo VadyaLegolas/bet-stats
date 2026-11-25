@@ -1,10 +1,16 @@
+import { readFileSync } from "node:fs";
+
 import { createElement } from "../../apps/web/node_modules/react/index.js";
 import { renderToStaticMarkup } from "../../apps/web/node_modules/react-dom/server.js";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { loadScanner, type ScannerRepository, type ScannerRow } from "../../apps/api/src/modules/value/scanner.service.js";
+import { PERSISTENT_RISK_DISCLOSURE } from "../../apps/web/components/risk-disclosure.js";
+import { readScanner } from "../../apps/web/app/scanner/scanner-data.js";
+import { SCANNER_TOP_LINE } from "../../apps/web/app/scanner/scanner-labels.js";
 import { ScannerAvailable } from "../../apps/web/app/scanner/scanner-rows.js";
 import { parseScannerResponse, type ScannerItem, type ScannerPayload } from "../../apps/web/app/scanner/scanner-types.js";
+import { ScannerView } from "../../apps/web/app/scanner/scanner-view.js";
 
 /* ------------------------------------------------------------------ builders */
 
@@ -339,4 +345,207 @@ describe("ScannerAvailable rows", () => {
   });
 });
 
-/* @@scanner-ui-tests-continue@@ */
+/* ------------------------------------------------------------------ page states */
+
+const renderView = (data: ScannerPayload | null) => renderToStaticMarkup(createElement(ScannerView, { data }));
+const AVAILABLE_VIEW = () => response([item()]);
+const EMPTY_VIEW = (overrides: Partial<ScannerPayload> = {}) => response([], overrides);
+
+describe("ScannerView states", () => {
+  it("renders AVAILABLE with the list heading and no empty or unavailable markers", () => {
+    const markup = renderView(AVAILABLE_VIEW());
+    expect(markup).toContain("Кандидаты value на ближайшие 7 суток");
+    expect(markup).not.toContain("Кандидатов value на ближайшие 7 суток нет");
+    expect(markup).not.toContain("Сканер value сейчас недоступен");
+    expect(markup).not.toContain('role="alert"');
+    expect(markup).not.toContain("Это не сбой данных");
+  });
+
+  it("renders EMPTY with the zero-receipt copy, the count 0, no tiles and no alert", () => {
+    const markup = renderView(EMPTY_VIEW({ checkedCount: 0, outcomeCounts: {} }));
+    expect(markup).toContain('<h2 id="scanner-empty-heading">Кандидатов value на ближайшие 7 суток нет</h2>');
+    expect(markup).toContain("></span>Пусто</span>");
+    expect(markup).toContain("Это не сбой данных");
+    expect(markup).toContain("<dt>Проверено квитанций в окне</dt><dd>0</dd>");
+    expect(markup).toContain("Для матчей этого окна сохранённых квитанций value пока нет.");
+    expect(markup).toContain('<a href="/fixtures">Открыть матчи</a>');
+    expect(count(markup, "<dt>")).toBe(1);
+    expect(markup).not.toContain("Квитанции с этими исходами в список кандидатов не попадают.");
+    expect(markup).not.toContain('role="alert"');
+    expect(markup).not.toContain("Ограничение версии политики value");
+  });
+
+  it("renders EMPTY with receipts: fixed tile order, raw unknown code, legend", () => {
+    const markup = renderView(EMPTY_VIEW({ checkedCount: 20, outcomeCounts: { ZED_UNKNOWN: 1, NO_VALUE: 12, INSUFFICIENT_EVIDENCE: 5, ALPHA_UNKNOWN: 2 } }));
+    expect(markup).toContain("<dt>Проверено квитанций в окне</dt><dd>20</dd>");
+    const order = ["недостаточно доказательств", "не прошло пороги политики", "ALPHA_UNKNOWN", "ZED_UNKNOWN"].map((label) => markup.indexOf(`<dt>${label}</dt>`));
+    expect(order.every((position) => position > 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(markup).toContain("<dt>не прошло пороги политики</dt><dd>12</dd>");
+    expect(markup).toContain("<dt>ZED_UNKNOWN</dt><dd>1</dd>");
+    expect(markup).toContain("Квитанции с этими исходами в список кандидатов не попадают.");
+    expect(markup).not.toContain("Открыть матчи");
+    expect(markup).not.toContain("Для матчей этого окна сохранённых квитанций value пока нет.");
+  });
+
+  it("shows the policy plaque only with the flag, inside EMPTY, without replacing heading or counts", () => {
+    const withPlaque = renderView(EMPTY_VIEW({ checkedCount: 4, outcomeCounts: { NO_VALUE: 4 }, allPolicyConfigMismatch: true }));
+    expect(withPlaque).toContain('aria-label="Ограничение версии политики value" class="state-notice tone-info"');
+    expect(withPlaque).toContain('<a href="/methodology#limitations">Методология и ограничения</a>');
+    expect(withPlaque).toContain("Кандидатов value на ближайшие 7 суток нет");
+    expect(withPlaque).toContain("<dt>Проверено квитанций в окне</dt><dd>4</dd>");
+    expect(withPlaque).not.toContain('role="alert"');
+    const without = renderView(EMPTY_VIEW({ checkedCount: 4, outcomeCounts: { NO_VALUE: 4 } }));
+    expect(without).not.toContain("Ограничение версии политики value");
+    expect(without).not.toContain("/methodology#limitations");
+    expect(renderView(AVAILABLE_VIEW())).not.toContain("Ограничение версии политики value");
+  });
+
+  it("renders UNAVAILABLE for null with an alert, the plain refresh link and no data-bound blocks", () => {
+    const markup = renderView(null);
+    expect(markup).toContain('<div class="state-notice tone-warning" role="alert">');
+    expect(markup).toContain('<h2 id="scanner-unavailable-heading">Сканер value сейчас недоступен</h2>');
+    expect(markup).toContain("></span>Недоступно</span>");
+    expect(markup).toContain("Не удалось получить список кандидатов. Это не значит, что кандидатов нет.");
+    expect(markup).toContain("Обновите страницу или вернитесь позже.");
+    expect(markup).toContain('<a class="btn-secondary btn-compact" href="/scanner">Обновить страницу</a>');
+    expect(markup).not.toContain("onClick");
+    expect(markup).not.toContain("Список не ранжирован");
+    expect(markup).not.toContain("Как читать значения");
+    expect(markup).not.toContain("Это не сбой данных");
+    expect(markup).not.toContain("Проверено квитанций в окне");
+    expect(markup).not.toContain("Пусто");
+  });
+
+  it("shows the ordering notice and the closed how-to-read block in AVAILABLE and EMPTY", () => {
+    for (const markup of [renderView(AVAILABLE_VIEW()), renderView(EMPTY_VIEW())]) {
+      expect(markup).toContain("Список не ранжирован: матчи идут по времени начала");
+      expect(markup).toContain('<details class="well"><summary>Как читать значения</summary>');
+      expect(count(markup.slice(markup.indexOf('<details class="well">')).split("</details>")[0]!, "<li>")).toBe(6);
+    }
+  });
+
+  it("keeps the disclaimer and the exact top line in all three states", () => {
+    for (const markup of [renderView(AVAILABLE_VIEW()), renderView(EMPTY_VIEW()), renderView(null)]) {
+      expect(markup).toContain(PERSISTENT_RISK_DISCLOSURE);
+      expect(markup).toContain(`<p class="page-deck">${SCANNER_TOP_LINE}</p>`);
+      expect(markup).toContain("Кандидаты value — это оценка модели, а не рекомендация и не обещание прибыли.");
+      expect(markup).toContain('<h1 class="page-title">Сканер value</h1>');
+      expect(markup).toContain("Время указано по Europe/Warsaw.");
+    }
+  });
+
+  it("builds the how-to-read numbers and policy version from the payload, never from constants", () => {
+    const markup = renderView(response([item()], { freshnessPolicy: { version: "custom-freshness-v9", freshMaxHours: 3, agingMaxHours: 12 } }));
+    expect(markup).toContain("до 3 ч — свежие, от 3 до 12 ч — стареют, больше 12 ч — устарели (версия правил <code>custom-freshness-v9</code>)");
+    expect(markup).not.toContain("до 6 ч — свежие");
+    const stale = renderView(response([item({ freshness: "STALE", oddsAgeSeconds: 100_000 })], { freshnessPolicy: { version: "scanner-freshness-v1", freshMaxHours: 3, agingMaxHours: 12 } }));
+    expect(stale).toContain("введены более 12 часов назад");
+  });
+
+  it("uses plain anchors and no client script in every state", () => {
+    for (const markup of [renderView(AVAILABLE_VIEW()), renderView(EMPTY_VIEW({ allPolicyConfigMismatch: true })), renderView(null)]) {
+      expect(markup).not.toMatch(/<script|<button|<table|data-nextjs|onclick/i);
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ server read */
+
+describe("readScanner", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  const stub = (answer: () => Promise<Response>) => vi.fn<typeof fetch>(async () => answer());
+
+  it("returns data for valid AVAILABLE and EMPTY payloads", async () => {
+    const available = JSON.parse(JSON.stringify(response([item()])));
+    const empty = JSON.parse(JSON.stringify(response([], { checkedCount: 2, outcomeCounts: { NO_VALUE: 2 } })));
+    expect((await readScanner(stub(async () => jsonResponse(available))))?.state).toBe("AVAILABLE");
+    expect((await readScanner(stub(async () => jsonResponse(empty))))?.state).toBe("EMPTY");
+  });
+
+  it("keeps stored strings byte for byte through fetch and parse", async () => {
+    const data = await readScanner(stub(async () => jsonResponse(response([item()]))));
+    expect(data?.items[0]?.edge).toBe(EDGE);
+    expect(data?.items[0]?.expectedValue).toBe(EV);
+  });
+
+  it("returns null for a server error, a redirect, a thrown error, a timeout and a non-JSON body", async () => {
+    expect(await readScanner(stub(async () => jsonResponse({ code: "SCANNER_READ_FAILED" }, 500)))).toBeNull();
+    expect(await readScanner(stub(async () => new Response(null, { status: 308, headers: { location: "/elsewhere" } })))).toBeNull();
+    expect(await readScanner(stub(async () => { throw new TypeError("fetch failed"); }))).toBeNull();
+    expect(await readScanner(stub(async () => { throw new DOMException("The operation timed out", "TimeoutError"); }))).toBeNull();
+    expect(await readScanner(stub(async () => new Response("<html>not json</html>", { status: 200 })))).toBeNull();
+  });
+
+  it("returns null for contradictory, extended and incomplete payloads", async () => {
+    const valid = JSON.parse(JSON.stringify(response([item()])));
+    const { checkedCount: _omitted, ...missing } = valid;
+    expect(await readScanner(stub(async () => jsonResponse({ ...valid, items: [] })))).toBeNull();
+    expect(await readScanner(stub(async () => jsonResponse({ state: "AVAILABLE", items: [] })))).toBeNull();
+    expect(await readScanner(stub(async () => jsonResponse({ ...valid, extra: true })))).toBeNull();
+    expect(await readScanner(stub(async () => jsonResponse(missing)))).toBeNull();
+    expect(await readScanner(stub(async () => jsonResponse({ ...valid, state: "UNAVAILABLE" })))).toBeNull();
+  });
+
+  it("requests /value/scanner without caching and with the eligibility headers read at call time", async () => {
+    vi.stubEnv("API_ORIGIN", "http://api.test:9");
+    vi.stubEnv("ELIGIBILITY_REGION", "PL");
+    vi.stubEnv("ELIGIBILITY_AGE_ACKNOWLEDGED", "true");
+    vi.stubEnv("ELIGIBILITY_CHECKED_AT", "2026-11-25T00:00:00.000Z");
+    const fetchImpl = stub(async () => jsonResponse(response([item()])));
+    await readScanner(fetchImpl);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0]!;
+    expect(String(url)).toBe("http://api.test:9/value/scanner");
+    expect(String(url).endsWith("/value/scanner")).toBe(true);
+    expect(init?.cache).toBe("no-store");
+    expect(init?.redirect).toBe("manual");
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+    expect(init?.headers).toMatchObject({
+      accept: "application/json",
+      "x-eligibility-region": "PL",
+      "x-age-acknowledged": "true",
+      "x-eligibility-checked-at": "2026-11-25T00:00:00.000Z",
+    });
+  });
+});
+
+/* ------------------------------------------------------------------ static guards */
+
+describe("scanner module guards", () => {
+  const read = (name: string) => readFileSync(new URL(`../../apps/web/app/scanner/${name}`, import.meta.url), "utf8");
+  const files = ["page.tsx", "scanner-data.ts", "scanner-labels.ts", "scanner-rows.tsx", "scanner-types.ts", "scanner-view.tsx"];
+
+  it("page.tsx is a dynamic server page with a metadata title and only the allowed exports", () => {
+    const page = read("page.tsx");
+    expect(page).toContain('export const dynamic = "force-dynamic"');
+    expect(page).toMatch(/export const metadata[^=]*= \{ title: "Сканер value" \}/);
+    expect(page).toContain("export default async function");
+    expect(page).not.toMatch(/["']use client["']/);
+    expect([...page.matchAll(/^export (?!default)(?:const|function|async function) (\w+)/gm)].map((match) => match[1]).sort()).toEqual(["dynamic", "metadata"]);
+  });
+
+  it("no scanner module is a client module, uses next/link or injects markup", () => {
+    for (const name of files) {
+      const text = read(name);
+      expect(text, name).not.toMatch(/["']use client["']/);
+      expect(text, name).not.toContain("next/link");
+      expect(text, name).not.toContain("dangerouslySetInnerHTML");
+    }
+  });
+
+  it("the row and view modules never sort or rank", () => {
+    for (const name of ["scanner-rows.tsx", "scanner-view.tsx"]) {
+      expect(read(name), name).not.toMatch(/\.sort\(|\.toSorted\(|\.reverse\(|localeCompare/);
+    }
+  });
+
+  it("no scanner module imports the domain barrel at runtime", () => {
+    for (const name of files) {
+      const lines = read(name).split("\n").filter((line) => /from "@bet-stats\/domain"/.test(line));
+      for (const line of lines) expect(line, name).toMatch(/^import type /);
+    }
+  });
+});

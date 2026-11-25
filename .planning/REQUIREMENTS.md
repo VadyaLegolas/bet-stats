@@ -52,10 +52,10 @@
 
 ### New Markets: Asian Handicap and Exact Score (MKT)
 
-- [ ] **MKT-01**: A user can view Asian handicap probabilities and fair odds derived from the frozen score matrix, including quarter-line push and half-bet semantics.
-- [ ] **MKT-02**: A user can view exact-score probabilities derived from the frozen score matrix for a configured bucket list including an explicit other-tail catch-all.
-- [ ] **MKT-03**: An operator can enter complete odds books for Asian handicap and exact-score markets with the existing validation and no-vig normalization, and receive value receipts with push-aware expected value.
-- [ ] **MKT-04**: Settlement resolves Asian handicap push, half-win, and half-loss outcomes and exact-score outcomes under explicit versioned rules inside the scorecard pipeline.
+- [x] **MKT-01**: A user can view Asian handicap probabilities and fair odds derived from the frozen score matrix, including quarter-line push and half-bet semantics.
+- [x] **MKT-02**: A user can view exact-score probabilities derived from the frozen score matrix for a configured bucket list including an explicit other-tail catch-all.
+- [x] **MKT-03**: An operator can enter complete odds books for Asian handicap and exact-score markets with the existing validation and no-vig normalization, and receive value receipts with push-aware expected value.
+- [x] **MKT-04**: Settlement resolves Asian handicap push, half-win, and half-loss outcomes and exact-score outcomes under explicit versioned rules inside the scorecard pipeline.
 - [x] **MKT-05**: The score matrix needed by new markets is persisted at forecast issuance or deterministically re-derived fail-closed for legacy snapshots.
 
 ### Value Scanner (SCAN)
@@ -118,10 +118,10 @@ _Milestone v1.1 roadmap (2026-10-19): every requirement maps to exactly one phas
 | CLV-01 | Phase 13 | Complete |
 | CLV-02 | Phase 13 | Complete |
 | CLV-03 | Phase 13 | Complete |
-| MKT-01 | Phase 14 | Pending |
-| MKT-02 | Phase 14 | Pending |
-| MKT-03 | Phase 14 | Pending |
-| MKT-04 | Phase 14 | Pending |
+| MKT-01 | Phase 14 | Complete |
+| MKT-02 | Phase 14 | Complete |
+| MKT-03 | Phase 14 | Complete |
+| MKT-04 | Phase 14 | Complete |
 | MKT-05 | Phase 14 | Complete |
 | SCAN-01 | Phase 15 | Pending |
 | SCAN-02 | Phase 15 | Pending |

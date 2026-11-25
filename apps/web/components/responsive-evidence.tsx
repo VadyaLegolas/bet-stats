@@ -19,6 +19,8 @@ type ResponsiveEvidenceProps<Row> = Readonly<{
   warning?: (row: Row) => ReactNode;
   freshness?: (row: Row) => ReactNode;
   action?: (row: Row) => ReactNode;
+  /** Необязательная отметка текущей строки (главная линия): aria-current и data-current на строке и карточке, details карточки открыт. Без пропа разметка не меняется. */
+  rowCurrent?: (row: Row) => boolean;
 }>;
 
 export function ResponsiveEvidence<Row>({
@@ -34,27 +36,29 @@ export function ResponsiveEvidence<Row>({
   warning,
   freshness,
   action,
+  rowCurrent,
 }: ResponsiveEvidenceProps<Row>) {
+  const currentAttributes = (row: Row) => (rowCurrent?.(row) ? ({ "aria-current": "true", "data-current": "true" } as const) : {});
   return (
     <div className="responsive-evidence" data-evidence-projection={projectionId}>
       <div className="evidence-desktop evidence-table-scroll" data-evidence-desktop role="region" aria-label={label} tabIndex={0}>
         <table aria-label={tableLabel}>
           <caption>{caption}</caption>
           <thead><tr>{columns.map((column) => <th scope="col" key={column.key}>{column.label}</th>)}</tr></thead>
-          <tbody>{rows.map((row) => <tr key={rowKey(row)}>{columns.map((column, index) => index === 0
+          <tbody>{rows.map((row) => <tr key={rowKey(row)} {...currentAttributes(row)}>{columns.map((column, index) => index === 0
             ? <th scope="row" key={column.key} data-evidence-field={column.key}>{column.value(row)}</th>
             : <td key={column.key} data-evidence-field={column.key}>{column.value(row)}</td>)}</tr>)}</tbody>
         </table>
       </div>
       <div className="evidence-mobile" data-evidence-mobile aria-label={`${label} cards`}>
         {rows.map((row) => (
-          <article className="evidence-card" key={rowKey(row)}>
+          <article className="evidence-card" key={rowKey(row)} {...currentAttributes(row)}>
             <h4>{conclusion(row)}</h4>
             <p className="evidence-denominator">{denominator(row)}</p>
             {warning && <p>{warning(row)}</p>}
             {freshness && <p>{freshness(row)}</p>}
             {action?.(row)}
-            <details>
+            <details open={rowCurrent?.(row) ? true : undefined}>
               <summary>Полные доказательства</summary>
               <dl>{columns.map((column) => <div key={column.key} data-evidence-field={column.key}><dt>{column.label}</dt><dd>{column.value(row)}</dd></div>)}</dl>
             </details>

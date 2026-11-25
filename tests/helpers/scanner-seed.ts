@@ -85,7 +85,8 @@ export async function seedScannerForecast(db: PrismaClient, seed: ScannerSeed, o
   const tag = options.tag ?? "extra";
   const id = `${seed.prefix}-forecast-${tag}`;
   const state = options.state ?? "ISSUED";
-  const issuedAt = options.issuedAt === undefined ? (state === "ISSUED" ? new Date(Date.parse(seed.kickoff) - 2 * 3_600_000).toISOString() : null) : options.issuedAt === null ? null : iso(options.issuedAt);
+  // The publication check allows issuedAt only on ISSUED snapshots.
+  const issuedAt = state !== "ISSUED" ? null : options.issuedAt === undefined || options.issuedAt === null ? new Date(Date.parse(seed.kickoff) - 2 * 3_600_000).toISOString() : iso(options.issuedAt);
   const revision = options.revision ?? 1;
   const kind = options.kind ?? "PRE_MATCH";
   const supersedes = options.supersedesForecastId ?? null;

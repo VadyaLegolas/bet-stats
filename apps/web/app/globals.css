@@ -1644,6 +1644,8 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
    её обёртке, поэтому правила записаны через потомков. */
 
 .market-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.market-head > h3 { margin: 0; font-size: 1.5rem; letter-spacing: -0.01em; }
+.market-side { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .market-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));

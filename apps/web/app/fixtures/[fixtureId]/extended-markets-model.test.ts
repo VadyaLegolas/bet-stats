@@ -12,6 +12,7 @@ import {
   expanderLabel,
   expanderStatus,
   isStructuralZero,
+  normaliseExtendedMarkets,
   tailLine,
   windowCaption,
 } from "./extended-markets-model";
@@ -186,8 +187,10 @@ describe("exactGridModel", () => {
     expect(cell.srOdds).toBe("Справедливый коэффициент: ");
     expect(cell.probability).toMatch(/^\d+\.\d%$/);
     expect(cell.odds.available).toBe(true);
-    expect(cell.odds.text).toMatch(/^коэф\. \d+\.\d{2}$/);
+    expect(cell.oddsPrefix).toBe("коэф. ");
+    expect(cell.odds.text).toMatch(/^\d+\.\d{2}$/);
     expect(grid.other.srScore).toBe("Любой другой счёт. ");
+    expect(grid.columns).toEqual([0, 1, 2, 3]);
   });
 
   it("shows zero probability as the word plus the typed reason", () => {
@@ -202,6 +205,29 @@ describe("tailLine", () => {
   it("uses the corrected Pitfall 9 wording", () => {
     expect(tailLine(0.00002)).toBe("Хвост матрицы вне 0–7 голов: 0.0% — уже учтён нормировкой на сохранённую массу и распределён по всем счетам.");
     expect(tailLine(0.0123)).toContain("1.2%");
+  });
+});
+
+describe("normaliseExtendedMarkets (closed classification, T-14-12)", () => {
+  const unrecognised = { state: "UNAVAILABLE", reason: "UNRECOGNISED" };
+
+  it("passes a valid AVAILABLE view and a legacy UNAVAILABLE view through unchanged", () => {
+    expect(normaliseExtendedMarkets(JSON.parse(JSON.stringify(view)))).toEqual(view);
+    const legacy = { version: "extended-markets-view-v1", state: "UNAVAILABLE", reason: "SCORE_MATRIX_UNAVAILABLE" };
+    expect(normaliseExtendedMarkets(legacy)).toEqual(legacy);
+  });
+
+  it("keeps the transport failure and the already-closed marker as they are", () => {
+    expect(normaliseExtendedMarkets({ state: "READ_FAILED" })).toEqual({ state: "READ_FAILED" });
+    expect(normaliseExtendedMarkets(unrecognised)).toEqual(unrecognised);
+  });
+
+  it("fails closed on an unknown reason code, a corrupted view and non-objects", () => {
+    expect(normaliseExtendedMarkets({ version: "extended-markets-view-v1", state: "UNAVAILABLE", reason: "SOMETHING_NEW" })).toEqual(unrecognised);
+    const corrupted = JSON.parse(JSON.stringify(view));
+    corrupted.asianHandicap.lines.pop();
+    expect(normaliseExtendedMarkets(corrupted)).toEqual(unrecognised);
+    for (const value of [null, undefined, 42, "AVAILABLE", [], {}, { state: "READ_FAILED", extra: true }]) expect(normaliseExtendedMarkets(value)).toEqual(unrecognised);
   });
 });
 

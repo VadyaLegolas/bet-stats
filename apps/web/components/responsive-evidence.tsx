@@ -51,11 +51,14 @@ export function ResponsiveEvidence<Row>({
         </table>
       </div>
       <div className="evidence-mobile" data-evidence-mobile aria-label={`${label} cards`}>
-        {rows.map((row) => (
+        {rows.map((row) => {
+          // null/undefined/false из warning — «предупреждения нет»: пустой <p> не рисуется (строки по-прежнему рисуются как раньше).
+          const warningNode = warning?.(row);
+          return (
           <article className="evidence-card" key={rowKey(row)} {...currentAttributes(row)}>
             <h4>{conclusion(row)}</h4>
             <p className="evidence-denominator">{denominator(row)}</p>
-            {warning && <p>{warning(row)}</p>}
+            {warningNode != null && warningNode !== false && <p>{warningNode}</p>}
             {freshness && <p>{freshness(row)}</p>}
             {action?.(row)}
             <details open={rowCurrent?.(row) ? true : undefined}>
@@ -63,7 +66,8 @@ export function ResponsiveEvidence<Row>({
               <dl>{columns.map((column) => <div key={column.key} data-evidence-field={column.key}><dt>{column.label}</dt><dd>{column.value(row)}</dd></div>)}</dl>
             </details>
           </article>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

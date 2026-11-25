@@ -1,4 +1,5 @@
-import type { AhLineClass, AhMarketLine, AhResult, AhSide, ExactScoreCellView, ExactScoreFairOdds, ExactScoreOtherView, AhFairOdds } from "@bet-stats/domain";
+import { parseExtendedMarketsView } from "@bet-stats/domain";
+import type { AhFairOdds, AhLineClass, AhMarketLine, AhResult, AhSide, ExactScoreCellView, ExactScoreFairOdds, ExactScoreOtherView, ExtendedMarketsView } from "@bet-stats/domain";
 
 import { AH_RESULT_ORDER, FAIR_ODDS_UNAVAILABLE_LABELS, formatAhLine, selectionLabelFor } from "../../../components/enum-labels";
 import { formatOdds } from "../../../components/odds-format";
@@ -152,6 +153,8 @@ export interface ExactCellModel {
   readonly srScore: string;
   readonly srOdds: string;
   readonly probability: string;
+  /** Видимая приставка «коэф. » (для дикторов она скрыта, вместо неё srOdds). */
+  readonly oddsPrefix: string;
   readonly odds: OddsCellModel;
 }
 
@@ -161,20 +164,23 @@ export interface ExactRowModel {
 }
 
 export interface ExactGridModel {
+  /** Голы гостей: заголовки столбцов. */
+  readonly columns: readonly number[];
   readonly rows: readonly ExactRowModel[];
   readonly other: ExactCellModel;
 }
 
 const SR_ODDS = "Справедливый коэффициент: ";
+const ODDS_PREFIX = "коэф. ";
 
 function exactCell(cell: ExactScoreCellView | ExactScoreOtherView): ExactCellModel {
-  const odds = fairOddsCell(cell.fairOdds);
   return {
     selection: cell.selection,
     srScore: `${selectionLabelFor("EXACT_SCORE", cell.selection)}. `,
     srOdds: SR_ODDS,
     probability: percent(cell.probability),
-    odds: odds.available ? { ...odds, text: `коэф. ${odds.text}` } : odds,
+    oddsPrefix: ODDS_PREFIX,
+    odds: fairOddsCell(cell.fairOdds),
   };
 }
 
@@ -182,6 +188,7 @@ function exactCell(cell: ExactScoreCellView | ExactScoreOtherView): ExactCellMod
 export function exactGridModel(exactScore: Readonly<{ cells: readonly ExactScoreCellView[]; other: ExactScoreOtherView }>): ExactGridModel {
   const homeGoals = [...new Set(exactScore.cells.map((cell) => cell.homeGoals))].sort((a, b) => a - b);
   return {
+    columns: [...new Set(exactScore.cells.map((cell) => cell.awayGoals))].sort((a, b) => a - b),
     rows: homeGoals.map((goals) => ({
       homeGoals: goals,
       cells: exactScore.cells.filter((cell) => cell.homeGoals === goals).sort((a, b) => a.awayGoals - b.awayGoals).map(exactCell),
@@ -193,4 +200,31 @@ export function exactGridModel(exactScore: Readonly<{ cells: readonly ExactScore
 /** Строка хвоста (Pitfall 9): хвост уже учтён нормировкой на сохранённую массу и не лежит отдельно в «Любом другом счёте». */
 export function tailLine(tailMass: number): string {
   return `Хвост матрицы вне 0–7 голов: ${percent(tailMass)} — уже учтён нормировкой на сохранённую массу и распределён по всем счетам.`;
+}
+
+/**
+ * Слот раздела на странице: вид из API, сбой чтения или закрытое «нераспознано». Разделы никогда не рисуют
+ * раскладку AVAILABLE для значения, которое не прошло закрытый разбор домена (T-14-12).
+ */
+export type ExtendedMarketsSlot = ExtendedMarketsView | Readonly<{ state: "READ_FAILED" }> | Readonly<{ state: "UNAVAILABLE"; reason: "UNRECOGNISED" }>;
+
+const UNRECOGNISED: ExtendedMarketsSlot = Object.freeze({ state: "UNAVAILABLE", reason: "UNRECOGNISED" } as const);
+
+function hasExactly(value: object, keys: readonly string[]): boolean {
+  const actual = Object.keys(value).sort();
+  return actual.length === keys.length && keys.every((key, index) => key === actual[index]);
+}
+
+/** Закрытая классификация любого значения (ответ API или проп слота): неизвестная причина и нераспознанная форма дают общее уведомление. */
+export function normaliseExtendedMarkets(value: unknown): ExtendedMarketsSlot {
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    const state = (value as { state?: unknown }).state;
+    if (state === "READ_FAILED" && hasExactly(value, ["state"])) return { state: "READ_FAILED" };
+    if (state === "UNAVAILABLE" && hasExactly(value, ["reason", "state"]) && (value as { reason?: unknown }).reason === "UNRECOGNISED") return UNRECOGNISED;
+  }
+  try {
+    return parseExtendedMarketsView(value);
+  } catch {
+    return UNRECOGNISED;
+  }
 }

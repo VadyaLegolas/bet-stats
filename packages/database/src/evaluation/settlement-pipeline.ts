@@ -2,8 +2,12 @@ import { createHash } from "node:crypto";
 
 import {
   SETTLEMENT_POLICY_VERSION,
+  parseMarketId,
   resolveSettlement,
   scoreCategoricalForecast,
+  settleExtendedMarket,
+  type MarketFamily,
+  type MarketId,
   type ScoreMarket,
 } from "@bet-stats/domain";
 
@@ -277,19 +281,50 @@ async function processRevision(transaction: PrismaClient, command: SettlementPip
     command.forecastSnapshotId,
   );
   for (const value of values) {
-    const predecessor = priorSettlement
-      ? (await transaction.$queryRawUnsafe<Array<{ id: string }>>(`SELECT id FROM "ValueSettlement" WHERE "settlementReceiptId"=$1 AND "valueReceiptId"=$2`, priorSettlement.id, value.id))[0]
-      : undefined;
+    // D-17: ForecastScore stays on the three core markets above; the value loop is branched by market family so that a
+    // receipt of an extended market is settled by its own policy instead of aborting the whole Serializable transaction.
+    const parsedMarket = parseMarketId(value.market);
+    if (parsedMarket === null) throw Object.assign(new Error("UNSETTLEABLE_VALUE_MARKET"), { code: "UNSETTLEABLE_VALUE_MARKET" });
+    const family: MarketFamily = parsedMarket.family;
     const closing = (await transaction.$queryRawUnsafe<Array<{ id: string }>>(
       `SELECT c.id FROM "ClosingOddsObservation" c JOIN "ManualOddsSelection" o ON o.id=$1 JOIN "ManualOddsSnapshot" s ON s.id=o."oddsSnapshotId" WHERE c."fixtureId"=$2 AND c.market=$3 AND c.selection=$4 AND c."oddsFormat"='DECIMAL' AND c."sourceConvention"=s.source AND c."observationKind"='MARKET_CLOSE' AND c."observedAt">=s."submittedAt" AND c."observedAt"<$5 ORDER BY c."observedAt" DESC,c.id DESC LIMIT 1`,
       value.oddsSelectionId, command.fixtureId, value.market, value.selection, fixture.kickoffUtc,
     ))[0];
-    const id = stableId("value_settlement", settlement.id, value.id, "flat-one-unit-v1");
-    const persisted = await transaction.$queryRawUnsafe<Array<{ id: string }>>(
-      `SELECT * FROM persist_value_settlement($1,$2,$3,$4,$5,$6)`,
-      id, settlement.id, value.id, value.oddsSelectionId, closing?.id ?? null, predecessor?.id ?? null,
-    );
-    output.valueSettlementIds.push(persisted[0]!.id);
+    switch (family) {
+      case "ONE_X_TWO":
+      case "OVER_UNDER_2_5":
+      case "BTTS": {
+        const predecessor = priorSettlement
+          ? (await transaction.$queryRawUnsafe<Array<{ id: string }>>(`SELECT id FROM "ValueSettlement" WHERE "settlementReceiptId"=$1 AND "valueReceiptId"=$2`, priorSettlement.id, value.id))[0]
+          : undefined;
+        const id = stableId("value_settlement", settlement.id, value.id, "flat-one-unit-v1");
+        const persisted = await transaction.$queryRawUnsafe<Array<{ id: string }>>(
+          `SELECT * FROM persist_value_settlement($1,$2,$3,$4,$5,$6)`,
+          id, settlement.id, value.id, value.oddsSelectionId, closing?.id ?? null, predecessor?.id ?? null,
+        );
+        output.valueSettlementIds.push(persisted[0]!.id);
+        break;
+      }
+      case "ASIAN_HANDICAP":
+      case "EXACT_SCORE": {
+        // TS is the only producer of the extended result; persist_value_settlement_v2 and its guard recompute it independently.
+        const settled = settleExtendedMarket({ market: value.market as MarketId, selection: value.selection, homeGoals: result.homeGoals, awayGoals: result.awayGoals });
+        const predecessor = priorSettlement
+          ? (await transaction.$queryRawUnsafe<Array<{ id: string }>>(`SELECT id FROM "ValueSettlement" WHERE "settlementReceiptId"=$1 AND "valueReceiptId"=$2 AND "policyVersion"='flat-one-unit-v2'`, priorSettlement.id, value.id))[0]
+          : undefined;
+        const id = stableId("value_settlement", settlement.id, value.id, "flat-one-unit-v2");
+        const persisted = await transaction.$queryRawUnsafe<Array<{ id: string }>>(
+          `SELECT * FROM persist_value_settlement_v2($1,$2,$3,$4,$5,$6,$7)`,
+          id, settlement.id, value.id, value.oddsSelectionId, closing?.id ?? null, predecessor?.id ?? null, settled.result,
+        );
+        output.valueSettlementIds.push(persisted[0]!.id);
+        break;
+      }
+      default: {
+        const unreachable: never = family;
+        throw Object.assign(new Error(`UNSETTLEABLE_VALUE_MARKET:${String(unreachable)}`), { code: "UNSETTLEABLE_VALUE_MARKET" });
+      }
+    }
   }
   return output;
 }

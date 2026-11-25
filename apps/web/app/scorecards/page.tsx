@@ -25,7 +25,7 @@ export default async function ScorecardsPage({ searchParams }: { searchParams: P
   if (!scoreResponse.ok) return <section><h1>Ведомость результатов прогнозов</h1><p role="alert">Защищённые доказательства оценки не удалось загрузить. Точные фильтры не изменены.</p></section>;
   const scorecard = await scoreResponse.json() as ScorecardViewModel;
   const candidateResponse = await fetchEvidence(search, "value-candidates");
-  const candidates = candidateResponse.ok ? await candidateResponse.json() as Parameters<typeof ScorecardDashboard>[0]["candidates"] : { items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" } };
+  const candidates = candidateResponse.ok ? await candidateResponse.json() as Parameters<typeof ScorecardDashboard>[0]["candidates"] : { items: [], nextCursor: null, pageTotals: { count: 0, stakeUnits: "0", profitUnits: "0" }, pageTotalsByPolicy: [] };
   const cursor = first(search.cursor);
   return <ScorecardDashboard scorecard={scorecard} candidates={candidates} {...(cursor ? { cursor } : {})} />;
 }

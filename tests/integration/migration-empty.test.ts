@@ -229,6 +229,26 @@ describe("Prisma migration from an empty PostgreSQL 18 database", () => {
     ]));
   }, 30_000);
 
+  it("Phase 14: installs the extended-market SQL layer without recreating or weakening the append-only triggers", () => {
+    const functions = sql(`SELECT proname || '/' || pronargs FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND (proname LIKE 'phase14\\_%' OR proname LIKE 'persist\\_value\\_settlement%' OR proname IN ('guard_value_pair','guard_value_settlement')) ORDER BY 1;`);
+    expect(functions).toEqual([
+      "guard_value_pair/0", "guard_value_settlement/0", "persist_value_settlement/6", "persist_value_settlement_v2/7",
+      "phase14_ah_breakdown/3", "phase14_ah_result/4", "phase14_exact_score_probability/2", "phase14_exact_score_result/3",
+      "phase14_market_line/1", "phase14_numeric/1",
+    ]);
+    const resultCheck = sql(`SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = '"ValueSettlement"'::regclass AND conname = 'ValueSettlement_result_check';`).join("");
+    for (const result of ["WIN", "LOSS", "VOID", "HALF_WIN", "HALF_LOSS", "PUSH"]) expect(resultCheck).toContain(`'${result}'`);
+    const triggers = sql(`SELECT event_object_table || ':' || trigger_name FROM information_schema.triggers WHERE event_object_schema = 'public' AND event_object_table IN ('ValueSettlement','ValueReceipt') ORDER BY 1;`);
+    expect(triggers).toEqual(expect.arrayContaining(["ValueSettlement:ValueSettlement_guarded_append_only", "ValueReceipt:ValueReceipt_validate_pair"]));
+    // D-17: the scoring and calibration constraints stay on the three core markets.
+    const scoreCheck = sql(`SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'ForecastScore_market_check';`).join("");
+    expect(scoreCheck).toContain("BTTS");
+    expect(scoreCheck).not.toContain("ASIAN_HANDICAP");
+    const migrations = readdirSync(resolve(databaseRoot, "prisma/migrations"), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+    expect(migrations.at(-1)).toBe("20261126_phase14_extended_markets");
+    expect(sql(`SELECT count(*) FROM _prisma_migrations WHERE finished_at IS NOT NULL;`)).toEqual([String(migrations.length)]);
+  });
+
   it("installs append-only guards for provider route evidence", () => {
     const triggers = sql(
       `SELECT event_object_table || ':' || trigger_name FROM information_schema.triggers

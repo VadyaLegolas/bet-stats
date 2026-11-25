@@ -189,7 +189,7 @@ function reproducesStored(cells: readonly ScoreMatrixCell[], markets: unknown, t
 const PERSISTED_TOLERANCE = 1e-12;
 
 /** A re-derived matrix is recomputed (Math.exp and ** are not guaranteed bit-identical across engines), hence the looser bound (D-03). */
-const REDERIVED_TOLERANCE = 1e-9;
+export const SCORE_MATRIX_REDERIVED_TOLERANCE = 1e-9;
 
 function finitePositive(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
@@ -219,7 +219,7 @@ function rederive(input: ResolveScoreMatrixInput): ResolvedScoreMatrix {
   } catch {
     return { state: "UNAVAILABLE", reason: "REDERIVE_FAILED" };
   }
-  const failure = reproducesStored(cells, input.markets, REDERIVED_TOLERANCE);
+  const failure = reproducesStored(cells, input.markets, SCORE_MATRIX_REDERIVED_TOLERANCE);
   return failure ? { state: "UNAVAILABLE", reason: failure } : { state: "AVAILABLE", source: "REDERIVED", cells };
 }
 

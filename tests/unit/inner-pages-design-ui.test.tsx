@@ -77,7 +77,7 @@ describe("scorecards design markup", () => {
 
 describe("methodology design markup", () => {
   const markup = renderToStaticMarkup(createElement(MethodologyPage));
-  const ids = ["inputs", "dixon-coles", "what-is-excluded", "confidence", "limitations", "evaluation", "calibration", "clv", "responsible-use", "change-history"];
+  const ids = ["inputs", "dixon-coles", "what-is-excluded", "confidence", "limitations", "evaluation", "calibration", "extended-markets", "clv", "responsible-use", "change-history"];
 
   it("is a full-width page column with deck paragraphs", () => {
     expect(markup.startsWith('<article class="page-column"><h1>Как работают прогнозы</h1>')).toBe(true);
@@ -86,7 +86,7 @@ describe("methodology design markup", () => {
 
   it("keeps the h2 order and makes each h2 the first child of its section", () => {
     const h2 = [...markup.matchAll(/<h2>(.*?)<\/h2>/g)].map((match) => match[1]);
-    expect(h2).toEqual(["Входы", "Поправка на низкие счета", "Что исключается", "Уверенность", "Ограничения", "Оценка", "Калибровка вероятностей", "Сравнение с закрытием линии (CLV)", "Ответственное использование", "История изменений"]);
+    expect(h2).toEqual(["Входы", "Поправка на низкие счета", "Что исключается", "Уверенность", "Ограничения", "Оценка", "Калибровка вероятностей", "Азиатский гандикап и точный счёт", "Сравнение с закрытием линии (CLV)", "Ответственное использование", "История изменений"]);
     for (const id of ids) expect(markup, id).toMatch(new RegExp(`<section id="${id}"[^>]*><h2>`));
   });
 
@@ -99,13 +99,38 @@ describe("methodology design markup", () => {
     expect(section).toContain("Один источник");
     expect(section).toContain("Малые выборки");
     expect(section).toContain("no-vig-clv-v1");
-    expect(markup).toContain("model-card-v1.3.0");
+    expect(markup).toContain("model-card-v1.4.0");
   });
 
-  it("wraps only the first eight sections into one large card grid, in order", () => {
+  it("publishes the extended-markets section between calibration and CLV with the corrected tail wording and honest limits", () => {
+    const section = normalise(stripTags(innerOf(markup, '<section id="extended-markets" class="panel">', "section")));
+    const block = MODEL_CARD.extendedMarkets;
+    expect(markup.indexOf('id="extended-markets"')).toBeGreaterThan(markup.indexOf('id="calibration-technical"'));
+    expect(markup.indexOf('id="extended-markets"')).toBeLessThan(markup.indexOf('<section id="clv"'));
+    expect(section).toContain(block.derivation);
+    for (const text of [...block.method, ...block.limitations, ...block.formulas]) expect(section).toContain(text);
+    expect(section).toContain("уже учтён нормировкой на сохранённую массу");
+    expect(section).not.toMatch(/хвост[^.]*входит в строку/iu);
+    expect(section).toContain("хранимому итоговому счёту");
+    expect(section).toContain("дополнительным временем или серией пенальти");
+    expect(section).toContain(block.versions.pushAwareEv);
+    expect(section).toContain(block.legacyTolerance);
+    expect(markup).toMatch(/<details id="extended-markets-technical" class="well"><summary>Технические подробности<\/summary>/);
+  });
+
+  it("links the limitations section to the extended-markets section and keeps the lead, disclosure and responsible use intact", () => {
+    const limitations = normalise(stripTags(innerOf(markup, '<section id="limitations" class="panel">', "section")));
+    expect(limitations).toContain("Азиатский гандикап и точный счёт — см. отдельный раздел.");
+    expect(markup).toContain('href="/methodology#extended-markets"');
+    expect(markup).toContain("Мы оцениваем вероятности событий футбольных матчей на основе исторических темпов забиваемых голов");
+    expect(markup).toContain("Вероятности — это оценки, а не гарантии. Вы можете потерять деньги при ставках.");
+    expect(markup).toContain("Используйте эти оценки только как прозрачные аналитические доказательства.");
+  });
+
+  it("wraps only the first nine sections into one large card grid, in order", () => {
     expect(markup.match(/<div class="card-grid card-grid--lg">/g)?.length).toBe(1);
     const grid = innerOf(markup, '<div class="card-grid card-grid--lg">', "div");
-    expect([...grid.matchAll(/<section id="([^"]+)"/g)].map((match) => match[1])).toEqual(ids.slice(0, 8));
+    expect([...grid.matchAll(/<section id="([^"]+)"/g)].map((match) => match[1])).toEqual(ids.slice(0, 9));
     expect(grid).not.toContain('id="responsible-use"');
     expect(grid).not.toContain('id="change-history"');
     expect(markup.indexOf('id="responsible-use"')).toBeGreaterThan(markup.indexOf('id="clv-technical"'));

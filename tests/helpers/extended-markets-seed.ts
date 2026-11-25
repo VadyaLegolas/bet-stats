@@ -3,6 +3,7 @@ import {
   buildScoreMatrixV1,
   coreMarketsFromCells,
   decideExtendedValue,
+  type ForecastResponseDto,
   normalizeOddsBook,
   type NormalizedOddsBook,
   type ScoreMatrixCell,
@@ -196,3 +197,89 @@ export async function insertValueReceipt(db: PrismaClient, seed: ExtendedSeed, r
     merged.id, seed.fixtureId, merged.market, merged.forecastSnapshotId, merged.oddsSnapshotId, merged.outcome, merged.selection, merged.modelProbability, merged.noVigProbability, merged.fairOdds, merged.edge, merged.expectedValue, JSON.stringify(receipt),
   );
 }
+
+export interface LegacyForecastVariants {
+  /** A legacy snapshot (no `scoreMatrix` key) whose receipt reproduces the stored markets: the view is AVAILABLE with source REDERIVED. */
+  readonly rederivedId: string;
+  /** A legacy snapshot whose receipt expected goals no longer reproduce the stored markets: the view is UNAVAILABLE. */
+  readonly unavailableId: string;
+}
+
+/**
+ * E2E variants beside a forecast issued through the API (state AVAILABLE, source PERSISTED). Both rows are INSERTs of new
+ * snapshots (INITIAL revision 1 and its linked revision 2): nothing existing is updated, the immutability triggers stay intact.
+ * The envelope carries the DTO only, exactly like a snapshot issued before the score matrix was persisted.
+ */
+export async function seedLegacyForecastVariants(
+  db: PrismaClient,
+  issued: ForecastResponseDto,
+  input: { readonly prefix: string; readonly rederivedCutoff: string; readonly unavailableCutoff: string },
+): Promise<LegacyForecastVariants> {
+  const { marketCalibration: _calibration, ...base } = issued as ForecastResponseDto & { marketCalibration?: unknown };
+  const rederivedId = `${input.prefix}-legacy-rederived`;
+  const unavailableId = `${input.prefix}-legacy-unavailable`;
+  const insert = async (id: string, revision: number, supersedesForecastId: string | null, cutoff: string, home: number): Promise<void> => {
+    const dto: ForecastResponseDto = {
+      ...base, id, kind: "INITIAL", revision, cutoff, inputHash: `${id}-input`, evidenceFingerprint: `${id}-evidence`,
+      receipt: { ...base.receipt, forecastSnapshotId: id, expectedGoals: { ...base.receipt.expectedGoals, home } },
+    };
+    await db.forecastSnapshot.create({ data: {
+      id, fixtureId: dto.fixtureId, kind: dto.kind, state: "ISSUED", revision, supersedesForecastId, cutoff: new Date(cutoff),
+      modelVersion: dto.modelVersion, modelHash: dto.modelHash, configVersion: dto.configVersion, configHash: dto.configHash,
+      inputHash: dto.inputHash, evidenceFingerprint: dto.evidenceFingerprint, sourceRefs: dto.receipt.sourceRefs as never,
+      probabilities: dto.probabilities as never, confidence: dto.confidence as never, assumptions: dto.assumptions as never,
+      receipt: dto as never, issuedAt: new Date(dto.issuedAt),
+      markets: { create: Object.entries(dto.probabilities).map(([market, probabilities]) => ({ market, probabilities: probabilities as never })) },
+    } });
+  };
+  const goals = base.receipt.expectedGoals;
+  await insert(rederivedId, 1, null, input.rederivedCutoff, goals.home);
+  // A distorted home rate: the re-derived markets no longer match the stored ones, so the view fails closed.
+  await insert(unavailableId, 2, rederivedId, input.unavailableCutoff, goals.home * 1.35);
+  return { rederivedId, unavailableId };
+}
+
+/**
+ * A NEW INSERT of an INITIAL revision whose envelope carries a persisted matrix built from the given expected goals, so the
+ * page shows an extreme main line (a lopsided grid puts it at -2.5 or +2.5). `zeroCell` forces one exact-score cell to
+ * probability zero (the grid is renormalised) to cover the unavailable-fair-odds cell. The DTO markets are derived from the
+ * same cells, so the issuance self-check (`reproducesStored`) holds.
+ */
+export async function seedCustomMatrixForecast(
+  db: PrismaClient,
+  issued: ForecastResponseDto,
+  input: { readonly id: string; readonly revision: number; readonly supersedesForecastId: string; readonly cutoff: string; readonly expectedGoals: { readonly home: number; readonly away: number }; readonly zeroCell?: readonly [number, number] },
+): Promise<string> {
+  const { marketCalibration: _calibration, ...base } = issued as ForecastResponseDto & { marketCalibration?: unknown };
+  const built = buildScoreMatrix({ expectedGoals: input.expectedGoals });
+  let grid = built.scoreMatrix.map((cell) => ({ ...cell }));
+  if (input.zeroCell) {
+    const [zeroHome, zeroAway] = input.zeroCell;
+    const removed = grid.find((cell) => cell.homeGoals === zeroHome && cell.awayGoals === zeroAway)!.probability;
+    grid = grid.map((cell) => (cell.homeGoals === zeroHome && cell.awayGoals === zeroAway ? { ...cell, probability: 0 } : { ...cell, probability: cell.probability / (1 - removed) }));
+  }
+  const matrix = buildScoreMatrixV1(grid, built.retainedMass);
+  const core = coreMarketsFromCells(matrix.cells);
+  const event = (selection: keyof typeof core) => ({ selection, probability: core[selection], fairOdds: core[selection] > 0 ? String(1 / core[selection]) : null });
+  const probabilities = {
+    ONE_X_TWO: [event("HOME"), event("DRAW"), event("AWAY")],
+    OVER_UNDER_2_5: [event("OVER_2_5"), event("UNDER_2_5")],
+    BTTS: [event("YES"), event("NO")],
+  };
+  const dto = {
+    ...base, id: input.id, kind: "INITIAL" as const, revision: input.revision, cutoff: input.cutoff, inputHash: `${input.id}-input`, evidenceFingerprint: `${input.id}-evidence`,
+    probabilities: probabilities as unknown as ForecastResponseDto["probabilities"],
+    tail: { ...base.tail, retainedMass: built.retainedMass, tailMass: 1 - built.retainedMass, warning: false },
+    receipt: { ...base.receipt, forecastSnapshotId: input.id, expectedGoals: input.expectedGoals },
+  };
+  await db.forecastSnapshot.create({ data: {
+    id: input.id, fixtureId: dto.fixtureId, kind: dto.kind, state: "ISSUED", revision: input.revision, supersedesForecastId: input.supersedesForecastId, cutoff: new Date(input.cutoff),
+    modelVersion: dto.modelVersion, modelHash: dto.modelHash, configVersion: dto.configVersion, configHash: dto.configHash,
+    inputHash: dto.inputHash, evidenceFingerprint: dto.evidenceFingerprint, sourceRefs: dto.receipt.sourceRefs as never,
+    probabilities: dto.probabilities as never, confidence: dto.confidence as never, assumptions: dto.assumptions as never,
+    receipt: { ...dto, scoreMatrix: matrix } as never, issuedAt: new Date(dto.issuedAt),
+    markets: { create: Object.entries(dto.probabilities).map(([market, events]) => ({ market, probabilities: (events as Array<{ selection: string; probability: number }>).map(({ selection, probability }) => ({ selection, probability })) as never })) },
+  } });
+  return input.id;
+}
+

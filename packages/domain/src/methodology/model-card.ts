@@ -3,7 +3,7 @@ import { COHORT_HEALTH_POLICY } from "../evaluation/cohort-health.js";
 import { BACKTEST_POLICY_VERSION } from "../evaluation/backtest.js";
 import { ODDS_RATIO_CLV_POLICY_VERSION } from "../evaluation/clv.js";
 import { NO_VIG_CLV_POLICY_VERSION } from "../evaluation/no-vig-clv.js";
-import { FINANCIAL_RATE_DEFINITION, FLAT_ONE_UNIT_POLICY_VERSION } from "../evaluation/financial.js";
+import { FINANCIAL_RATE_DEFINITION, FLAT_ONE_UNIT_POLICY_VERSION, FLAT_ONE_UNIT_V2_POLICY_VERSION } from "../evaluation/financial.js";
 import { RELIABILITY_POLICY } from "../evaluation/reliability.js";
 import { SCORE_FORMULA_HASH, SCORE_FORMULA_VERSION, SCORE_LOG_EPSILON } from "../evaluation/scoring.js";
 import { SETTLEMENT_POLICY_VERSION } from "../evaluation/settlement.js";
@@ -15,8 +15,14 @@ import {
 } from "../forecast/config.js";
 import { DIXON_COLES_CONVENTION } from "../forecast/dixon-coles.js";
 import { DEFAULT_FORECAST_MODEL_VERSION } from "../forecast/model-version.js";
+import { AH_LINES_VERSION } from "../markets/ah-lines.js";
+import { AH_SETTLEMENT_VERSION } from "../markets/asian-handicap.js";
+import { EXACT_SCORE_BUCKETS_VERSION } from "../markets/exact-score.js";
+import { SCORE_MATRIX_REDERIVED_TOLERANCE, SCORE_MATRIX_VERSION } from "../markets/score-matrix.js";
+import { EXACT_SCORE_SETTLEMENT_VERSION } from "../markets/settlement.js";
 import { MARKET_SELECTIONS } from "../odds/contract.js";
 import { VALUE_POLICY } from "../value/decision.js";
+import { PUSH_AWARE_EV_POLICY_VERSION } from "../value/extended-decision.js";
 
 export const MODEL_CARD_SECTION_IDS = [
   "inputs",
@@ -26,13 +32,14 @@ export const MODEL_CARD_SECTION_IDS = [
   "limitations",
   "evaluation",
   "calibration",
+  "extended-markets",
   "clv",
   "responsible-use",
 ] as const;
 
 export const MODEL_CARD = Object.freeze({
-  version: "model-card-v1.3.0",
-  effectiveDate: "2026-11-24",
+  version: "model-card-v1.4.0",
+  effectiveDate: "2026-11-25",
   currentModel: Object.freeze({
     modelVersion: DEFAULT_FORECAST_MODEL_VERSION,
     configVersion: FORECAST_CONFIG_VERSION_BY_MODEL[DEFAULT_FORECAST_MODEL_VERSION],
@@ -54,6 +61,7 @@ export const MODEL_CARD = Object.freeze({
     reliability: RELIABILITY_POLICY.identity,
     cohortHealth: COHORT_HEALTH_POLICY.identity,
     financial: FLAT_ONE_UNIT_POLICY_VERSION,
+    financialV2: FLAT_ONE_UNIT_V2_POLICY_VERSION,
     clv: ODDS_RATIO_CLV_POLICY_VERSION,
     noVigClv: NO_VIG_CLV_POLICY_VERSION,
     backtest: BACKTEST_POLICY_VERSION,
@@ -144,6 +152,43 @@ export const MODEL_CARD = Object.freeze({
     ]),
   }),
   /**
+   * Asian handicap and exact score (Phase 14, D-21). Versions and the re-derivation tolerance come from the domain constants;
+   * the card publishes the method, it never restates a number it does not own.
+   */
+  extendedMarkets: Object.freeze({
+    versions: Object.freeze({
+      scoreMatrix: SCORE_MATRIX_VERSION,
+      ahLines: AH_LINES_VERSION,
+      ahSettlement: AH_SETTLEMENT_VERSION,
+      exactScoreBuckets: EXACT_SCORE_BUCKETS_VERSION,
+      exactScoreSettlement: EXACT_SCORE_SETTLEMENT_VERSION,
+      pushAwareEv: PUSH_AWARE_EV_POLICY_VERSION,
+      flatOneUnitV2: FLAT_ONE_UNIT_V2_POLICY_VERSION,
+    }),
+    derivation: "Эти рынки не требуют новых данных: вероятности считаются из той же замороженной матрицы счёта, на которой построены 1X2, тотал 2.5 и «обе забьют». Матрица сохраняется вместе с каждым новым прогнозом и не меняется задним числом.",
+    method: Object.freeze([
+      "Азиатский гандикап: для каждой линии от −2.5 до +2.5 с шагом 0.25 показаны пять исходов — выигрыш, выигрыш половины ставки, возврат, проигрыш половины ставки и проигрыш. Полулинии (например, −0.5) не имеют возврата, на целых линиях возможен возврат ставки, а на четвертных (например, −0.75) ставка делится поровну между двумя соседними линиями.",
+      "Главная линия — та, на которой по модели шансы сторон ближе всего к равным.",
+      "Справедливый коэффициент подбирается так, чтобы ожидаемый результат ставки по модели был равен нулю с учётом возврата и половинных исходов. Ожидаемое value при коэффициенте букмекера считается по тем же пяти исходам. Это оценка модели, а не обещание прибыли.",
+      "Точный счёт: 16 явных счетов от 0:0 до 3:3 и строка «Любой другой счёт» — все счета, не вошедшие в 16 явных, в том числе с четырьмя и более голами; хвост матрицы за пределами сетки 0–7 уже учтён нормировкой на сохранённую массу. Семнадцать вероятностей в сумме дают 100%.",
+      "Эти вероятности не калибруются и не входят в оценку Брайера и сравнение моделей: калибровка применяется только к трём основным рынкам. Показываются сырые значения модели.",
+    ]),
+    formulas: Object.freeze([
+      "fairOdds = 1 + (LOSS + HALF_LOSS/2) / (WIN + HALF_WIN/2)",
+      "EV = WIN·(k−1) + HALF_WIN·(k−1)/2 − HALF_LOSS/2 − LOSS",
+      "P(OTHER) = 1 − Σ(16 явных счетов)",
+    ]),
+    legacyTolerance: String(SCORE_MATRIX_REDERIVED_TOLERANCE),
+    limitations: Object.freeze([
+      "Матрица счёта — распределение самой модели, а не рыночное: оно может расходиться с линиями букмекеров, и расхождение само по себе не доказывает ошибку рынка.",
+      "Выборки по завершённым матчам малы: по азиатскому гандикапу и точному счёту пока нельзя делать выводы о качестве модели.",
+      "Для прогнозов, выпущенных до появления этой функции, матрица не сохранена. Если её не удаётся воспроизвести с точной сверкой по трём основным рынкам, расширенные рынки для такого прогноза недоступны.",
+      "Вероятности без вига для азиатского гандикапа считаются пропорциональным приближением, которое не учитывает возврат ставки; оно служит только для оценки маржи и сравнения с закрытием линии и не участвует в расчёте ожидаемого value.",
+      "Коэффициенты на эти рынки вводятся вручную полным набором; автоматической загрузки коэффициентов нет.",
+      "Расчёт идёт по хранимому итоговому счёту матча. Для матчей с дополнительным временем или серией пенальти результат по азиатскому гандикапу и точному счёту может расходиться с правилами букмекера.",
+    ]),
+  }),
+  /**
    * Closing line value (Phase 13, D-04, D-05, D-07). Policy versions and market set sizes come from the domain constants;
    * the card publishes the method, it never restates a number it does not own.
    */
@@ -175,6 +220,13 @@ export const MODEL_CARD = Object.freeze({
     ]),
   }),
   changeHistory: Object.freeze([
+    Object.freeze({
+      version: "model-card-v1.4.0",
+      effectiveDate: "2026-11-25",
+      summary: "Добавлены азиатский гандикап и точный счёт: расчёт при чтении из замороженной матрицы счёта, возврат и половинные исходы, ожидаемое value с учётом возврата.",
+      affected: [AH_LINES_VERSION, AH_SETTLEMENT_VERSION, EXACT_SCORE_BUCKETS_VERSION, PUSH_AWARE_EV_POLICY_VERSION, SCORE_MATRIX_VERSION, FLAT_ONE_UNIT_V2_POLICY_VERSION].join(", "),
+      interpretation: "Выданные снимки не переписаны. Три основных рынка, их калибровка и оценка не изменены. Для прогнозов без сохранённой матрицы расширенные рынки недоступны, если воспроизведение матрицы не прошло точную сверку.",
+    }),
     Object.freeze({
       version: "model-card-v1.3.0",
       effectiveDate: "2026-11-24",

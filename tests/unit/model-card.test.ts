@@ -13,12 +13,19 @@ import { MODEL_CARD, MODEL_CARD_SECTION_IDS } from "../../packages/domain/src/me
 import { ODDS_RATIO_CLV_POLICY_VERSION } from "../../packages/domain/src/evaluation/clv.js";
 import { NO_VIG_CLV_POLICY_VERSION } from "../../packages/domain/src/evaluation/no-vig-clv.js";
 import { MARKET_SELECTIONS } from "../../packages/domain/src/odds/contract.js";
+import { AH_LINES_VERSION } from "../../packages/domain/src/markets/ah-lines.js";
+import { AH_SETTLEMENT_VERSION } from "../../packages/domain/src/markets/asian-handicap.js";
+import { EXACT_SCORE_BUCKETS_VERSION } from "../../packages/domain/src/markets/exact-score.js";
+import { EXACT_SCORE_SETTLEMENT_VERSION } from "../../packages/domain/src/markets/settlement.js";
+import { SCORE_MATRIX_REDERIVED_TOLERANCE, SCORE_MATRIX_VERSION } from "../../packages/domain/src/markets/score-matrix.js";
+import { FLAT_ONE_UNIT_V2_POLICY_VERSION } from "../../packages/domain/src/evaluation/financial.js";
+import { PUSH_AWARE_EV_POLICY_VERSION } from "../../packages/domain/src/value/extended-decision.js";
 
-describe("model card v1.3.0", () => {
+describe("model card v1.4.0", () => {
   it("names the dixon-coles hybrid and keeps the previous sections, with calibration between evaluation and responsible use", () => {
-    expect(MODEL_CARD.version).toBe("model-card-v1.3.0");
-    expect(MODEL_CARD.effectiveDate).toBe("2026-11-24");
-    expect([...MODEL_CARD_SECTION_IDS]).toEqual(["inputs", "dixon-coles", "what-is-excluded", "confidence", "limitations", "evaluation", "calibration", "clv", "responsible-use"]);
+    expect(MODEL_CARD.version).toBe("model-card-v1.4.0");
+    expect(MODEL_CARD.effectiveDate).toBe("2026-11-25");
+    expect([...MODEL_CARD_SECTION_IDS]).toEqual(["inputs", "dixon-coles", "what-is-excluded", "confidence", "limitations", "evaluation", "calibration", "extended-markets", "clv", "responsible-use"]);
     expect(MODEL_CARD.forecast.dixonColes.integration).toBe("hybrid-elo-form-poisson-with-tau");
     expect(MODEL_CARD.forecast.dixonColes.integration).not.toBe("dixon-coles");
   });
@@ -83,21 +90,31 @@ describe("model card v1.3.0", () => {
 
   it("records the model change without rewriting historical receipts", () => {
     const latest = MODEL_CARD.changeHistory[0]!;
-    expect(latest.version).toBe("model-card-v1.3.0");
-    expect(latest.affected).toContain(NO_VIG_CLV_POLICY_VERSION);
-    expect(latest.interpretation).toContain("не переписаны");
-    expect(latest.interpretation).toContain("при чтении");
-    const calibrationEntry = MODEL_CARD.changeHistory[1]!;
+    expect(latest.version).toBe("model-card-v1.4.0");
+    expect(latest.effectiveDate).toBe(MODEL_CARD.effectiveDate);
+    for (const version of [AH_LINES_VERSION, AH_SETTLEMENT_VERSION, EXACT_SCORE_BUCKETS_VERSION, PUSH_AWARE_EV_POLICY_VERSION, SCORE_MATRIX_VERSION, FLAT_ONE_UNIT_V2_POLICY_VERSION]) {
+      expect(latest.affected).toContain(version);
+    }
+    expect(latest.summary).toContain("азиатский гандикап и точный счёт");
+    expect(latest.interpretation).toContain("Выданные снимки не переписаны.");
+    expect(latest.interpretation).toContain("Три основных рынка, их калибровка и оценка не изменены.");
+    const clvEntry = MODEL_CARD.changeHistory[1]!;
+    expect(clvEntry.version).toBe("model-card-v1.3.0");
+    expect(clvEntry.effectiveDate).toBe("2026-11-24");
+    expect(clvEntry.affected).toContain(NO_VIG_CLV_POLICY_VERSION);
+    expect(clvEntry.interpretation).toContain("не переписаны");
+    expect(clvEntry.interpretation).toContain("при чтении");
+    const calibrationEntry = MODEL_CARD.changeHistory[2]!;
     expect(calibrationEntry.version).toBe("model-card-v1.2.0");
     expect(calibrationEntry.affected).toContain("calibration-config-v1");
     expect(calibrationEntry.interpretation).toContain("не переписаны");
     expect(calibrationEntry.interpretation).toContain("при чтении");
-    const previous = MODEL_CARD.changeHistory[2]!;
+    const previous = MODEL_CARD.changeHistory[3]!;
     expect(previous.version).toBe("model-card-v1.1.0");
     expect(previous.affected).toContain("dixon-coles-ensemble-v1");
     expect(previous.affected).toContain("poisson-ensemble-v1");
     expect(previous.interpretation).toContain("не переписаны");
-    expect(MODEL_CARD.changeHistory.map((entry) => entry.version)).toEqual(["model-card-v1.3.0", "model-card-v1.2.0", "model-card-v1.1.0", "model-card-v1.0.0", "model-card-v0.9.0"]);
+    expect(MODEL_CARD.changeHistory.map((entry) => entry.version)).toEqual(["model-card-v1.4.0", "model-card-v1.3.0", "model-card-v1.2.0", "model-card-v1.1.0", "model-card-v1.0.0", "model-card-v0.9.0"]);
     const dates = MODEL_CARD.changeHistory.map((entry) => entry.effectiveDate);
     expect(dates).toEqual([...dates].sort().reverse());
     expect(dates[0]).toBe(MODEL_CARD.effectiveDate);
@@ -235,11 +252,62 @@ describe("model card CLV block (Phase 13, D-07)", () => {
   });
 
   it("is a new card version recorded once in the change history and never promises anything", () => {
-    const latest = MODEL_CARD.changeHistory[0]!;
-    expect(latest.version).toBe(MODEL_CARD.version);
+    const latest = MODEL_CARD.changeHistory[1]!;
+    expect(latest.version).toBe("model-card-v1.3.0");
     expect(MODEL_CARD.changeHistory.filter((entry) => entry.version === "model-card-v1.3.0")).toHaveLength(1);
     expect(latest.summary).toContain("CLV");
     const text = [block.definition, block.formula, ...block.method, ...block.evaluationOnly, ...block.recording, ...block.limitations, latest.summary, latest.interpretation].join(" ");
     expect(text).not.toMatch(/гарантир|точно выигра|прибыль гарант|улучш|точнее|надёжнее|заработ/iu);
+  });
+});
+
+describe("model card extended markets block (D-21)", () => {
+  const block = MODEL_CARD.extendedMarkets;
+
+  it("takes every version from the domain constants instead of string literals", () => {
+    expect(block.versions).toEqual({
+      scoreMatrix: SCORE_MATRIX_VERSION,
+      ahLines: AH_LINES_VERSION,
+      ahSettlement: AH_SETTLEMENT_VERSION,
+      exactScoreBuckets: EXACT_SCORE_BUCKETS_VERSION,
+      exactScoreSettlement: EXACT_SCORE_SETTLEMENT_VERSION,
+      pushAwareEv: PUSH_AWARE_EV_POLICY_VERSION,
+      flatOneUnitV2: FLAT_ONE_UNIT_V2_POLICY_VERSION,
+    });
+    expect(block.legacyTolerance).toBe(String(SCORE_MATRIX_REDERIVED_TOLERANCE));
+    expect(block.legacyTolerance).toBe("1e-9");
+    expect(MODEL_CARD.policies.financialV2).toBe(FLAT_ONE_UNIT_V2_POLICY_VERSION);
+  });
+
+  it("publishes the three formulas and the method list", () => {
+    expect(block.formulas).toEqual([
+      "fairOdds = 1 + (LOSS + HALF_LOSS/2) / (WIN + HALF_WIN/2)",
+      "EV = WIN·(k−1) + HALF_WIN·(k−1)/2 − HALF_LOSS/2 − LOSS",
+      "P(OTHER) = 1 − Σ(16 явных счетов)",
+    ]);
+    expect(block.derivation).toContain("замороженной матрицы счёта");
+    expect(block.derivation).toContain("не меняется задним числом");
+    const method = block.method.join(" ");
+    for (const phrase of ["Полулинии", "четвертных", "пять исходов", "Главная линия", "Любой другой счёт", "нормировкой на сохранённую массу", "не калибруются"]) expect(method).toContain(phrase);
+  });
+
+  it("states the six limitations, including the stored full-time score", () => {
+    expect(block.limitations).toHaveLength(6);
+    const text = block.limitations.join(" ");
+    expect(text).toContain("распределение самой модели, а не рыночное");
+    expect(text).toContain("Выборки по завершённым матчам малы");
+    expect(text).toContain("точной сверкой по трём основным рынкам");
+    expect(text).toContain("пропорциональным приближением");
+    expect(text).toContain("вводятся вручную полным набором");
+    expect(text).toContain("хранимому итоговому счёту");
+    expect(text).toContain("дополнительным временем");
+    expect(text).toContain("серией пенальти");
+  });
+
+  it("describes the tail with the corrected wording and never calls it part of the other-score row", () => {
+    const serialized = JSON.stringify(MODEL_CARD.extendedMarkets);
+    expect(serialized).toContain("уже учтён нормировкой на сохранённую массу");
+    expect(serialized).not.toMatch(/хвост[^."]*входит в строку/iu);
+    expect(serialized).not.toContain("в которую входит всё остальное");
   });
 });

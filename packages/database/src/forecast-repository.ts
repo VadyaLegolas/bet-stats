@@ -5,9 +5,11 @@ import {
   parseEvidenceProjection,
   parseEvidenceReceipt,
   parseForecastResponse,
+  splitStoredForecast,
   type EvidenceProjectionDto,
   type EvidenceSourceRef,
   type ForecastFixture,
+  type ForecastOrigin,
   type ForecastOrchestratorRepository,
   type ForecastPublishContext,
   type ForecastRequestDto,
@@ -17,6 +19,18 @@ import {
 import type { PrismaClient } from "./client.js";
 import { createDixonColesParameterProvider } from "./dixon-coles-repository.js";
 
+/** A stored snapshot split into the public DTO and the raw material of the extended-markets read (D-02, D-04). */
+export interface StoredForecastView {
+  readonly dto: ForecastResponseDto;
+  /** The envelope's persisted scoreMatrix value, untouched; undefined when the key is absent (legacy row). */
+  readonly scoreMatrix: unknown;
+  readonly state: string;
+  readonly origin: ForecastOrigin;
+  readonly modelVersion: string;
+  /** The stored ForecastMarket rows of this snapshot as { market: events }. */
+  readonly markets: Readonly<Record<string, unknown>>;
+}
+
 export interface ForecastPublicationRepository extends ForecastOrchestratorRepository {
   assertEligible(): Promise<void>;
   findFixture(fixtureId: string): Promise<ForecastFixture | null>;
@@ -25,6 +39,8 @@ export interface ForecastPublicationRepository extends ForecastOrchestratorRepos
   publish(draft: ForecastResponseDto, context?: ForecastPublishContext): Promise<ForecastResponseDto>;
   findIssued?(fixtureId: string, kind: ForecastRequestDto["kind"], cutoff: string): Promise<ForecastResponseDto | null>;
   listIssued?(fixtureId: string): Promise<readonly ForecastResponseDto[]>;
+  /** Reads any snapshot by id regardless of state and origin; the caller decides what is visible. */
+  findStoredForecast?(id: string): Promise<StoredForecastView | null>;
 }
 
 type StoredForecast = Record<string, unknown>;
@@ -47,7 +63,8 @@ async function resolveEvidence(client: PrismaClient, teamId: string, cutoff: str
 }
 
 export function createPrismaForecastRepository(client: PrismaClient): ForecastPublicationRepository {
-  const toDto = (row: StoredForecast): ForecastResponseDto => parseForecastResponse(row.receipt);
+  // The persisted scoreMatrix key is removed by the one shared helper before the strict parser sees the envelope.
+  const toDto = (row: StoredForecast): ForecastResponseDto => parseForecastResponse(splitStoredForecast(row.receipt).dto);
   return {
     assertEligible: async () => undefined,
     findFixture: async (id) => {
@@ -62,6 +79,15 @@ export function createPrismaForecastRepository(client: PrismaClient): ForecastPu
       return row ? toDto(row as unknown as StoredForecast) : null;
     },
     listIssued: async (fixtureId) => (await client.forecastSnapshot.findMany({ where: { fixtureId, state: "ISSUED", origin: "PRODUCTION" }, orderBy: [{ issuedAt: "desc" }, { cutoff: "desc" }, { revision: "desc" }, { id: "asc" }] })).map((row) => toDto(row as unknown as StoredForecast)),
+    findStoredForecast: async (id) => {
+      const row = await client.forecastSnapshot.findUnique({ where: { id }, include: { markets: true } });
+      if (!row) return null;
+      const { dto, scoreMatrix } = splitStoredForecast(row.receipt);
+      return {
+        dto: parseForecastResponse(dto), scoreMatrix, state: row.state, origin: row.origin, modelVersion: row.modelVersion,
+        markets: Object.fromEntries(row.markets.map((market) => [market.market, market.probabilities])),
+      };
+    },
     publish: async (draft, context) => {
       // The identity deliberately has no origin: a collision returns the existing snapshot unchanged,
       // whichever origin it has, and nothing is ever updated or re-labelled (D-02).
@@ -83,7 +109,7 @@ export function createPrismaForecastRepository(client: PrismaClient): ForecastPu
             officialLineupObservationId: response.officialLineupObservationId, cutoff: new Date(response.cutoff), modelVersion: response.modelVersion,
             modelHash: response.modelHash, configVersion: response.configVersion, configHash: response.configHash, inputHash: response.inputHash,
             evidenceFingerprint: response.evidenceFingerprint, sourceRefs: response.receipt.sourceRefs as never, probabilities: response.probabilities as never,
-            confidence: response.confidence as never, assumptions: response.assumptions as never, receipt: response as never, issuedAt: new Date(response.issuedAt),
+            confidence: response.confidence as never, assumptions: response.assumptions as never, receipt: (context?.scoreMatrix ? { ...response, scoreMatrix: context.scoreMatrix } : response) as never, issuedAt: new Date(response.issuedAt),
             markets: { create: Object.entries(response.probabilities).map(([market, probabilities]) => ({ market, probabilities: probabilities as never })) },
           } });
           return parseForecastResponse(response);

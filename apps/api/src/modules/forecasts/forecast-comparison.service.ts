@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Optional, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, createPrismaForecastRepository, type PrismaClient } from "@bet-stats/database";
-import { FORECAST_KINDS, compareForecastPair, parseForecastAvailability, parseForecastComparisonRequest, projectForecastAvailability, type ForecastAbsenceReason, type ForecastKind, type ForecastResponseDto } from "@bet-stats/domain";
+import { FORECAST_KINDS, compareForecastPair, parseForecastAvailability, parseForecastComparisonRequest, projectForecastAvailability, splitStoredForecast, type ForecastAbsenceReason, type ForecastKind, type ForecastResponseDto } from "@bet-stats/domain";
 
 export interface ForecastComparisonRepository {
   findExact(id: string): Promise<(ForecastResponseDto & { state?: string }) | null>;
@@ -56,7 +56,7 @@ export function createProductionRepository(client: PrismaClient): ForecastCompar
     findExact: async (id) => {
       // WR-13: a retrospective BACKTEST snapshot is not retrievable by id through the public comparison endpoint.
       const row = await client.forecastSnapshot.findFirst({ where: { id, origin: "PRODUCTION" }, select: { state: true, receipt: true } });
-      return row ? { ...(row.receipt as unknown as ForecastResponseDto), state: row.state } : null;
+      return row ? { ...(splitStoredForecast(row.receipt).dto as ForecastResponseDto), state: row.state } : null;
     },
     listIssued: async (fixtureId) => forecasts.listIssued?.(fixtureId) ?? [],
     findFixtureLabels: async (fixtureIds) => {

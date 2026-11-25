@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException, type OnModuleDestroy } from "@nestjs/common";
 import { createPrismaClient, type PrismaClient } from "@bet-stats/database";
-import { decideValue, parseForecastResponse, parseValueCommand, type ForecastResponseDto, type ValueCommand } from "@bet-stats/domain";
+import { decideValue, parseForecastResponse, parseValueCommand, splitStoredForecast, type ForecastResponseDto, type ValueCommand } from "@bet-stats/domain";
 
 import type { ManualOddsSnapshotDto } from "../odds/odds.service.js";
 
@@ -91,7 +91,7 @@ function rowToDto(row: { id: string; createdAt: Date; receipt: unknown }): Value
 export function createPrismaValueRepository(client: PrismaClient): ValueRepository {
   return {
     // WR-13: no value receipt can be created against a retrospective BACKTEST snapshot.
-    findForecast: async (id) => { const row = await client.forecastSnapshot.findFirst({ where: { id, origin: "PRODUCTION" } }); return row?.state === "ISSUED" ? parseForecastResponse(row.receipt) : null; },
+    findForecast: async (id) => { const row = await client.forecastSnapshot.findFirst({ where: { id, origin: "PRODUCTION" } }); return row?.state === "ISSUED" ? parseForecastResponse(splitStoredForecast(row.receipt).dto) : null; },
     findOdds: async (id) => { const row = await client.manualOddsSnapshot.findUnique({ where: { id } }); return row ? { ...(row.receipt as unknown as ManualOddsSnapshotDto), oddsSnapshotId: row.id, fixtureId: row.fixtureId, market: row.market as ManualOddsSnapshotDto["market"], sourceLabel: row.source, replacementOfOddsSnapshotId: row.replacesOddsId, submittedAt: row.submittedAt.toISOString() } : null; },
     findReceipt: async (forecastSnapshotId, oddsSnapshotId, market, selection) => { const row = await client.valueReceipt.findUnique({ where: { forecastSnapshotId_oddsSnapshotId_market_selection: { forecastSnapshotId, oddsSnapshotId, market, selection } } }); return row ? rowToDto(row) : null; },
     findReceiptById: async (id) => { const row = await client.valueReceipt.findUnique({ where: { id } }); return row ? rowToDto(row) : null; },

@@ -299,14 +299,14 @@ describe("forecast origin (WR-13)", () => {
     const { repository, calls } = repositoryOf({ withHook: true });
     await new ForecastOrchestrator().run({ ...orchestratorInput, modelVersion, configHash: forecastConfigHashFor(modelVersion) }, repository);
     expect(calls.publish).toBe(1);
-    expect(calls.contexts).toEqual([{ origin: "PRODUCTION" }]);
+    expect(calls.contexts).toEqual([{ origin: "PRODUCTION", scoreMatrix: expect.objectContaining({ version: "score-matrix-v1", gridMax: 7 }) }]);
   });
 
   it.each(["poisson-ensemble-v1", "dixon-coles-ensemble-v1"] as const)("publishes %s once with origin BACKTEST for a backtest initiator", async (modelVersion) => {
     const { repository, calls } = repositoryOf({ withHook: true });
     await new ForecastOrchestrator().run({ ...orchestratorInput, initiator: backtestInitiator, modelVersion, configHash: forecastConfigHashFor(modelVersion) }, repository);
     expect(calls.publish).toBe(1);
-    expect(calls.contexts).toEqual([{ origin: "BACKTEST" }]);
+    expect(calls.contexts).toEqual([{ origin: "BACKTEST", scoreMatrix: expect.objectContaining({ version: "score-matrix-v1", gridMax: 7 }) }]);
   });
 
   it("does not change the draft hashes with the origin", async () => {

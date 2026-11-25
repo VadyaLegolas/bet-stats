@@ -6,6 +6,7 @@ import { parseForecastResponse, type ForecastKind, type ForecastResponseDto } fr
 import type { DixonColesProvenance } from "../forecast/dixon-coles.js";
 import { createForecast } from "../forecast/model.js";
 import { isForecastModelVersion, type ForecastModelVersion } from "../forecast/model-version.js";
+import { assertCoreMarketsReproduced, buildScoreMatrixV1, type ScoreMatrixV1 } from "../markets/score-matrix.js";
 
 export interface ForecastFixture {
   readonly id: string;
@@ -39,6 +40,8 @@ export type ForecastOrigin = "PRODUCTION" | "BACKTEST";
 
 export interface ForecastPublishContext {
   readonly origin: ForecastOrigin;
+  /** The sealed score grid of a freshly issued forecast (D-01). Optional so one-argument doubles stay valid. */
+  readonly scoreMatrix?: ScoreMatrixV1;
 }
 
 /**
@@ -146,6 +149,9 @@ export class ForecastOrchestrator {
       issuedAt: new Date().toISOString(),
     };
     parseForecastResponse(draft);
-    return repository.publish(draft, { origin: forecastOriginOf(input.initiator) });
+    // The matrix is the model's own grid: every stored market must be reproducible from it with ===, or nothing is published.
+    const scoreMatrix = buildScoreMatrixV1(forecast.scoreMatrix, forecast.retainedMass);
+    assertCoreMarketsReproduced(scoreMatrix, draft.probabilities);
+    return repository.publish(draft, { origin: forecastOriginOf(input.initiator), scoreMatrix });
   }
 }

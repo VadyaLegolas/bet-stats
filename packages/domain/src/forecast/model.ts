@@ -2,8 +2,9 @@ import type { EvidenceProjectionDto, EvidenceSourceRef } from "../evidence/contr
 import { calculateConfidence } from "./confidence.js";
 import { canonicalJson as canonical, canonicalSha256 } from "./canonical-json.js";
 import { fairOddsForProbability, FORECAST_CONFIG, FORECAST_CONFIGS, FORECAST_CONFIG_VERSION_BY_MODEL, type ForecastConfigVersion } from "./config.js";
-import { applyDixonColesCorrection, dixonColesRhoBounds, isDixonColesRhoWithinBounds, type DixonColesProvenance } from "./dixon-coles.js";
+import { dixonColesRhoBounds, isDixonColesRhoWithinBounds, type DixonColesProvenance } from "./dixon-coles.js";
 import type { ForecastModelVersion } from "./model-version.js";
+import { buildScoreMatrix } from "../markets/score-matrix.js";
 
 export type ForecastMarket = "ONE_X_TWO" | "OVER_UNDER_2_5" | "BTTS";
 export type ForecastSelection = "HOME" | "DRAW" | "AWAY" | "OVER_2_5" | "UNDER_2_5" | "YES" | "NO";
@@ -103,12 +104,6 @@ function adjustment(team: EvidenceProjectionDto, opponent: EvidenceProjectionDto
   return { multiplier: clamp(1 + total, FORECAST_CONFIG.multiplierBounds), components };
 }
 
-function poisson(goals: number, lambda: number): number {
-  let factorial = 1;
-  for (let current = 2; current <= goals; current += 1) factorial *= current;
-  return Math.exp(-lambda) * lambda ** goals / factorial;
-}
-
 function event(selection: ForecastSelection, probability: number): ForecastEvent {
   return { selection, probability, fairOdds: fairOddsForProbability(probability) };
 }
@@ -153,15 +148,9 @@ export function createForecast(input: ForecastInput): ForecastDraft {
   const dixonColes = fitted && !isDixonColesRhoWithinBounds(fitted.rho, dixonColesRhoBounds(expectedGoals.home, expectedGoals.away))
     ? { rho: 0, provenance: { ...fitted.provenance, rho: 0, method: "out-of-band-zero" as const, tauMin: 1 } }
     : fitted;
-  const raw: Array<{ homeGoals: number; awayGoals: number; probability: number }> = [];
-  for (let homeGoals = 0; homeGoals <= 7; homeGoals += 1) for (let awayGoals = 0; awayGoals <= 7; awayGoals += 1) raw.push({ homeGoals, awayGoals, probability: poisson(homeGoals, expectedGoals.home) * poisson(awayGoals, expectedGoals.away) });
-  // The low-score correction is applied BEFORE the retained-mass renormalization so
-  // that every market still sums to one (T-11-03) and retained + tail stay complementary.
-  const corrected: Array<{ homeGoals: number; awayGoals: number; probability: number }> = dixonColes
-    ? applyDixonColesCorrection({ cells: raw, lambdaHome: expectedGoals.home, lambdaAway: expectedGoals.away, rho: dixonColes.rho })
-    : raw;
-  const retainedMass = corrected.reduce((sum, cell) => sum + cell.probability, 0);
-  const scoreMatrix = corrected.map((cell) => ({ ...cell, probability: cell.probability / retainedMass }));
+  // The grid, the optional low-score correction (applied BEFORE the retained-mass renormalization so
+  // that every market still sums to one, T-11-03) and the normalization live in `buildScoreMatrix`.
+  const { corrected, retainedMass, scoreMatrix } = buildScoreMatrix({ expectedGoals, ...(dixonColes ? { rho: dixonColes.rho } : {}) });
   const sumWhere = (matrix: readonly { homeGoals: number; awayGoals: number; probability: number }[], predicate: (cell: { homeGoals: number; awayGoals: number; probability: number }) => boolean) => matrix.filter(predicate).reduce((sum, cell) => sum + cell.probability, 0);
   const probability = (predicate: (cell: (typeof scoreMatrix)[number]) => boolean) => sumWhere(scoreMatrix, predicate);
   const home = probability((cell) => cell.homeGoals > cell.awayGoals);

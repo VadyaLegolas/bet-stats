@@ -6,7 +6,7 @@ export { createSettlementPipelineService, SETTLEMENT_INTAKE_DEFAULTS, SETTLEMENT
 export type { SettlementIntakeOptions, SettlementPipelineCommand, SettlementPipelineResult } from "./evaluation/settlement-pipeline.js";
 export { compareBacktestPlans, createPrismaBacktestReceiptRepository, resolveHistoricalResultGraph } from "./evaluation/backtest-repository.js";
 export { createPrismaForecastRepository } from "./forecast-repository.js";
-export type { ForecastPublicationRepository } from "./forecast-repository.js";
+export type { ForecastPublicationRepository, StoredForecastView } from "./forecast-repository.js";
 export { createDixonColesParameterProvider, fitLeagueDixonColesParameters } from "./dixon-coles-repository.js";
 export type { DixonColesParameters } from "./dixon-coles-repository.js";
 export { persistResults, persistResultsInTransaction } from "./results-persistence.js";

@@ -21,6 +21,7 @@ export * from "./forecast/model.js";
 export * from "./markets/score-matrix.js";
 export * from "./markets/asian-handicap.js";
 export * from "./markets/exact-score.js";
+export * from "./markets/extended-view.js";
 export * from "./markets/registry.js";
 export * from "./odds/contract.js";
 export * from "./odds/draft.js";

@@ -2,11 +2,12 @@ import { BadRequestException, ConflictException, Injectable, Logger, NotFoundExc
 import { createPrismaClient, createPrismaForecastRepository, readCalibrationState, type ForecastPublicationRepository, type PrismaClient } from "@bet-stats/database";
 import {
   ForecastOrchestrator,
-  ahLineView,
+  buildExtendedMarketsView,
   parseForecastRequest,
   resolveScoreMatrix,
-  type AhLineView,
+  unavailableExtendedMarketsView,
   type CalibratedForecastResponseDto,
+  type ExtendedMarketsView,
   type ForecastResponseDto,
 } from "@bet-stats/domain";
 import { resolveForecastModelSelection } from "@bet-stats/config";
@@ -51,10 +52,8 @@ export async function generateForecast(
 
 const FORECAST_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
-/** Tracer shape: one Asian handicap line (0, both sides); plan 14-02 extends the same route to the full view. */
-export type ExtendedMarketsResponse =
-  | Readonly<{ state: "AVAILABLE"; source: "PERSISTED" | "REDERIVED"; asianHandicap: Readonly<{ lines: readonly AhLineView[] }> }>
-  | Readonly<{ state: "UNAVAILABLE"; reason: "SCORE_MATRIX_UNAVAILABLE" }>;
+/** The wire shape of the extended-markets route is the strictly typed domain DTO (D-04). */
+export type ExtendedMarketsResponse = ExtendedMarketsView;
 
 @Injectable()
 export class ForecastsService implements OnModuleDestroy {
@@ -111,9 +110,10 @@ export class ForecastsService implements OnModuleDestroy {
     const resolved = resolveScoreMatrix({ scoreMatrix: stored.scoreMatrix, modelVersion: stored.modelVersion, receipt: stored.dto.receipt, markets: stored.markets });
     if (resolved.state === "UNAVAILABLE") {
       new Logger(ForecastsService.name).warn(JSON.stringify({ code: "SCORE_MATRIX_UNAVAILABLE", reason: resolved.reason, forecastId, modelVersion: stored.modelVersion }));
-      return { state: "UNAVAILABLE", reason: "SCORE_MATRIX_UNAVAILABLE" };
+      return unavailableExtendedMarketsView();
     }
-    return { state: "AVAILABLE", source: resolved.source, asianHandicap: { lines: [ahLineView(resolved.cells, "0")] } };
+    const { retainedMass, tailMass, warning } = stored.dto.tail;
+    return buildExtendedMarketsView({ cells: resolved.cells, source: resolved.source, tail: { retainedMass, tailMass, warning } });
   }
   async onModuleDestroy(): Promise<void> { await this.client?.$disconnect(); }
 }

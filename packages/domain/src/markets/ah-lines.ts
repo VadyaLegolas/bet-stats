@@ -17,7 +17,8 @@ export type AhLineToken =
 /** Home-perspective lines in quarter steps; quarter units keep every value exactly representable. */
 const QUARTER_UNITS = Array.from({ length: 21 }, (_, index) => index - 10);
 
-function tokenOf(quarters: number): AhLineToken {
+/** Canonical token of a value expressed in quarter units; the caller guarantees it lies on the list. */
+export function tokenOf(quarters: number): AhLineToken {
   if (quarters === 0) return "0";
   const value = String(quarters / 4);
   return (quarters > 0 ? `+${value}` : value) as AhLineToken;

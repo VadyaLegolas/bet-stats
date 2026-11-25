@@ -1,7 +1,8 @@
 ---
 phase: 15
 slug: 7-day-value-scanner
-status: draft
+status: approved
+reviewed_at: "2026-11-25"
 shadcn_initialized: false
 preset: none
 created: "2026-11-25"
@@ -106,7 +107,7 @@ New surfaces use exactly four sizes and two weights.
 | Body / odds and probability values / links / notices / summary text | 16px | 400 (link and emphasis 600) | 1.55 (inherited body) |
 | Match heading (`h3`), selection text, edge and EV values, count values | 20px | 600 | 1.2 |
 | Section heading (`h2`) | 24px | 600 | 1.18 (inherited heading) |
-
+The page `h1` keeps the inherited `.page-title` style; its size comes from the global `h1` rule shared by every page, so it is a page-level exception common to all pages, not a new size introduced by this phase. The 12px `--space-3` is likewise an inherited token accepted in 14-UI-SPEC.
 The page `h1` keeps the inherited `.page-title` style (shared by every page; not a new size).
 
 Rules:

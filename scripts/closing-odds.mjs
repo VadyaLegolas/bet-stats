@@ -14,10 +14,16 @@ export const CLOSING_ODDS_USAGE = `Использование: node scripts/clos
 
 Параметры (все обязательны):
   --fixture <id>         идентификатор матча
-  --market <рынок>       ONE_X_TWO | OVER_UNDER_2_5 | BTTS
+  --market <рынок>       ONE_X_TWO | OVER_UNDER_2_5 | BTTS | EXACT_SCORE | ASIAN_HANDICAP:<линия>
   --source <метка>       источник (должен совпадать с источником ручных коэффициентов)
   --observed-at <ISO>    момент наблюдения в UTC с миллисекундами, например 2026-11-30T11:00:00.000Z
   --odds <ВЫБОР=К,...>   полный набор выборов рынка, например HOME=2.10,DRAW=3.40,AWAY=3.60
+
+Примеры для новых рынков:
+  азиатский гандикап (линия с позиции хозяев, от -2.5 до +2.5 шагом 0.25; набор записывается отдельно для каждой линии):
+    --market ASIAN_HANDICAP:-0.75 --odds HOME=1.90,AWAY=1.95
+  точный счёт (все 17 выборов: счета от 0-0 до 3-3 и OTHER):
+    --market EXACT_SCORE --odds 0-0=9.5,0-1=12,...,3-3=80,OTHER=30
 
 Набор записывается целиком одной транзакцией и только до начала матча и до расчёта.
 Повтор того же набора ничего не добавляет; тот же момент с другим коэффициентом отклоняется.
@@ -27,7 +33,7 @@ export const CLOSING_ODDS_USAGE = `Использование: node scripts/clos
 export const CLOSING_ODDS_REJECTION_COPY = Object.freeze({
   INCOMPLETE_MARKET_SET: "набор неполный: нужны все выборы рынка, ровно по одному разу",
   DUPLICATE_SELECTION: "один и тот же выбор указан дважды",
-  UNSUPPORTED_MARKET: "рынок не поддерживается (ONE_X_TWO, OVER_UNDER_2_5, BTTS)",
+  UNSUPPORTED_MARKET: "рынок не поддерживается (допустимы ONE_X_TWO, OVER_UNDER_2_5, BTTS, EXACT_SCORE и ASIAN_HANDICAP:<линия> с линией от -2.5 до +2.5 шагом 0.25)",
   INVALID_OBSERVED_AT: "момент наблюдения должен быть в формате UTC с миллисекундами, например 2026-11-30T11:00:00.000Z",
   OBSERVED_AT_NOT_PRE_KICKOFF: "момент наблюдения не раньше начала матча",
   OBSERVED_AT_IN_FUTURE: "момент наблюдения в будущем относительно часов сервера",

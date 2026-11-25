@@ -293,7 +293,7 @@ describe("CLV is evaluation-only (D-05): the real workspace", () => {
       "packages/domain/src/evaluation/clv.ts",
       "packages/domain/src/evaluation/no-vig-clv.ts",
     ]);
-    for (const required of ["packages/domain/src/value/decision.ts", "packages/domain/src/value/contract.ts", "apps/api/src/modules/value/value.service.ts", "apps/api/src/modules/value/value.controller.ts"]) expect(roots).toContain(required);
+    for (const required of ["packages/domain/src/value/decision.ts", "packages/domain/src/value/extended-decision.ts", "packages/domain/src/value/contract.ts", "apps/api/src/modules/value/value.service.ts", "apps/api/src/modules/value/value.controller.ts"]) expect(roots).toContain(required);
   });
 
   it("no ranking, candidate-generation, scanner or journal module reaches a CLV module", () => {

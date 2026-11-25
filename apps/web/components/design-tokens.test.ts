@@ -153,6 +153,11 @@ describe("design tokens: extended markets block", () => {
     expect(block.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).toEqual([]);
   });
 
+  it("makes table cells the containing block of the absolutely positioned screen-reader text", () => {
+    // Без этого .sr-only в ячейках у правого края прокручиваемой таблицы растягивает страницу вбок (найдено сквозной проверкой на 320 px).
+    expect(block).toMatch(/\.market-table td\s*\{\s*position:\s*relative;\s*\}/);
+  });
+
   it("declares no new custom properties and adds no animation", () => {
     expect(block.match(/(^|[;{\s])--[\w-]+\s*:/g) ?? []).toEqual([]);
     expect(block).not.toMatch(/(?:^|[^-\w])(?:transition|animation|@keyframes)\b/);

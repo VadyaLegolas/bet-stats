@@ -1680,6 +1680,9 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
 }
 .market-table td, .market-table tbody th { padding: var(--space-3); font-size: 16px; font-weight: 400; }
 .market-table tbody th { background: var(--color-surface); position: sticky; inset-inline-start: 0; }
+/* Скрытый текст .sr-only позиционирован абсолютно: без позиционированного предка область прокрутки его не обрезает,
+   и ячейка у правого края таблицы растягивает всю страницу вбок. Ячейка становится опорой для таких потомков. */
+.market-table td { position: relative; }
 .market-table [data-current="true"] > * { background: var(--color-accent-soft); }
 .market-table [data-current="true"] > :first-child { box-shadow: inset 4px 0 0 var(--color-accent); }
 .market-grid td { text-align: center; min-width: 6.5rem; }

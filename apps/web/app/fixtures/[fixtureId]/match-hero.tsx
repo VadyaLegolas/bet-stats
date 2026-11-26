@@ -53,8 +53,14 @@ export function MatchHero({ fixture, timeZone, evidenceHref }: { fixture: HeroFi
         <div className="facts-wide">
           <dt>Исторические доказательства</dt>
           <dd className="detail-links">
-            <Link className="link-touch" href={evidenceHref(home.id)}>Доказательства {home.name} на момент начала</Link>
-            <Link className="link-touch" href={evidenceHref(away.id)}>Доказательства {away.name} на момент начала</Link>
+            <Link className="evidence-link" href={evidenceHref(home.id)}>
+              <span className="evidence-link-text">Доказательства <strong>{home.name}</strong> на момент начала</span>
+              <svg className="evidence-link-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
+            </Link>
+            <Link className="evidence-link" href={evidenceHref(away.id)}>
+              <span className="evidence-link-text">Доказательства <strong>{away.name}</strong> на момент начала</span>
+              <svg className="evidence-link-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M9 5l7 7-7 7" /></svg>
+            </Link>
           </dd>
         </div>
       </dl>

@@ -55,11 +55,13 @@ describe("MatchHero", () => {
     expect(markup).toContain(`${formatInstant(KICKOFF, "Europe/Warsaw")}</time>`);
     expect(markup).toContain("<dd>запланирован</dd>");
     expect(markup).toContain('<dd class="detail-links">');
-    const links = [...markup.matchAll(/<a class="link-touch" href="([^"]*)">(.*?)<\/a>/g)].map((match) => [match[1], match[2]]);
+    const links = [...markup.matchAll(/<a class="evidence-link" href="([^"]*)">(.*?)<\/a>/g)].map((match) => [match[1], stripTags(match[2]!)]);
     expect(links).toEqual([
       ["/teams/t-1/evidence?asOf=2026-10-17T13%3A00%3A00.000Z", "Доказательства Arsenal на момент начала"],
       ["/teams/t-2/evidence?asOf=2026-10-17T13%3A00%3A00.000Z", "Доказательства Chelsea на момент начала"],
     ]);
+    // Каждая ссылка — строка-карточка с декоративным шевроном (не часть имени ссылки).
+    expect(markup.match(/class="evidence-link-icon" aria-hidden="true"/g)?.length).toBe(2);
   });
 
   it("renders the competition and status labels exactly once in visible text", () => {

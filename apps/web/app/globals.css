@@ -1300,7 +1300,7 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
   box-shadow: var(--shadow-sm);
 }
 .detail-grid { display: grid; grid-template-columns: minmax(120px, 1fr) 2fr; gap: var(--space-3); }
-.detail-links { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.detail-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 10px; }
 .link-touch { display: inline-flex; align-items: center; min-height: 48px; width: fit-content; }
 
 /* --- Страница матча: ссылка назад, карточка-шапка, плитки фактов ----------- */
@@ -1372,6 +1372,41 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
 }
 .facts-wide { grid-column: 1 / -1; }
 .facts-grid .detail-links { font-family: var(--font-body); font-size: 1rem; font-weight: 600; }
+/* Ссылки на доказательства — отдельные строки-карточки с шевроном, а не слипшиеся
+   подчёркивания в общем ряду. */
+.evidence-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  color: var(--color-accent-text);
+  text-decoration: none;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+.evidence-link:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent-fill);
+  color: var(--color-accent-hover);
+}
+.evidence-link-text { min-width: 0; overflow-wrap: anywhere; }
+.evidence-link strong { font-weight: 700; }
+.evidence-link-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.14s ease;
+}
+.evidence-link:hover .evidence-link-icon { transform: translateX(2px); }
 .scroll-x { overflow-x: auto; }
 .scroll-auto { overflow: auto; max-width: 100%; }
 .wrap-anywhere { overflow-wrap: anywhere; }

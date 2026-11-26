@@ -31,6 +31,8 @@ describe("manual results publication button", () => {
     expect(markup).toContain("Обновить матчи");
     expect(markup).toContain("Загрузить результаты");
     expect(markup).toContain("btn-secondary");
+    // Синхронизация вынесена отдельной строкой под фильтрами, а не в ряду с «Применить даты».
+    expect(markup).toContain("filter-actions");
     expect(markup).toContain("загружает расписание и итоги завершённых матчей");
     expect(markup).toContain("публикует итоги принудительно");
   });

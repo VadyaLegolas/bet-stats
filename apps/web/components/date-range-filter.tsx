@@ -282,6 +282,8 @@ export function DateRangeFilter({ from, to, competition, leagues, autoSync }: { 
         <button type="submit" className="btn-primary btn-compact">
           Применить даты
         </button>
+      </div>
+      <div className="filter-actions">
         <button
           type="button"
           className="btn-secondary btn-compact"

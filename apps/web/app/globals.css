@@ -1135,6 +1135,8 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
   color: var(--color-on-accent);
 }
 .filter-fields { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+/* Ручная синхронизация — отдельной строкой под фильтрами, а не в ряду с «Применить даты». */
+.filter-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: var(--space-4); }
 .filter-hint { margin: var(--space-3) 0 0; font-size: 0.85rem; color: var(--color-text-secondary); }
 .filter-hint--error { color: var(--color-danger); }
 .filter-hint--full { grid-column: 1 / -1; }

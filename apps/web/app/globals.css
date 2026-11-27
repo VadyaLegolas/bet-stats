@@ -277,12 +277,14 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
   z-index: 50;
 }
 /* The one-row header is short enough to stay pinned; the wrapped header below
-   1360px is tall, so it scrolls away with the page. */
-@media (min-width: 1360px) {
+   the one-row breakpoint is tall, so it scrolls away with the page. The breakpoint
+   sits above the widest row (brand + limits card + seven nav links + toggle ≈ 1372px),
+   so the toggle never drops alone onto a second line. */
+@media (min-width: 1460px) {
   .release-header { position: sticky; top: 0; }
 }
 .release-header-inner {
-  max-width: 1360px;
+  max-width: 1480px;
   padding-block: 16px;
   display: flex;
   flex-wrap: wrap;
@@ -302,7 +304,7 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
   .release-navigation { order: 4; flex: 1 1 100%; }
   .release-navigation nav { justify-content: center; }
 }
-@media (min-width: 1360px) {
+@media (min-width: 1460px) {
   .release-brand { margin-inline-end: 0; }
   .release-navigation { order: 3; flex: 1 1 auto; }
   .theme-toggle { order: 4; }

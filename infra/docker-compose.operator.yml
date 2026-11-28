@@ -60,6 +60,7 @@ services:
     <<: *app
     command: ["node", "apps/api/dist/main.js"]
     expose: ["3001"]
+    networks: [internal, egress]
     environment:
       <<: *database-environment
       API_HOST: 0.0.0.0
@@ -87,6 +88,7 @@ services:
   worker:
     <<: *app
     command: ["node", "workers/data-sync/dist/main.js"]
+    networks: [internal, egress]
     environment:
       <<: *database-environment
       DATA_PROVIDER_MODE: live
@@ -155,6 +157,8 @@ networks:
   edge:
   internal:
     internal: true
+  # Outbound route to data providers for api and worker; neither publishes ports.
+  egress:
 
 volumes:
   operator_postgres_data:

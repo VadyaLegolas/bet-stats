@@ -67,10 +67,10 @@ describe("operator gateway deployment topology", () => {
     );
 
     expect(publishedPorts).toEqual(["8080:8080"]);
-    expect(compose.services.web?.ports).toBeUndefined();
-    expect(compose.services.api?.ports).toBeUndefined();
-    expect(compose.services.postgres?.ports).toBeUndefined();
-    expect(compose.services.redis?.ports).toBeUndefined();
+    for (const serviceName of ["web", "api", "worker", "migrate", "postgres", "redis"]) {
+      expect(compose.services[serviceName]?.ports).toBeUndefined();
+      expect(compose.services[serviceName]).not.toHaveProperty("network_mode");
+    }
     expect(compose.networks.internal?.internal).toBe(true);
   });
 
@@ -81,10 +81,28 @@ describe("operator gateway deployment topology", () => {
       "edge",
       "internal",
     ]);
-    for (const serviceName of ["web", "api", "worker", "migrate", "postgres", "redis"]) {
+    for (const serviceName of ["web", "migrate", "postgres", "redis"]) {
       expect(Object.keys(compose.services[serviceName]?.networks ?? {})).toEqual(["internal"]);
     }
     expect(compose.networks.edge?.internal).not.toBe(true);
+  });
+
+  it("gives only the provider clients a separate outbound network", () => {
+    const compose = loadComposeConfiguration();
+    const egressMembers = Object.entries(compose.services)
+      .filter(([, service]) => "egress" in (service.networks ?? {}))
+      .map(([serviceName]) => serviceName)
+      .sort();
+
+    expect(egressMembers).toEqual(["api", "worker"]);
+    for (const serviceName of egressMembers) {
+      expect(Object.keys(compose.services[serviceName]?.networks ?? {}).sort()).toEqual([
+        "egress",
+        "internal",
+      ]);
+    }
+    expect(compose.networks.egress).toBeDefined();
+    expect(compose.networks.egress?.internal).not.toBe(true);
   });
 
   it("marks the gateway healthy only when the public upstream response succeeds", () => {

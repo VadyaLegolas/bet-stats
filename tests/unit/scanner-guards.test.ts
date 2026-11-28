@@ -169,4 +169,20 @@ describe("scanner static guards", () => {
 
     expect(stripComments(read(DOMAIN_SCANNER)), `${DOMAIN_SCANNER}: no JS sort`).not.toMatch(/\.\s*(?:sort|toSorted)\s*\(/);
   });
+
+  it("(11) scanner domain module adds nothing to a client chunk", () => {
+    // Raw text on purpose: the comment stripper would remove the annotations this guard is about.
+    const source = read(DOMAIN_SCANNER);
+    const declarations = [...source.matchAll(/^export const (\w+)[^=\n]*=\s*/gm)];
+    expect(declarations.length, `${DOMAIN_SCANNER}: no top-level export const found (the guard is broken)`).toBeGreaterThan(0);
+    // A bare call right after "=" has no annotation: the annotation would sit between "=" and the callee.
+    const unannotated = declarations
+      .filter((match) => /^(?:new\s+)?[A-Za-z_$][\w$.]*\s*\(/.test(source.slice(match.index + match[0].length)))
+      .map((match) => match[1]);
+    expect(unannotated, `${DOMAIN_SCANNER}: a top-level call without a pure annotation stays in the browser chunk of every barrel importer (D-11)`).toEqual([]);
+    expect(
+      source.match(/=\s*\/\*#__PURE__\*\/\s*Object\.freeze\(/g)?.length ?? 0,
+      `${DOMAIN_SCANNER}: the freshness policy and both order lists must be annotated Object.freeze calls`,
+    ).toBe(3);
+  });
 });

@@ -158,6 +158,15 @@ describe("design tokens: extended markets block", () => {
     expect(block).toMatch(/\.market-table td\s*\{\s*position:\s*relative;\s*\}/);
   });
 
+  it("stacks label over value in a narrow Asian handicap card without touching the shared card rule", () => {
+    // Без этого при тексте 200 % и 320 px колонка значения сжимается до нуля и чип «Главная линия» выходит за экран.
+    expect(block).toMatch(/\.market-table \.evidence-card\s*\{\s*container-type:\s*inline-size;\s*\}/);
+    expect(block).toMatch(
+      /@container \(max-width: 11rem\)\s*\{\s*\.market-table \.evidence-card dl > div\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);\s*\}\s*\}/,
+    );
+    expect(css).toMatch(/(?:^|\})\s*\.evidence-card dl > div\s*\{[^}]*grid-template-columns:\s*minmax\(7rem,\s*0\.7fr\)\s+minmax\(0,\s*1\.3fr\);/m);
+  });
+
   describe("exact-score grid layout contract", () => {
     // Плотный охранный набор: каждое правило закрывает отдельную причину дефекта UAT 14 (тест 7).
     const rule = (selectorPattern: string) => new RegExp(`(?:^|\\})\\s*${selectorPattern}\\s*\\{([^}]*)\\}`, "m").exec(block)?.[1] ?? "";
@@ -242,6 +251,7 @@ describe("design tokens: scanner block", () => {
   });
 
   it("keeps links and the stale summary at least 44 px high", () => {
+    expect(rule("\\.scanner-match-head > h3 > a")).toMatch(/min-height:\s*44px\s*;/);
     expect(rule("\\.scanner-links a")).toMatch(/min-height:\s*44px\s*;/);
     expect(rule("\\.scanner-stale > summary")).toMatch(/min-height:\s*44px\s*;/);
   });

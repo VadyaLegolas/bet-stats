@@ -1759,6 +1759,13 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
 .market-score-fields > :last-child { grid-column: 1 / -1; }
 .market-score-fields-set { border: 0; margin: 0; padding: 0; min-width: 0; }
 .evidence-card[data-current="true"] { border-color: var(--color-accent); background: var(--color-accent-soft); }
+/* Карточки линий гандикапа при увеличенном тексте. Первый трек общего правила .evidence-card dl > div (7rem) при крупном шрифте
+   шире самой строки: колонка значения сжимается до нуля, и чип «Главная линия» выходит за экран. Узкая карточка ставит подпись
+   над значением. Порог задан в rem и растёт вместе с текстом, поэтому при 100 % две колонки сохраняются. Общее правило не меняем. */
+.market-table .evidence-card { container-type: inline-size; }
+@container (max-width: 11rem) {
+  .market-table .evidence-card dl > div { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* --- Сканер value (Phase 15) ------------------------------------------------
    Аддитивный блок только на существующих токенах: без новых цветов, без новых
@@ -1771,6 +1778,9 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
 /* minmax(0, 1fr): без него длинное слово в названии команды растягивает колонку и всю страницу на 320 px. */
 .scanner-match-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-1); margin-block-end: var(--space-4); }
 .scanner-match-head > h3 { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.2; overflow-wrap: break-word; }
+/* Ссылка названия матча — самостоятельная цель 44 px. Колонка, а не flex в строку: текст растягивается по ширине блока,
+   и длинное слово по-прежнему переносится. */
+.scanner-match-head > h3 > a { display: flex; flex-direction: column; justify-content: center; min-height: 44px; }
 .scanner-match-meta { margin: 0; font-size: 14px; font-weight: 400; line-height: 1.4; color: var(--color-muted); }
 .scanner-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }
 .scanner-row {

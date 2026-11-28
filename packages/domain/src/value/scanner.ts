@@ -6,8 +6,9 @@
  * contract parses, rounds or reorders by them.
  */
 
+// Pure annotations on the frozen constants: client files import the barrel, and an unannotated call stays in their chunk.
 /** Versioned freshness policy (D-06): the age is measured from the odds snapshot's own `submittedAt`. */
-export const SCANNER_FRESHNESS_V1 = Object.freeze({ version: "scanner-freshness-v1", freshMaxHours: 6, agingMaxHours: 24 } as const);
+export const SCANNER_FRESHNESS_V1 = /*#__PURE__*/ Object.freeze({ version: "scanner-freshness-v1", freshMaxHours: 6, agingMaxHours: 24 } as const);
 
 /** Kickoff window length in days: `[now, now + 7 days)`. */
 export const SCANNER_WINDOW_DAYS = 7;
@@ -16,10 +17,10 @@ export const SCANNER_WINDOW_DAYS = 7;
 export const SCANNER_LIMIT = 200;
 
 /** Market family order of D-09; deliberately not the order of the market registry. */
-export const SCANNER_MARKET_ORDER = Object.freeze(["ONE_X_TWO", "OVER_UNDER_2_5", "BTTS", "ASIAN_HANDICAP", "EXACT_SCORE"] as const);
+export const SCANNER_MARKET_ORDER = /*#__PURE__*/ Object.freeze(["ONE_X_TWO", "OVER_UNDER_2_5", "BTTS", "ASIAN_HANDICAP", "EXACT_SCORE"] as const);
 
 /** Selection order within a market (D-09); unknown selections sort after these, then alphabetically. */
-export const SCANNER_SELECTION_ORDER = Object.freeze(["HOME", "DRAW", "AWAY", "OVER_2_5", "UNDER_2_5", "YES", "NO"] as const);
+export const SCANNER_SELECTION_ORDER = /*#__PURE__*/ Object.freeze(["HOME", "DRAW", "AWAY", "OVER_2_5", "UNDER_2_5", "YES", "NO"] as const);
 
 export type OddsFreshness = "FRESH" | "AGING" | "STALE";
 

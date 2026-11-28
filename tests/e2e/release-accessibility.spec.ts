@@ -56,9 +56,23 @@ test("reflow keeps the page inside 320 CSS pixels and respects user media", asyn
 test("200 percent text zoom keeps essential actions and content available", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto(`/fixtures/${LIVE_FIXTURES.comparison}`);
+  const mainLineCard = page.locator('#asian-handicap article.evidence-card[data-current="true"]');
+  await expect(mainLineCard).toBeVisible();
+  const mainLineRows = mainLineCard.locator("dl > div");
+  const tops = await mainLineRows.first().evaluate((row) => ({
+    label: row.querySelector("dt")!.getBoundingClientRect().top,
+    value: row.querySelector("dd")!.getBoundingClientRect().top,
+  }));
+  expect(Math.abs(tops.value - tops.label), "100 percent text: label and value of the main line card stay in two columns").toBeLessThan(2);
   await page.locator("html").evaluate((element) => { element.style.fontSize = "200%"; });
   await expect(page.getByRole("heading", { name: "Замороженный прогноз" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Сохранить полную неизменяемую книгу коэффициентов" })).toBeVisible();
+  const narrowValues = await mainLineRows.evaluateAll((rows) => rows.flatMap((row) => {
+    const rowWidth = row.getBoundingClientRect().width;
+    const valueWidth = row.querySelector("dd")!.getBoundingClientRect().width;
+    return valueWidth >= rowWidth / 2 ? [] : [`${row.querySelector("dt")?.textContent}: value ${valueWidth.toFixed(1)} px of a ${rowWidth.toFixed(1)} px row`];
+  }));
+  expect(narrowValues, "200 percent text: every value of the main line card keeps at least half of its row").toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 });
 

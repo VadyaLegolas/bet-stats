@@ -100,12 +100,12 @@ async function brokenLabels(page: Page): Promise<{ checked: number; broken: stri
   });
 }
 
-/** Standalone targets (row links and disclosure summaries) lower than 44 px. */
+/** Standalone targets (match heading links, row links and disclosure summaries) lower than 44 px. */
 async function smallTargets(page: Page): Promise<{ checked: number; small: string[] }> {
   return page.locator("main").evaluate((main) => {
     const small: string[] = [];
     let checked = 0;
-    for (const target of main.querySelectorAll(".scanner-links a, summary, a.btn-secondary")) {
+    for (const target of main.querySelectorAll(".scanner-match-head h3 a, .scanner-links a, summary, a.btn-secondary")) {
       if (target.getClientRects().length === 0) continue;
       checked += 1;
       const height = target.getBoundingClientRect().height;
@@ -143,8 +143,9 @@ for (const width of [320, 375, 768, 1440]) {
       expect(labels.broken).toEqual([]);
 
       const targets = await smallTargets(page);
-      // Two links and one summary per row, the how-to-read summary and the stale summary.
-      expect(targets.checked).toBe(17);
+      // Two links and one summary per row, one heading link per rendered match group (three), the how-to-read summary and
+      // the stale summary.
+      expect(targets.checked).toBe(20);
       expect(targets.small).toEqual([]);
 
       for (const held of HELD_OUT) {

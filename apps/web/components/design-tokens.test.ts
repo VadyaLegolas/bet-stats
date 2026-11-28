@@ -251,6 +251,7 @@ describe("design tokens: scanner block", () => {
   });
 
   it("keeps links and the stale summary at least 44 px high", () => {
+    expect(rule("\\.scanner-match-head > h3 > a")).toMatch(/min-height:\s*44px\s*;/);
     expect(rule("\\.scanner-links a")).toMatch(/min-height:\s*44px\s*;/);
     expect(rule("\\.scanner-stale > summary")).toMatch(/min-height:\s*44px\s*;/);
   });

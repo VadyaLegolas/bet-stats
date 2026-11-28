@@ -19,3 +19,4 @@ artifacts/provider-probes/
 .tools/
 .next-e2e/
 .next-gate/
+.next-scanner/

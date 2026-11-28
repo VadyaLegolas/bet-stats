@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 import { LIVE_FIXTURES } from "./live-provider-stack.js";
 import { prepareReleaseFixture } from "./live-release-stack.js";
 
-const destinationNames = ["Матчи", "Анализ", "Сканер value", "Результаты", "Методология", "FAQ", "Операции"] as const;
+const destinationNames = ["Матчи", "Анализ", "Сканер", "Результаты", "Методология", "FAQ", "Операции"] as const;
 
 test("navigation is equivalent on desktop and mobile", async ({ page }, testInfo) => {
   await page.goto("/fixtures");
@@ -33,7 +33,7 @@ test("navigation is equivalent on desktop and mobile", async ({ page }, testInfo
   await page.goto("/scanner");
   // The viewport is 390 px wide here in every project, so the menu is collapsed.
   await page.getByRole("button", { name: "Меню" }).click();
-  await expect(primary.getByRole("link", { name: "Сканер value" })).toHaveAttribute("aria-current", "page");
+  await expect(primary.getByRole("link", { name: "Сканер" })).toHaveAttribute("aria-current", "page");
 });
 
 test("declared release support is desktop and mobile Chromium", async ({}, testInfo) => {

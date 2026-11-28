@@ -65,7 +65,7 @@ function ScannerEmpty({ data }: { data: ScannerPayload }) {
       {noReceipts ? (
         <>
           <p>{EMPTY_ZERO_RECEIPTS_TEXT}</p>
-          <p>
+          <p className="scanner-links">
             {/* Plain anchor by contract (15-03): the scanner page ships no router link, so no prefetch and no client code. */}
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/fixtures">{EMPTY_ZERO_RECEIPTS_LINK}</a>

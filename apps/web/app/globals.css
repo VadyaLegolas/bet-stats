@@ -1655,6 +1655,11 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
   .evidence-mobile { display: none; }
 }
 
+/* Семь пунктов навигации в одну строку на 768–1023 px (Phase 15): узкие боковые поля ссылок. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .release-navigation nav a { padding-inline: var(--space-2); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
@@ -1763,7 +1768,8 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
 
 .scanner-groups { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-6); }
 .scanner-match { min-width: 0; }
-.scanner-match-head { display: grid; gap: var(--space-1); margin-block-end: var(--space-4); }
+/* minmax(0, 1fr): без него длинное слово в названии команды растягивает колонку и всю страницу на 320 px. */
+.scanner-match-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-1); margin-block-end: var(--space-4); }
 .scanner-match-head > h3 { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.2; overflow-wrap: break-word; }
 .scanner-match-meta { margin: 0; font-size: 14px; font-weight: 400; line-height: 1.4; color: var(--color-muted); }
 .scanner-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }

@@ -12,5 +12,5 @@ export default defineConfig([
       },
     },
   },
-  globalIgnores([".next/**", ".next-gate/**", ".next-e2e/**", "out/**", "build/**", "next-env.d.ts"]),
+  globalIgnores([".next/**", ".next-gate/**", ".next-e2e/**", ".next-scanner/**", "out/**", "build/**", "next-env.d.ts"]),
 ]);

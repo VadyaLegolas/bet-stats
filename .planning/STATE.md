@@ -450,6 +450,7 @@ None yet.
 | 61 | Переключатель темы больше не падает один на вторую строку шапки: one-row раскладка теперь включается с 1460px (ширина ряда brand + карточка лимитов + семь ссылок + toggle около 1372px), контейнер шапки расширен до 1480px; ниже порога — прежний двухрядный вариант, где toggle остаётся в первом ряду справа; проверено измерениями 1280-1830px и скриншотами | 2026-11-27 | b8eae11 | — |
 | 261128-hlo | Тест D-16 ждёт русскую подпись «Провайдер недоступен» вместо кода; verify:release прошёл целиком | 2026-11-28 | d98de32 | [261128-hlo-fix-stale-d-16-outage-expectation-in-rel](./quick/261128-hlo-fix-stale-d-16-outage-expectation-in-rel/) |
 | 261128-opc | Operator compose передаёт ключ API-Football и ELIGIBILITY_* fail-closed; образ снова собирается | 2026-11-28 | fbbf1e7 | [261128-opc-operator-compose-fail-closed-env](./quick/261128-opc-operator-compose-fail-closed-env/) |
+| 261128-dkr | `.dockerignore`: локальные зависимости, сборки и env-файлы не попадают в operator-образ | 2026-11-28 | 61d7737 | [261128-dkr-add-dockerignore](./quick/261128-dkr-add-dockerignore/) |
 
 ### Roadmap Evolution
 

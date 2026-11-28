@@ -207,12 +207,22 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   3. The page complies with responsible-gambling copy rules (no urgency or certainty claims, persistent disclaimers) and issues no N+1 query patterns.
 
 **Notes / research flags**: `evaluation/value-candidates` is settled-history only — the scanner is a distinct forward-looking query over `ValueReceipt`; new endpoint, don't overload it. Extend the prohibited-vocabulary suite and Russian-copy checks in this phase.
-**Plans**: 5 plans
+**Plans**: 6 plans
+**Wave 1**
 - [ ] 15-01-PLAN.md — Tracer: one VALUE_CANDIDATE from PostgreSQL through `GET /value/scanner` to the server page; SQL semantics, truncation, parity, timezone, no-N+1 proven on real PostgreSQL
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 15-02-PLAN.md — Unit contract tests (freshness boundaries, verbatim strings, no reordering, typed errors) and UI-SPEC reconciliation amendments
 - [ ] 15-03-PLAN.md — Web page: Warsaw time helpers, copy module, fail-closed parser, match-grouped rows, stale block, EMPTY / POLICY-UNMET / UNAVAILABLE states
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 15-04-PLAN.md — Navigation, home and methodology wiring, token-only `.scanner-*` CSS, Russian prohibited-vocabulary suite and static guards
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 15-05-PLAN.md — Stub-driven Playwright matrix, live AVAILABLE test, `verify:scanner` gate wiring, deferred items
+
+**Gap closure**
+- [ ] 15-06-PLAN.md — Domain scanner constants out of the client bundle, «Главная линия» chip overflow and match-header link target, UI-SPEC reconciliation, release gate re-run
 **UI hint**: yes
 
 ### Phase 16: Paper-Trading Journal

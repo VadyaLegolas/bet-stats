@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v1.1
 current_phase: 15
 current_phase_name: 7-Day Value Scanner
-current_plan: Not started
-status: planning
+current_plan: 1
+status: executing
 stopped_at: Phase 15 UI-SPEC approved
-last_updated: "2026-11-25T21:23:00.019Z"
+last_updated: "2026-11-28T09:51:25.097Z"
 last_activity: 2026-11-25
-last_activity_desc: Phase 14 complete, transitioned to Phase 15
-state_head: 749d92fd7a9d16dde62abed36d306a551ba9feb6
+last_activity_desc: Phase 15 execution started
+state_head: a5a1f770f2d3ce1907be28d125a3101659fcdbca
 progress:
   total_phases: 10
   completed_phases: 7
-  total_plans: 49
-  completed_plans: 49
+  total_plans: 55
+  completed_plans: 54
   percent: 70
 milestone_name: Reliability, Model Quality and Value Experience
 ---
@@ -26,15 +26,15 @@ milestone_name: Reliability, Model Quality and Value Experience
 See: .planning/PROJECT.md (updated 2026-11-16)
 
 **Core value:** Produce honest, reproducible probability estimates whose quality can be measured after every completed match.
-**Current focus:** Phase 14 — Asian Handicap and Exact Score Markets
+**Current focus:** Phase 15 — 7-Day Value Scanner
 
 ## Current Position
 
-Phase: 15 — 7-Day Value Scanner
-Current Plan: Not started
-Total Plans in Phase: 8
-Status: Ready to plan
-Last activity: 2026-11-25 — Phase 14 complete, transitioned to Phase 15
+Phase: 15 (7-Day Value Scanner) — READY TO EXECUTE
+Current Plan: 1
+Total Plans in Phase: 6
+Status: Ready to execute
+Last activity: 2026-11-25 — Phase 15 execution started
 
 Progress: [███████░░░] 70%
 
@@ -444,6 +444,9 @@ None yet.
 | 261104-mv2 | Proxy WebSocket upgrades in the operator gateway so Next dev pages hydrate through :8080 | 2026-11-05 | 66af450 | [261104-mv2-proxy-websocket-upgrades-in-the-operator](./quick/261104-mv2-proxy-websocket-upgrades-in-the-operator/) |
 | 261123-quu | Fix phase 11 review criticals: rho fit stored-receipt shape (CR-01) and OperatorGuard on model-comparison (CR-02) | 2026-11-23 | 2f8cea6 | [261123-quu-fix-phase-11-review-criticals-cr-01-and-](./quick/261123-quu-fix-phase-11-review-criticals-cr-01-and-/) |
 | 51 | Return navigation from operator gateway (8080) to app origin (3000): gateway stamps x-operator-gateway-origin (loopback-gated, spoof-stripped), root layout passes it to absolute nav/brand links, non-/internal pages bounce back so match sync never hits the gateway's 10s idle timeout (504). | 2026-11-07 | 889f560 | — |
+| 59 | Синхронизация на странице «Матчи» вынесена отдельной строкой: кнопки «Обновить матчи» и «Загрузить результаты» вынесены из ряда с «Применить даты» в собственный блок .filter-actions (flex + margin-top) под фильтрами; поведение, статус и тосты не менялись; UI-тест проверяет наличие filter-actions | 2026-11-26 | d0062c2 | — |
+| 60 | Ссылки на исторические доказательства в шапке матча переоформлены в строки-карточки: .detail-links стал адаптивной сеткой, каждая ссылка .evidence-link получила фон, рамку, радиус, hover и декоративный шеврон; имя команды выделено strong, доступное имя ссылки не изменилось (e2e-контракт сохранён); стили только на токенах, UI-тест обновлён | 2026-11-26 | e611ae6 | — |
+| 61 | Переключатель темы больше не падает один на вторую строку шапки: one-row раскладка теперь включается с 1460px (ширина ряда brand + карточка лимитов + семь ссылок + toggle около 1372px), контейнер шапки расширен до 1480px; ниже порога — прежний двухрядный вариант, где toggle остаётся в первом ряду справа; проверено измерениями 1280-1830px и скриншотами | 2026-11-27 | b8eae11 | — |
 
 ### Roadmap Evolution
 

@@ -1,0 +1,29 @@
+# Build context of infra/Dockerfile.app is the repository root.
+# Everything excluded here is reinstalled or rebuilt inside the image.
+
+# Dependencies
+**/node_modules
+
+# Build output and caches (a stale tsbuildinfo would make tsc skip emitting dist)
+**/dist
+**/.next
+**/.next-*
+**/.turbo
+**/*.tsbuildinfo
+
+# Environment files with local secrets
+**/.env
+**/.env.*
+**/.env[0-9]*
+**/*.env
+
+# Test output and logs
+**/coverage
+**/playwright-report
+**/test-results
+**/*.log
+
+# Not needed by any image
+.git
+.worktrees
+backups

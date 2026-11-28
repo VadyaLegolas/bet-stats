@@ -41,6 +41,7 @@ Produce honest, reproducible probability estimates whose quality can be measured
 - ✓ CI pipeline in GitHub Actions covering install, typecheck, lint, tests, and build — Phase 7
 - ✓ Automated PostgreSQL backups with rotation and periodic restore verification — Phase 8
 - ✓ Degradation alerting (durable PostgreSQL alerts, dedup, severity tiers) with fail-closed HMAC operator gateway and the operations center as the operator's view — Phase 9
+- ✓ Seven-day value scanner (`/scanner`): stored receipt values shown verbatim, freshness demotion, explicit empty and unavailable states, no ranking — Phase 15
 
 ### Current State (Shipped: v1.0 MVP)
 
@@ -53,7 +54,6 @@ All 6 phases (88 plans) of the v1.0 MVP milestone have shipped and passed all en
 - Dixon-Coles correction integrated into the Poisson goal model.
 - CLV price diary: timestamped forecast-time price plus closing price, fail-closed when no comparable price exists.
 - Asian handicap and exact-score markets computed from frozen model outputs.
-- Consolidated value-candidate scanner for the next 7 days.
 - Paper-trading journal (bankroll, units, drawdown, ROI) for operator-recorded bets — no automated wagering.
 
 ### Deferred (future milestones, beyond v1.1)
@@ -127,4 +127,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-11-16 after Phase 9 (Degradation Alerting)*
+*Last updated: 2026-11-28 after Phase 15 (7-Day Value Scanner)*

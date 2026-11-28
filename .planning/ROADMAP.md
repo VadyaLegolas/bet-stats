@@ -14,7 +14,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 - [x] **Phase 12: Calibration Layer and Versioned Rollback** - Users see calibrated probabilities with honest labels and insufficient-data states, backed by per-model-version calibrators that roll back on measured regression.
 - [x] **Phase 13: CLV Price Diary** - Forecast-time and closing prices are compared per candidate, with honest unavailable states and strict evaluation-only semantics. (completed 2026-11-24)
 - [x] **Phase 14: Asian Handicap and Exact Score Markets** - Users see and settle Asian handicap and exact-score probabilities derived from the frozen score matrix, with push-aware value receipts. (completed 2026-11-25)
-- [ ] **Phase 15: 7-Day Value Scanner** - Users see one consolidated, freshness-aware list of value candidates across the next seven days without N+1 queries or recompute drift.
+- [x] **Phase 15: 7-Day Value Scanner** - Users see one consolidated, freshness-aware list of value candidates across the next seven days without N+1 queries or recompute drift. (completed 2026-11-28)
 - [ ] **Phase 16: Paper-Trading Journal** - The operator records simulated trades against immutable receipts and sees bankroll, drawdown, ROI, and yield with append-only corrections.
 
 ## Phase Details
@@ -207,7 +207,7 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
   3. The page complies with responsible-gambling copy rules (no urgency or certainty claims, persistent disclaimers) and issues no N+1 query patterns.
 
 **Notes / research flags**: `evaluation/value-candidates` is settled-history only — the scanner is a distinct forward-looking query over `ValueReceipt`; new endpoint, don't overload it. Extend the prohibited-vocabulary suite and Russian-copy checks in this phase.
-**Plans**: 6/6 plans executed
+**Plans**: 6/6 plans complete
 **Wave 1**
 - [x] 15-01-PLAN.md — Tracer: one VALUE_CANDIDATE from PostgreSQL through `GET /value/scanner` to the server page; SQL semantics, truncation, parity, timezone, no-N+1 proven on real PostgreSQL
 
@@ -260,5 +260,5 @@ Milestone v1.1 (Reliability, Model Quality and Value Experience) continues the p
 | 12. Calibration Layer and Versioned Rollback | 7/7 | In Progress | - |
 | 13. CLV Price Diary | 4/4 | Complete    | 2026-11-24 |
 | 14. Asian Handicap and Exact Score Markets | 9/9 | Complete    | 2026-11-25 |
-| 15. 7-Day Value Scanner | 6/6 | In Progress | - |
+| 15. 7-Day Value Scanner | 6/6 | Complete    | 2026-11-28 |
 | 16. Paper-Trading Journal | 0/0 | Not started | - |

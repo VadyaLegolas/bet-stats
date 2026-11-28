@@ -60,9 +60,9 @@
 
 ### Value Scanner (SCAN)
 
-- [ ] **SCAN-01**: A user can view a consolidated list of value candidates for the next seven days across fixtures and markets with fixture, market, selection, edge, expected value, and odds source.
-- [ ] **SCAN-02**: The scanner displays stored receipt edges byte-for-byte without recomputation, with freshness demotion and explicit empty versus unavailable states.
-- [ ] **SCAN-03**: The scanner page complies with responsible-gambling copy rules (no urgency or certainty claims, persistent disclaimers) and issues no N+1 query patterns.
+- [x] **SCAN-01**: A user can view a consolidated list of value candidates for the next seven days across fixtures and markets with fixture, market, selection, edge, expected value, and odds source.
+- [x] **SCAN-02**: The scanner displays stored receipt edges byte-for-byte without recomputation, with freshness demotion and explicit empty versus unavailable states.
+- [x] **SCAN-03**: The scanner page complies with responsible-gambling copy rules (no urgency or certainty claims, persistent disclaimers) and issues no N+1 query patterns.
 
 ### Paper-Trading Journal (JRN)
 
@@ -123,9 +123,9 @@ _Milestone v1.1 roadmap (2026-10-19): every requirement maps to exactly one phas
 | MKT-03 | Phase 14 | Complete |
 | MKT-04 | Phase 14 | Complete |
 | MKT-05 | Phase 14 | Complete |
-| SCAN-01 | Phase 15 | Pending |
-| SCAN-02 | Phase 15 | Pending |
-| SCAN-03 | Phase 15 | Pending |
+| SCAN-01 | Phase 15 | Complete |
+| SCAN-02 | Phase 15 | Complete |
+| SCAN-03 | Phase 15 | Complete |
 | JRN-01 | Phase 16 | Pending |
 | JRN-02 | Phase 16 | Pending |
 | JRN-03 | Phase 16 | Pending |

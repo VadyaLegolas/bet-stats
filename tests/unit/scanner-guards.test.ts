@@ -119,11 +119,11 @@ describe("scanner static guards", () => {
   it("(7) the navigation has the scanner entry between Анализ and Результаты", () => {
     const source = read("apps/web/components/release-navigation.tsx");
     const analysis = source.indexOf('label: "Анализ"');
-    const scanner = source.indexOf('label: "Сканер value"');
+    const scanner = source.indexOf('label: "Сканер"');
     const results = source.indexOf('label: "Результаты"');
-    expect(scanner, "release-navigation.tsx: missing the «Сканер value» entry").toBeGreaterThan(-1);
-    expect(scanner, "release-navigation.tsx: «Сканер value» must come after «Анализ»").toBeGreaterThan(analysis);
-    expect(results, "release-navigation.tsx: «Результаты» must come after «Сканер value»").toBeGreaterThan(scanner);
+    expect(scanner, "release-navigation.tsx: missing the «Сканер» entry").toBeGreaterThan(-1);
+    expect(scanner, "release-navigation.tsx: «Сканер» must come after «Анализ»").toBeGreaterThan(analysis);
+    expect(results, "release-navigation.tsx: «Результаты» must come after «Сканер»").toBeGreaterThan(scanner);
     const entry = source.slice(scanner, results);
     expect(entry, 'release-navigation.tsx: the entry must link to href: "/scanner"').toContain('href: "/scanner"');
     expect(entry, 'release-navigation.tsx: the entry must be current for pathname.startsWith("/scanner")').toContain('pathname.startsWith("/scanner")');

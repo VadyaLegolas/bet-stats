@@ -179,12 +179,12 @@ Copy-Item .env.example .env
 [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32)).ToLowerInvariant()
 ```
 
-Добавьте переменные, которых нет в `.env.example`:
+Проверьте и заполните эти переменные (шаблон оставляет доступ закрытым):
 
 ```dotenv
 # Тот же пароль, что и в POSTGRES_PASSWORD
 DATABASE_URL=postgresql://football_prediction:<POSTGRES_PASSWORD>@127.0.0.1:5432/football_prediction
-# Без ключа воркер data-sync не запускает фоновые задачи
+# Раскомментируйте строку в .env. Без ключа воркер data-sync не запускает фоновые задачи
 API_FOOTBALL_API_KEY=<ваш ключ>
 # Доступ к прогнозам, коэффициентам, value, сканеру и ведомостям
 ELIGIBILITY_ALLOWED_REGIONS=PL
@@ -278,7 +278,10 @@ pnpm exec turbo run dev --env-mode=loose
 docker compose -f infra/docker-compose.operator.yml --env-file .env up -d --build
 ```
 
-Наружу опубликован только порт `8080`. ⚠️ Файл пока не передаёт `API_FOOTBALL_API_KEY` и `ELIGIBILITY_*`, а образ работает с `NODE_ENV=production`, где ключ обязателен. Перед использованием дополните его.
+Наружу опубликован только порт `8080`. Образ работает с `NODE_ENV=production`, поэтому в `.env` нужны `FOOTBALL_DATA_API_TOKEN` и `API_FOOTBALL_API_KEY`: без них `api` и `worker` не стартуют. Переменные `ELIGIBILITY_*` передаются в контейнеры; пока они не заданы, защищённая аналитика отвечает `403`.
+
+> [!WARNING]
+> `api` и `worker` подключены только к внутренней сети Compose без выхода наружу, поэтому запросы к поставщикам данных из этого окружения не проходят.
 
 </details>
 

@@ -1,5 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -19,27 +21,42 @@ type ComposeConfiguration = {
   networks: Record<string, { internal?: boolean }>;
 };
 
-function loadComposeConfiguration(): ComposeConfiguration {
-  const rendered = execFileSync(
-    "docker",
-    ["compose", "-f", composeFile, "config", "--format", "json"],
-    {
-      cwd: repositoryRoot,
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        FOOTBALL_DATA_API_TOKEN: "contract-test-provider-token",
-        OPERATOR_BASIC_PASSWORD: "contract-test-basic-password",
-        OPERATOR_BASIC_USERNAME: "operator",
-        OPERATOR_CREDENTIAL: "contract-test-api-credential",
-        OPERATOR_PROXY_SIGNING_SECRET: "contract-test-signing-secret-long-enough",
-        OPERATOR_SUBJECT: "contract-test-operator",
-        POSTGRES_PASSWORD: "contract-test-postgres-password",
-      },
-    },
-  );
+const optionalKeys = [
+  "API_FOOTBALL_API_KEY",
+  "ELIGIBILITY_ALLOWED_REGIONS",
+  "ELIGIBILITY_REGION",
+  "ELIGIBILITY_AGE_ACKNOWLEDGED",
+] as const;
 
-  return JSON.parse(rendered) as ComposeConfiguration;
+function loadComposeConfiguration(overrides: Record<string, string> = {}): ComposeConfiguration {
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    FOOTBALL_DATA_API_TOKEN: "contract-test-provider-token",
+    OPERATOR_BASIC_PASSWORD: "contract-test-basic-password",
+    OPERATOR_BASIC_USERNAME: "operator",
+    OPERATOR_CREDENTIAL: "contract-test-api-credential",
+    OPERATOR_PROXY_SIGNING_SECRET: "contract-test-signing-secret-long-enough",
+    OPERATOR_SUBJECT: "contract-test-operator",
+    POSTGRES_PASSWORD: "contract-test-postgres-password",
+  };
+  for (const key of optionalKeys) delete env[key];
+
+  // An empty env file keeps a developer's local infra/.env out of the contract.
+  const directory = mkdtempSync(join(tmpdir(), "operator-compose-"));
+  const emptyEnvFile = join(directory, "empty.env");
+  writeFileSync(emptyEnvFile, "");
+
+  try {
+    const rendered = execFileSync(
+      "docker",
+      ["compose", "-f", composeFile, "--env-file", emptyEnvFile, "config", "--format", "json"],
+      { cwd: repositoryRoot, encoding: "utf8", env: { ...env, ...overrides } },
+    );
+
+    return JSON.parse(rendered) as ComposeConfiguration;
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 describe("operator gateway deployment topology", () => {
@@ -89,6 +106,51 @@ describe("operator gateway deployment topology", () => {
     }
   });
 
+  it("passes the API-Football key and the eligibility inputs to the services that read them", () => {
+    const compose = loadComposeConfiguration({
+      API_FOOTBALL_API_KEY: "contract-test-api-football-key",
+      ELIGIBILITY_ALLOWED_REGIONS: "PL,DE",
+      ELIGIBILITY_REGION: "PL",
+      ELIGIBILITY_AGE_ACKNOWLEDGED: "true",
+    });
+
+    for (const serviceName of ["api", "worker"]) {
+      expect(compose.services[serviceName]?.environment).toMatchObject({
+        API_FOOTBALL_API_KEY: "contract-test-api-football-key",
+      });
+    }
+    expect(compose.services.api?.environment).toMatchObject({ ELIGIBILITY_ALLOWED_REGIONS: "PL,DE" });
+    expect(compose.services.web?.environment).toMatchObject({
+      ELIGIBILITY_REGION: "PL",
+      ELIGIBILITY_AGE_ACKNOWLEDGED: "true",
+    });
+    expect(compose.services.web?.environment).not.toHaveProperty("API_FOOTBALL_API_KEY");
+  });
+
+  it("stays closed when the API-Football key and the eligibility inputs are absent", () => {
+    const compose = loadComposeConfiguration();
+
+    for (const serviceName of ["api", "worker"]) {
+      expect(compose.services[serviceName]?.environment).toMatchObject({ API_FOOTBALL_API_KEY: "" });
+    }
+    expect(compose.services.api?.environment).toMatchObject({ ELIGIBILITY_ALLOWED_REGIONS: "" });
+    expect(compose.services.web?.environment).toMatchObject({
+      ELIGIBILITY_REGION: "",
+      ELIGIBILITY_AGE_ACKNOWLEDGED: "false",
+    });
+  });
+
+  it("documents the same variables in .env.example with access closed by default", () => {
+    const example = readFileSync(`${repositoryRoot}/.env.example`, "utf8");
+
+    expect(example).toMatch(/^DATABASE_URL=postgresql:\/\//m);
+    // Commented out: an empty value fails readServerConfig even outside production.
+    expect(example).toMatch(/^# API_FOOTBALL_API_KEY=\r?$/m);
+    expect(example).toMatch(/^ELIGIBILITY_ALLOWED_REGIONS=\r?$/m);
+    expect(example).toMatch(/^ELIGIBILITY_REGION=\r?$/m);
+    expect(example).toMatch(/^ELIGIBILITY_AGE_ACKNOWLEDGED=false\r?$/m);
+  });
+
   it("mounts PostgreSQL 18 data at its version-aware parent directory", () => {
     const compose = loadComposeConfiguration();
 
@@ -98,6 +160,14 @@ describe("operator gateway deployment topology", () => {
         target: "/var/lib/postgresql",
       }),
     ]);
+  });
+
+  it("copies the root build script into the image before running the build", () => {
+    const dockerfile = readFileSync(`${repositoryRoot}/infra/Dockerfile.app`, "utf8");
+    const copyIndex = dockerfile.search(/^COPY scripts\/build\.mjs \.\/scripts\/build\.mjs\r?$/m);
+
+    expect(copyIndex).toBeGreaterThan(-1);
+    expect(copyIndex).toBeLessThan(dockerfile.search(/^RUN pnpm build\r?$/m));
   });
 
   it("shares the prepared Corepack cache with the non-root runtime user", () => {

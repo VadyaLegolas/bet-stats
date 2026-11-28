@@ -42,6 +42,9 @@ services:
       OPERATOR_PROXY_SIGNING_SECRET: ${OPERATOR_PROXY_SIGNING_SECRET}
       OPERATOR_AUTHORIZED_SUBJECTS: ${OPERATOR_SUBJECT}
       OPERATOR_CREDENTIAL: ${OPERATOR_CREDENTIAL}
+      # Fail closed: unset values keep protected analytics unavailable.
+      ELIGIBILITY_REGION: ${ELIGIBILITY_REGION:-}
+      ELIGIBILITY_AGE_ACKNOWLEDGED: ${ELIGIBILITY_AGE_ACKNOWLEDGED:-false}
     depends_on:
       api:
         condition: service_healthy
@@ -63,6 +66,9 @@ services:
       API_PORT: 3001
       DATA_PROVIDER_MODE: live
       FOOTBALL_DATA_API_TOKEN: ${FOOTBALL_DATA_API_TOKEN}
+      # Required in production: an empty value stops the API at startup.
+      API_FOOTBALL_API_KEY: ${API_FOOTBALL_API_KEY:-}
+      ELIGIBILITY_ALLOWED_REGIONS: ${ELIGIBILITY_ALLOWED_REGIONS:-}
       REDIS_URL: redis://redis:6379
       OPERATOR_CREDENTIAL: ${OPERATOR_CREDENTIAL}
     depends_on:
@@ -86,6 +92,7 @@ services:
       DATA_PROVIDER_MODE: live
       REDIS_URL: redis://redis:6379
       FOOTBALL_DATA_API_TOKEN: ${FOOTBALL_DATA_API_TOKEN}
+      API_FOOTBALL_API_KEY: ${API_FOOTBALL_API_KEY:-}
       POSTGRES_READY: "true"
       REDIS_READY: "true"
     depends_on:

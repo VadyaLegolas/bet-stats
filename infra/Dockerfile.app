@@ -13,6 +13,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.js
 COPY apps ./apps
 COPY packages ./packages
 COPY workers ./workers
+COPY scripts/build.mjs ./scripts/build.mjs
 
 RUN pnpm install --frozen-lockfile
 RUN DATABASE_URL=postgresql://localhost:5432/unused pnpm --filter @bet-stats/database prisma version

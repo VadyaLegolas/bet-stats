@@ -32,11 +32,14 @@ do {
 } until ($ready -or (Get-Date) -gt $deadline)
 if (-not $ready) { throw "Postgres did not become ready in time" }
 
-# 3. Schema + league catalogue (idempotent).
+# 3. Build workspace packages first: the seed script and the API/worker run from dist,
+# which does not exist yet on a fresh clone.
+corepack pnpm build
+if ($LASTEXITCODE -ne 0) { throw "Сборка проекта завершилась с ошибкой (код $LASTEXITCODE)" }
+
+# 4. Schema + league catalogue (idempotent), then start everything.
 corepack pnpm --filter @bet-stats/database exec prisma migrate deploy
 node scripts\seed-configured-leagues.mjs
 
-# 4. Build workspace packages (API/worker run from dist), then start everything.
-corepack pnpm build
 Write-Host "Starting API (:3001), web (:3000) and the data-sync worker..."
 corepack pnpm dev

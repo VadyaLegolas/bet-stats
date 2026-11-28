@@ -162,15 +162,17 @@ do {
 } until ($ready -or (Get-Date) -gt $deadline)
 if (-not $ready) { throw "PostgreSQL не поднялся за 60 с" }
 
-Write-Host "2/5 Миграции и каталог лиг (идемпотентно)..."
+# Сборка идёт раньше сида: seed-configured-leagues.mjs импортирует packages/database/dist,
+# которого на чистом клоне ещё нет.
+Write-Host "2/5 Сборка проекта (кэш Turbo — повторные запуски быстрые)..."
+corepack pnpm build | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Сборка проекта завершилась с ошибкой (код $LASTEXITCODE)" }
+
+Write-Host "3/5 Миграции и каталог лиг (идемпотентно)..."
 corepack pnpm --filter @bet-stats/database exec prisma migrate deploy | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Миграции завершились с ошибкой (код $LASTEXITCODE)" }
 node scripts\seed-configured-leagues.mjs | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Сид каталога лиг завершился с ошибкой (код $LASTEXITCODE)" }
-
-Write-Host "3/5 Сборка проекта (кэш Turbo — повторные запуски быстрые)..."
-corepack pnpm build | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "Сборка проекта завершилась с ошибкой (код $LASTEXITCODE)" }
 
 Write-Host "4/5 Запуск web (:$webPort), API (:$apiPort) и воркера (фоном, лог: $log)..."
 Start-Process -FilePath "pwsh" -WindowStyle Hidden -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`"", "-Daemon"

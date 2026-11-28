@@ -24,7 +24,7 @@ test("D-16 sole-source outage preserves canonical facts and last-valid timestamp
   await page.goto(`/fixtures/${LIVE_FIXTURES.limited}`);
   const status = page.getByLabel("Статус поставщика");
   await expect(status.getByText("Неполные данные", { exact: true })).toBeVisible();
-  await expect(status).toContainText("PROVIDER_UNAVAILABLE");
+  await expect(status).toContainText("Провайдер недоступен");
   await expect(status.locator("time")).toHaveCount(1);
   await expect(page.getByRole("heading", { name: "Roma против Ajax" })).toBeVisible();
   await assertNoReleaseCanary(page, CANARY);

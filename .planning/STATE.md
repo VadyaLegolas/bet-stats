@@ -6,10 +6,10 @@ current_phase_name: Paper-Trading Journal
 current_plan: Not started
 status: planning
 stopped_at: Phase 15 complete, ready to plan Phase 16
-last_updated: "2026-11-28T13:10:37.824Z"
+last_updated: "2026-11-28T14:45:59.633Z"
 last_activity: 2026-11-28
 last_activity_desc: Phase 15 complete, transitioned to Phase 16
-state_head: c308b72c9b9cac2de2e44e3ce7c2e565c44518a2
+state_head: fbbf1e7577ab8c3ee3dd4a480f70a5797cf061d8
 progress:
   total_phases: 10
   completed_phases: 8
@@ -449,6 +449,7 @@ None yet.
 | 60 | Ссылки на исторические доказательства в шапке матча переоформлены в строки-карточки: .detail-links стал адаптивной сеткой, каждая ссылка .evidence-link получила фон, рамку, радиус, hover и декоративный шеврон; имя команды выделено strong, доступное имя ссылки не изменилось (e2e-контракт сохранён); стили только на токенах, UI-тест обновлён | 2026-11-26 | e611ae6 | — |
 | 61 | Переключатель темы больше не падает один на вторую строку шапки: one-row раскладка теперь включается с 1460px (ширина ряда brand + карточка лимитов + семь ссылок + toggle около 1372px), контейнер шапки расширен до 1480px; ниже порога — прежний двухрядный вариант, где toggle остаётся в первом ряду справа; проверено измерениями 1280-1830px и скриншотами | 2026-11-27 | b8eae11 | — |
 | 261128-hlo | Тест D-16 ждёт русскую подпись «Провайдер недоступен» вместо кода; verify:release прошёл целиком | 2026-11-28 | d98de32 | [261128-hlo-fix-stale-d-16-outage-expectation-in-rel](./quick/261128-hlo-fix-stale-d-16-outage-expectation-in-rel/) |
+| 261128-opc | Operator compose передаёт ключ API-Football и ELIGIBILITY_* fail-closed; образ снова собирается | 2026-11-28 | fbbf1e7 | [261128-opc-operator-compose-fail-closed-env](./quick/261128-opc-operator-compose-fail-closed-env/) |
 
 ### Roadmap Evolution
 

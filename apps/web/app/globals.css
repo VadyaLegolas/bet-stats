@@ -1759,6 +1759,13 @@ tbody th { color: var(--color-text); font-weight: 600; font-size: 1rem; vertical
 .market-score-fields > :last-child { grid-column: 1 / -1; }
 .market-score-fields-set { border: 0; margin: 0; padding: 0; min-width: 0; }
 .evidence-card[data-current="true"] { border-color: var(--color-accent); background: var(--color-accent-soft); }
+/* Карточки линий гандикапа при увеличенном тексте. Первый трек общего правила .evidence-card dl > div (7rem) при крупном шрифте
+   шире самой строки: колонка значения сжимается до нуля, и чип «Главная линия» выходит за экран. Узкая карточка ставит подпись
+   над значением. Порог задан в rem и растёт вместе с текстом, поэтому при 100 % две колонки сохраняются. Общее правило не меняем. */
+.market-table .evidence-card { container-type: inline-size; }
+@container (max-width: 11rem) {
+  .market-table .evidence-card dl > div { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* --- Сканер value (Phase 15) ------------------------------------------------
    Аддитивный блок только на существующих токенах: без новых цветов, без новых

@@ -197,17 +197,11 @@ ELIGIBILITY_AGE_ACKNOWLEDGED=true
 
 ### 3️⃣ Запуск
 
-На чистом клоне сначала соберите проект: сценарий заполняет каталог лиг раньше своей сборки.
-
-```powershell
-pnpm build
-```
-
 ```powershell
 pwsh -File scripts/app-lifecycle.ps1
 ```
 
-✨ Сценарий [app-lifecycle.ps1](scripts/app-lifecycle.ps1) загружает `.env`, поднимает PostgreSQL и Redis, применяет миграции, заполняет лиги, собирает проект, запускает web, API, воркер и шлюз оператора, затем открывает браузер. Режим поставщиков — `live`.
+✨ Сценарий [app-lifecycle.ps1](scripts/app-lifecycle.ps1) загружает `.env`, поднимает PostgreSQL и Redis, собирает проект, применяет миграции, заполняет лиги, запускает web, API, воркер и шлюз оператора, затем открывает браузер. Режим поставщиков — `live`.
 
 | Служба | Адрес |
 |---|---|
